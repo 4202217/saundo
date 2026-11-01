@@ -7,6 +7,10 @@
 /.audit/
 /icon-check.png
 
+# Update signing key (never commit)
+mygo-update.key
+/cmd/saundo/mygo/update-keys/
+
 # OS and editor files
 .DS_Store
 Thumbs.db

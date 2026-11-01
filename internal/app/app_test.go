@@ -6,7 +6,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/i18n"
+	"github.com/egoist/mygo/plugins/updater/native"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
@@ -21,6 +23,7 @@ import (
 var testLocale = "zh-CN"
 
 func TestMain(m *testing.M) {
+	mygo.Use(native.Plugin)
 	i18n.SetLocaleFunc(func() string { return testLocale })
 	os.Exit(m.Run())
 }
@@ -159,7 +162,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动与版本。", "发送端名称", "保存", "开机自动启动", "语言", "关于", "声渡 · saundo"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动与版本。", "发送端名称", "保存", "开机自动启动", "语言", "更新", "自动检查更新", "立即检查", "更新通道", "测试版更新", "关于", "声渡 · saundo"}},
 		{pageConnection, []string{"连接", "配对、重连与验证策略", "HomePods", "已连接", "启动时自动连接上次设备", "断开后自动重连", "严格验证接收器", "接收端密码", "保存到 HomePods"}},
 		{pageAudio, []string{"音频", "播放延迟", "200 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "扬声器 · 48 kHz"}},

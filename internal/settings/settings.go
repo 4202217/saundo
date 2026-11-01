@@ -29,6 +29,7 @@ type Settings struct {
 	ShowNowPlaying      bool               `json:"showNowPlaying"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
+	Beta                bool               `json:"beta"`
 }
 
 // Default returns the first-run configuration.

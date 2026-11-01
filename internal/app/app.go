@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
@@ -79,6 +80,8 @@ type App struct {
 	reconnect      bool
 	launchAtStart  bool
 	showNowPlaying bool
+	autoUpdate     bool
+	beta           bool
 	showLog        bool
 	page           settingsPage
 
@@ -117,6 +120,8 @@ func Run() error {
 	}
 	a.cfg = cfg
 	mygo.App.SetLocale(cfg.Language)
+	a.beta = cfg.Beta
+	mygo.Updater.SetPrereleases(cfg.Beta)
 	a.volume = cfg.Volume
 	a.selID = cfg.LastDeviceID
 	a.nameDraft = cfg.Name
@@ -152,6 +157,10 @@ func Run() error {
 	})
 	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.OnLocaleChanged(func(string) { a.onLocaleChanged() })
+	updater.OnChange(func() {
+		a.autoUpdate = updater.AutomaticChecks()
+		a.updateUI(func() {})
+	})
 	mygo.App.WhenReady(a.ready)
 	return mygo.App.Run()
 }
@@ -225,6 +234,7 @@ func (a *App) ready() {
 	// Created before the engine starts, so its field stays immutable while
 	// engine callbacks read it from other goroutines.
 	a.settingsWin = a.newSettingsWindow()
+	a.autoUpdate = updater.AutomaticChecks()
 	a.rebuildTray()
 
 	if a.cfg.LaunchAtStart {
@@ -536,6 +546,7 @@ func (a *App) rebuildTray() {
 		items := []*mygo.MenuItem{
 			{Label: locales.TrayShowPanel(), Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
 			{Label: locales.TraySettings(), Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
+			updater.MenuItem(),
 			mygo.Separator(),
 		}
 		if connecting {
@@ -676,6 +687,27 @@ func (a *App) onLocaleChanged() {
 	a.syncAppChoice()
 	a.rebuildTray()
 	a.updateUI(func() {})
+}
+
+// updateText is the settings row's status line for the update check.
+func (a *App) updateText() string {
+	if !mygo.Updater.Enabled() {
+		return locales.SettingsUpdateUnavailable()
+	}
+	if v := updater.AvailableVersion(); v != "" {
+		return locales.SettingsUpdateAvailable(v)
+	}
+	return locales.SettingsUpdatesDesc()
+}
+
+// setBeta chooses whether update checks offer prereleases too.
+func (a *App) setBeta(on bool) {
+	a.beta = on
+	a.cfg.Beta = on
+	cfg := a.sets.Load()
+	cfg.Beta = on
+	_ = a.sets.Save(cfg)
+	mygo.Updater.SetPrereleases(on)
 }
 
 // languageLabel is the settings select's value for the saved language tag.

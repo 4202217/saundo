@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
@@ -238,6 +239,19 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			if fieldSelect(c, p, &choice, options, locales.SettingsLanguage()).Changed() {
 				a.setLanguage(choice)
 			}
+		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsUpdates(), a.updateText(), func() {
+			ui.Row(c).Gap(6).Children(func() {
+				toggle(c, p, &a.autoUpdate, locales.SettingsAutoUpdate(), func(v bool) {
+					updater.SetAutomaticChecks(v)
+				})
+				chipButton(c, p, locales.SettingsCheckNow(), func() { updater.CheckForUpdates() })
+			})
+		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsChannel(), locales.SettingsChannelDesc(), func() {
+			toggle(c, p, &a.beta, locales.SettingsBeta(), func(v bool) { a.setBeta(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsAbout(), locales.SettingsAboutBrand(), func() {

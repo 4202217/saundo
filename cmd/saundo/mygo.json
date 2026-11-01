@@ -1,12 +1,17 @@
 {
   "name": "saundo",
   "identifier": "com.saundo.app",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "slug": "saundo",
   "out": "build",
   "icon": "../../resources/icon.png",
   "i18n": {
     "dir": "locales",
     "source": "en"
+  },
+  "updates": {
+    "publicKey": "T/kR7GcJHWuEBl9we+RPC7xNTptRRQ7Ka526/GPSzTw=",
+    "github": "4202217/saundo",
+    "changelog": "../../CHANGELOG.md"
   }
 }
