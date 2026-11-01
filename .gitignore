@@ -1,0 +1,12 @@
+# Build output
+/bin/
+/cmd/saundo/build/
+*.exe
+
+# Local design and audit scratch
+/.audit/
+/icon-check.png
+
+# OS and editor files
+.DS_Store
+Thumbs.db

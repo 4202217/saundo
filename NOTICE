@@ -1,0 +1,37 @@
+saundo
+Copyright 2026 daikaiyu
+
+saundo is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, version 3. The full license text is in LICENSE.
+
+This project implements AirPlay 2 audio with reference to:
+
+airplay2-sender-cpp
+Copyright (c) Andreas Wendorf
+Licensed under the Apache License, Version 2.0.
+https://github.com/akustikrausch/airplay2-sender-cpp
+The full license text is in LICENSES/Apache-2.0.txt.
+
+pyatv
+Copyright (c) 2020 Pierre Ståhl
+Licensed under the MIT License.
+https://github.com/postlund/pyatv
+The full license text is in LICENSES/MIT-pyatv.txt.
+
+AirFlash
+Copyright (C) 2026 AirFlash contributors
+Dual-licensed under the GNU General Public License, version 3 or later,
+and a commercial license. This project uses the GPLv3 option.
+https://github.com/Ding-Kyoma/AirFlash
+
+The TLV8 codec and the uncompressed ALAC frame layout are ported from
+airplay2-sender-cpp. See docs/architecture.md for the reference split.
+
+The WASAPI shared-mode loopback capture approach in internal/capture is
+ported from AirFlash (native/airflash-engine/src/live.rs). The AirPlay PTP
+wire profile, PTP follower state machine, and sender-side PTP master in
+internal/airplay/ptp are ported from AirFlash
+(native/airflash-engine/src/clock.rs).
+
+Runtime dependencies and their licenses are listed in docs/architecture.md.

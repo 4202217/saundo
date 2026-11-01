@@ -1,0 +1,8 @@
+{
+  "name": "saundo",
+  "identifier": "com.saundo.app",
+  "version": "0.3.0",
+  "slug": "saundo",
+  "out": "build",
+  "icon": "../../resources/icon.png"
+}
