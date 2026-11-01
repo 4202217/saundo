@@ -35,14 +35,25 @@ var settingsNav = []struct {
 // showSettings opens the configuration window. The flyout keeps the playback
 // controls, so it hides while the user works in this window.
 func (a *App) showSettings() {
-	if a.win != nil {
-		a.win.Hide()
-	}
 	if a.settingsWin == nil {
 		return
 	}
+	if a.win != nil {
+		a.win.Hide()
+	}
+	if a.settingsWin.IsMinimized() {
+		a.settingsWin.Restore()
+	}
 	a.settingsWin.Show()
 	a.settingsWin.Focus()
+	mygo.App.Focus()
+}
+
+// hideSettings hides the settings window; the app stays in the tray.
+func (a *App) hideSettings() {
+	if a.settingsWin != nil {
+		a.settingsWin.Hide()
+	}
 }
 
 // newSettingsWindow builds the configuration window hidden; showSettings
@@ -55,6 +66,10 @@ func (a *App) newSettingsWindow() *mygo.Window {
 		MinWidth:  640,
 		MinHeight: 420,
 		Hidden:    true,
+		StateKey:  "settings",
+		// Fills the window before the first frame paints, so a dark window
+		// does not flash white as it opens.
+		BackgroundColor: "light-dark(#f4f4f6, #1a1a1e)",
 		// The view draws the title bar so it blends with the window's
 		// background; the system keeps its buttons over it.
 		TitleBarStyle: mygo.TitleBarHidden,
@@ -73,6 +88,7 @@ func (a *App) newSettingsWindow() *mygo.Window {
 
 func (a *App) settingsView(c *ui.Context) {
 	p := design(c)
+	c.OnShortcut(ui.Cmd, ui.KeyW, a.hideSettings)
 	ui.Column(c).Fill().Background(p.bg).Children(func() {
 		a.settingsTitleBar(c, p)
 		ui.Row(c).Grow(1).Children(func() {

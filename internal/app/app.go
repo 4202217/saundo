@@ -139,6 +139,14 @@ func Run() error {
 		a.quitting = true
 		a.eng.Stop()
 	})
+	// Windows leaves a tray icon behind after its app until the pointer
+	// passes over it.
+	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {
+		if a.tray != nil {
+			a.tray.Destroy()
+		}
+	})
+	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.WhenReady(a.ready)
 	return mygo.App.Run()
 }
@@ -480,8 +488,12 @@ func (a *App) showWindow() {
 	if a.win == nil {
 		return
 	}
+	if a.win.IsMinimized() {
+		a.win.Restore()
+	}
 	a.win.Show()
 	a.win.Focus()
+	mygo.App.Focus()
 }
 
 // toggleWindow is the tray icon's primary click: the panel opens next to the
