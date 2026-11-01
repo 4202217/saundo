@@ -1,0 +1,91 @@
+<p align="center">
+  <img src="resources/icon.png" width="120" alt="saundo 图标：圆角深色底上的笑脸">
+</p>
+
+# saundo · 声渡
+声渡——把声音渡过去：声，声音；渡，摆渡、渡过。**saundo** 取自サウンド，英语 sound 的日语片假名转写。
+
+[English](README.md) · 简体中文
+
+### 把 Windows 的全部系统声音串流到 AirPlay 2 接收端——托盘应用，纯 Go。
+
+<p align="center">
+  <img src="docs/screenshots/flyout-stream-light.png" width="290" alt="声渡托盘面板：接收端列表、音量、正在播放">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/settings-connection-light.png" width="470" alt="设置窗口：连接页">
+</p>
+
+saundo 采集 Windows 正在播放的一切声音——WASAPI 环回，无需按应用配置——并以未压缩 ALAC 经 AirPlay 2 串流到 HomePod、HomePod mini、Mac 接收端与 Apple TV。一个托盘图标，一个二进制，无 WebView。基于 GPL-3.0-only 的自由软件。
+
+## saundo 适合你吗？
+
+- 你在 Windows 上播放音频，想让它出现在同一网络里的 HomePod 或 Mac 上。
+- 你要的是**全部**系统声音——浏览器、游戏、播放器——而不是单个应用的串流。
+- 你偏好原生托盘应用，而不是 WebView。
+
+如果你需要视频或屏幕镜像（本项目仅音频），或者你的接收端需要 Apple FairPlay——部分电视如此——那它不适合你。saundo 会在发现阶段识别这类设备并快速失败，而不是默默连上却没有声音。
+
+## 快速开始
+
+1. 构建（见下）并启动 `saundo.exe`。应用常驻托盘：左键打开面板，右键打开菜单。
+2. 选择接收端并连接。需要密码的接收端只询问一次，之后记住。
+3. 在电脑上随便播点什么。声音跟过去，音量滑块直接控制接收端自己的音量。
+
+首次启动 Windows 防火墙会弹窗——请在专用网络上放行：发现（mDNS）和 PTP 时钟同步都需要入站 UDP。
+
+## 它做什么
+
+- **系统音频采集**——对默认输出、指定端点或单个应用做 WASAPI 环回。
+- **时序正确的 AirPlay 2**——44.1 kHz 未压缩 ALAC，PTP 锁定到接收端时钟（立体声组由发送端担任 PTP master），加密的控制与事件通道，按需重传。
+- **HomePod 立体声组**——两个成员合并为一个目标，同步起播。
+- **正在播放**——读取 Windows 媒体会话（SMTC），把 曲目 · 艺人 · 专辑 推给接收端，可开关。
+- **全类型配对**——HomePod 免密瞬态配对、Apple TV 屏幕配对码、接收端密码（首次连接对话框）；凭据经 DPAPI 加密存储。
+- **不打扰**——数字静音 2 秒后挂起串流并干净恢复；断线按退避自动重连；跟随接收端上的音量变化。
+
+## 安装
+
+要求：Windows 10 或 11，Go 1.27+（[mygo](https://github.com/egoist/mygo) 所需的工具链）。暂无签名下载——从源码构建：
+
+```bash
+make check    # gofmt 门、go vet、mygo UI vet、go test —— 验收门
+make build    # 经 mygo 构建 bin/saundo.exe 与 NSIS 安装器（bin/saundo-setup-*.exe），随后重启正在运行的应用
+```
+
+只想要应用的话，构建后直接运行安装器 `bin/saundo-setup-*.exe`。
+
+## 接收端支持
+
+| 接收端 | 状态 |
+|---|---|
+| HomePod / HomePod mini（software 27） | 已验证 —— PTP 时序会话 |
+| HomePod 立体声组 | 已验证 —— 发送端担任 PTP master |
+| Mac（AirPlay 接收器，含“需要密码”） | 已验证 —— 密码配对 |
+| Apple TV，屏幕配对码 | 已实现；硬件实测待做 |
+| 需要 Apple FairPlay 的接收端（部分电视） | 不支持 —— 发现阶段识别，快速失败 |
+
+每类设备如何广播、配对与表现：[docs/devices.md](docs/devices.md)。失败模式表（已连接但无声、配对 403/470、防火墙）与真机清单：[docs/verification.md](docs/verification.md)。
+
+## 它如何组织
+
+托盘 flyout 与 UI 无关的引擎对话，引擎驱动无 I/O 的发送端状态机，走加密 RTSP。WASAPI 环回喂入重采样器与环形缓冲；PTP follower（立体声组则为 master）让每一路流都锁定接收端时钟。设计决策与风险：[docs/architecture.md](docs/architecture.md)。线级协议：[docs/protocol.md](docs/protocol.md)。代码地图：[docs/implementation.md](docs/implementation.md)。
+
+## 文档
+
+- [docs/architecture.md](docs/architecture.md) —— 设计决策、技术选型、风险
+- [docs/protocol.md](docs/protocol.md) —— 线级协议：配对、控制通道、AP2 会话、RTP、时序
+- [docs/devices.md](docs/devices.md) —— 每类接收端的档案：如何广播、配对、表现
+- [docs/ui.md](docs/ui.md) —— UI 设计语言：令牌、控件、动效、窗口
+- [docs/implementation.md](docs/implementation.md) —— 代码地图：运行时模型、包、流程、构建
+- [docs/verification.md](docs/verification.md) —— 自动化检查、真机测试配方、证据日志
+- [AGENTS.md](AGENTS.md) —— 编码代理的操作指南
+
+## 参考
+
+- [airplay2-sender-cpp](https://github.com/akustikrausch/airplay2-sender-cpp) —— 主要蓝图（Apache-2.0）
+- [pyatv](https://github.com/postlund/pyatv) —— RAOP 传输语义（MIT）
+- [AirFlash](https://github.com/Ding-Kyoma/AirFlash) —— WASAPI 与 PTP 代码参考，按 GPLv3 选项移植
+- [magpie](https://github.com/yetone/magpie) —— 托盘 flyout 与设置窗口设计参考
+
+## 许可证
+
+saundo 是自由软件，采用 GPL-3.0-only。许可证正文见 [LICENSE](LICENSE)，第三方署名见 [NOTICE](NOTICE)。
