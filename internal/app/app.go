@@ -35,6 +35,8 @@ type App struct {
 	tray        *mygo.Tray
 	trayMenu    *mygo.Menu
 	trayKey     trayIconKey
+	trayTip     string
+	menuKey     trayMenuKey
 	menuIcons   map[string]*mygo.MenuIcon
 	quitting    bool
 	flyoutH     int
@@ -366,7 +368,7 @@ func (a *App) updateUI(fn func()) {
 	case a.win != nil:
 		a.win.Update(fn)
 		if a.settingsWin != nil {
-			a.settingsWin.Update(func() {})
+			a.settingsWin.Invalidate()
 		}
 	case a.settingsWin != nil:
 		a.settingsWin.Update(fn)
@@ -509,6 +511,13 @@ func (a *App) toggleWindow() {
 	a.showWindow()
 }
 
+// trayMenuKey is what the tray menu's shape depends on. The tooltip follows
+// more of the snapshot and is compared on its own.
+type trayMenuKey struct {
+	connecting   bool
+	hasSelection bool
+}
+
 func (a *App) rebuildTray() {
 	if a.tray == nil {
 		return
@@ -517,27 +526,34 @@ func (a *App) rebuildTray() {
 		a.menuIcons = loadMenuIcons()
 	}
 	connecting := a.snap.State != sender.StateIdle
-	items := []*mygo.MenuItem{
-		{Label: "显示控制面板", Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
-		{Label: "设置…", Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
-		mygo.Separator(),
+	key := trayMenuKey{connecting: connecting, hasSelection: a.selID != ""}
+	if a.trayMenu == nil || key != a.menuKey {
+		a.menuKey = key
+		items := []*mygo.MenuItem{
+			{Label: "显示控制面板", Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
+			{Label: "设置…", Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
+			mygo.Separator(),
+		}
+		if connecting {
+			items = append(items, &mygo.MenuItem{Label: "断开连接", Icon: a.menuIcons["disconnect"], Click: func(*mygo.MenuItem, *mygo.Window) {
+				a.eng.Disconnect()
+			}})
+		} else {
+			items = append(items, &mygo.MenuItem{Label: "连接上次设备", Icon: a.menuIcons["connect"], Disabled: a.selID == "", Click: func(*mygo.MenuItem, *mygo.Window) {
+				a.connectSelected()
+			}})
+		}
+		items = append(items, mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleQuit, Label: "退出声渡", Icon: a.menuIcons["quit"]})
+		a.trayMenu = mygo.NewMenu(items)
 	}
-	if connecting {
-		items = append(items, &mygo.MenuItem{Label: "断开连接", Icon: a.menuIcons["disconnect"], Click: func(*mygo.MenuItem, *mygo.Window) {
-			a.eng.Disconnect()
-		}})
-	} else {
-		items = append(items, &mygo.MenuItem{Label: "连接上次设备", Icon: a.menuIcons["connect"], Disabled: a.selID == "", Click: func(*mygo.MenuItem, *mygo.Window) {
-			a.connectSelected()
-		}})
-	}
-	items = append(items, mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleQuit, Label: "退出声渡", Icon: a.menuIcons["quit"]})
-	a.trayMenu = mygo.NewMenu(items)
 	tip := "声渡"
 	if connecting {
 		tip = "声渡 · " + a.statusText()
 	}
-	a.tray.SetToolTip(tip)
+	if tip != a.trayTip {
+		a.trayTip = tip
+		a.tray.SetToolTip(tip)
+	}
 	a.refreshTrayIcon()
 }
 
