@@ -78,6 +78,8 @@ make build    # 经 mygo 构建 bin/saundo.exe 与 NSIS 安装器（bin/saundo-s
 - [docs/ui.md](docs/ui.md) —— UI 设计语言：令牌、控件、动效、窗口
 - [docs/implementation.md](docs/implementation.md) —— 代码地图：运行时模型、包、流程、构建
 - [docs/verification.md](docs/verification.md) —— 自动化检查、真机测试配方、证据日志
+- [docs/releasing.md](docs/releasing.md) —— 发版清单、签名密钥与回滚
+- [SECURITY.md](SECURITY.md) —— 漏洞报告
 - [AGENTS.md](AGENTS.md) —— 编码代理的操作指南
 
 ## 参考

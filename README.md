@@ -78,6 +78,8 @@ The tray flyout talks to a UI-agnostic engine, which drives a sans-i/o sender st
 - [docs/ui.md](docs/ui.md) — the UI design language: tokens, widgets, motion, windows
 - [docs/implementation.md](docs/implementation.md) — the code map: runtime model, packages, flows, build
 - [docs/verification.md](docs/verification.md) — automated checks, live-test recipes, the evidence log
+- [docs/releasing.md](docs/releasing.md) — the release checklist, signing keys, and rollback
+- [SECURITY.md](SECURITY.md) — vulnerability reporting
 - [AGENTS.md](AGENTS.md) — operating guide for coding agents
 
 ## References
