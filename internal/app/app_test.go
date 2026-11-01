@@ -17,7 +17,7 @@ import (
 func previewApp() *App {
 	a := &App{
 		volume:        65,
-		captureNames:  []string{"跟随系统默认", "扬声器 (Realtek)"},
+		captureNames:  []string{"跟随系统默认", "扬声器"},
 		captureIDs:    []string{"", "{endpoint}"},
 		captureChoice: "跟随系统默认",
 		appNames:      []string{"整个系统", "Spotify"},
@@ -29,15 +29,15 @@ func previewApp() *App {
 	a.selID = "AA:BB:CC:DD:EE:01"
 	a.snap = engine.Snapshot{
 		Devices: []device.Device{
-			{ID: "AA:BB:CC:DD:EE:01", Name: "客厅 HomePods", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
+			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
 			{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:03", Name: "书房 HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
+			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 		},
 		SelectedID:     "AA:BB:CC:DD:EE:01",
 		State:          sender.StateStreaming,
-		ConnectedName:  "客厅 HomePods",
+		ConnectedName:  "HomePods",
 		Volume:         65,
-		CaptureName:    "扬声器 (Realtek)",
+		CaptureName:    "扬声器",
 		CaptureRate:    48000,
 		CaptureRunning: true,
 		Name:           "声渡",
@@ -54,8 +54,8 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
 	for _, want := range []string{
-		"声渡", "saundo", "设备", "客厅 HomePods", "Apple TV", "书房 HomePod mini",
-		"连接", "断开", "离线", "音量", "正在播放到 客厅 HomePods",
+		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
+		"连接", "断开", "离线", "音量", "正在播放到 HomePods",
 		"ALAC · 44.1 kHz · PTP · 已同步", "推送", "未检测到媒体", "诊断日志",
 	} {
 		if !tt.HasText(want) {
@@ -70,12 +70,12 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 func TestPasswordPromptRenders(t *testing.T) {
 	a := previewApp()
 	a.snap.PasswordRequired = true
-	a.snap.PasswordDevice = "MacBook Air"
+	a.snap.PasswordDevice = "MacBook"
 	a.snap.PasswordDeviceID = "AA:BB:CC:DD:EE:02"
 	a.passwordOpen = true
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
 	for _, want := range []string{
-		"输入接收端密码", "输入 MacBook Air 的 AirPlay 接收密码。",
+		"输入接收端密码", "输入 MacBook 的 AirPlay 接收密码。",
 		"密码保存在本机，只用于这台设备。", "连接", "取消",
 	} {
 		if !tt.HasText(want) {
@@ -90,9 +90,9 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与版本。", "发送端名称", "保存", "开机自动启动", "关于", "声渡 · saundo"}},
-		{pageConnection, []string{"连接", "配对、重连与验证策略", "客厅 HomePods", "已连接", "启动时自动连接上次设备", "断开后自动重连", "严格验证接收器", "接收端密码", "保存到 客厅 HomePods"}},
+		{pageConnection, []string{"连接", "配对、重连与验证策略", "HomePods", "已连接", "启动时自动连接上次设备", "断开后自动重连", "严格验证接收器", "接收端密码", "保存到 HomePods"}},
 		{pageAudio, []string{"音频", "播放延迟", "200 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
-		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "扬声器 (Realtek) · 48 kHz"}},
+		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "扬声器 · 48 kHz"}},
 	}
 	for _, tc := range cases {
 		a := previewApp()
@@ -222,7 +222,7 @@ func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 }
 
 func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
-	const capture = "采集 扬声器 (Realtek) · 48 kHz · 丢帧 0"
+	const capture = "采集 扬声器 · 48 kHz · 丢帧 0"
 	find := func(devices int) ui.Rect {
 		a := previewApp()
 		a.snap.Devices = a.snap.Devices[:devices]

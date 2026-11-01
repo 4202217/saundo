@@ -26,6 +26,7 @@ func TestRenderPreviews(t *testing.T) {
 	}
 	save := func(name string, view func(*ui.Context), w, h int, dark bool) {
 		tt := ui.NewTester(view, w, h)
+		tt.SetScale(2)
 		tt.SetDark(dark)
 		tt.Advance(400 * time.Millisecond)
 		tt.Frame()
@@ -42,6 +43,7 @@ func TestRenderPreviews(t *testing.T) {
 	// check an enter animation instead of its end state.
 	frames := func(name string, view func(*ui.Context), w, h int) {
 		tt := ui.NewTester(view, w, h)
+		tt.SetScale(2)
 		for i, step := range []time.Duration{0, 70 * time.Millisecond, 250 * time.Millisecond} {
 			if step > 0 {
 				tt.Advance(step)
@@ -59,9 +61,9 @@ func TestRenderPreviews(t *testing.T) {
 
 	stream := previewApp()
 	stream.nowOK = true
-	stream.nowTrack.Title = "夜曲"
-	stream.nowTrack.Artist = "周杰伦"
-	stream.nowTrack.Album = "十一月的萧邦"
+	stream.nowTrack.Title = "夜航"
+	stream.nowTrack.Artist = "白鲸电台"
+	stream.nowTrack.Album = "远洋信号"
 	stream.showNowPlaying = true
 	stream.snap.ShowNowPlaying = true
 
@@ -111,14 +113,14 @@ func TestRenderPreviews(t *testing.T) {
 
 	pin := previewApp()
 	pin.snap.PinRequired = true
-	pin.snap.PinDevice = "客厅 Apple TV"
+	pin.snap.PinDevice = "Apple TV"
 	pin.pinOpen = true
 	pin.pinCode = "3939"
 	save("dialog-pin", pin.view, flyoutWidth, flyoutHeight, false)
 
 	password := previewApp()
 	password.snap.PasswordRequired = true
-	password.snap.PasswordDevice = "MacBook Air"
+	password.snap.PasswordDevice = "MacBook"
 	password.passwordOpen = true
 	password.passwordPrompt = "hunter2"
 	save("dialog-password", password.view, flyoutWidth, flyoutHeight, false)
@@ -139,7 +141,7 @@ func TestRenderPreviews(t *testing.T) {
 	frames("probe-flyout-enter", flyoutProbe.view, flyoutWidth, flyoutHeight)
 	pinProbe := previewApp()
 	pinProbe.snap.PinRequired = true
-	pinProbe.snap.PinDevice = "客厅 Apple TV"
+	pinProbe.snap.PinDevice = "Apple TV"
 	pinProbe.pinOpen = true
 	pinProbe.pinCode = "3939"
 	frames("probe-pin-enter", pinProbe.view, flyoutWidth, flyoutHeight)
@@ -149,7 +151,7 @@ func TestRenderPreviews(t *testing.T) {
 
 	mac := previewApp()
 	mac.snap.Devices = []device.Device{{
-		ID: "AA:BB:CC:DD:EE:09", Name: "MacBook Air", Model: "Mac14,2",
+		ID: "AA:BB:CC:DD:EE:09", Name: "MacBook", Model: "Mac",
 		Auth: device.AuthHAPPassword, AirPlay2: true, Online: true,
 	}}
 	mac.snap.SelectedID = ""
@@ -160,6 +162,7 @@ func TestRenderPreviews(t *testing.T) {
 
 	hover := previewApp()
 	tt := ui.NewTester(hover.view, flyoutWidth, flyoutHeight)
+	tt.SetScale(2)
 	tt.Advance(400 * time.Millisecond)
 	tt.Frame()
 	tt.Move(200, 99)
