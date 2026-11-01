@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/creds"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
@@ -22,7 +23,7 @@ import (
 )
 
 // Version is stamped at build time with -ldflags -X; plain builds keep the default.
-var Version = "0.1.0"
+var Version = "dev"
 
 // App is the application's UI state, read and changed on the main thread.
 type App struct {
@@ -101,9 +102,9 @@ func Run() error {
 	a := &App{
 		sets:          settings.NewStore(),
 		log:           diagnostics.New(""),
-		captureNames:  []string{"跟随系统默认"},
+		captureNames:  []string{locales.CaptureFollowSystem()},
 		captureIDs:    []string{""},
-		captureChoice: "跟随系统默认",
+		captureChoice: locales.CaptureFollowSystem(),
 		volume:        80,
 	}
 	a.log.Printf("saundo %s", Version)
@@ -115,6 +116,7 @@ func Run() error {
 		_ = a.sets.Save(cfg)
 	}
 	a.cfg = cfg
+	mygo.App.SetLocale(cfg.Language)
 	a.volume = cfg.Volume
 	a.selID = cfg.LastDeviceID
 	a.nameDraft = cfg.Name
@@ -124,15 +126,15 @@ func Run() error {
 	a.launchAtStart = cfg.LaunchAtStart
 	a.captureChoice = cfg.CaptureEndpointName
 	if a.captureChoice == "" {
-		a.captureChoice = "跟随系统默认"
+		a.captureChoice = locales.CaptureFollowSystem()
 	}
 	a.latency = float64(cfg.LatencyMS)
 	if a.latency <= 0 {
 		a.latency = 200
 	}
-	a.appNames = []string{"整个系统"}
+	a.appNames = []string{locales.CaptureAllSystem()}
 	a.appIDs = []string{"0"}
-	a.appChoice = "整个系统"
+	a.appChoice = locales.CaptureAllSystem()
 
 	a.eng = engine.New(a.sets, creds.NewStore(), a.log, a.onEngineChange)
 
@@ -149,6 +151,7 @@ func Run() error {
 		}
 	})
 	mygo.App.OnWindowAllClosed(func() {})
+	mygo.App.OnLocaleChanged(func(string) { a.onLocaleChanged() })
 	mygo.App.WhenReady(a.ready)
 	return mygo.App.Run()
 }
@@ -162,7 +165,7 @@ func (a *App) ready() {
 		ID:             "main",
 		Icon:           trayPNGs[trayIconKey{face: "smile"}],
 		IconIsTemplate: false,
-		ToolTip:        "声渡",
+		ToolTip:        locales.TrayTooltip(),
 	})
 	if a.tray != nil {
 		a.tray.OnAppearanceChange(a.refreshTrayIcon)
@@ -195,7 +198,7 @@ func (a *App) ready() {
 	} else {
 		// Without a tray icon the app still needs a reachable window.
 		a.win = mygo.NewWindow(mygo.WindowOptions{
-			Title:     "声渡",
+			Title:     locales.AppName(),
 			Width:     flyoutWidth,
 			Height:    flyoutHeight,
 			MinWidth:  380,
@@ -235,7 +238,7 @@ func (a *App) ready() {
 			a.log.Printf("enumerate capture endpoints: %v", err)
 			return
 		}
-		names := []string{"跟随系统默认"}
+		names := []string{locales.CaptureFollowSystem()}
 		ids := []string{""}
 		for _, ep := range eps {
 			names = append(names, ep.Name)
@@ -248,7 +251,7 @@ func (a *App) ready() {
 				a.log.Printf("enumerate applications: %v", err)
 			}
 		}
-		appNames := []string{"整个系统"}
+		appNames := []string{locales.CaptureAllSystem()}
 		appIDs := []string{"0"}
 		for _, ap := range apps {
 			label := ap.Name
@@ -340,10 +343,10 @@ func (a *App) refreshNowPlaying() {
 // nowPlayingText is the line under 正在播放 in the playback card.
 func (a *App) nowPlayingText() string {
 	if a.nowErr != "" {
-		return "读取失败"
+		return locales.FlyoutNowPlayingReadFailed()
 	}
 	if !a.nowOK || a.nowTrack.Title == "" {
-		return "未检测到媒体"
+		return locales.FlyoutNowPlayingNoMedia()
 	}
 	text := a.nowTrack.Title
 	if a.nowTrack.Artist != "" {
@@ -400,7 +403,7 @@ func (a *App) apply(snap engine.Snapshot) {
 	a.volume = snap.Volume
 	if snap.CaptureEndpoint == "" {
 		if a.captureChoice == "" {
-			a.captureChoice = "跟随系统默认"
+			a.captureChoice = locales.CaptureFollowSystem()
 		}
 	} else {
 		a.syncCaptureChoice()
@@ -445,7 +448,7 @@ func (a *App) fitFlyout() {
 
 func (a *App) syncCaptureChoice() {
 	if a.snap.CaptureEndpoint == "" {
-		a.captureChoice = "跟随系统默认"
+		a.captureChoice = locales.CaptureFollowSystem()
 		return
 	}
 	for i, id := range a.captureIDs {
@@ -461,7 +464,7 @@ func (a *App) syncCaptureChoice() {
 
 func (a *App) syncAppChoice() {
 	if a.snap.CaptureProcessPID == 0 {
-		a.appChoice = "整个系统"
+		a.appChoice = locales.CaptureAllSystem()
 		return
 	}
 	for i, id := range a.appIDs {
@@ -516,6 +519,7 @@ func (a *App) toggleWindow() {
 type trayMenuKey struct {
 	connecting   bool
 	hasSelection bool
+	locale       string
 }
 
 func (a *App) rebuildTray() {
@@ -526,29 +530,29 @@ func (a *App) rebuildTray() {
 		a.menuIcons = loadMenuIcons()
 	}
 	connecting := a.snap.State != sender.StateIdle
-	key := trayMenuKey{connecting: connecting, hasSelection: a.selID != ""}
+	key := trayMenuKey{connecting: connecting, hasSelection: a.selID != "", locale: mygo.App.Locale()}
 	if a.trayMenu == nil || key != a.menuKey {
 		a.menuKey = key
 		items := []*mygo.MenuItem{
-			{Label: "显示控制面板", Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
-			{Label: "设置…", Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
+			{Label: locales.TrayShowPanel(), Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
+			{Label: locales.TraySettings(), Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
 			mygo.Separator(),
 		}
 		if connecting {
-			items = append(items, &mygo.MenuItem{Label: "断开连接", Icon: a.menuIcons["disconnect"], Click: func(*mygo.MenuItem, *mygo.Window) {
+			items = append(items, &mygo.MenuItem{Label: locales.TrayDisconnect(), Icon: a.menuIcons["disconnect"], Click: func(*mygo.MenuItem, *mygo.Window) {
 				a.eng.Disconnect()
 			}})
 		} else {
-			items = append(items, &mygo.MenuItem{Label: "连接上次设备", Icon: a.menuIcons["connect"], Disabled: a.selID == "", Click: func(*mygo.MenuItem, *mygo.Window) {
+			items = append(items, &mygo.MenuItem{Label: locales.TrayConnectLast(), Icon: a.menuIcons["connect"], Disabled: a.selID == "", Click: func(*mygo.MenuItem, *mygo.Window) {
 				a.connectSelected()
 			}})
 		}
-		items = append(items, mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleQuit, Label: "退出声渡", Icon: a.menuIcons["quit"]})
+		items = append(items, mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleQuit, Label: locales.TrayQuit(), Icon: a.menuIcons["quit"]})
 		a.trayMenu = mygo.NewMenu(items)
 	}
-	tip := "声渡"
+	tip := locales.TrayTooltip()
 	if connecting {
-		tip = "声渡 · " + a.statusText()
+		tip = locales.TrayTooltip() + " · " + a.statusText()
 	}
 	if tip != a.trayTip {
 		a.trayTip = tip
@@ -616,45 +620,88 @@ func (a *App) cancelPin() {
 
 func (a *App) statusText() string {
 	if a.snap.Reconnecting {
-		return "重连中…"
+		return locales.StatusReconnecting()
 	}
 	switch a.snap.State {
 	case sender.StateConnecting:
-		return "正在连接…"
+		return locales.StatusConnecting()
 	case sender.StatePairing:
-		return "正在配对…"
+		return locales.StatusPairing()
 	case sender.StateHandshake:
-		return "正在握手…"
+		return locales.StatusHandshaking()
 	case sender.StateStreaming:
 		if a.snap.ConnectedName != "" {
-			return "正在播放到 " + a.snap.ConnectedName
+			return locales.StatusStreamingTo(a.snap.ConnectedName)
 		}
-		return "正在播放"
+		return locales.StatusStreaming()
 	default:
-		return "未连接"
+		return locales.StatusDisconnected()
 	}
 }
 
 func deviceSubtitle(d device.Device) string {
 	model := d.Model
 	if model == "" {
-		model = "AirPlay"
+		model = locales.DeviceDefaultModel()
 	}
 	if d.IsStereoGroup() {
-		return fmt.Sprintf("%s · 立体声组 %d/2", model, len(d.Members))
+		return locales.DeviceStereoGroup(model, len(d.Members))
 	}
 	switch d.Auth {
 	case device.AuthHAPPIN:
-		return model + " · PIN 配对"
+		return locales.DevicePinPairing(model)
 	case device.AuthHAPPassword, device.AuthPassword:
-		return model + " · 需要密码"
+		return locales.DeviceNeedsPassword(model)
 	case device.AuthLegacyPin:
-		return model + " · 暂不支持"
+		return locales.DeviceUnsupported(model)
 	case device.AuthSetup:
-		return model + " · auth-setup"
+		return locales.DeviceAuthSetup(model)
 	}
 	if d.AirPlay2 {
-		return model + " · AirPlay 2"
+		return locales.DeviceAirPlay2(model)
 	}
-	return model + " · AirPlay 1"
+	return locales.DeviceAirPlay1(model)
+}
+
+// onLocaleChanged relabels the sentinel capture options and rebuilds the
+// tray menu. Both windows redraw in the new language on their own.
+func (a *App) onLocaleChanged() {
+	if len(a.captureNames) > 0 {
+		a.captureNames[0] = locales.CaptureFollowSystem()
+	}
+	if len(a.appNames) > 0 {
+		a.appNames[0] = locales.CaptureAllSystem()
+	}
+	a.syncCaptureChoice()
+	a.syncAppChoice()
+	a.rebuildTray()
+	a.updateUI(func() {})
+}
+
+// languageLabel is the settings select's value for the saved language tag.
+func (a *App) languageLabel() string {
+	switch a.cfg.Language {
+	case "en":
+		return locales.LanguageEnglish()
+	case "zh-CN":
+		return locales.LanguageChinese()
+	default:
+		return locales.LanguageSystem()
+	}
+}
+
+// setLanguage saves the chosen tag and switches the interface at once.
+func (a *App) setLanguage(label string) {
+	tag := ""
+	switch label {
+	case locales.LanguageEnglish():
+		tag = "en"
+	case locales.LanguageChinese():
+		tag = "zh-CN"
+	}
+	a.cfg.Language = tag
+	cfg := a.sets.Load()
+	cfg.Language = tag
+	_ = a.sets.Save(cfg)
+	mygo.App.SetLocale(tag)
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/engine"
 )
@@ -22,14 +23,25 @@ const (
 )
 
 var settingsNav = []struct {
-	page  settingsPage
-	label string
-	icon  *ui.SVG
+	page settingsPage
+	icon *ui.SVG
 }{
-	{pageGeneral, "通用", iconSliders},
-	{pageConnection, "连接", iconLink},
-	{pageAudio, "音频", iconWave},
-	{pageCapture, "采集", iconScreen},
+	{pageGeneral, iconSliders},
+	{pageConnection, iconLink},
+	{pageAudio, iconWave},
+	{pageCapture, iconScreen},
+}
+
+func pageTitle(page settingsPage) string {
+	switch page {
+	case pageConnection:
+		return locales.SettingsNavConnection()
+	case pageAudio:
+		return locales.SettingsNavAudio()
+	case pageCapture:
+		return locales.SettingsNavCapture()
+	}
+	return locales.SettingsNavGeneral()
 }
 
 // showSettings opens the configuration window. The flyout keeps the playback
@@ -60,7 +72,7 @@ func (a *App) hideSettings() {
 // reveals it. Closing it hides it, and the app keeps running in the tray.
 func (a *App) newSettingsWindow() *mygo.Window {
 	w := mygo.NewWindow(mygo.WindowOptions{
-		Title:     "设置 · 声渡",
+		Title:     locales.SettingsWindowTitle(),
 		Width:     720,
 		Height:    500,
 		MinWidth:  640,
@@ -108,7 +120,7 @@ func (a *App) settingsTitleBar(c *ui.Context, p palette) {
 		DragWindow()
 	title.Children(func() {
 		ui.Icon(c, iconMark).Size(14, 14).TextColor(p.fg)
-		ui.Text(c, "设置 · 声渡").FontSize(11.5).TextColor(p.fg2).SingleLine()
+		ui.Text(c, locales.SettingsWindowTitle()).FontSize(11.5).TextColor(p.fg2).SingleLine()
 	})
 }
 
@@ -118,7 +130,7 @@ func (a *App) settingsSidebar(c *ui.Context, p palette) {
 		BorderWidth(0, 1, 0, 0).BorderColor(p.line2).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
 			for _, item := range settingsNav {
-				a.sidebarItem(c, p, item.page, item.icon, item.label)
+				a.sidebarItem(c, p, item.page, item.icon, pageTitle(item.page))
 			}
 		})
 		ui.Spacer(c)
@@ -191,13 +203,13 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 func pageCopy(page settingsPage) (title, desc string) {
 	switch page {
 	case pageConnection:
-		return "连接", "配对、重连与验证策略"
+		return pageTitle(page), locales.PageConnectionDesc()
 	case pageAudio:
-		return "音频", "播放延迟与传输格式。"
+		return pageTitle(page), locales.PageAudioDesc()
 	case pageCapture:
-		return "采集", "系统声音或单个应用。"
+		return pageTitle(page), locales.PageCaptureDesc()
 	}
-	return "通用", "发送端身份、启动与版本。"
+	return pageTitle(page), locales.PageGeneralDesc()
 }
 
 func pageCard(c *ui.Context, p palette, body func()) {
@@ -207,20 +219,28 @@ func pageCard(c *ui.Context, p palette, body func()) {
 
 func (a *App) generalPage(c *ui.Context, p palette) {
 	pageCard(c, p, func() {
-		settingRow(c, p, "发送端名称", "接收设备上显示的名字", func() {
+		settingRow(c, p, locales.SettingsSenderName(), locales.SettingsSenderNameDesc(), func() {
 			ui.Row(c).Gap(6).Children(func() {
-				if fieldInput(c, p, &a.nameDraft, "声渡", "发送端名称").Submitted() {
+				if fieldInput(c, p, &a.nameDraft, locales.AppName(), locales.SettingsSenderName()).Submitted() {
 					a.eng.SetName(a.nameDraft)
 				}
-				chipButton(c, p, "保存", func() { a.eng.SetName(a.nameDraft) })
+				chipButton(c, p, locales.SettingsSave(), func() { a.eng.SetName(a.nameDraft) })
 			})
 		})
 		rowLine(c, p)
-		settingRow(c, p, "开机自动启动", "登录 Windows 后静默驻留托盘", func() {
-			toggle(c, p, &a.launchAtStart, "开机自动启动", func(v bool) { a.setLaunchAtStart(v) })
+		settingRow(c, p, locales.SettingsLaunchAtStart(), locales.SettingsLaunchAtStartDesc(), func() {
+			toggle(c, p, &a.launchAtStart, locales.SettingsLaunchAtStart(), func(v bool) { a.setLaunchAtStart(v) })
 		})
 		rowLine(c, p)
-		settingRow(c, p, "关于", "声渡 · saundo", func() {
+		settingRow(c, p, locales.SettingsLanguage(), locales.SettingsLanguageDesc(), func() {
+			choice := a.languageLabel()
+			options := []string{locales.LanguageSystem(), locales.LanguageEnglish(), locales.LanguageChinese()}
+			if fieldSelect(c, p, &choice, options, locales.SettingsLanguage()).Changed() {
+				a.setLanguage(choice)
+			}
+		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsAbout(), locales.SettingsAboutBrand(), func() {
 			staticText(c, p, Version)
 		})
 	})
@@ -231,25 +251,25 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 		a.deviceSummary(c, p, d)
 	}
 	pageCard(c, p, func() {
-		settingRow(c, p, "启动时自动连接上次设备", "上次成功播放的设备", func() {
-			toggle(c, p, &a.autoConn, "启动时自动连接上次设备", func(v bool) { a.eng.SetAutoConnect(v) })
+		settingRow(c, p, locales.SettingsAutoConnect(), locales.SettingsAutoConnectDesc(), func() {
+			toggle(c, p, &a.autoConn, locales.SettingsAutoConnect(), func(v bool) { a.eng.SetAutoConnect(v) })
 		})
 		rowLine(c, p)
-		settingRow(c, p, "断开后自动重连", "1s / 2s / 5s / 10s / 15s 退避，最多 5 次", func() {
-			toggle(c, p, &a.reconnect, "断开后自动重连", func(v bool) { a.eng.SetReconnect(v) })
+		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
+			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.eng.SetReconnect(v) })
 		})
 		rowLine(c, p)
-		settingRow(c, p, "严格验证接收器", "配对证明或签名不通过时立即断开", func() {
-			toggle(c, p, &a.strict, "严格验证接收器", func(v bool) { a.eng.SetStrictAuth(v) })
+		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
+			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
 		})
 		rowLine(c, p)
-		settingRow(c, p, "接收端密码", a.passwordTargetText(), func() {
+		settingRow(c, p, locales.SettingsReceiverPassword(), a.passwordTargetText(), func() {
 			ui.Row(c).Gap(6).Children(func() {
-				field := fieldInput(c, p, &a.passwordDraft, "为所选设备保存", "接收端密码").Password()
+				field := fieldInput(c, p, &a.passwordDraft, locales.SettingsReceiverPasswordDesc(), locales.SettingsReceiverPassword()).Password()
 				if field.Submitted() {
 					a.saveReceiverPassword()
 				}
-				chipButton(c, p, "保存", func() { a.saveReceiverPassword() })
+				chipButton(c, p, locales.SettingsSave(), func() { a.saveReceiverPassword() })
 			})
 		})
 	})
@@ -260,23 +280,23 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 		ui.Column(c).Padding(9, 14, 10, 14).Children(func() {
 			ui.Row(c).Children(func() {
 				ui.Column(c).Grow(1).Gap(2).Children(func() {
-					ui.Text(c, "播放延迟").FontSize(13).FontWeight(500)
-					ui.Text(c, "重连后生效，数值越大音画同步余量越大").FontSize(11.5).
+					ui.Text(c, locales.SettingsLatency()).FontSize(13).FontWeight(500)
+					ui.Text(c, locales.SettingsLatencyDesc()).FontSize(11.5).
 						TextColor(p.muted).SingleLine().Ellipsis("…")
 				})
-				ui.Textf(c, "%.0f ms", a.latency).FontSize(12).TextColor(p.muted)
+				ui.Text(c, locales.SettingsLatencyValue(int(a.latency+0.5))).FontSize(12).TextColor(p.muted)
 			})
-			slider(c, p, &a.latency, 20, 2000, "播放延迟", func(v float64) {
+			slider(c, p, &a.latency, 20, 2000, locales.SettingsLatency(), func(v float64) {
 				a.eng.SetLatency(int(v))
 			}).Margin(4, 0, 0, 0)
 		})
 		rowLine(c, p)
-		settingRow(c, p, "音频格式", "固定格式，兼容所有 AirPlay 2 接收器", func() {
-			staticText(c, p, "ALAC · 44.1 kHz · 立体声")
+		settingRow(c, p, locales.SettingsAudioFormat(), locales.SettingsAudioFormatDesc(), func() {
+			staticText(c, p, locales.AudioFormatValue())
 		})
 		rowLine(c, p)
-		settingRow(c, p, "同步方式", "按接收器能力选择 PTP 或 NTP", func() {
-			mode := "自动"
+		settingRow(c, p, locales.SettingsSyncMode(), locales.SettingsSyncModeDesc(), func() {
+			mode := locales.SettingsAuto()
 			if phaseOf(a.snap) == phaseStreaming {
 				mode = a.syncText()
 			}
@@ -287,19 +307,19 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 
 func (a *App) capturePage(c *ui.Context, p palette) {
 	pageCard(c, p, func() {
-		settingRow(c, p, "系统输出", "Windows 默认播放设备", func() {
-			if fieldSelect(c, p, &a.captureChoice, a.captureNames, "系统输出").Changed() {
+		settingRow(c, p, locales.SettingsSystemOutput(), locales.SettingsSystemOutputDesc(), func() {
+			if fieldSelect(c, p, &a.captureChoice, a.captureNames, locales.SettingsSystemOutput()).Changed() {
 				a.applyCaptureEndpoint()
 			}
 		})
 		rowLine(c, p)
-		settingRow(c, p, "按应用采集", "只串流所选程序的声音", func() {
-			if fieldSelect(c, p, &a.appChoice, a.appNames, "按应用采集").Changed() {
+		settingRow(c, p, locales.SettingsAppCapture(), locales.SettingsAppCaptureDesc(), func() {
+			if fieldSelect(c, p, &a.appChoice, a.appNames, locales.SettingsAppCapture()).Changed() {
 				a.applyCaptureProcess()
 			}
 		})
 		rowLine(c, p)
-		settingRow(c, p, "采集状态", "当前采集源", func() {
+		settingRow(c, p, locales.SettingsCaptureStatus(), locales.SettingsCaptureStatusDesc(), func() {
 			ui.Row(c).Gap(6).Shrink(0).Children(func() {
 				dot := p.faint
 				switch {
@@ -327,46 +347,46 @@ func (a *App) deviceSummary(c *ui.Context, p palette, d device.Device) {
 		})
 		switch ph {
 		case phaseStreaming:
-			chip(c, p, "已连接", chipOK)
+			chip(c, p, locales.SummaryConnected(), chipOK)
 		case phaseConnecting:
-			chip(c, p, "连接中", chipAccent)
+			chip(c, p, locales.SummaryConnecting(), chipAccent)
 		case phaseError:
-			chip(c, p, "连接失败", chipNeutral)
+			chip(c, p, locales.StatusConnectionFailed(), chipNeutral)
 		default:
-			chip(c, p, "未连接", chipNeutral)
+			chip(c, p, locales.StatusDisconnected(), chipNeutral)
 		}
 	})
 }
 
 func summarySub(d device.Device) string {
 	if d.IsStereoGroup() {
-		return fmt.Sprintf("立体声组 · %d/2 · 当前设备", len(d.Members))
+		return locales.SummaryStereoGroup(len(d.Members))
 	}
 	if d.Model != "" {
-		return d.Model + " · 当前设备"
+		return locales.SummaryModelCurrentDevice(d.Model)
 	}
-	return "当前设备"
+	return locales.SummaryCurrentDevice()
 }
 
 func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color) {
 	d, ok := a.currentDevice()
-	name = "未选择设备"
+	name = locales.SidebarNoDevice()
 	if ok {
 		name = d.Name
 	}
 	group := ok && d.IsStereoGroup()
 	switch phaseOf(a.snap) {
 	case phaseStreaming:
-		sub, dot = "已连接", p.green
+		sub, dot = locales.SummaryConnected(), p.green
 		if group {
-			sub = "已连接 · 立体声组"
+			sub = locales.SidebarConnectedStereo()
 		}
 	case phaseConnecting:
 		sub, dot = a.statusText(), p.accent
 	case phaseError:
-		sub, dot = "连接失败", p.red
+		sub, dot = locales.StatusConnectionFailed(), p.red
 	default:
-		sub, dot = "未连接", p.faint
+		sub, dot = locales.StatusDisconnected(), p.faint
 	}
 	return name, sub, dot
 }
@@ -404,22 +424,22 @@ func (a *App) saveReceiverPassword() {
 func (a *App) passwordTargetText() string {
 	for _, d := range a.snap.Devices {
 		if d.ID == a.selID {
-			return "保存到 " + d.Name
+			return locales.SettingsPasswordSavedTo(d.Name)
 		}
 	}
-	return "先在控制面板选择设备"
+	return locales.SettingsChooseDeviceFirst()
 }
 
 func captureStatusText(s engine.Snapshot) string {
 	if s.CaptureError != "" {
-		return "采集错误"
+		return locales.SettingsCaptureError()
 	}
 	if !s.CaptureRunning {
-		return "未运行"
+		return locales.SettingsCaptureNotRunning()
 	}
 	name := s.CaptureName
 	if name == "" {
-		name = "系统默认输出"
+		name = locales.CaptureSystemDefault()
 	}
 	if s.CaptureRate > 0 {
 		return name + " · " + formatRate(s.CaptureRate)

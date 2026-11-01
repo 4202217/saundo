@@ -28,6 +28,7 @@ type Settings struct {
 	Reconnect           bool               `json:"reconnect"`
 	ShowNowPlaying      bool               `json:"showNowPlaying"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
+	Language            string             `json:"language"`
 }
 
 // Default returns the first-run configuration.

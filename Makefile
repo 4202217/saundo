@@ -10,7 +10,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
 
-.PHONY: build test race vet uivet fmt check
+.PHONY: build test race vet uivet i18n fmt check
 
 build:
 	GO="$(GO)" VERSION="$(VERSION)" ./scripts/build.sh
@@ -30,10 +30,14 @@ vet:
 uivet:
 	$(GO) tool mygo vet .
 
+# The catalogs must agree on every message and its placeholders.
+i18n:
+	$(GO) tool mygo i18n check cmd/saundo
+
 fmt:
 	$(GOFMT) -w .
 
 check:
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./...
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./...

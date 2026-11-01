@@ -4,5 +4,9 @@
   "version": "0.3.0",
   "slug": "saundo",
   "out": "build",
-  "icon": "../../resources/icon.png"
+  "icon": "../../resources/icon.png",
+  "i18n": {
+    "dir": "locales",
+    "source": "en"
+  }
 }

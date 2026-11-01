@@ -6,23 +6,41 @@ import (
 	"os"
 	"testing"
 
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/ui"
 
+	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
 	"saundo/internal/nowplaying"
 )
 
+// testLocale makes the generated accessors deterministic; the UI follows
+// i18n.Locale, which TestMain wires to this variable.
+var testLocale = "zh-CN"
+
+func TestMain(m *testing.M) {
+	i18n.SetLocaleFunc(func() string { return testLocale })
+	os.Exit(m.Run())
+}
+
+func withLocale(t *testing.T, tag string) {
+	t.Helper()
+	old := testLocale
+	testLocale = tag
+	t.Cleanup(func() { testLocale = old })
+}
+
 func previewApp() *App {
 	a := &App{
 		volume:        65,
-		captureNames:  []string{"跟随系统默认", "扬声器"},
+		captureNames:  []string{locales.CaptureFollowSystem(), "扬声器"},
 		captureIDs:    []string{"", "{endpoint}"},
-		captureChoice: "跟随系统默认",
-		appNames:      []string{"整个系统", "Spotify"},
+		captureChoice: locales.CaptureFollowSystem(),
+		appNames:      []string{locales.CaptureAllSystem(), "Spotify"},
 		appIDs:        []string{"0", "1234"},
-		appChoice:     "整个系统",
+		appChoice:     locales.CaptureAllSystem(),
 		nameDraft:     "声渡",
 		latency:       200,
 	}
@@ -67,6 +85,58 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	}
 }
 
+func TestEnglishLocaleRenders(t *testing.T) {
+	withLocale(t, "en")
+	a := previewApp()
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	for _, want := range []string{
+		"saundo", "AIRPLAY 2", "Devices", "3 devices", "Streaming to HomePods",
+		"No media detected", "Diagnostics",
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("English view is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+}
+
+func TestPseudoLocaleRenders(t *testing.T) {
+	withLocale(t, "en-XA")
+	a := previewApp()
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	if len(tt.Texts()) == 0 {
+		t.Fatal("pseudo-locale view rendered no text")
+	}
+}
+
+func TestLanguageLabel(t *testing.T) {
+	a := previewApp()
+	for tag, want := range map[string]string{
+		"":      locales.LanguageSystem(),
+		"en":    locales.LanguageEnglish(),
+		"zh-CN": locales.LanguageChinese(),
+	} {
+		a.cfg.Language = tag
+		if got := a.languageLabel(); got != want {
+			t.Errorf("languageLabel(%q) = %q, want %q", tag, got, want)
+		}
+	}
+}
+
+func TestLocaleChangeRelabelsSentinels(t *testing.T) {
+	a := previewApp()
+	withLocale(t, "en")
+	a.onLocaleChanged()
+	if got := a.captureNames[0]; got != "Follow system default" {
+		t.Fatalf("capture sentinel = %q", got)
+	}
+	if got := a.appNames[0]; got != "Entire system" {
+		t.Fatalf("app sentinel = %q", got)
+	}
+	if got := a.captureChoice; got != "Follow system default" {
+		t.Fatalf("capture choice = %q", got)
+	}
+}
+
 func TestPasswordPromptRenders(t *testing.T) {
 	a := previewApp()
 	a.snap.PasswordRequired = true
@@ -89,7 +159,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动与版本。", "发送端名称", "保存", "开机自动启动", "关于", "声渡 · saundo"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动与版本。", "发送端名称", "保存", "开机自动启动", "语言", "关于", "声渡 · saundo"}},
 		{pageConnection, []string{"连接", "配对、重连与验证策略", "HomePods", "已连接", "启动时自动连接上次设备", "断开后自动重连", "严格验证接收器", "接收端密码", "保存到 HomePods"}},
 		{pageAudio, []string{"音频", "播放延迟", "200 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "扬声器 · 48 kHz"}},
