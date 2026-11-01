@@ -15,7 +15,7 @@ set -e
 (
 	cd cmd/saundo
 	CGO_ENABLED=0 MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
-		"$GO" run github.com/egoist/mygo/cmd/mygo build -platform windows/amd64 -skip-build-command
+		"$GO" tool mygo build -platform windows/amd64 -skip-build-command
 )
 set +e
 

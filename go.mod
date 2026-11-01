@@ -2,6 +2,8 @@ module saundo
 
 go 1.27.3
 
+tool github.com/egoist/mygo/cmd/mygo
+
 require (
 	github.com/egoist/mygo v0.7.4
 	github.com/hashicorp/mdns v1.0.7

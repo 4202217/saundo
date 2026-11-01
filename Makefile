@@ -10,7 +10,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
 
-.PHONY: build test race vet fmt check
+.PHONY: build test race vet uivet fmt check
 
 build:
 	GO="$(GO)" VERSION="$(VERSION)" ./scripts/build.sh
@@ -25,10 +25,15 @@ race:
 vet:
 	$(GO) vet ./...
 
+# mygo's native UI checks: a ui.Element or ui.Context must not outlive the
+# build pass that made it, or be captured by a goroutine.
+uivet:
+	$(GO) tool mygo vet .
+
 fmt:
 	$(GOFMT) -w .
 
 check:
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) vet ./... && $(GO) test ./...
+	$(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./...
