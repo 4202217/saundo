@@ -129,7 +129,7 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 	selected := d.ID == a.selID
 	active := d.ID == a.snap.SelectedID && ph != phaseIdle
 
-	row := ui.Row(c).Height(56).Padding(9, 12).Gap(10).Cursor(ui.CursorPointer).
+	row := ui.Row(c).Height(56).Padding(9, 12).Gap(10).
 		Key(d.ID).Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
 	if divider {
 		row.BorderWidth(0, 0, 1, 0).BorderColor(p.line2)
@@ -142,14 +142,18 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 	default:
 		row.Background(ui.Transparent)
 	}
-	row.OnClick(func() { a.selID = d.ID })
 
 	row.Children(func() {
-		deviceGlyph(c, p, d, selected)
+		pick := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Gap(10).
+			AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(d.Name)
+		pick.OnClick(func() { a.selID = d.ID })
+		pick.Children(func() {
+			deviceGlyph(c, p, d, selected)
 
-		ui.Column(c).Grow(1).Gap(1).Children(func() {
-			ui.Text(c, d.Name).FontSize(13.5).FontWeight(500).SingleLine().Ellipsis("…")
-			ui.Text(c, deviceSubtitle(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+			ui.Column(c).Grow(1).Gap(1).Children(func() {
+				ui.Text(c, d.Name).FontSize(13.5).FontWeight(500).SingleLine().Ellipsis("…")
+				ui.Text(c, deviceSubtitle(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+			})
 		})
 
 		a.rowAction(c, p, d, ph, active)
@@ -213,7 +217,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 				ui.Spacer(c)
 				ui.Textf(c, "%.0f%%", a.volume).FontSize(11.5).TextColor(p.muted)
 			})
-			slider(c, p, &a.volume, 0, 100, func(v float64) { a.eng.SetVolume(v) }).Margin(5, 0, 0, 0)
+			slider(c, p, &a.volume, 0, 100, "音量", func(v float64) { a.eng.SetVolume(v) }).Margin(5, 0, 0, 0)
 		})
 		rowLine(c, p)
 		a.nowPlayingRow(c, p)
@@ -238,7 +242,7 @@ func (a *App) nowPlayingRow(c *ui.Context, p palette) {
 		})
 		ui.Row(c).Gap(7).Children(func() {
 			ui.Text(c, "推送").FontSize(11.5).TextColor(p.muted).SingleLine()
-			toggle(c, p, &a.showNowPlaying, func(v bool) { a.eng.SetShowNowPlaying(v) })
+			toggle(c, p, &a.showNowPlaying, "推送正在播放", func(v bool) { a.eng.SetShowNowPlaying(v) })
 		})
 	})
 }

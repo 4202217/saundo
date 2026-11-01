@@ -350,6 +350,75 @@ func TestPhaseOf(t *testing.T) {
 	}
 }
 
+func TestDeviceRowSelectsOnClick(t *testing.T) {
+	a := previewApp()
+	a.selID = "AA:BB:CC:DD:EE:01"
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt.Frame()
+	if err := tt.Click("HomePod mini"); err != nil {
+		t.Fatal(err)
+	}
+	if a.selID != "AA:BB:CC:DD:EE:03" {
+		t.Fatalf("selected %q, want the clicked device", a.selID)
+	}
+}
+
+func TestSettingsNavKeyboardChoosesPage(t *testing.T) {
+	a := previewApp()
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	// The first tab stop is 通用, the second 连接.
+	for range 2 {
+		tt.Key(0, ui.KeyTab)
+		tt.Frame()
+	}
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if a.page != pageConnection {
+		t.Fatalf("page = %d, want the connection page", a.page)
+	}
+}
+
+func TestToggleTogglesWithKeyboard(t *testing.T) {
+	on := false
+	var calls []bool
+	tt := ui.NewTester(func(c *ui.Context) {
+		toggle(c, paletteFor(false), &on, "测试开关", func(v bool) { calls = append(calls, v) })
+	}, 120, 40)
+	tt.Frame()
+	tt.Key(0, ui.KeyTab)
+	tt.Frame()
+	tt.Key(0, ui.KeySpace)
+	tt.Frame()
+	if !on || len(calls) != 1 || !calls[0] {
+		t.Fatalf("after Space: on=%v calls=%v", on, calls)
+	}
+	tt.Key(0, ui.KeySpace)
+	tt.Frame()
+	if on || len(calls) != 2 || calls[1] {
+		t.Fatalf("after a second Space: on=%v calls=%v", on, calls)
+	}
+}
+
+func TestSliderHasNameAndKeys(t *testing.T) {
+	value := 50.0
+	tt := ui.NewTester(func(c *ui.Context) {
+		slider(c, paletteFor(false), &value, 0, 100, "延迟滑块", func(float64) {})
+	}, 200, 40)
+	tt.Frame()
+	if _, ok := tt.Find("延迟滑块"); !ok {
+		t.Fatal("the slider has no accessible name")
+	}
+	if err := tt.Click("延迟滑块"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyRight)
+	tt.Frame()
+	if value <= 50 {
+		t.Fatalf("value = %v after Right, want above 50", value)
+	}
+}
+
 func TestTrayIconFollowsPhase(t *testing.T) {
 	a := previewApp()
 	if got := a.face(); got != "stream" {

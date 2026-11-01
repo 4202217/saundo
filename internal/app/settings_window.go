@@ -119,8 +119,9 @@ func (a *App) settingsSidebar(c *ui.Context, p palette) {
 
 func (a *App) sidebarItem(c *ui.Context, p palette, page settingsPage, icon *ui.SVG, label string) {
 	on := a.page == page
-	e := ui.Row(c).Height(32).Padding(0, 9).Gap(8).Radius(7).Cursor(ui.CursorPointer).
-		Key(page).Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
+	e := ui.ButtonBase(c.Key(page)).Height(32).Padding(0, 9).Gap(8).Radius(7).
+		AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(label).
+		Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
 	switch {
 	case on && p.dark:
 		e.Background(ui.RGBA(255, 255, 255, 0.15))
@@ -200,7 +201,7 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 		})
 		rowLine(c, p)
 		settingRow(c, p, "开机自动启动", "登录 Windows 后静默驻留托盘", func() {
-			toggle(c, p, &a.launchAtStart, func(v bool) { a.setLaunchAtStart(v) })
+			toggle(c, p, &a.launchAtStart, "开机自动启动", func(v bool) { a.setLaunchAtStart(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, "关于", "声渡 · saundo", func() {
@@ -215,15 +216,15 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 	}
 	pageCard(c, p, func() {
 		settingRow(c, p, "启动时自动连接上次设备", "上次成功播放的设备", func() {
-			toggle(c, p, &a.autoConn, func(v bool) { a.eng.SetAutoConnect(v) })
+			toggle(c, p, &a.autoConn, "启动时自动连接上次设备", func(v bool) { a.eng.SetAutoConnect(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, "断开后自动重连", "1s / 2s / 5s / 10s / 15s 退避，最多 5 次", func() {
-			toggle(c, p, &a.reconnect, func(v bool) { a.eng.SetReconnect(v) })
+			toggle(c, p, &a.reconnect, "断开后自动重连", func(v bool) { a.eng.SetReconnect(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, "严格验证接收器", "配对证明或签名不通过时立即断开", func() {
-			toggle(c, p, &a.strict, func(v bool) { a.eng.SetStrictAuth(v) })
+			toggle(c, p, &a.strict, "严格验证接收器", func(v bool) { a.eng.SetStrictAuth(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, "接收端密码", a.passwordTargetText(), func() {
@@ -249,7 +250,7 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 				})
 				ui.Textf(c, "%.0f ms", a.latency).FontSize(12).TextColor(p.muted)
 			})
-			slider(c, p, &a.latency, 20, 2000, func(v float64) {
+			slider(c, p, &a.latency, 20, 2000, "播放延迟", func(v float64) {
 				a.eng.SetLatency(int(v))
 			}).Margin(4, 0, 0, 0)
 		})

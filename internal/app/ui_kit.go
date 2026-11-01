@@ -80,22 +80,26 @@ func iconButton(c *ui.Context, p palette, icon *ui.SVG, label string, size float
 	})
 }
 
-// textButton is a row action: an icon and a word, colored by its meaning.
+// textButton is a row action: an icon and a word, colored by its meaning. An
+// action without a handler is a status, not a button, so it takes no focus.
 func textButton(c *ui.Context, p palette, label string, icon *ui.SVG, color ui.Color, fn func()) {
-	e := ui.Row(c).Gap(4).Padding(4, 7).Radius(6).Shrink(0)
-	if fn != nil {
-		e.Cursor(ui.CursorPointer)
-		e.OnClick(fn)
-		if e.Hovered() {
-			e.Background(p.pill)
-		}
-	}
-	e.Children(func() {
+	content := func() {
 		if icon != nil {
 			ui.Icon(c, icon).Size(13, 13).TextColor(color)
 		}
 		ui.Text(c, label).FontSize(12).FontWeight(500).TextColor(color).SingleLine()
-	})
+	}
+	if fn == nil {
+		ui.Row(c).Gap(4).Padding(4, 7).Radius(6).Shrink(0).Children(content)
+		return
+	}
+	b := ui.ButtonBase(c.Key("action:"+label)).Gap(4).Padding(4, 7).Radius(6).Shrink(0).
+		Cursor(ui.CursorPointer).Label(label)
+	b.OnClick(fn)
+	if b.Hovered() {
+		b.Background(p.pill)
+	}
+	b.Children(content)
 }
 
 // chipButton is the outlined pill that commits a field.
@@ -163,9 +167,11 @@ func chip(c *ui.Context, p palette, label string, tone chipTone) {
 }
 
 // toggle is the design's switch: a 32x19 track that fills with ink, with a
-// white knob sliding across it. changed runs with the new value.
-func toggle(c *ui.Context, p palette, on *bool, changed func(bool)) {
-	b := ui.Box(c).Size(32, 19).Radius(9.5).Shrink(0).Cursor(ui.CursorPointer)
+// white knob sliding across it. It is a SwitchBase, so a click, Space and
+// assistive technology toggle it; changed runs with the new value.
+func toggle(c *ui.Context, p palette, on *bool, label string, changed func(bool)) {
+	b := ui.SwitchBase(c.Key("switch:"+label), on).Size(32, 19).Radius(9.5).Shrink(0).
+		Cursor(ui.CursorPointer).Label(label)
 	pos := b.Animate("on", boolFlag(*on), 140*time.Millisecond)
 	b.Draw(func(pt *ui.Painter, r ui.Rect) {
 		pt.Fill(r, p.line.Mix(p.fg, pos), r.H/2)
@@ -173,16 +179,13 @@ func toggle(c *ui.Context, p palette, on *bool, changed func(bool)) {
 		pt.Shadow(knob, 7.5, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.25))
 		pt.Fill(knob, ui.RGB(255, 255, 255).Mix(p.bg, pos), 7.5)
 	})
-	b.OnClick(func() {
-		*on = !*on
-		changed(*on)
-	})
+	b.OnChange(func() { changed(*on) })
 }
 
 // slider is the design's slider: a hairline rail, ink below the knob and a
 // white knob.
-func slider(c *ui.Context, p palette, value *float64, lo, hi float64, changed func(float64)) ui.Element {
-	s := ui.SliderBase(c, value, lo, hi).Height(20).PaddingX(8).FocusRing(false)
+func slider(c *ui.Context, p palette, value *float64, lo, hi float64, label string, changed func(float64)) ui.Element {
+	s := ui.SliderBase(c, value, lo, hi).Label(label).Height(20).PaddingX(8)
 	frac := float32(0)
 	if hi > lo {
 		frac = float32((*value - lo) / (hi - lo))
