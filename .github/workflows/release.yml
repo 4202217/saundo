@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Catalogs
+        run: go tool mygo i18n check cmd/saundo
+      - name: Vet
+        run: go vet ./...
+      - name: UI vet
+        run: go tool mygo vet .
+      - name: Tests
+        run: go test -short ./...
+
+  draft:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the version
+        run: test "$GITHUB_REF_NAME" = "v$(jq -r .version cmd/saundo/mygo.json)"
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+  build:
+    needs: [check, draft]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Cache NSIS
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\mygo\nsis-*
+          key: nsis-${{ hashFiles('go.sum') }}
+      - name: Stamp the version
+        shell: pwsh
+        working-directory: cmd/saundo
+        run: |
+          $version = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          "MYGO_LDFLAGS=-X saundo/internal/app.Version=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build and upload
+        working-directory: cmd/saundo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform windows/amd64 -upload
+      # Code signing is not configured yet. Add windows.certificate or
+      # windows.signCommand to cmd/saundo/mygo.json and the certificate secrets
+      # before publishing a public release.

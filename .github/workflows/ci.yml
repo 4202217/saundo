@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Format
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Catalogs
+        run: go tool mygo i18n check cmd/saundo
+      - name: Vet
+        run: go vet ./...
+      - name: UI vet
+        run: go tool mygo vet .
+      - name: Tests
+        run: go test -short ./...
+      - name: Build
+        working-directory: cmd/saundo
+        run: go tool mygo build -platform windows/amd64 -skip-installer
