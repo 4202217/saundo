@@ -1,0 +1,60 @@
+<!-- reviewed-through: 2026-11-01 -->
+
+# Receiver profiles
+
+One section per receiver family: how it advertises, which pairing path it takes, which keys, timing, and latency it needs, and the quirks verified on hardware. The wire mechanics are in [protocol.md](protocol.md); verification evidence in [verification.md](verification.md). Update this page in the same commit as a device finding.
+
+## HomePod / HomePod mini (software 27.x)
+
+- Advertises `AudioAccessory5,1` (and siblings) with the HAP feature bits; feature bit 41 set.
+- Pairs with HAP transient pairing: `Flags=0x10`, fixed PIN `3939`, stop at M4 (protocol.md §2.1).
+- `shk` and the audio ChaCha20 key: first 32 bytes of the 64-byte SRP K, no HKDF (protocol.md §2.5).
+- **PTP required.** It accepts an NTP session SETUP and RECORD, then silently ignores the stream SETUP. The sender runs the PTP follower against the HomePod's grandmaster.
+- Latency: `latencyMin` = `latencyMax` = 8820 (200 ms) unless the user configured another value.
+- `SETRATEANCHORTIME` returns plist `status: -12782` and is ignored on realtime streams.
+- Event-channel keys derive from the SRP shared secret; feedback every 2 s.
+- Verified on software 27.2 (2026-10-31): pairing, PTP, a 35-second muted session, a six-minute app run, a 30-minute soak at exactly 44100 × 1800 frames with zero drops, an audible tone with volume restore — and a cold start that needed more than 10 s to re-establish PTP after a long session (the handshake deadline is now 30 s).
+
+## HomePod stereo pair
+
+- Both members advertise the same `tsid`; `gpn` carries the group name (`HomePods`); `igl=1` appears only on the leader (a real pair marks HomePod R). `gcgl` alone does not mark a leader.
+- Discovery collapses the pair into one target `stereo:<tsid>`, hides the member rows, and reports online only when both members are online.
+- One AP2 session per member with `groupUUID = tsid`; SETPEERS carries both members plus the sender; **the sender is the PTP grandmaster** (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
+- Capture fans out to one ring per member; both sessions must reach streaming before the group launches.
+- Verified (2026-10-31): both member sessions streamed through the sender-supplied master, a system tone caused zero drops, the flyout showed `正在播放到 HomePods`, and a 60 s silence suspend kept both sessions up and resumed audibly.
+
+## macOS AirPlay receiver (Require Password)
+
+Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
+
+- Advertises the HAP feature bits with **no `pw` TXT** and `sf` bit 7 set (`sf=0x284` on the Mac14,2).
+- Transient pairing (`Flags=0x10`) is rejected with TLV error 3. It pairs with HAP pair-setup method 0 keyed by the receiver password: M1 without Flags, M3 with the password as the SRP secret, M5/M6, then pair-verify (protocol.md §2.3).
+- The app prompts for the password on first connect with a masked dialog, saves it per device, and reconnects; the settings page can change or clear it. A receiver that needs a password and has none stored never starts a session.
+- The AP2 session SETUP answers 401 with a Digest challenge; the sender replays with RFC 2069, username `AirPlay` (protocol.md §4).
+- `shk` is the Events-Write key (protocol.md §2.5).
+- **PTP required** (feature bit 41); the same follower serves it, its clock likewise boot-relative.
+- Latency: `latencyMin 11025`, `latencyMax 88200`, plus a 66150-sample scheduling latency.
+
+## Apple TV (on-screen PIN)
+
+- `POST /pair-pin-start` with `X-Apple-HKP: 3` makes the TV display a 4-digit code; the app opens its 配对码 dialog.
+- M1–M6 with the PIN, then pair-verify; a reconnect skips the dialog and runs pair-verify from stored credentials.
+- NTP timing; no PTP requirement known.
+- **Live verification pending** — the remaining definition-of-done gap. The pairing and control-channel path is covered by the fake receiver and by the C++ blueprint's shipped product.
+
+## FairPlay TVs (`AppleTV3,x`) — unsupported
+
+Tested on a Redmi TV, 2026-11-01.
+
+- Advertises `AppleTV3,2` over `_raop` and `_airplay`, `et=0,3,5`, and a working `/fp-setup`; the iPhone Music app plays to it. The escaped mDNS name decodes to UTF-8 (`REDMI 显示器 …`).
+- A third-party sender cannot play: AP1 `SETUP` returns 400, the AP2 session `SETUP` returns 500, and the stream-only AP2 `SETUP` accepts but produces no sound with ALAC, PCM, encrypted, or plaintext audio. The audio path requires Apple FairPlay.
+- Discovery maps `AppleTV3,x` to `AuthLegacyPin` and the sender fails fast with a FairPlay message instead of starting a silent session.
+
+## AirPlay 1 (`_raop`-only) — fallback, not a target
+
+- A receiver advertising only `_raop` without HAP bits stays on the plaintext AirPlay 1 path: RECORD starts the stream, the 25 s probe keeps it alive, and the ring-empty state pushes continuous silence (no suspend).
+- AP1 sessions are deliberately excluded from the silence-suspend behavior (protocol.md §6).
+
+## AirPort (auth-setup) — untested path
+
+- `am=AirPort*` in the TXT record maps to the auth-setup path (`AuthSetup`). No AirPort hardware has been tested; treat the path as scaffolding until one is.

@@ -1,12 +1,34 @@
+<!-- reviewed-through: 2026-11-01 -->
+
 # Verification
 
 This document is the acceptance path for saundo. The automated suite covers
 the crypto core and the full sender handshake against an in-process fake
-receiver. Real-device behavior is verified with the steps below.
+receiver. Real-device behavior is verified with the steps below. Results
+append in dated sections; nothing below is rewritten.
+
+## Currently pending
+
+Live verification still owed, consolidated from the dated notes below.
+Historical "not verified" lines are frozen as of their date; this list is the
+live state:
+
+- Apple TV on-screen PIN pairing and stored-credential reconnect — the
+  remaining definition-of-done gap.
+- A real default-device switch during playback.
+- Multi-room groups larger than two, a member dropping or reconnecting
+  mid-pair, and software stereo groups built from independent receivers.
+- Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
+  a measured left/right offset on a physical pair.
+- Silence pauses longer than 60 s.
+- Device churn while the adaptive-height flyout is open, and its upward growth.
+- The tray menu's 设置… entry, and a settings-window redraw driven by an
+  engine snapshot change.
 
 ## Automated checks
 
-Run all three from the repository root before declaring a build good:
+Run `make check` from the repository root before declaring a build good; it
+chains the gofmt gate, `go vet`, and `go test ./...`. Without make:
 
 ```bash
 go test ./...
@@ -663,5 +685,6 @@ When behavior differs from this document, capture:
 3. Whether the receiver answered each RTSP method, and with which status.
 4. Whether the event channel received and answered requests.
 
-Then update `docs/architecture.md` with the finding before changing the
+Then update [devices.md](devices.md) or [protocol.md](protocol.md) with the
+finding — whichever describes the behavior — before changing the
 protocol order or keys.
