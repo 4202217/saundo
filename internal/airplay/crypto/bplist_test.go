@@ -134,9 +134,8 @@ func TestBPListIntWidths(t *testing.T) {
 }
 
 func TestBPListUTF16String(t *testing.T) {
-	// Hand-built dict {"k": <UTF-16BE "Pair">}: the decoder returns the
-	// ASCII subset (low byte of each unit), the same convention as the
-	// reference decoder.
+	// Hand-built dict {"k": <UTF-16BE "Pair">}: UTF-16BE strings decode
+	// like ASCII strings, including the full code unit.
 	data := []byte{
 		'b', 'p', 'l', 'i', 's', 't', '0', '0',
 		0xD1, 0, 0, 0, 1, 0, 0, 0, 2, // object 0: dict, key ref 1, val ref 2
@@ -158,6 +157,26 @@ func TestBPListUTF16String(t *testing.T) {
 	dict := got.(map[string]any)
 	if s := dict["k"]; s != "Pair" {
 		t.Fatalf("decoded UTF-16 string = %q, want %q", s, "Pair")
+	}
+}
+
+func TestBPListNonASCIIString(t *testing.T) {
+	cases := []string{"声渡", "声渡 🎵", "Über"}
+	for _, name := range cases {
+		encoded, err := Encode(name)
+		if err != nil {
+			t.Fatalf("%q: Encode: %v", name, err)
+		}
+		if marker := encoded[8] & 0xF0; marker != 0x60 {
+			t.Fatalf("%q: root marker %#x, want a UTF-16BE string (0x60)", name, encoded[8])
+		}
+		got, err := Decode(encoded)
+		if err != nil {
+			t.Fatalf("%q: Decode: %v", name, err)
+		}
+		if got != name {
+			t.Fatalf("decoded %q, want %q", got, name)
+		}
 	}
 }
 

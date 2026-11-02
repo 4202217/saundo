@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"unicode/utf16"
 )
 
 // Encode serializes v as bplist00. Accepted types: map[string]any,
@@ -87,9 +88,19 @@ func (e *bpEncoder) encodeObject(v any) ([]byte, error) {
 		obj := []byte{0x23}
 		return binary.BigEndian.AppendUint64(obj, math.Float64bits(val)), nil
 	case string:
-		obj := make([]byte, 0, 1+len(val))
-		obj = bpEncodeMarkerLen(obj, 0x50, len(val))
-		return append(obj, val...), nil
+		if bpIsASCII(val) {
+			obj := make([]byte, 0, 1+len(val))
+			obj = bpEncodeMarkerLen(obj, 0x50, len(val))
+			return append(obj, val...), nil
+		}
+		// Non-ASCII strings are UTF-16BE, marker 0x60, length in code units.
+		units := utf16.Encode([]rune(val))
+		obj := make([]byte, 0, 1+2*len(units))
+		obj = bpEncodeMarkerLen(obj, 0x60, len(units))
+		for _, u := range units {
+			obj = binary.BigEndian.AppendUint16(obj, u)
+		}
+		return obj, nil
 	case []byte:
 		obj := make([]byte, 0, 1+len(val))
 		obj = bpEncodeMarkerLen(obj, 0x40, len(val))
@@ -144,6 +155,15 @@ func (e *bpEncoder) encodeObject(v any) ([]byte, error) {
 
 func bpAppendRef(obj []byte, ref int) []byte {
 	return binary.BigEndian.AppendUint32(obj, uint32(ref))
+}
+
+func bpIsASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
 
 func bpEncodeMarkerLen(obj []byte, marker byte, length int) []byte {
@@ -327,25 +347,21 @@ func (d *bpDecoder) object(ref uint64, depth int) (any, error) {
 		}
 		return string(d.data[pos : pos+cnt]), nil
 	case 0x60:
-		// UTF-16BE string; the reference stores the ASCII subset (low byte
-		// of each unit). AirPlay SETUP uses ASCII, so that is what matters.
+		// UTF-16BE string; cnt is the number of code units.
 		cnt, newPos, err := readCount()
 		if err != nil {
 			return nil, err
 		}
 		pos = newPos
-		if cnt > uint64(len(d.data)) {
+		if pos > uint64(len(d.data)) || cnt > (uint64(len(d.data))-pos)/2 {
 			return nil, errors.New("crypto: bplist utf16 length out of range")
 		}
-		s := make([]byte, 0, cnt)
-		for i := uint64(0); i < cnt; i++ {
-			at := pos + i*2
-			if at+1 >= uint64(len(d.data)) {
-				break
-			}
-			s = append(s, d.data[at+1])
+		units := make([]uint16, cnt)
+		for i := range units {
+			at := pos + 2*uint64(i)
+			units[i] = binary.BigEndian.Uint16(d.data[at : at+2])
 		}
-		return string(s), nil
+		return string(utf16.Decode(units)), nil
 	case 0xA0:
 		cnt, newPos, err := readCount()
 		if err != nil {
