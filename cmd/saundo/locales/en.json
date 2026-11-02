@@ -65,7 +65,7 @@
   "flyoutSyncPTPPending": "PTP · Syncing",
   "flyoutPush": "Push",
   "flyoutPushLabel": "Push Now Playing",
-  "flyoutVolumeValue": "{v, number}%",
+  "flyoutVolumeValue": "{v, number, integer}%",
   "@flyoutVolumeValue": {
     "placeholders": {
       "v": { "type": "double" }

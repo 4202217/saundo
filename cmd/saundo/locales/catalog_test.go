@@ -50,3 +50,19 @@ func readCatalog(t *testing.T, name string) map[string]string {
 	}
 	return out
 }
+
+// TestVolumeValueRoundsToWholePercent keeps the receiver's fractional
+// feedback out of the readout.
+func TestVolumeValueRoundsToWholePercent(t *testing.T) {
+	for _, locale := range []string{"en", "zh-CN"} {
+		for _, c := range []struct {
+			v    float64
+			want string
+		}{{22.034, "22%"}, {65, "65%"}, {99.6, "100%"}} {
+			got := Catalog.Format(locale, "flyoutVolumeValue", map[string]any{"v": c.v})
+			if got != c.want {
+				t.Errorf("%s: volume %v = %q, want %q", locale, c.v, got, c.want)
+			}
+		}
+	}
+}

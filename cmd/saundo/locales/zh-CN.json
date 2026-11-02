@@ -44,7 +44,7 @@
   "flyoutSyncPTPPending": "PTP · 同步中",
   "flyoutPush": "推送",
   "flyoutPushLabel": "推送正在播放",
-  "flyoutVolumeValue": "{v, number}%",
+  "flyoutVolumeValue": "{v, number, integer}%",
   "flyoutCaptureError": "采集错误：{error}",
   "flyoutCaptureNotRunning": "采集未运行",
   "flyoutCapture": "采集 {name}",
