@@ -67,6 +67,9 @@ func TestEngineSuspendsAfterSilenceAndResumes(t *testing.T) {
 	if !h.e.audioPaused {
 		t.Fatal("engine did not enter the paused state")
 	}
+	if !h.e.buildSnapshot().AudioIdle {
+		t.Fatal("snapshot did not report audio idle while suspended")
+	}
 	if !h.e.silence.paused.Load() {
 		t.Fatal("silence meter did not stop forwarding")
 	}
@@ -75,6 +78,9 @@ func TestEngineSuspendsAfterSilenceAndResumes(t *testing.T) {
 	h.e.updateAudioPause(h.now)
 	if len(f.pauses) != 2 || f.pauses[1] {
 		t.Fatalf("pauses = %v, want [true false]", f.pauses)
+	}
+	if h.e.buildSnapshot().AudioIdle {
+		t.Fatal("snapshot still reports audio idle after resume")
 	}
 	h.e.updateAudioPause(h.now)
 	if len(f.pauses) != 2 {

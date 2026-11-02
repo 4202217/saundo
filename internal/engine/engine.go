@@ -25,21 +25,24 @@ import (
 
 // Snapshot is the complete state the UI draws.
 type Snapshot struct {
-	Devices            []device.Device
-	SelectedID         string
-	State              sender.State
-	ConnectedName      string
-	Error              string
-	PinRequired        bool
-	PinDevice          string
-	PasswordRequired   bool
-	PasswordDevice     string
-	PasswordDeviceID   string
-	Volume             float64
-	Name               string
-	AutoConnect        bool
-	Reconnect          bool
-	Reconnecting       bool
+	Devices          []device.Device
+	SelectedID       string
+	State            sender.State
+	ConnectedName    string
+	Error            string
+	PinRequired      bool
+	PinDevice        string
+	PasswordRequired bool
+	PasswordDevice   string
+	PasswordDeviceID string
+	Volume           float64
+	Name             string
+	AutoConnect      bool
+	Reconnect        bool
+	Reconnecting     bool
+	// AudioIdle is true while the engine has suspended RTP after sustained
+	// digital silence. The session stays connected.
+	AudioIdle          bool
 	ShowNowPlaying     bool
 	LatencyMS          int
 	CaptureEndpoint    string
@@ -1197,6 +1200,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		AutoConnect:        e.setsValue.AutoConnect,
 		Reconnect:          e.setsValue.Reconnect,
 		Reconnecting:       e.reconnectWanted && !e.reconnectAt.IsZero(),
+		AudioIdle:          e.audioPaused,
 		LatencyMS:          e.setsValue.LatencyMS,
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,

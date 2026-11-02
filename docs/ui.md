@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-01 -->
+<!-- reviewed-through: 2026-11-02 -->
 
 # UI design language
 
@@ -12,7 +12,7 @@ Sources: `mygo-cloudmusic` for native UI structure and style; Tuneblade for the 
 
 - Every color comes from the `palette` struct in `theme.go`, which maps the platform theme onto the design's light and dark palettes (`bg`, `panel`, `card`, `pill`, `line`, `fg`, `muted`, `accent`, `sel`, `green`, `red` families). Never hardcode a color; never branch on dark mode outside `theme.go`.
 - Every repeated control comes from `ui_kit.go`: `sectionHead`, `iconButton`, `textButton` (a row action without a handler is a status, not a button — it takes no focus), `chipButton`, `primaryButton`, `quietButton`, `chip` (neutral/OK/accent), `toggle`, `slider`, `settingRow`, `rowLine`, `fieldInput`, `fieldSelect`, `staticText`. Do not rebuild these inline.
-- One `phase` — idle, connecting, streaming, error — derives from the engine's finer-grained sender states (`phaseOf`) and drives the whole interface's color (`phaseColor`) and face (`face`). New UI speaks in phases, not in sender states.
+- One `phase` — idle, connecting, streaming, error — derives from the engine's finer-grained sender states (`phaseOf`) and drives the whole interface's color (`phaseColor`). `face` adds one distinction inside streaming: a stream with no audible audio shows the resting face. New UI speaks in phases, not in sender states.
 
 ## Motion
 
@@ -71,8 +71,8 @@ Implementation notes: smoothing the selection color needs a custom row column, b
 
 ## State faces
 
-- One smile mark carries the product. The tray icon and the flyout footer show the face whose mouth names the phase: `smile` at rest, `stream` (spectrum bars) while streaming, `connect` (three dots) while connecting or reconnecting, `error` (X eyes) on failure. The empty device card pulses the search face while discovery runs.
-- The 32 px tray icon is monochrome — black on a light taskbar, white on a dark one — and redraws on `Tray.OnAppearanceChange`. It does not encode connection status; the tooltip and tray menu carry that.
+- One smile mark carries the product. The tray icon and the flyout footer show the face whose mouth names the phase: `smile` at rest, `stream` (spectrum bars) while streaming, `connect` (three dots) while connecting or reconnecting, `error` (X eyes) on failure. A connected stream with no audible audio also shows `smile`: after two seconds of digital silence the engine suspends RTP and reports `Snapshot.AudioIdle`, so the face names playback, not the session. The empty device card pulses the search face while discovery runs.
+- The 32 px tray icon is monochrome — black on a light taskbar, white on a dark one — and redraws on `Tray.OnAppearanceChange`. The tooltip and tray menu carry the finer session state.
 - Device rows pick their icon by receiver model (`TestDeviceIconFollowsModel`).
 
 ## Verifying a UI change

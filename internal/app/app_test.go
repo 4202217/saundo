@@ -520,6 +520,14 @@ func TestTrayIconFollowsPhase(t *testing.T) {
 	if got := a.face(); got != "stream" {
 		t.Fatalf("streaming face = %q", got)
 	}
+	a.snap.AudioIdle = true
+	if got := a.face(); got != "smile" {
+		t.Fatalf("audio-idle face = %q", got)
+	}
+	a.snap.AudioIdle = false
+	if got := a.face(); got != "stream" {
+		t.Fatalf("resumed face = %q", got)
+	}
 	a.snap.State = sender.StateIdle
 	a.snap.Error = "boom"
 	if got := a.face(); got != "error" {
