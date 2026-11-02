@@ -40,7 +40,7 @@ The app also polls the Windows SMTC session every two seconds
 | Package | Responsibility |
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
-| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height), settings window (`settings_window.go`, four pages behind a 190 sidebar), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
+| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height), settings window (`settings_window.go`, five pages behind a 190 sidebar), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
 | `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), silence meter and suspend (`silence.go`), snapshots |
 | `internal/discovery` | mDNS browse, TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`) |
@@ -87,7 +87,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 
 All under `%APPDATA%\saundo\`:
 
-- `settings.json` — configuration (`internal/settings`).
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check).
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.

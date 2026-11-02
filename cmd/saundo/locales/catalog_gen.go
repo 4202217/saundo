@@ -1453,3 +1453,537 @@ func VolumeLabel() string { return In(i18n.Locale()).VolumeLabel() }
 func (msgs Messages) VolumeLabel() string {
 	return Catalog.Format(msgs.locale, "volumeLabel", nil)
 }
+
+// SettingsNavUpdates says "Updates"
+// in the language the app shows.
+func SettingsNavUpdates() string { return In(i18n.Locale()).SettingsNavUpdates() }
+
+// SettingsNavUpdates says "Updates"
+// in the language of msgs.
+func (msgs Messages) SettingsNavUpdates() string {
+	return Catalog.Format(msgs.locale, "settingsNavUpdates", nil)
+}
+
+// PageUpdatesDesc says "Versions, automatic checks, and installation."
+// in the language the app shows.
+func PageUpdatesDesc() string { return In(i18n.Locale()).PageUpdatesDesc() }
+
+// PageUpdatesDesc says "Versions, automatic checks, and installation."
+// in the language of msgs.
+func (msgs Messages) PageUpdatesDesc() string {
+	return Catalog.Format(msgs.locale, "pageUpdatesDesc", nil)
+}
+
+// SettingsCurrentVersion says "Current version"
+// in the language the app shows.
+func SettingsCurrentVersion() string { return In(i18n.Locale()).SettingsCurrentVersion() }
+
+// SettingsCurrentVersion says "Current version"
+// in the language of msgs.
+func (msgs Messages) SettingsCurrentVersion() string {
+	return Catalog.Format(msgs.locale, "settingsCurrentVersion", nil)
+}
+
+// SettingsAutoUpdateDesc says "Check once after launch, then daily"
+// in the language the app shows.
+func SettingsAutoUpdateDesc() string { return In(i18n.Locale()).SettingsAutoUpdateDesc() }
+
+// SettingsAutoUpdateDesc says "Check once after launch, then daily"
+// in the language of msgs.
+func (msgs Messages) SettingsAutoUpdateDesc() string {
+	return Catalog.Format(msgs.locale, "settingsAutoUpdateDesc", nil)
+}
+
+// SettingsAutoDownload says "Download and install automatically"
+// in the language the app shows.
+func SettingsAutoDownload() string { return In(i18n.Locale()).SettingsAutoDownload() }
+
+// SettingsAutoDownload says "Download and install automatically"
+// in the language of msgs.
+func (msgs Messages) SettingsAutoDownload() string {
+	return Catalog.Format(msgs.locale, "settingsAutoDownload", nil)
+}
+
+// SettingsAutoDownloadDesc says "Install quietly; takes effect at the next launch"
+// in the language the app shows.
+func SettingsAutoDownloadDesc() string { return In(i18n.Locale()).SettingsAutoDownloadDesc() }
+
+// SettingsAutoDownloadDesc says "Install quietly; takes effect at the next launch"
+// in the language of msgs.
+func (msgs Messages) SettingsAutoDownloadDesc() string {
+	return Catalog.Format(msgs.locale, "settingsAutoDownloadDesc", nil)
+}
+
+// SettingsChannelStable says "Stable"
+// in the language the app shows.
+func SettingsChannelStable() string { return In(i18n.Locale()).SettingsChannelStable() }
+
+// SettingsChannelStable says "Stable"
+// in the language of msgs.
+func (msgs Messages) SettingsChannelStable() string {
+	return Catalog.Format(msgs.locale, "settingsChannelStable", nil)
+}
+
+// SettingsChannelBeta says "Beta"
+// in the language the app shows.
+func SettingsChannelBeta() string { return In(i18n.Locale()).SettingsChannelBeta() }
+
+// SettingsChannelBeta says "Beta"
+// in the language of msgs.
+func (msgs Messages) SettingsChannelBeta() string {
+	return Catalog.Format(msgs.locale, "settingsChannelBeta", nil)
+}
+
+// SettingsCheckFailed says "Check failed"
+// in the language the app shows.
+func SettingsCheckFailed() string { return In(i18n.Locale()).SettingsCheckFailed() }
+
+// SettingsCheckFailed says "Check failed"
+// in the language of msgs.
+func (msgs Messages) SettingsCheckFailed() string {
+	return Catalog.Format(msgs.locale, "settingsCheckFailed", nil)
+}
+
+// UpdateWindowTitle says "Software Update"
+// in the language the app shows.
+func UpdateWindowTitle() string { return In(i18n.Locale()).UpdateWindowTitle() }
+
+// UpdateWindowTitle says "Software Update"
+// in the language of msgs.
+func (msgs Messages) UpdateWindowTitle() string {
+	return Catalog.Format(msgs.locale, "updateWindowTitle", nil)
+}
+
+// UpdateChecking says "Checking for updates…"
+// in the language the app shows.
+func UpdateChecking() string { return In(i18n.Locale()).UpdateChecking() }
+
+// UpdateChecking says "Checking for updates…"
+// in the language of msgs.
+func (msgs Messages) UpdateChecking() string {
+	return Catalog.Format(msgs.locale, "updateChecking", nil)
+}
+
+// UpdateCheckingDesc says "This takes a moment."
+// in the language the app shows.
+func UpdateCheckingDesc() string { return In(i18n.Locale()).UpdateCheckingDesc() }
+
+// UpdateCheckingDesc says "This takes a moment."
+// in the language of msgs.
+func (msgs Messages) UpdateCheckingDesc() string {
+	return Catalog.Format(msgs.locale, "updateCheckingDesc", nil)
+}
+
+// UpdateUpToDate says "You're up to date"
+// in the language the app shows.
+func UpdateUpToDate() string { return In(i18n.Locale()).UpdateUpToDate() }
+
+// UpdateUpToDate says "You're up to date"
+// in the language of msgs.
+func (msgs Messages) UpdateUpToDate() string {
+	return Catalog.Format(msgs.locale, "updateUpToDate", nil)
+}
+
+// UpdateAvailableTitle says "Version {version} is available"
+// in the language the app shows.
+func UpdateAvailableTitle(version string) string {
+	return In(i18n.Locale()).UpdateAvailableTitle(version)
+}
+
+// UpdateAvailableTitle says "Version {version} is available"
+// in the language of msgs.
+func (msgs Messages) UpdateAvailableTitle(version string) string {
+	return Catalog.Format(msgs.locale, "updateAvailableTitle", map[string]any{"version": version})
+}
+
+// UpdateAvailableMeta says "Current version {current} · {date}"
+// in the language the app shows.
+func UpdateAvailableMeta(current string, date string) string {
+	return In(i18n.Locale()).UpdateAvailableMeta(current, date)
+}
+
+// UpdateAvailableMeta says "Current version {current} · {date}"
+// in the language of msgs.
+func (msgs Messages) UpdateAvailableMeta(current string, date string) string {
+	return Catalog.Format(msgs.locale, "updateAvailableMeta", map[string]any{"current": current, "date": date})
+}
+
+// UpdateFullNotes says "What's New"
+// in the language the app shows.
+func UpdateFullNotes() string { return In(i18n.Locale()).UpdateFullNotes() }
+
+// UpdateFullNotes says "What's New"
+// in the language of msgs.
+func (msgs Messages) UpdateFullNotes() string {
+	return Catalog.Format(msgs.locale, "updateFullNotes", nil)
+}
+
+// UpdateSkip says "Skip this version"
+// in the language the app shows.
+func UpdateSkip() string { return In(i18n.Locale()).UpdateSkip() }
+
+// UpdateSkip says "Skip this version"
+// in the language of msgs.
+func (msgs Messages) UpdateSkip() string {
+	return Catalog.Format(msgs.locale, "updateSkip", nil)
+}
+
+// UpdateLater says "Remind me later"
+// in the language the app shows.
+func UpdateLater() string { return In(i18n.Locale()).UpdateLater() }
+
+// UpdateLater says "Remind me later"
+// in the language of msgs.
+func (msgs Messages) UpdateLater() string {
+	return Catalog.Format(msgs.locale, "updateLater", nil)
+}
+
+// UpdateInstall says "Install update"
+// in the language the app shows.
+func UpdateInstall() string { return In(i18n.Locale()).UpdateInstall() }
+
+// UpdateInstall says "Install update"
+// in the language of msgs.
+func (msgs Messages) UpdateInstall() string {
+	return Catalog.Format(msgs.locale, "updateInstall", nil)
+}
+
+// UpdateDownloadingTitle says "Downloading {version}"
+// in the language the app shows.
+func UpdateDownloadingTitle(version string) string {
+	return In(i18n.Locale()).UpdateDownloadingTitle(version)
+}
+
+// UpdateDownloadingTitle says "Downloading {version}"
+// in the language of msgs.
+func (msgs Messages) UpdateDownloadingTitle(version string) string {
+	return Catalog.Format(msgs.locale, "updateDownloadingTitle", map[string]any{"version": version})
+}
+
+// UpdateDownloadingMeta says "Restart after the download to finish installing."
+// in the language the app shows.
+func UpdateDownloadingMeta() string { return In(i18n.Locale()).UpdateDownloadingMeta() }
+
+// UpdateDownloadingMeta says "Restart after the download to finish installing."
+// in the language of msgs.
+func (msgs Messages) UpdateDownloadingMeta() string {
+	return Catalog.Format(msgs.locale, "updateDownloadingMeta", nil)
+}
+
+// UpdateCancel says "Cancel"
+// in the language the app shows.
+func UpdateCancel() string { return In(i18n.Locale()).UpdateCancel() }
+
+// UpdateCancel says "Cancel"
+// in the language of msgs.
+func (msgs Messages) UpdateCancel() string {
+	return Catalog.Format(msgs.locale, "updateCancel", nil)
+}
+
+// UpdateBackground says "Continue in background"
+// in the language the app shows.
+func UpdateBackground() string { return In(i18n.Locale()).UpdateBackground() }
+
+// UpdateBackground says "Continue in background"
+// in the language of msgs.
+func (msgs Messages) UpdateBackground() string {
+	return Catalog.Format(msgs.locale, "updateBackground", nil)
+}
+
+// UpdateReadyTitle says "{version} is ready"
+// in the language the app shows.
+func UpdateReadyTitle(version string) string { return In(i18n.Locale()).UpdateReadyTitle(version) }
+
+// UpdateReadyTitle says "{version} is ready"
+// in the language of msgs.
+func (msgs Messages) UpdateReadyTitle(version string) string {
+	return Catalog.Format(msgs.locale, "updateReadyTitle", map[string]any{"version": version})
+}
+
+// UpdateReadyDesc says "Restart to finish installing."
+// in the language the app shows.
+func UpdateReadyDesc() string { return In(i18n.Locale()).UpdateReadyDesc() }
+
+// UpdateReadyDesc says "Restart to finish installing."
+// in the language of msgs.
+func (msgs Messages) UpdateReadyDesc() string {
+	return Catalog.Format(msgs.locale, "updateReadyDesc", nil)
+}
+
+// UpdateReadyShort says "Update ready"
+// in the language the app shows.
+func UpdateReadyShort() string { return In(i18n.Locale()).UpdateReadyShort() }
+
+// UpdateReadyShort says "Update ready"
+// in the language of msgs.
+func (msgs Messages) UpdateReadyShort() string {
+	return Catalog.Format(msgs.locale, "updateReadyShort", nil)
+}
+
+// UpdateRestartNow says "Restart now"
+// in the language the app shows.
+func UpdateRestartNow() string { return In(i18n.Locale()).UpdateRestartNow() }
+
+// UpdateRestartNow says "Restart now"
+// in the language of msgs.
+func (msgs Messages) UpdateRestartNow() string {
+	return Catalog.Format(msgs.locale, "updateRestartNow", nil)
+}
+
+// UpdateRetry says "Retry"
+// in the language the app shows.
+func UpdateRetry() string { return In(i18n.Locale()).UpdateRetry() }
+
+// UpdateRetry says "Retry"
+// in the language of msgs.
+func (msgs Messages) UpdateRetry() string {
+	return Catalog.Format(msgs.locale, "updateRetry", nil)
+}
+
+// UpdateCheckFailedTitle says "Update check failed"
+// in the language the app shows.
+func UpdateCheckFailedTitle() string { return In(i18n.Locale()).UpdateCheckFailedTitle() }
+
+// UpdateCheckFailedTitle says "Update check failed"
+// in the language of msgs.
+func (msgs Messages) UpdateCheckFailedTitle() string {
+	return Catalog.Format(msgs.locale, "updateCheckFailedTitle", nil)
+}
+
+// UpdateDownloadFailedTitle says "Download failed"
+// in the language the app shows.
+func UpdateDownloadFailedTitle() string { return In(i18n.Locale()).UpdateDownloadFailedTitle() }
+
+// UpdateDownloadFailedTitle says "Download failed"
+// in the language of msgs.
+func (msgs Messages) UpdateDownloadFailedTitle() string {
+	return Catalog.Format(msgs.locale, "updateDownloadFailedTitle", nil)
+}
+
+// UpdateDisabledTitle says "Updates aren't available in this build"
+// in the language the app shows.
+func UpdateDisabledTitle() string { return In(i18n.Locale()).UpdateDisabledTitle() }
+
+// UpdateDisabledTitle says "Updates aren't available in this build"
+// in the language of msgs.
+func (msgs Messages) UpdateDisabledTitle() string {
+	return Catalog.Format(msgs.locale, "updateDisabledTitle", nil)
+}
+
+// UpdateDisabledDesc says "Install a released build to receive updates."
+// in the language the app shows.
+func UpdateDisabledDesc() string { return In(i18n.Locale()).UpdateDisabledDesc() }
+
+// UpdateDisabledDesc says "Install a released build to receive updates."
+// in the language of msgs.
+func (msgs Messages) UpdateDisabledDesc() string {
+	return Catalog.Format(msgs.locale, "updateDisabledDesc", nil)
+}
+
+// UpdateAutoDownload says "Download and install updates automatically"
+// in the language the app shows.
+func UpdateAutoDownload() string { return In(i18n.Locale()).UpdateAutoDownload() }
+
+// UpdateAutoDownload says "Download and install updates automatically"
+// in the language of msgs.
+func (msgs Messages) UpdateAutoDownload() string {
+	return Catalog.Format(msgs.locale, "updateAutoDownload", nil)
+}
+
+// FlyoutUpdateAvailable says "{version} available"
+// in the language the app shows.
+func FlyoutUpdateAvailable(version string) string {
+	return In(i18n.Locale()).FlyoutUpdateAvailable(version)
+}
+
+// FlyoutUpdateAvailable says "{version} available"
+// in the language of msgs.
+func (msgs Messages) FlyoutUpdateAvailable(version string) string {
+	return Catalog.Format(msgs.locale, "flyoutUpdateAvailable", map[string]any{"version": version})
+}
+
+// FlyoutUpdateDownloading says "Downloading {percent}%"
+// in the language the app shows.
+func FlyoutUpdateDownloading(percent int) string {
+	return In(i18n.Locale()).FlyoutUpdateDownloading(percent)
+}
+
+// FlyoutUpdateDownloading says "Downloading {percent}%"
+// in the language of msgs.
+func (msgs Messages) FlyoutUpdateDownloading(percent int) string {
+	return Catalog.Format(msgs.locale, "flyoutUpdateDownloading", map[string]any{"percent": percent})
+}
+
+// FlyoutUpdateReady says "Restart to update"
+// in the language the app shows.
+func FlyoutUpdateReady() string { return In(i18n.Locale()).FlyoutUpdateReady() }
+
+// FlyoutUpdateReady says "Restart to update"
+// in the language of msgs.
+func (msgs Messages) FlyoutUpdateReady() string {
+	return Catalog.Format(msgs.locale, "flyoutUpdateReady", nil)
+}
+
+// TrayCheckUpdates says "Check for Updates…"
+// in the language the app shows.
+func TrayCheckUpdates() string { return In(i18n.Locale()).TrayCheckUpdates() }
+
+// TrayCheckUpdates says "Check for Updates…"
+// in the language of msgs.
+func (msgs Messages) TrayCheckUpdates() string {
+	return Catalog.Format(msgs.locale, "trayCheckUpdates", nil)
+}
+
+// UpdateUpToDateDesc says "Version {version} is the latest."
+// in the language the app shows.
+func UpdateUpToDateDesc(version string) string { return In(i18n.Locale()).UpdateUpToDateDesc(version) }
+
+// UpdateUpToDateDesc says "Version {version} is the latest."
+// in the language of msgs.
+func (msgs Messages) UpdateUpToDateDesc(version string) string {
+	return Catalog.Format(msgs.locale, "updateUpToDateDesc", map[string]any{"version": version})
+}
+
+// UpdateCheckingShort says "Checking…"
+// in the language the app shows.
+func UpdateCheckingShort() string { return In(i18n.Locale()).UpdateCheckingShort() }
+
+// UpdateCheckingShort says "Checking…"
+// in the language of msgs.
+func (msgs Messages) UpdateCheckingShort() string {
+	return Catalog.Format(msgs.locale, "updateCheckingShort", nil)
+}
+
+// UpdateUpToDateShort says "Up to date"
+// in the language the app shows.
+func UpdateUpToDateShort() string { return In(i18n.Locale()).UpdateUpToDateShort() }
+
+// UpdateUpToDateShort says "Up to date"
+// in the language of msgs.
+func (msgs Messages) UpdateUpToDateShort() string {
+	return Catalog.Format(msgs.locale, "updateUpToDateShort", nil)
+}
+
+// UpdateNotesTitle says "{version} What's New"
+// in the language the app shows.
+func UpdateNotesTitle(version string) string { return In(i18n.Locale()).UpdateNotesTitle(version) }
+
+// UpdateNotesTitle says "{version} What's New"
+// in the language of msgs.
+func (msgs Messages) UpdateNotesTitle(version string) string {
+	return Catalog.Format(msgs.locale, "updateNotesTitle", map[string]any{"version": version})
+}
+
+// UpdateNotesMeta says "Released {date} · Current version {current}"
+// in the language the app shows.
+func UpdateNotesMeta(date string, current string) string {
+	return In(i18n.Locale()).UpdateNotesMeta(date, current)
+}
+
+// UpdateNotesMeta says "Released {date} · Current version {current}"
+// in the language of msgs.
+func (msgs Messages) UpdateNotesMeta(date string, current string) string {
+	return Catalog.Format(msgs.locale, "updateNotesMeta", map[string]any{"date": date, "current": current})
+}
+
+// UpdateRangeSince says "Since your last update"
+// in the language the app shows.
+func UpdateRangeSince() string { return In(i18n.Locale()).UpdateRangeSince() }
+
+// UpdateRangeSince says "Since your last update"
+// in the language of msgs.
+func (msgs Messages) UpdateRangeSince() string {
+	return Catalog.Format(msgs.locale, "updateRangeSince", nil)
+}
+
+// UpdateRangeLatest says "Latest version only"
+// in the language the app shows.
+func UpdateRangeLatest() string { return In(i18n.Locale()).UpdateRangeLatest() }
+
+// UpdateRangeLatest says "Latest version only"
+// in the language of msgs.
+func (msgs Messages) UpdateRangeLatest() string {
+	return Catalog.Format(msgs.locale, "updateRangeLatest", nil)
+}
+
+// UpdateHistoryLoading says "Loading release notes…"
+// in the language the app shows.
+func UpdateHistoryLoading() string { return In(i18n.Locale()).UpdateHistoryLoading() }
+
+// UpdateHistoryLoading says "Loading release notes…"
+// in the language of msgs.
+func (msgs Messages) UpdateHistoryLoading() string {
+	return Catalog.Format(msgs.locale, "updateHistoryLoading", nil)
+}
+
+// UpdateHistoryFailed says "Couldn’t load older release notes."
+// in the language the app shows.
+func UpdateHistoryFailed() string { return In(i18n.Locale()).UpdateHistoryFailed() }
+
+// UpdateHistoryFailed says "Couldn’t load older release notes."
+// in the language of msgs.
+func (msgs Messages) UpdateHistoryFailed() string {
+	return Catalog.Format(msgs.locale, "updateHistoryFailed", nil)
+}
+
+// UpdateHistoryLink says "View on GitHub"
+// in the language the app shows.
+func UpdateHistoryLink() string { return In(i18n.Locale()).UpdateHistoryLink() }
+
+// UpdateHistoryLink says "View on GitHub"
+// in the language of msgs.
+func (msgs Messages) UpdateHistoryLink() string {
+	return Catalog.Format(msgs.locale, "updateHistoryLink", nil)
+}
+
+// UpdateNotesRangeMeta says "{oldest} – {latest} · {n, plural, one {# version} other {# versions}} · Current version {current}"
+// in the language the app shows.
+func UpdateNotesRangeMeta(oldest string, latest string, n int, current string) string {
+	return In(i18n.Locale()).UpdateNotesRangeMeta(oldest, latest, n, current)
+}
+
+// UpdateNotesRangeMeta says "{oldest} – {latest} · {n, plural, one {# version} other {# versions}} · Current version {current}"
+// in the language of msgs.
+func (msgs Messages) UpdateNotesRangeMeta(oldest string, latest string, n int, current string) string {
+	return Catalog.Format(msgs.locale, "updateNotesRangeMeta", map[string]any{"oldest": oldest, "latest": latest, "n": n, "current": current})
+}
+
+// UpdateCountAdded says "{n, plural, one {# addition} other {# additions}}"
+// in the language the app shows.
+func UpdateCountAdded(n int) string { return In(i18n.Locale()).UpdateCountAdded(n) }
+
+// UpdateCountAdded says "{n, plural, one {# addition} other {# additions}}"
+// in the language of msgs.
+func (msgs Messages) UpdateCountAdded(n int) string {
+	return Catalog.Format(msgs.locale, "updateCountAdded", map[string]any{"n": n})
+}
+
+// UpdateCountChanged says "{n, plural, one {# change} other {# changes}}"
+// in the language the app shows.
+func UpdateCountChanged(n int) string { return In(i18n.Locale()).UpdateCountChanged(n) }
+
+// UpdateCountChanged says "{n, plural, one {# change} other {# changes}}"
+// in the language of msgs.
+func (msgs Messages) UpdateCountChanged(n int) string {
+	return Catalog.Format(msgs.locale, "updateCountChanged", map[string]any{"n": n})
+}
+
+// UpdateCountFixed says "{n, plural, one {# fix} other {# fixes}}"
+// in the language the app shows.
+func UpdateCountFixed(n int) string { return In(i18n.Locale()).UpdateCountFixed(n) }
+
+// UpdateCountFixed says "{n, plural, one {# fix} other {# fixes}}"
+// in the language of msgs.
+func (msgs Messages) UpdateCountFixed(n int) string {
+	return Catalog.Format(msgs.locale, "updateCountFixed", map[string]any{"n": n})
+}
+
+// UpdateCountUpdated says "{n, plural, one {# update} other {# updates}}"
+// in the language the app shows.
+func UpdateCountUpdated(n int) string { return In(i18n.Locale()).UpdateCountUpdated(n) }
+
+// UpdateCountUpdated says "{n, plural, one {# update} other {# updates}}"
+// in the language of msgs.
+func (msgs Messages) UpdateCountUpdated(n int) string {
+	return Catalog.Format(msgs.locale, "updateCountUpdated", map[string]any{"n": n})
+}

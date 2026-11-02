@@ -14,6 +14,7 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/nowplaying"
+	"saundo/internal/settings"
 )
 
 // TestRenderPreviews writes the design's states for a visual check, in both
@@ -217,4 +218,60 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		t.Fatal(err)
 	}
 	f.Close()
+
+	upd := fixture()
+	upd.cfg = settings.Default()
+	upd.autoUpdate = true
+	upd.upd = updateState{
+		phase:   updateAvailable,
+		version: "0.4.3",
+		date:    time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC),
+		notes: `### Added
+
+- Per-app capture remembers the last application you streamed.
+
+### Fixed
+
+- The tray menu no longer stays checked after a device drops.
+`,
+	}
+	upd.history = []releaseNote{
+		{Version: "0.4.2", Date: time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC),
+			Notes: `### Changed
+
+- The update dialog now lists every version since your last update.
+`},
+		{Version: "0.4.1", Date: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC),
+			Notes: `### Fixed
+
+- The volume readout now shows 0% to 100%.
+- The settings window uses one background.
+`},
+	}
+	upd.historyState = historyReady
+	upd.page = pageUpdate
+	save("settings-update-available", upd.settingsView, 720, 500, false)
+	upd.notesOpen = true
+	upd.notesRange = true
+	upd.notesExpanded = map[string]bool{"0.4.2": true}
+	save("settings-update-notes", upd.settingsView, 720, 500, false)
+	upd.notesExpanded = map[string]bool{}
+	upd.notesRange = false
+	save("settings-update-notes-latest", upd.settingsView, 720, 500, false)
+	upd.notesRange = true
+	upd.notesOpen = false
+	upd.upd.phase = updateDownloading
+	upd.upd.got, upd.upd.total = 12_400_000, 20_100_000
+	save("settings-update-downloading", upd.settingsView, 720, 500, false)
+	upd.upd.phase = updateReady
+	save("settings-update-ready", upd.settingsView, 720, 500, false)
+	upd.upd.phase = updateAvailable
+	save("flyout-update-chip", upd.view, flyoutWidth, flyoutHeight, false)
+
+	upd.upd = updateState{phase: updateChecking}
+	save("settings-update-checking", upd.settingsView, 720, 500, false)
+	upd.upd = updateState{phase: updateIdle, checked: true}
+	save("settings-update-uptodate", upd.settingsView, 720, 500, false)
+	upd.upd = updateState{phase: updateFailed, err: "network unreachable"}
+	save("settings-update-failed", upd.settingsView, 720, 500, false)
 }

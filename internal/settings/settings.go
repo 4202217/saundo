@@ -30,6 +30,10 @@ type Settings struct {
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
 	Beta                bool               `json:"beta"`
+	AutoUpdate          bool               `json:"autoUpdate"`
+	AutoDownload        bool               `json:"autoDownload"`
+	SkippedVersion      string             `json:"skippedVersion"`
+	LastCheck           string             `json:"lastCheck"`
 }
 
 // Default returns the first-run configuration.
@@ -38,6 +42,7 @@ func Default() Settings {
 		Name:           "声渡",
 		DeviceID:       newDeviceID(),
 		Volume:         80,
+		AutoUpdate:     true,
 		VolumeByDevice: make(map[string]float64),
 		Passwords:      make(map[string]string),
 		LatencyMS:      200,

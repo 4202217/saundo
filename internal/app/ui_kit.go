@@ -115,6 +115,26 @@ func chipButton(c *ui.Context, p palette, label string, fn func()) {
 	})
 }
 
+// dialogScrim darkens a window behind a dialog without hiding it.
+var dialogScrim = ui.RGBA(20, 22, 30, 0.22)
+
+// linkButton is a short text action inside a card, in the color it is given.
+func linkButton(c *ui.Context, p palette, label string, color ui.Color, fn func()) {
+	b := ui.ButtonBase(c).Height(30).Radius(15).Padding(0, 8).Center().Cursor(ui.CursorPointer).Label(label)
+	if b.Hovered() {
+		b.Background(p.pill)
+	}
+	b.OnClick(fn)
+	b.Children(func() {
+		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(color).SingleLine()
+	})
+}
+
+// quietSmall is the card's 30-DIP cancel action.
+func quietSmall(c *ui.Context, p palette, label string, fn func()) {
+	linkButton(c, p, label, p.muted, fn)
+}
+
 // primaryButton is the ink pill that confirms a dialog.
 func primaryButton(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 16).Center().Cursor(ui.CursorPointer).Label(label)

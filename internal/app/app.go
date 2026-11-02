@@ -3,14 +3,15 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/creds"
@@ -42,6 +43,23 @@ type App struct {
 	menuIcons   map[string]*mygo.MenuIcon
 	quitting    bool
 	flyoutH     int
+
+	updates       updateEngine
+	upd           updateState
+	updCancel     context.CancelFunc
+	autoDownload  bool
+	quit          chan struct{}
+	md            markdown.Options
+	notesOpen     bool
+	notesEntered  bool
+	notesRange    bool
+	notesExpanded map[string]bool
+	history       []releaseNote
+	historyKey    string
+	historyState  updateHistoryState
+	// async runs a job off the UI thread: a goroutine, or a test's direct
+	// call that makes the update states observable at once.
+	async func(func())
 
 	snap  engine.Snapshot
 	selID string
@@ -100,11 +118,12 @@ func Run() error {
 		return nil
 	}
 	mygo.App.SetName("saundo")
-	mygo.App.SetVersion(Version)
 
 	a := &App{
 		sets:          settings.NewStore(),
 		log:           diagnostics.New(""),
+		updates:       mygoUpdates{},
+		quit:          make(chan struct{}),
 		captureNames:  []string{locales.CaptureFollowSystem()},
 		captureIDs:    []string{""},
 		captureChoice: locales.CaptureFollowSystem(),
@@ -157,10 +176,7 @@ func Run() error {
 	})
 	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.OnLocaleChanged(func(string) { a.onLocaleChanged() })
-	updater.OnChange(func() {
-		a.autoUpdate = updater.AutomaticChecks()
-		a.updateUI(func() {})
-	})
+	mygo.App.OnQuit(func() { close(a.quit) })
 	mygo.App.WhenReady(a.ready)
 	return mygo.App.Run()
 }
@@ -234,7 +250,9 @@ func (a *App) ready() {
 	// Created before the engine starts, so its field stays immutable while
 	// engine callbacks read it from other goroutines.
 	a.settingsWin = a.newSettingsWindow()
-	a.autoUpdate = updater.AutomaticChecks()
+	a.autoUpdate = a.cfg.AutoUpdate
+	a.autoDownload = a.cfg.AutoDownload
+	a.startUpdateChecks()
 	a.rebuildTray()
 
 	if a.cfg.LaunchAtStart {
@@ -546,7 +564,7 @@ func (a *App) rebuildTray() {
 		items := []*mygo.MenuItem{
 			{Label: locales.TrayShowPanel(), Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
 			{Label: locales.TraySettings(), Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
-			updater.MenuItem(),
+			{Label: locales.TrayCheckUpdates(), Icon: a.menuIcons["update"], Click: func(*mygo.MenuItem, *mygo.Window) { a.openUpdateCheck() }},
 			mygo.Separator(),
 		}
 		if connecting {
@@ -564,6 +582,13 @@ func (a *App) rebuildTray() {
 	tip := locales.TrayTooltip()
 	if connecting {
 		tip = locales.TrayTooltip() + " · " + a.statusText()
+	}
+	if a.updateChipVisible() {
+		if a.upd.phase == updateReady {
+			tip += " · " + locales.UpdateReadyShort()
+		} else {
+			tip += " · " + locales.FlyoutUpdateAvailable(a.upd.version)
+		}
 	}
 	if tip != a.trayTip {
 		a.trayTip = tip
@@ -583,12 +608,12 @@ func (a *App) connectSelected() {
 // at login. A failed registration reverts the switch.
 func (a *App) setLaunchAtStart(on bool) {
 	a.cfg.LaunchAtStart = on
-	_ = a.sets.Save(a.cfg)
+	a.saveSettings()
 	if err := mygo.App.SetOpenAtLogin(on); err != nil {
 		a.log.Printf("set open at login: %v", err)
 		a.launchAtStart = !on
 		a.cfg.LaunchAtStart = !on
-		_ = a.sets.Save(a.cfg)
+		a.saveSettings()
 	}
 }
 
@@ -689,25 +714,14 @@ func (a *App) onLocaleChanged() {
 	a.updateUI(func() {})
 }
 
-// updateText is the settings row's status line for the update check.
-func (a *App) updateText() string {
-	if !mygo.Updater.Enabled() {
-		return locales.SettingsUpdateUnavailable()
-	}
-	if v := updater.AvailableVersion(); v != "" {
-		return locales.SettingsUpdateAvailable(v)
-	}
-	return locales.SettingsUpdatesDesc()
-}
-
 // setBeta chooses whether update checks offer prereleases too.
 func (a *App) setBeta(on bool) {
 	a.beta = on
 	a.cfg.Beta = on
-	cfg := a.sets.Load()
-	cfg.Beta = on
-	_ = a.sets.Save(cfg)
-	mygo.Updater.SetPrereleases(on)
+	a.saveSettings()
+	if a.updates != nil {
+		a.updates.SetPrereleases(on)
+	}
 }
 
 // languageLabel is the settings select's value for the saved language tag.

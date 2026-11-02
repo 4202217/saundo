@@ -29,6 +29,7 @@ func TestGenerateMenuIcons(t *testing.T) {
 		{"connect", iconLink},
 		{"disconnect", iconUnlink},
 		{"quit", iconPower},
+		{"update", iconRefresh},
 	}
 	for _, it := range icons {
 		img := ui.Render(func(c *ui.Context) {

@@ -15,7 +15,7 @@ import (
 var menuIconFS embed.FS
 
 func loadMenuIcons() map[string]*mygo.MenuIcon {
-	names := []string{"open", "settings", "connect", "disconnect", "quit"}
+	names := []string{"open", "settings", "connect", "disconnect", "quit", "update"}
 	icons := make(map[string]*mygo.MenuIcon, len(names))
 	for _, name := range names {
 		data, err := menuIconFS.ReadFile("assets/menu-" + name + ".png")

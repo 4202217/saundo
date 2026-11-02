@@ -236,5 +236,133 @@
 
   "captureFollowSystem": "Follow system default",
   "captureAllSystem": "Entire system",
-  "volumeLabel": "Volume"
+  "volumeLabel": "Volume",
+
+  "settingsNavUpdates": "Updates",
+  "pageUpdatesDesc": "Versions, automatic checks, and installation.",
+  "settingsCurrentVersion": "Current version",
+  "settingsAutoUpdateDesc": "Check once after launch, then daily",
+  "settingsAutoDownload": "Download and install automatically",
+  "settingsAutoDownloadDesc": "Install quietly; takes effect at the next launch",
+  "settingsChannelStable": "Stable",
+  "settingsChannelBeta": "Beta",
+  "settingsCheckFailed": "Check failed",
+  "updateWindowTitle": "Software Update",
+  "updateChecking": "Checking for updates…",
+  "updateCheckingDesc": "This takes a moment.",
+  "updateUpToDate": "You're up to date",
+  "updateAvailableTitle": "Version {version} is available",
+  "@updateAvailableTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateAvailableMeta": "Current version {current} · {date}",
+  "@updateAvailableMeta": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "date": { "type": "String" }
+    }
+  },
+  "updateFullNotes": "What's New",
+  "updateSkip": "Skip this version",
+  "updateLater": "Remind me later",
+  "updateInstall": "Install update",
+  "updateDownloadingTitle": "Downloading {version}",
+  "@updateDownloadingTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateDownloadingMeta": "Restart after the download to finish installing.",
+  "updateCancel": "Cancel",
+  "updateBackground": "Continue in background",
+  "updateReadyTitle": "{version} is ready",
+  "@updateReadyTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateReadyDesc": "Restart to finish installing.",
+  "updateReadyShort": "Update ready",
+  "updateRestartNow": "Restart now",
+  "updateRetry": "Retry",
+  "updateCheckFailedTitle": "Update check failed",
+  "updateDownloadFailedTitle": "Download failed",
+  "updateDisabledTitle": "Updates aren't available in this build",
+  "updateDisabledDesc": "Install a released build to receive updates.",
+  "updateAutoDownload": "Download and install updates automatically",
+  "flyoutUpdateAvailable": "{version} available",
+  "@flyoutUpdateAvailable": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "flyoutUpdateDownloading": "Downloading {percent}%",
+  "@flyoutUpdateDownloading": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "flyoutUpdateReady": "Restart to update",
+  "trayCheckUpdates": "Check for Updates…",
+  "updateUpToDateDesc": "Version {version} is the latest.",
+  "@updateUpToDateDesc": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateCheckingShort": "Checking…",
+  "updateUpToDateShort": "Up to date",
+  "updateNotesTitle": "{version} What's New",
+  "@updateNotesTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateNotesMeta": "Released {date} · Current version {current}",
+  "@updateNotesMeta": {
+    "placeholders": {
+      "date": { "type": "String" },
+      "current": { "type": "String" }
+    }
+  },
+  "updateRangeSince": "Since your last update",
+  "updateRangeLatest": "Latest version only",
+  "updateHistoryLoading": "Loading release notes…",
+  "updateHistoryFailed": "Couldn’t load older release notes.",
+  "updateHistoryLink": "View on GitHub",
+  "updateNotesRangeMeta": "{oldest} – {latest} · {n, plural, one {# version} other {# versions}} · Current version {current}",
+  "@updateNotesRangeMeta": {
+    "placeholders": {
+      "oldest": { "type": "String" },
+      "latest": { "type": "String" },
+      "n": { "type": "int" },
+      "current": { "type": "String" }
+    }
+  },
+  "updateCountAdded": "{n, plural, one {# addition} other {# additions}}",
+  "@updateCountAdded": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "updateCountChanged": "{n, plural, one {# change} other {# changes}}",
+  "@updateCountChanged": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "updateCountFixed": "{n, plural, one {# fix} other {# fixes}}",
+  "@updateCountFixed": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "updateCountUpdated": "{n, plural, one {# update} other {# updates}}",
+  "@updateCountUpdated": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  }
 }

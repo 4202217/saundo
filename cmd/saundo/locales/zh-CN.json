@@ -150,5 +150,133 @@
 
   "captureFollowSystem": "跟随系统默认",
   "captureAllSystem": "整个系统",
-  "volumeLabel": "音量"
+  "volumeLabel": "音量",
+
+  "settingsNavUpdates": "更新",
+  "pageUpdatesDesc": "版本、自动检查与安装。",
+  "settingsCurrentVersion": "当前版本",
+  "settingsAutoUpdateDesc": "启动后检查一次，此后每天一次",
+  "settingsAutoDownload": "自动下载并安装",
+  "settingsAutoDownloadDesc": "静默安装，下次启动生效",
+  "settingsChannelStable": "稳定版",
+  "settingsChannelBeta": "测试版",
+  "settingsCheckFailed": "检查失败",
+  "updateWindowTitle": "软件更新",
+  "updateChecking": "正在检查更新…",
+  "updateCheckingDesc": "稍等片刻。",
+  "updateUpToDate": "已是最新版本",
+  "updateAvailableTitle": "{version} 可用",
+  "@updateAvailableTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateAvailableMeta": "当前版本 {current} · 发布于 {date}",
+  "@updateAvailableMeta": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "date": { "type": "String" }
+    }
+  },
+  "updateFullNotes": "更新内容",
+  "updateSkip": "跳过此版本",
+  "updateLater": "稍后提醒",
+  "updateInstall": "安装更新",
+  "updateDownloadingTitle": "正在下载 {version}",
+  "@updateDownloadingTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateDownloadingMeta": "下载完成后重启即可完成安装。",
+  "updateCancel": "取消",
+  "updateBackground": "后台继续",
+  "updateReadyTitle": "{version} 已下载",
+  "@updateReadyTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateReadyDesc": "重启后生效。",
+  "updateReadyShort": "更新待重启",
+  "updateRestartNow": "立即重启",
+  "updateRetry": "重试",
+  "updateCheckFailedTitle": "检查更新失败",
+  "updateDownloadFailedTitle": "下载失败",
+  "updateDisabledTitle": "此版本不支持自动更新",
+  "updateDisabledDesc": "安装正式发布的版本后可用。",
+  "updateAutoDownload": "以后自动下载并安装",
+  "flyoutUpdateAvailable": "{version} 可用",
+  "@flyoutUpdateAvailable": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "flyoutUpdateDownloading": "正在下载 {percent}%",
+  "@flyoutUpdateDownloading": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "flyoutUpdateReady": "重启以完成更新",
+  "trayCheckUpdates": "检查更新…",
+  "updateUpToDateDesc": "当前版本 {version} 已是最新。",
+  "@updateUpToDateDesc": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateCheckingShort": "检查中…",
+  "updateUpToDateShort": "已是最新",
+  "updateNotesTitle": "{version} 更新内容",
+  "@updateNotesTitle": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "updateNotesMeta": "发布于 {date} · 当前版本 {current}",
+  "@updateNotesMeta": {
+    "placeholders": {
+      "date": { "type": "String" },
+      "current": { "type": "String" }
+    }
+  },
+  "updateRangeSince": "上次更新以来",
+  "updateRangeLatest": "仅最新版本",
+  "updateHistoryLoading": "正在获取更新说明…",
+  "updateHistoryFailed": "无法获取更早版本的说明。",
+  "updateHistoryLink": "在 GitHub 查看",
+  "updateNotesRangeMeta": "{oldest} – {latest} · {n, plural, other {# 个版本}} · 当前版本 {current}",
+  "@updateNotesRangeMeta": {
+    "placeholders": {
+      "oldest": { "type": "String" },
+      "latest": { "type": "String" },
+      "n": { "type": "int" },
+      "current": { "type": "String" }
+    }
+  },
+  "updateCountAdded": "{n, plural, other {# 项新增}}",
+  "@updateCountAdded": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "updateCountChanged": "{n, plural, other {# 项变更}}",
+  "@updateCountChanged": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "updateCountFixed": "{n, plural, other {# 项修复}}",
+  "@updateCountFixed": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "updateCountUpdated": "{n, plural, other {# 项更新}}",
+  "@updateCountUpdated": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  }
 }

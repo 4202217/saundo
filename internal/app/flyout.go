@@ -268,6 +268,21 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 	ui.Row(c).Height(34).Padding(4, 12, 6, 14).Gap(6).Children(func() {
 		ui.Icon(c, faceFor(ph)).Size(16, 16).TextColor(color)
 		ui.Text(c, a.phaseLabel()).FontSize(11.5).TextColor(color).Grow(1).SingleLine().Ellipsis("…")
+		if a.updateChipVisible() {
+			chip := ui.ButtonBase(c).Height(22).Radius(11).Padding(0, 9).Center().Shrink(0).
+				Cursor(ui.CursorPointer).Label(a.updateChipLabel())
+			chip.Background(p.accentSoft)
+			if chip.Hovered() {
+				chip.Background(p.accentSoft.Mix(p.accent, 0.1))
+			}
+			chip.OnClick(func() {
+				a.page = pageUpdate
+				a.showSettings()
+			})
+			chip.Children(func() {
+				ui.Text(c, a.updateChipLabel()).FontSize(11.5).FontWeight(500).TextColor(p.accent).SingleLine()
+			})
+		}
 		b := ui.ButtonBase(c).Gap(4).Padding(3, 7).Radius(6).Cursor(ui.CursorPointer).Label(locales.LogTitle())
 		b.OnClick(func() {
 			a.showLog = true
@@ -366,7 +381,7 @@ func (a *App) logDialog(c *ui.Context, p palette) {
 		lines = lines[len(lines)-200:]
 	}
 	ui.DialogBase(c, &a.showLog, func(back, panel ui.Element) {
-		back.Background(ui.RGBA(20, 22, 30, 0.34))
+		back.Background(dialogScrim)
 		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.logEntered)
@@ -396,7 +411,7 @@ func (a *App) pinDialog(c *ui.Context, p palette) {
 		return
 	}
 	modal := ui.DialogBase(c, &a.pinOpen, func(back, panel ui.Element) {
-		back.Background(ui.RGBA(20, 22, 30, 0.34))
+		back.Background(dialogScrim)
 		panel.Width(380).Padding(22).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.pinEntered)
@@ -425,7 +440,7 @@ func (a *App) passwordDialog(c *ui.Context, p palette) {
 		return
 	}
 	modal := ui.DialogBase(c, &a.passwordOpen, func(back, panel ui.Element) {
-		back.Background(ui.RGBA(20, 22, 30, 0.34))
+		back.Background(dialogScrim)
 		panel.Width(380).Padding(22).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.passwordEntered)

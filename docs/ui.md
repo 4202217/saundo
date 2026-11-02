@@ -62,9 +62,11 @@ Implementation notes: smoothing the selection color needs a custom row column, b
 ## Windows and geometry
 
 - The flyout is a frameless, shadowed 420-DIP-wide panel anchored to the tray icon by its bottom edge. Its height adapts to the device count so the gap between the device card and the playback card stays constant: base 500, three device rows at 56 each, a 140 empty state (`flyoutHeightFor` in `flyout.go`); a resize grows upward and leaves the playback card in place.
-- The settings window is 720×500 (min 640×420) with the system title bar hidden; a custom bar draws under the system window buttons (`settingsTitleBar`), and a 190-wide sidebar switches four pages: 通用, 连接, 音频, 采集.
-- The settings window paints one surface (`bg`) behind the title bar, the sidebar, and the content; `line2` borders separate them. The update window belongs to mygo's updater plugin: it keeps the OS title bar and the plugin's own Apple-style accent, outside this palette.
-- Both windows read the same App state; an engine snapshot update redraws both.
+- The settings window is 720×500 (min 640×420) with the system title bar hidden; a custom bar draws under the system window buttons (`settingsTitleBar`), and a 190-wide sidebar switches five pages: 通用, 连接, 音频, 采集, 更新.
+- The settings window paints one surface (`bg`) behind the title bar, the sidebar, and the content; `line2` borders separate them.
+- There is no standalone update window. The settings 更新 page carries the whole update surface: the S1 card for available, downloading, ready, and failed states, the version row for checking and its result, and a sidebar dot on 更新 while an update waits. "更新内容" opens a read-only dialog over the settings window (`update_dialog.go`) with the shared `dialogScrim` behind it. It lists every version released since this build: the offered one from the signed manifest, then older ones read from the repository's `CHANGELOG.md` over raw.githubusercontent (`update_history.go`) as folded rows with their date and a count; a range field switches between that list and the latest version only. Notes render with `ui/markdown.View` under a dialog-sized theme, and version numbers use tabular figures. A found update also shows as the flyout chip and the tray tooltip; no window opens on its own.
+- The settings 更新 page repeats the same state in an S1 card above its rows, and the flyout footer carries an update chip that opens that page. All three read one update state; installing from any of them shows the same progress, with `mygo.Updater` doing the signed download and install.
+- All windows read the same App state; an engine snapshot update redraws them.
 - The flyout root paints the panel surface explicitly, because a flyout is transparent by default.
 
 ## State faces

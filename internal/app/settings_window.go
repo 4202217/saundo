@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
@@ -21,6 +20,7 @@ const (
 	pageConnection
 	pageAudio
 	pageCapture
+	pageUpdate
 )
 
 var settingsNav = []struct {
@@ -31,6 +31,7 @@ var settingsNav = []struct {
 	{pageConnection, iconLink},
 	{pageAudio, iconWave},
 	{pageCapture, iconScreen},
+	{pageUpdate, iconRefresh},
 }
 
 func pageTitle(page settingsPage) string {
@@ -41,6 +42,8 @@ func pageTitle(page settingsPage) string {
 		return locales.SettingsNavAudio()
 	case pageCapture:
 		return locales.SettingsNavCapture()
+	case pageUpdate:
+		return locales.SettingsNavUpdates()
 	}
 	return locales.SettingsNavGeneral()
 }
@@ -109,6 +112,7 @@ func (a *App) settingsView(c *ui.Context) {
 			a.settingsBody(c, p)
 		})
 	})
+	a.updateNotesDialog(c, p)
 }
 
 // settingsTitleBar draws the window's title bar under the system's window
@@ -171,6 +175,10 @@ func (a *App) sidebarItem(c *ui.Context, p palette, page settingsPage, icon *ui.
 			ic.TextColor(p.muted)
 			tx.TextColor(p.ctl)
 		}
+		if page == pageUpdate && a.updateChipVisible() {
+			ui.Spacer(c)
+			ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(p.accent)
+		}
 	})
 }
 
@@ -196,6 +204,8 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 				a.audioPage(c, p)
 			case pageCapture:
 				a.capturePage(c, p)
+			case pageUpdate:
+				a.updatePage(c, p)
 			}
 		})
 	})
@@ -209,6 +219,8 @@ func pageCopy(page settingsPage) (title, desc string) {
 		return pageTitle(page), locales.PageAudioDesc()
 	case pageCapture:
 		return pageTitle(page), locales.PageCaptureDesc()
+	case pageUpdate:
+		return pageTitle(page), locales.PageUpdatesDesc()
 	}
 	return pageTitle(page), locales.PageGeneralDesc()
 }
@@ -241,23 +253,206 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			}
 		})
 		rowLine(c, p)
-		settingRow(c, p, locales.SettingsUpdates(), a.updateText(), func() {
-			ui.Row(c).Gap(6).Children(func() {
-				toggle(c, p, &a.autoUpdate, locales.SettingsAutoUpdate(), func(v bool) {
-					updater.SetAutomaticChecks(v)
-				})
-				chipButton(c, p, locales.SettingsCheckNow(), func() { updater.CheckForUpdates() })
-			})
+		settingRow(c, p, locales.SettingsAbout(), locales.SettingsAboutBrand(), func() {
+			staticText(c, p, a.currentVersion())
+		})
+	})
+}
+
+// updatePage is the settings page for versions and automatic checks.
+func (a *App) updatePage(c *ui.Context, p palette) {
+	a.updateSettingsCard(c, p)
+	pageCard(c, p, func() {
+		a.updateVersionRow(c, p)
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsAutoUpdate(), locales.SettingsAutoUpdateDesc(), func() {
+			toggle(c, p, &a.autoUpdate, locales.SettingsAutoUpdate(), func(v bool) { a.setAutoUpdate(v) })
+		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsAutoDownload(), locales.SettingsAutoDownloadDesc(), func() {
+			toggle(c, p, &a.autoDownload, locales.SettingsAutoDownload(), func(v bool) { a.setAutoDownload(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsChannel(), locales.SettingsChannelDesc(), func() {
-			toggle(c, p, &a.beta, locales.SettingsBeta(), func(v bool) { a.setBeta(v) })
-		})
-		rowLine(c, p)
-		settingRow(c, p, locales.SettingsAbout(), locales.SettingsAboutBrand(), func() {
-			staticText(c, p, Version)
+			choice := a.channelLabel()
+			options := []string{locales.SettingsChannelStable(), locales.SettingsChannelBeta()}
+			if fieldSelect(c, p, &choice, options, locales.SettingsChannel()).Changed() {
+				a.setBeta(choice == locales.SettingsChannelBeta())
+			}
 		})
 	})
+}
+
+// updateSettingsCard is the S1 card: the update's state and actions at the
+// top of the page, in place of the list.
+func (a *App) updateSettingsCard(c *ui.Context, p palette) {
+	if !a.updateCardVisible() {
+		return
+	}
+	card := ui.Column(c).Margin(12, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line)
+	card.Children(func() {
+		ui.Column(c).Padding(12, 14).Gap(8).Children(func() {
+			ui.Row(c).Gap(10).Children(func() {
+				ui.Box(c).Size(34, 34).Radius(9).Center().Shrink(0).Background(p.accentSoft).Children(func() {
+					ui.Icon(c, iconDownload).Size(16, 16).TextColor(p.accent)
+				})
+				ui.Column(c).Grow(1).Gap(1).Children(func() {
+					ui.Text(c, a.updateCardTitle()).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
+					ui.Text(c, a.updateCardDesc()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+				})
+				a.updateCardPrimary(c, p)
+			})
+			// The secondary actions line up with the title, past the icon
+			// and the link's own 8-DIP padding.
+			ui.Row(c).Gap(12).Padding(0, 0, 0, 36).Children(func() {
+				linkButton(c, p, locales.UpdateFullNotes(), p.accent, func() { a.openUpdateNotes() })
+				switch a.upd.phase {
+				case updateAvailable:
+					if !a.updateSkipped() {
+						linkButton(c, p, locales.UpdateSkip(), p.muted, func() { a.skipUpdate() })
+					}
+				case updateReady:
+					linkButton(c, p, locales.UpdateLater(), p.muted, func() { a.hideSettings() })
+				}
+			})
+			if a.upd.phase == updateDownloading || a.upd.phase == updateReady {
+				updateProgressBar(c, p, float32(a.updateProgress()))
+				if a.upd.phase == updateDownloading {
+					ui.Row(c).Children(func() {
+						ui.Text(c, updateBytes(a.upd.got, a.upd.total)).FontSize(11.5).TextColor(p.muted).Grow(1)
+						ui.Textf(c, "%d%%", int(a.updateProgress()*100)).FontSize(11.5).TextColor(p.fg)
+					})
+				}
+			}
+		})
+	})
+}
+
+// updateCardVisible reports whether the S1 card has something to say.
+func (a *App) updateCardVisible() bool {
+	switch a.upd.phase {
+	case updateAvailable, updateDownloading, updateReady:
+		return true
+	case updateFailed:
+		return a.upd.up != nil && !a.upd.disabled
+	}
+	return false
+}
+
+func (a *App) updateCardTitle() string {
+	switch a.upd.phase {
+	case updateDownloading:
+		return locales.UpdateDownloadingTitle(a.upd.version)
+	case updateReady:
+		return locales.UpdateReadyTitle(a.upd.version)
+	case updateFailed:
+		return locales.UpdateDownloadFailedTitle()
+	}
+	return locales.UpdateAvailableTitle(a.upd.version)
+}
+
+func (a *App) updateCardDesc() string {
+	switch a.upd.phase {
+	case updateDownloading:
+		return locales.UpdateDownloadingMeta()
+	case updateReady:
+		return locales.UpdateReadyDesc()
+	case updateFailed:
+		return a.upd.err
+	}
+	return locales.UpdateAvailableMeta(a.currentVersion(), updateDate(a.upd.date))
+}
+
+// updateCardPrimary is the card's one filled action.
+func (a *App) updateCardPrimary(c *ui.Context, p palette) {
+	switch a.upd.phase {
+	case updateDownloading:
+		quietSmall(c, p, locales.UpdateCancel(), func() { a.cancelInstall() })
+	case updateReady:
+		primarySmall(c, p, locales.UpdateRestartNow(), func() { a.relaunchIntoUpdate() })
+	case updateFailed:
+		primarySmall(c, p, locales.UpdateRetry(), func() { a.installUpdate() })
+	default:
+		primarySmall(c, p, locales.UpdateInstall(), func() { a.installUpdate() })
+	}
+}
+
+// primarySmall is the card's 30-DIP variant of the ink button.
+func primarySmall(c *ui.Context, p palette, label string, fn func()) {
+	b := ui.ButtonBase(c).Height(30).Radius(15).Padding(0, 14).Center().Cursor(ui.CursorPointer).Label(label)
+	b.Background(p.fg)
+	if b.Hovered() {
+		b.Background(p.fg.Mix(p.bg, 0.12))
+	}
+	b.OnClick(fn)
+	b.Children(func() {
+		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(p.bg).SingleLine()
+	})
+}
+
+// updateVersionRow shows the running version and the check's result in
+// place: checking, up to date, or the failure, with the action beside it.
+func (a *App) updateVersionRow(c *ui.Context, p palette) {
+	ui.Row(c).MinHeight(56).Padding(8, 14).Gap(12).Children(func() {
+		ui.Column(c).Grow(1).Gap(2).Children(func() {
+			ui.Text(c, locales.SettingsCurrentVersion()).FontSize(13).FontWeight(500).SingleLine()
+			a.updateVersionSub(c, p)
+		})
+		a.updateVersionAction(c, p)
+	})
+}
+
+func (a *App) updateVersionSub(c *ui.Context, p palette) {
+	if a.upd.disabled {
+		ui.Text(c, locales.UpdateDisabledTitle()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		return
+	}
+	ui.Row(c).Gap(5).Children(func() {
+		ui.Text(c, a.currentVersion()+" · "+a.channelLabel()).FontSize(11.5).TextColor(p.muted).SingleLine()
+		switch {
+		case a.upd.phase == updateFailed && a.upd.up == nil:
+			ui.Text(c, locales.SettingsCheckFailed()+" · "+a.upd.err).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
+		case a.upd.checked:
+			ok := ui.Row(c).Gap(3).Shrink(0)
+			ok.Children(func() {
+				ui.Icon(c, iconCheck).Size(11, 11).TextColor(p.green)
+				ui.Text(c, locales.UpdateUpToDateShort()).FontSize(11.5).TextColor(p.green).SingleLine()
+			})
+		}
+	})
+}
+
+func (a *App) updateVersionAction(c *ui.Context, p palette) {
+	if a.upd.disabled {
+		return
+	}
+	if a.upd.phase == updateChecking {
+		busy := ui.Row(c).Height(26).Radius(13).Padding(0, 10).Gap(6).Center().Shrink(0).Background(p.pill)
+		busy.Children(func() {
+			ui.Spinner(c).Size(12, 12).TextColor(p.muted)
+			ui.Text(c, locales.UpdateCheckingShort()).FontSize(11.5).TextColor(p.muted).SingleLine()
+		})
+		return
+	}
+	label := locales.SettingsCheckNow()
+	if a.upd.phase == updateFailed && a.upd.up == nil {
+		label = locales.UpdateRetry()
+	}
+	chipButton(c, p, label, func() { a.checkForUpdates(true) })
+}
+
+func (a *App) channelLabel() string {
+	if a.cfg.Beta {
+		return locales.SettingsChannelBeta()
+	}
+	return locales.SettingsChannelStable()
+}
+
+// setAutoUpdate saves the automatic-check preference.
+func (a *App) setAutoUpdate(on bool) {
+	a.autoUpdate = on
+	a.cfg.AutoUpdate = on
+	a.saveSettings()
 }
 
 func (a *App) connectionPage(c *ui.Context, p palette) {
