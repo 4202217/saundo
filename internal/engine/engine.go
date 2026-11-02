@@ -1166,8 +1166,9 @@ func (e *Engine) buildSnapshot() Snapshot {
 	if e.tr != nil {
 		state = e.tr.State()
 	}
+	// Drops before a stream are expected: no sink drains the ring.
 	dropped := uint64(0)
-	if e.captureSink != nil {
+	if e.captureSink != nil && state == sender.StateStreaming {
 		dropped = e.captureSink.Dropped()
 	}
 	var lines []string

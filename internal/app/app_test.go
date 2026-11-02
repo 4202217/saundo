@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image/png"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo"
@@ -76,12 +77,15 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
 	for _, want := range []string{
 		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
-		"连接", "断开", "离线", "音量", "正在播放到 HomePods",
+		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
 		"ALAC · 44.1 kHz · PTP · 已同步", "推送", "未检测到媒体", "诊断日志",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	if tt.HasText("6,500%") {
+		t.Fatalf("volume was scaled by 100: %q", tt.Texts())
 	}
 	if path := os.Getenv("SAUNDO_PREVIEW"); path != "" {
 		writePreview(t, tt, path)
@@ -93,7 +97,7 @@ func TestEnglishLocaleRenders(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
 	for _, want := range []string{
-		"saundo", "AIRPLAY 2", "Devices", "3 devices", "Streaming to HomePods",
+		"saundo", "AIRPLAY 2", "Devices", "3 devices", "65%", "Streaming to HomePods",
 		"No media detected", "Diagnostics",
 	} {
 		if !tt.HasText(want) {
@@ -108,6 +112,24 @@ func TestPseudoLocaleRenders(t *testing.T) {
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
 	if len(tt.Texts()) == 0 {
 		t.Fatal("pseudo-locale view rendered no text")
+	}
+}
+
+func TestCaptureMetaHidesDropsWhenIdle(t *testing.T) {
+	s := engine.Snapshot{
+		CaptureRunning: true,
+		CaptureName:    "Speakers",
+		CaptureRate:    48000,
+		DroppedSamples: 1234,
+		State:          sender.StateIdle,
+	}
+	drops := locales.FlyoutDropped(1234)
+	if got := captureMeta(s); strings.Contains(got, drops) {
+		t.Fatalf("idle capture line shows drops: %q", got)
+	}
+	s.State = sender.StateStreaming
+	if got := captureMeta(s); !strings.Contains(got, drops) {
+		t.Fatalf("streaming capture line lacks drops: %q", got)
 	}
 }
 

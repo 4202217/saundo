@@ -9,6 +9,7 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
+	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
 )
 
@@ -334,7 +335,12 @@ func captureMeta(s engine.Snapshot) string {
 	if s.CaptureRate > 0 {
 		out += " · " + formatRate(s.CaptureRate)
 	}
-	return out + " · " + locales.FlyoutDropped(int(s.DroppedSamples))
+	// Drops before a stream are expected: no sink drains the ring, so the
+	// figure is meaningful only while streaming.
+	if s.State == sender.StateStreaming {
+		out += " · " + locales.FlyoutDropped(int(s.DroppedSamples))
+	}
+	return out
 }
 
 func formatRate(rate int) string {

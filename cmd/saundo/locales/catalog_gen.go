@@ -446,11 +446,11 @@ func (msgs Messages) FlyoutPushLabel() string {
 	return Catalog.Format(msgs.locale, "flyoutPushLabel", nil)
 }
 
-// FlyoutVolumeValue says "{v, number, percent}"
+// FlyoutVolumeValue says "{v, number}%"
 // in the language the app shows.
 func FlyoutVolumeValue(v float64) string { return In(i18n.Locale()).FlyoutVolumeValue(v) }
 
-// FlyoutVolumeValue says "{v, number, percent}"
+// FlyoutVolumeValue says "{v, number}%"
 // in the language of msgs.
 func (msgs Messages) FlyoutVolumeValue(v float64) string {
 	return Catalog.Format(msgs.locale, "flyoutVolumeValue", map[string]any{"v": v})
