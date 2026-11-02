@@ -94,6 +94,7 @@ Reporting:
 ## Testing and workflow
 
 - When real-device behavior differs, capture logs and packets first, then change code, and record the finding in `docs/verification.md` plus the matching profile in `docs/devices.md` or `docs/protocol.md` — in the same commit.
+- After every code change, run `make build` (`./scripts/build.sh` when make is absent) so the local binary matches the tree. It stops the running app, replaces `bin/saundo.exe`, and relaunches it.
 - Ask the user only for genuine product decisions. Proceed on reversible engineering work.
 - Do not commit unless the user explicitly asks.
 - Keep all documentation in English.
