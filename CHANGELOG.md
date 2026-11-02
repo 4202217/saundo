@@ -5,6 +5,18 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.4.1 - 2026-11-02
+
+### Fixed
+
+- The volume readout now shows 0% to 100%, not 0% to 10000%.
+- Dropped samples are shown only while streaming; idle capture no longer
+  reports a growing count.
+- Non-ASCII sender names are encoded as UTF-16BE in the AP2 session plist,
+  so a Mac receiver shows "声渡" instead of mojibake.
+- The settings window uses one background across its title bar, sidebar, and
+  content.
+
 ## 0.4.0 - 2026-11-02
 
 ### Added
