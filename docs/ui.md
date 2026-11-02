@@ -63,6 +63,7 @@ Implementation notes: smoothing the selection color needs a custom row column, b
 
 - The flyout is a frameless, shadowed 420-DIP-wide panel anchored to the tray icon by its bottom edge. Its height adapts to the device count so the gap between the device card and the playback card stays constant: base 500, three device rows at 56 each, a 140 empty state (`flyoutHeightFor` in `flyout.go`); a resize grows upward and leaves the playback card in place.
 - The settings window is 720×500 (min 640×420) with the system title bar hidden; a custom bar draws under the system window buttons (`settingsTitleBar`), and a 190-wide sidebar switches four pages: 通用, 连接, 音频, 采集.
+- The settings window paints one surface (`bg`) behind the title bar, the sidebar, and the content; `line2` borders separate them. The update window belongs to mygo's updater plugin: it keeps the OS title bar and the plugin's own Apple-style accent, outside this palette.
 - Both windows read the same App state; an engine snapshot update redraws both.
 - The flyout root paints the panel surface explicitly, because a flyout is transparent by default.
 

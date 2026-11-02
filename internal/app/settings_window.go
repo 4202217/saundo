@@ -117,7 +117,7 @@ func (a *App) settingsTitleBar(c *ui.Context, p palette) {
 	bar := c.TitleBar()
 	title := ui.Row(c).Height(max(bar.Height, 32)).
 		Padding(0, bar.Right, 0, 12+bar.Left).
-		Gap(8).Background(p.panel).BorderWidth(0, 0, 1, 0).BorderColor(p.line2).
+		Gap(8).Background(p.bg).BorderWidth(0, 0, 1, 0).BorderColor(p.line2).
 		DragWindow()
 	title.Children(func() {
 		ui.Icon(c, iconMark).Size(14, 14).TextColor(p.fg)
@@ -127,7 +127,7 @@ func (a *App) settingsTitleBar(c *ui.Context, p palette) {
 
 func (a *App) settingsSidebar(c *ui.Context, p palette) {
 	name, sub, dot := a.sidebarIdentity(p)
-	ui.Column(c).Width(190).FillHeight().Background(p.panel).Padding(12, 10, 10, 10).
+	ui.Column(c).Width(190).FillHeight().Background(p.bg).Padding(12, 10, 10, 10).
 		BorderWidth(0, 1, 0, 0).BorderColor(p.line2).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
 			for _, item := range settingsNav {
