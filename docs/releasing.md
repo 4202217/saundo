@@ -102,9 +102,13 @@ are uploaded last, so an app never sees a manifest whose files are missing.
 
 ## First release
 
-Before the first stable release is published, an installed build's update
-check returns 404 for `/releases/latest/download/update-<target>.json`.
-Publish the stable release to serve the feed. The 0.3.0 build predates the
+The update feed is fetched without credentials. The repository, or the
+`updates.url` host, must be public. A private repository returns 404 for
+`/releases/latest/download/update-<target>.json` even after the release is
+published.
+
+Before the first stable release is published, the feed returns 404 as
+well. Publish the stable release to serve it. The 0.3.0 build predates the
 updater; the first update path runs from 0.4.0 to a later published
 version.
 

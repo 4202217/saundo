@@ -45,14 +45,14 @@ saundo 采集 Windows 正在播放的一切声音——WASAPI 环回，无需按
 
 ## 安装
 
-要求：Windows 10 或 11，Go 1.27+（[mygo](https://github.com/egoist/mygo) 所需的工具链）。暂无签名下载——从源码构建：
+要求：Windows 10 或 11。最新安装器在 [Releases](https://github.com/4202217/saundo/releases/latest)，尚未代码签名，SmartScreen 会提示。从源码构建需要 Go 1.27+（[mygo](https://github.com/egoist/mygo) 所需的工具链）：
 
 ```bash
 make check    # gofmt 门、go vet、mygo UI vet、go test —— 验收门
 make build    # 经 mygo 构建 bin/saundo.exe 与 NSIS 安装器（bin/saundo-setup-*.exe），随后重启正在运行的应用
 ```
 
-只想要应用的话，构建后直接运行安装器 `bin/saundo-setup-*.exe`。
+从源码构建的话，构建后运行安装器 `bin/saundo-setup-*.exe`。
 
 ## 接收端支持
 

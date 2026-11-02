@@ -674,9 +674,12 @@ Audio streamed normally. Four issues surfaced:
   `TestBPListNonASCIIString`.
 - **Update check.** The check returned 404 for
   `https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json`.
-  The 0.4.0 release was still a draft, so no stable release served the
-  feed. Publish a stable release before testing updates. The 0.3.0 build
-  predates the updater; the first update path is 0.4.0 to a later release.
+  The 0.4.0 release was still a draft, and the repository had been made
+  private, so no unauthenticated feed was served. The feed is fetched
+  without credentials: the repository, or the `updates.url` host, must be
+  public. After publishing 0.4.1 and restoring public visibility, the feed
+  returned 200 with manifest 0.4.1. The 0.3.0 build predates the updater;
+  the first update path is 0.4.0 to a later release.
 - **Volume readout.** The slider's 0 to 100 value was formatted with the
   ICU `percent` style, which multiplied it by 100. The panel showed 0% to
   10000% and now shows 0% to 100%; pinned by the volume assertion in
