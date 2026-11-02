@@ -245,6 +245,10 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			toggle(c, p, &a.launchAtStart, locales.SettingsLaunchAtStart(), func(v bool) { a.setLaunchAtStart(v) })
 		})
 		rowLine(c, p)
+		settingRow(c, p, locales.SettingsTrayAnimation(), locales.SettingsTrayAnimationDesc(), func() {
+			toggle(c, p, &a.trayAnimation, locales.SettingsTrayAnimation(), func(v bool) { a.setTrayAnimation(v) })
+		})
+		rowLine(c, p)
 		settingRow(c, p, locales.SettingsLanguage(), locales.SettingsLanguageDesc(), func() {
 			choice := a.languageLabel()
 			options := []string{locales.LanguageSystem(), locales.LanguageEnglish(), locales.LanguageChinese()}

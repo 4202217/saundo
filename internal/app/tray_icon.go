@@ -36,9 +36,10 @@ func loadTrayPNGs() map[trayIconKey][]byte {
 }
 
 // refreshTrayIcon swaps the tray's face when the stream state or the
-// taskbar's appearance changes.
+// taskbar's appearance changes. While the animator runs, it owns the icon
+// and picks the next frame itself.
 func (a *App) refreshTrayIcon() {
-	if a.tray == nil {
+	if a.tray == nil || a.trayAnim != nil {
 		return
 	}
 	key := trayIconKey{face: a.face(), dark: a.tray.Dark()}

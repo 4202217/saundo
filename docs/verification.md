@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-01 -->
+<!-- reviewed-through: 2026-11-02 -->
 
 # Verification
 
@@ -688,6 +688,13 @@ Audio streamed normally. Four issues surfaced:
   counts discarded samples. The flyout now shows the dropped figure only
   while streaming, and the engine reports zero while idle; pinned by
   `TestCaptureMetaHidesDropsWhenIdle`.
+
+## Tray animation (2026-11-02)
+
+- The tray animates `stream` and `connect` with 12 frames at 100 ms. The eyes stay static; only the mouth moves: the five stream bars ride a traveling sine wave, and the three connect dots pulse in brightness and size. The 托盘动画 switch in 通用 turns it off; Reduce Motion (Windows animation effects off) holds the static face even while the switch is on.
+- The static stream icon is animation frame 0, and the static connect icon is three uniform 2.6 px dots. Switching the animation on or off therefore does not change the mouth size.
+- Measured on the 4K 200% taskbar: `Tray.SetIcon` averaged 0.5 to 0.8 ms per frame. GDI objects stayed at 53 across 20-second runs, with no handle leak. Explorer CPU with the taskbar visible ranged from 1.6 percent of one core for the static icon to 4.8 percent for the 100 ms animation over 20-second samples; the figure is noisy and the app-side cost stayed under 1 percent. A 60 ms frame interval produced a 10 ms worst-case call, so 100 ms is the default.
+- `TestTrayAnimationDefaultsOnAndRoundTrips`, `TestTrayAnimationSettingPersists`, `TestTrayAnimationCommandPersists`, `TestTrayAnimationFaces`, and `TestSettingsPagesRender` pin the default, the app and engine copies of the switch, the animated faces, and the settings row. Not verified: a live HomePod run of the final settings toggle; the timing above was measured in the prototype's demo mode, which uses the same animator and `SetIcon` path.
 
 ## Failure modes and meanings
 

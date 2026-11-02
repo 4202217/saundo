@@ -581,6 +581,29 @@ func TestGroupMemberRingsTakeOverCapture(t *testing.T) {
 	}
 }
 
+func TestTrayAnimationCommandPersists(t *testing.T) {
+	h := newHarness(t)
+	h.e.handleCommand(command{kind: cmdTrayAnimation, value: 0})
+	if h.e.buildSnapshot().TrayAnimation {
+		t.Fatal("snapshot kept tray animation on")
+	}
+	if h.e.sets.Load().TrayAnimation {
+		t.Fatal("tray animation off was not saved")
+	}
+	h.e.setsValue.Volume = 42
+	h.e.saveSettings()
+	if h.e.sets.Load().TrayAnimation {
+		t.Fatal("a later settings save reverted tray animation")
+	}
+	h.e.handleCommand(command{kind: cmdTrayAnimation, value: 1})
+	if !h.e.buildSnapshot().TrayAnimation {
+		t.Fatal("snapshot did not turn tray animation on")
+	}
+	if !h.e.sets.Load().TrayAnimation {
+		t.Fatal("tray animation on was not saved")
+	}
+}
+
 func TestNowPlayingCommandForwardsWhenEnabled(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -27,6 +28,28 @@ func TestVolumeByDeviceAndFlagsRoundTrip(t *testing.T) {
 	}
 	if got.VolumeByDevice["AA:BB"] != 33 {
 		t.Fatalf("per-device volume lost: %+v", got.VolumeByDevice)
+	}
+}
+
+func TestTrayAnimationDefaultsOnAndRoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	s := NewStoreAt(path)
+	if !s.Load().TrayAnimation {
+		t.Fatal("tray animation should default to on")
+	}
+	if err := os.WriteFile(path, []byte(`{"name":"x"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Load().TrayAnimation {
+		t.Fatal("a settings file without trayAnimation should keep the default")
+	}
+	cfg := s.Load()
+	cfg.TrayAnimation = false
+	if err := s.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if s.Load().TrayAnimation {
+		t.Fatal("tray animation off did not persist")
 	}
 }
 

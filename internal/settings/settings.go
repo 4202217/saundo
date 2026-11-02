@@ -27,6 +27,7 @@ type Settings struct {
 	AutoConnect         bool               `json:"autoConnect"`
 	Reconnect           bool               `json:"reconnect"`
 	ShowNowPlaying      bool               `json:"showNowPlaying"`
+	TrayAnimation       bool               `json:"trayAnimation"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
 	Beta                bool               `json:"beta"`
@@ -47,6 +48,7 @@ func Default() Settings {
 		Passwords:      make(map[string]string),
 		LatencyMS:      200,
 		Reconnect:      true,
+		TrayAnimation:  true,
 	}
 }
 

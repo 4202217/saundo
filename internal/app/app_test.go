@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
 	"saundo/internal/nowplaying"
+	"saundo/internal/settings"
 )
 
 // testLocale makes the generated accessors deterministic; the UI follows
@@ -184,7 +186,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动与版本。", "发送端名称", "保存", "开机自动启动", "语言", "关于", "声渡 · saundo"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动、外观与版本。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言", "关于", "声渡 · saundo"}},
 		{pageConnection, []string{"连接", "配对、重连与验证策略", "HomePods", "已连接", "启动时自动连接上次设备", "断开后自动重连", "严格验证接收器", "接收端密码", "保存到 HomePods"}},
 		{pageAudio, []string{"音频", "播放延迟", "200 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
@@ -512,6 +514,32 @@ func TestSliderHasNameAndKeys(t *testing.T) {
 	tt.Frame()
 	if value <= 50 {
 		t.Fatalf("value = %v after Right, want above 50", value)
+	}
+}
+
+func TestTrayAnimationFaces(t *testing.T) {
+	for _, face := range []string{"stream", "connect"} {
+		if !trayAnimatedFace(face) {
+			t.Fatalf("%s should animate", face)
+		}
+	}
+	for _, face := range []string{"smile", "error", ""} {
+		if trayAnimatedFace(face) {
+			t.Fatalf("%s should stay static", face)
+		}
+	}
+}
+
+func TestTrayAnimationSettingPersists(t *testing.T) {
+	a := previewApp()
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	a.trayAnimation = true
+	a.setTrayAnimation(false)
+	if a.trayAnimation {
+		t.Fatal("setting did not turn the animation off")
+	}
+	if a.sets.Load().TrayAnimation {
+		t.Fatal("setting did not persist")
 	}
 }
 

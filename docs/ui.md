@@ -55,6 +55,7 @@ Interaction inventory (what moves, and how):
 | Sidebar active pill | color 140 ms; a static pill, no sliding indicator |
 | Input focus ring | color 120 ms; the keyboard focus ring never fades in |
 | Empty/searching state | pulse loop 1.2 s on the search face, opacity 0.55–1 |
+| Tray icon | 12 frames at 100 ms while connecting or streaming; the static face otherwise |
 | Tray menu, window show/hide | none — native Windows and mygo own them |
 
 Implementation notes: smoothing the selection color needs a custom row column, because `ui.List`'s built-in selection snaps. Stable keys are what let `Transition` recognize a row across reorder. `Collapse` folds height inside a column. `AnimatePose` and `ContentTransition` complete in paint-only frames on a steady flyout, so the resident window does not rebuild its view every frame.
@@ -72,6 +73,7 @@ Implementation notes: smoothing the selection color needs a custom row column, b
 ## State faces
 
 - One smile mark carries the product. The tray icon and the flyout footer show the face whose mouth names the phase: `smile` at rest, `stream` (spectrum bars) while streaming, `connect` (three dots) while connecting or reconnecting, `error` (X eyes) on failure. A connected stream with no audible audio also shows `smile`: after two seconds of digital silence the engine suspends RTP and reports `Snapshot.AudioIdle`, so the face names playback, not the session. The empty device card pulses the search face while discovery runs.
+- The tray animates the `stream` and `connect` faces at 12 frames per 100 ms while the 托盘动画 setting is on. Turning the setting off, or Windows animation effects (Reduce Motion), holds the static face. The static stream icon is animation frame 0, and the static connect icon is three uniform 2.6 px dots, so toggling does not change the mouth size.
 - The 32 px tray icon is monochrome — black on a light taskbar, white on a dark one — and redraws on `Tray.OnAppearanceChange`. The tooltip and tray menu carry the finer session state.
 - Device rows pick their icon by receiver model (`TestDeviceIconFollowsModel`).
 

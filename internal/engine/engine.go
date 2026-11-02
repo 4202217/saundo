@@ -44,6 +44,7 @@ type Snapshot struct {
 	// digital silence. The session stays connected.
 	AudioIdle          bool
 	ShowNowPlaying     bool
+	TrayAnimation      bool
 	LatencyMS          int
 	CaptureEndpoint    string
 	CaptureName        string
@@ -75,6 +76,7 @@ const (
 	cmdAutoConnect
 	cmdReconnect
 	cmdShowNowPlaying
+	cmdTrayAnimation
 	cmdNowPlaying
 	cmdLatency
 	cmdCaptureProcess
@@ -481,6 +483,15 @@ func (e *Engine) SetShowNowPlaying(on bool) {
 	e.send(command{kind: cmdShowNowPlaying, value: v})
 }
 
+// SetTrayAnimation toggles the animated tray icon preference.
+func (e *Engine) SetTrayAnimation(on bool) {
+	v := 0.0
+	if on {
+		v = 1
+	}
+	e.send(command{kind: cmdTrayAnimation, value: v})
+}
+
 // SetNowPlaying pushes track metadata to the receiver.
 func (e *Engine) SetNowPlaying(title, artist, album string) {
 	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album})
@@ -776,6 +787,10 @@ func (e *Engine) handleCommand(cmd command) {
 		e.publish()
 	case cmdShowNowPlaying:
 		e.setsValue.ShowNowPlaying = cmd.value != 0
+		e.saveSettings()
+		e.publish()
+	case cmdTrayAnimation:
+		e.setsValue.TrayAnimation = cmd.value != 0
 		e.saveSettings()
 		e.publish()
 	case cmdNowPlaying:
@@ -1205,6 +1220,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,
 		ShowNowPlaying:     e.setsValue.ShowNowPlaying,
+		TrayAnimation:      e.setsValue.TrayAnimation,
 		CaptureEndpoint:    e.captureEndpoint,
 		CaptureName:        e.captureName,
 		CaptureRate:        e.captureRate,

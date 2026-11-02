@@ -38,6 +38,7 @@ type App struct {
 	tray        *mygo.Tray
 	trayMenu    *mygo.Menu
 	trayKey     trayIconKey
+	trayAnim    *trayAnimator
 	trayTip     string
 	menuKey     trayMenuKey
 	menuIcons   map[string]*mygo.MenuIcon
@@ -98,6 +99,7 @@ type App struct {
 	reconnect      bool
 	launchAtStart  bool
 	showNowPlaying bool
+	trayAnimation  bool
 	autoUpdate     bool
 	beta           bool
 	showLog        bool
@@ -148,6 +150,7 @@ func Run() error {
 	a.autoConn = cfg.AutoConnect
 	a.reconnect = cfg.Reconnect
 	a.launchAtStart = cfg.LaunchAtStart
+	a.trayAnimation = cfg.TrayAnimation
 	a.captureChoice = cfg.CaptureEndpointName
 	if a.captureChoice == "" {
 		a.captureChoice = locales.CaptureFollowSystem()
@@ -254,6 +257,7 @@ func (a *App) ready() {
 	a.autoDownload = a.cfg.AutoDownload
 	a.startUpdateChecks()
 	a.rebuildTray()
+	a.syncTrayAnimator()
 
 	if a.cfg.LaunchAtStart {
 		// Keep the system registration in step with the saved setting.
@@ -421,6 +425,10 @@ func (a *App) apply(snap engine.Snapshot) {
 	a.autoConn = snap.AutoConnect
 	a.reconnect = snap.Reconnect
 	a.showNowPlaying = snap.ShowNowPlaying
+	if a.trayAnimation != snap.TrayAnimation {
+		a.trayAnimation = snap.TrayAnimation
+		a.syncTrayAnimator()
+	}
 	a.latency = float64(snap.LatencyMS)
 	if a.latency <= 0 {
 		a.latency = 200
@@ -615,6 +623,22 @@ func (a *App) setLaunchAtStart(on bool) {
 		a.cfg.LaunchAtStart = !on
 		a.saveSettings()
 	}
+}
+
+// setTrayAnimation persists the tray animation preference and starts or
+// stops the animator at once.
+func (a *App) setTrayAnimation(on bool) {
+	a.trayAnimation = on
+	a.cfg.TrayAnimation = on
+	if a.sets != nil {
+		cfg := a.sets.Load()
+		cfg.TrayAnimation = on
+		_ = a.sets.Save(cfg)
+	}
+	if a.eng != nil {
+		a.eng.SetTrayAnimation(on)
+	}
+	a.syncTrayAnimator()
 }
 
 func (a *App) submitPin() {

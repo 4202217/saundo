@@ -818,11 +818,11 @@ func (msgs Messages) SettingsNavCapture() string {
 	return Catalog.Format(msgs.locale, "settingsNavCapture", nil)
 }
 
-// PageGeneralDesc says "Sender identity, startup, and version."
+// PageGeneralDesc says "Sender identity, startup, appearance, and version."
 // in the language the app shows.
 func PageGeneralDesc() string { return In(i18n.Locale()).PageGeneralDesc() }
 
-// PageGeneralDesc says "Sender identity, startup, and version."
+// PageGeneralDesc says "Sender identity, startup, appearance, and version."
 // in the language of msgs.
 func (msgs Messages) PageGeneralDesc() string {
 	return Catalog.Format(msgs.locale, "pageGeneralDesc", nil)
@@ -906,6 +906,26 @@ func SettingsLaunchAtStartDesc() string { return In(i18n.Locale()).SettingsLaunc
 // in the language of msgs.
 func (msgs Messages) SettingsLaunchAtStartDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLaunchAtStartDesc", nil)
+}
+
+// SettingsTrayAnimation says "Tray animation"
+// in the language the app shows.
+func SettingsTrayAnimation() string { return In(i18n.Locale()).SettingsTrayAnimation() }
+
+// SettingsTrayAnimation says "Tray animation"
+// in the language of msgs.
+func (msgs Messages) SettingsTrayAnimation() string {
+	return Catalog.Format(msgs.locale, "settingsTrayAnimation", nil)
+}
+
+// SettingsTrayAnimationDesc says "Animate the icon while connecting or streaming; off when Windows animation effects are disabled"
+// in the language the app shows.
+func SettingsTrayAnimationDesc() string { return In(i18n.Locale()).SettingsTrayAnimationDesc() }
+
+// SettingsTrayAnimationDesc says "Animate the icon while connecting or streaming; off when Windows animation effects are disabled"
+// in the language of msgs.
+func (msgs Messages) SettingsTrayAnimationDesc() string {
+	return Catalog.Format(msgs.locale, "settingsTrayAnimationDesc", nil)
 }
 
 // SettingsLanguage says "Language"

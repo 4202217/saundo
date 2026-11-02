@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-01 -->
+<!-- reviewed-through: 2026-11-02 -->
 
 # Implementation overview
 
@@ -87,7 +87,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 
 All under `%APPDATA%\saundo\`:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check).
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check) and the tray animation switch.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.
