@@ -662,6 +662,30 @@ software stereo groups built from independent receivers.
   churn while the panel is open, and the upward growth that comes with it,
   were not exercised.
 
+## Results from 2026-11-02 (new network, new Windows PC, old MacBook)
+
+Audio streamed normally. Four issues surfaced:
+
+- **Sender name.** The Chinese sender name "声渡" arrived on the old
+  MacBook as mojibake. The AP2 session SETUP encoded every binary-plist
+  string with the ASCII marker (0x5x), including UTF-8 bytes, so the
+  receiver decoded them as Latin-1. Non-ASCII strings are now encoded as
+  UTF-16BE (0x6x) and decoded fully; pinned by
+  `TestBPListNonASCIIString`.
+- **Update check.** The check returned 404 for
+  `https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json`.
+  The 0.4.0 release was still a draft, so no stable release served the
+  feed. Publish a stable release before testing updates. The 0.3.0 build
+  predates the updater; the first update path is 0.4.0 to a later release.
+- **Volume readout.** The slider's 0 to 100 value was formatted with the
+  ICU `percent` style, which multiplied it by 100. The panel showed 0% to
+  10000% and now shows 0% to 100%; pinned by the volume assertion in
+  `TestViewRendersDevicesAndStatus`.
+- **Idle drops.** Capture runs with no stream, and the undrained ring
+  counts discarded samples. The flyout now shows the dropped figure only
+  while streaming, and the engine reports zero while idle; pinned by
+  `TestCaptureMetaHidesDropsWhenIdle`.
+
 ## Failure modes and meanings
 
 | Symptom | Likely cause |

@@ -100,6 +100,14 @@ gh release edit v0.4.0 --draft=false
 Installed apps see the release after it is published. The update manifests
 are uploaded last, so an app never sees a manifest whose files are missing.
 
+## First release
+
+Before the first stable release is published, an installed build's update
+check returns 404 for `/releases/latest/download/update-<target>.json`.
+Publish the stable release to serve the feed. The 0.3.0 build predates the
+updater; the first update path runs from 0.4.0 to a later published
+version.
+
 ## Beta releases
 
 Tag a beta as `v0.5.0-beta.1` and publish its GitHub release as a
