@@ -10,12 +10,15 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/nowplaying"
 )
 
-// TestRenderPreviews writes the design's states for a visual check. Run with
-// SAUNDO_PREVIEW_DIR set; it is not part of the regular suite.
+// TestRenderPreviews writes the design's states for a visual check, in both
+// languages. Run with SAUNDO_PREVIEW_DIR set; it is not part of the regular
+// suite.
 func TestRenderPreviews(t *testing.T) {
 	dir := os.Getenv("SAUNDO_PREVIEW_DIR")
 	if dir == "" {
@@ -24,13 +27,36 @@ func TestRenderPreviews(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	for _, tc := range []struct{ locale, suffix string }{
+		{"en", "en"},
+		{"zh-CN", "zh"},
+	} {
+		// The English README uses the en images and the Chinese README the zh
+		// ones, so each language gets its own set.
+		testLocale = tc.locale
+		renderPreviews(t, dir, tc.locale, tc.suffix)
+	}
+	testLocale = "zh-CN"
+}
+
+// sampleTrack is a fictional track, so no real listening shows in a preview.
+func sampleTrack(locale string) nowplaying.Track {
+	if locale == "en" {
+		return nowplaying.Track{Title: "Night Ferry", Artist: "Signal Coast", Album: "Open Water"}
+	}
+	return nowplaying.Track{Title: "夜航", Artist: "白鲸电台", Album: "远洋信号"}
+}
+
+func renderPreviews(t *testing.T, dir, locale, suffix string) {
+	t.Helper()
 	save := func(name string, view func(*ui.Context), w, h int, dark bool) {
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
+		tt.SetLocale(locale)
 		tt.SetDark(dark)
 		tt.Advance(400 * time.Millisecond)
 		tt.Frame()
-		f, err := os.Create(filepath.Join(dir, name+".png"))
+		f, err := os.Create(filepath.Join(dir, name+"-"+suffix+".png"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,11 +70,12 @@ func TestRenderPreviews(t *testing.T) {
 	frames := func(name string, view func(*ui.Context), w, h int) {
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
+		tt.SetLocale(locale)
 		for i, step := range []time.Duration{0, 70 * time.Millisecond, 250 * time.Millisecond} {
 			if step > 0 {
 				tt.Advance(step)
 			}
-			f, err := os.Create(filepath.Join(dir, fmt.Sprintf("%s-%d.png", name, i)))
+			f, err := os.Create(filepath.Join(dir, fmt.Sprintf("%s-%s-%d.png", name, suffix, i)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,43 +85,58 @@ func TestRenderPreviews(t *testing.T) {
 			f.Close()
 		}
 	}
+	// fixture fills the device names that come from the environment rather
+	// than the catalog, so a preview reads naturally in its language.
+	fixture := func() *App {
+		a := previewApp()
+		a.nameDraft = locales.AppName()
+		a.snap.Name = locales.AppName()
+		captureName := "扬声器"
+		if locale == "en" {
+			captureName = "Speakers"
+		}
+		a.captureNames[1] = captureName
+		a.snap.CaptureName = captureName
+		return a
+	}
 
-	stream := previewApp()
+	stream := fixture()
 	stream.nowOK = true
-	stream.nowTrack.Title = "夜航"
-	stream.nowTrack.Artist = "白鲸电台"
-	stream.nowTrack.Album = "远洋信号"
+	stream.nowTrack = sampleTrack(locale)
 	stream.showNowPlaying = true
 	stream.snap.ShowNowPlaying = true
 
 	save("flyout-stream-light", stream.view, flyoutWidth, flyoutHeight, false)
 	save("flyout-stream-dark", stream.view, flyoutWidth, flyoutHeight, true)
 
-	idle := previewApp()
+	idle := fixture()
 	idle.snap.State = sender.StateIdle
 	idle.snap.ConnectedName = ""
 	idle.snap.PTPActive = false
 	save("flyout-idle", idle.view, flyoutWidth, flyoutHeight, false)
 
-	connecting := previewApp()
+	connecting := fixture()
 	connecting.snap.State = sender.StateHandshake
 	connecting.snap.ConnectedName = ""
 	save("flyout-connecting", connecting.view, flyoutWidth, flyoutHeight, false)
 
-	failed := previewApp()
+	failed := fixture()
 	failed.snap.State = sender.StateIdle
-	failed.snap.Error = "接收器没有响应。"
+	failed.snap.Error = "The receiver did not respond."
+	if locale != "en" {
+		failed.snap.Error = "接收器没有响应。"
+	}
 	failed.snap.ConnectedName = ""
 	save("flyout-error", failed.view, flyoutWidth, flyoutHeight, false)
 
-	empty := previewApp()
+	empty := fixture()
 	empty.snap.Devices = nil
 	empty.snap.State = sender.StateIdle
 	empty.snap.SelectedID = ""
 	empty.selID = ""
 	save("flyout-empty", empty.view, flyoutWidth, flyoutHeightFor(0), false)
 
-	stereo := previewApp()
+	stereo := fixture()
 	stereo.snap.Devices = nil
 	stereo.snap.SelectedID = ""
 	stereo.selID = ""
@@ -102,30 +144,30 @@ func TestRenderPreviews(t *testing.T) {
 
 	pages := []settingsPage{pageGeneral, pageConnection, pageAudio, pageCapture}
 	for _, page := range pages {
-		a := previewApp()
+		a := fixture()
 		a.page = page
 		name := []string{"settings-general", "settings-connection", "settings-audio", "settings-capture"}[page]
 		save(name+"-light", a.settingsView, 720, 500, false)
 	}
-	darkSettings := previewApp()
+	darkSettings := fixture()
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)
 
-	pin := previewApp()
+	pin := fixture()
 	pin.snap.PinRequired = true
 	pin.snap.PinDevice = "Apple TV"
 	pin.pinOpen = true
 	pin.pinCode = "3939"
 	save("dialog-pin", pin.view, flyoutWidth, flyoutHeight, false)
 
-	password := previewApp()
+	password := fixture()
 	password.snap.PasswordRequired = true
 	password.snap.PasswordDevice = "MacBook"
 	password.passwordOpen = true
 	password.passwordPrompt = "hunter2"
 	save("dialog-password", password.view, flyoutWidth, flyoutHeight, false)
 
-	log := previewApp()
+	log := fixture()
 	log.showLog = true
 	log.snap.LogLines = []string{
 		"2026-11-01 12:00:01 saundo 0.3.0",
@@ -137,19 +179,18 @@ func TestRenderPreviews(t *testing.T) {
 	}
 	save("dialog-log", log.view, flyoutWidth, flyoutHeight, false)
 
-	flyoutProbe := previewApp()
-	frames("probe-flyout-enter", flyoutProbe.view, flyoutWidth, flyoutHeight)
-	pinProbe := previewApp()
+	frames("probe-flyout-enter", fixture().view, flyoutWidth, flyoutHeight)
+	pinProbe := fixture()
 	pinProbe.snap.PinRequired = true
 	pinProbe.snap.PinDevice = "Apple TV"
 	pinProbe.pinOpen = true
 	pinProbe.pinCode = "3939"
 	frames("probe-pin-enter", pinProbe.view, flyoutWidth, flyoutHeight)
-	settingsProbe := previewApp()
+	settingsProbe := fixture()
 	settingsProbe.page = pageConnection
 	frames("probe-settings-enter", settingsProbe.settingsView, 720, 500)
 
-	mac := previewApp()
+	mac := fixture()
 	mac.snap.Devices = []device.Device{{
 		ID: "AA:BB:CC:DD:EE:09", Name: "MacBook", Model: "Mac",
 		Auth: device.AuthHAPPassword, AirPlay2: true, Online: true,
@@ -160,14 +201,15 @@ func TestRenderPreviews(t *testing.T) {
 	mac.selID = ""
 	save("flyout-mac", mac.view, flyoutWidth, flyoutHeightFor(1), false)
 
-	hover := previewApp()
+	hover := fixture()
 	tt := ui.NewTester(hover.view, flyoutWidth, flyoutHeight)
 	tt.SetScale(2)
+	tt.SetLocale(locale)
 	tt.Advance(400 * time.Millisecond)
 	tt.Frame()
 	tt.Move(200, 99)
 	tt.Frame()
-	f, err := os.Create(filepath.Join(dir, "flyout-hover.png"))
+	f, err := os.Create(filepath.Join(dir, "flyout-hover-"+suffix+".png"))
 	if err != nil {
 		t.Fatal(err)
 	}

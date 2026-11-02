@@ -10,9 +10,9 @@ English · [简体中文](README.zh-CN.md)
 ### Stream all Windows audio to AirPlay 2 receivers — from the tray, in pure Go.
 
 <p align="center">
-  <img src="docs/screenshots/flyout-stream-light.png" width="290" alt="The saundo tray flyout: receiver list, volume, Now Playing">
+  <img src="docs/screenshots/flyout-stream-light-en.png" width="290" alt="The saundo tray flyout: receiver list, volume, Now Playing">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshots/settings-connection-light.png" width="470" alt="The settings window: connection page">
+  <img src="docs/screenshots/settings-connection-light-en.png" width="470" alt="The settings window: connection page">
 </p>
 
 saundo captures whatever Windows is playing — WASAPI loopback, no per-app setup — and streams it as uncompressed ALAC over AirPlay 2 to HomePod, HomePod mini, Mac receivers, and Apple TV. One tray icon, one binary, no WebView. Free software under GPL-3.0-only.

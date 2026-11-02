@@ -10,9 +10,9 @@
 ### 把 Windows 的全部系统声音串流到 AirPlay 2 接收端——托盘应用，纯 Go。
 
 <p align="center">
-  <img src="docs/screenshots/flyout-stream-light.png" width="290" alt="声渡托盘面板：接收端列表、音量、正在播放">
+  <img src="docs/screenshots/flyout-stream-light-zh.png" width="290" alt="声渡托盘面板：接收端列表、音量、正在播放">
   &nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshots/settings-connection-light.png" width="470" alt="设置窗口：连接页">
+  <img src="docs/screenshots/settings-connection-light-zh.png" width="470" alt="设置窗口：连接页">
 </p>
 
 saundo 采集 Windows 正在播放的一切声音——WASAPI 环回，无需按应用配置——并以未压缩 ALAC 经 AirPlay 2 串流到 HomePod、HomePod mini、Mac 接收端与 Apple TV。一个托盘图标，一个二进制，无 WebView。基于 GPL-3.0-only 的自由软件。
