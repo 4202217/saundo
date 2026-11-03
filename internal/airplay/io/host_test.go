@@ -2,6 +2,7 @@ package raopio
 
 import (
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -93,6 +94,77 @@ func readFull(conn net.Conn, buf []byte) (int, error) {
 		}
 	}
 	return total, nil
+}
+
+// TestTeardownFlushIsBounded pins the flush bound: a writer blocked on a
+// receiver that never reads must give up within the drain deadline instead
+// of holding the connection open forever.
+func TestTeardownFlushIsBounded(t *testing.T) {
+	h := NewHost()
+	defer h.Close()
+	client, server := net.Pipe() // the pipe has no buffer: a write blocks until read
+	defer server.Close()
+
+	s := &tcpSlot{ch: TCPControl, host: h, gen: 1}
+	if !s.attach(client) {
+		t.Fatal("attach failed")
+	}
+	s.startWriter()
+	if err := s.send([]byte("payload")); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond) // let the writer block inside Write
+
+	s.drain() // arms the 500 ms write deadline
+	start := time.Now()
+	deadline := start.Add(3 * time.Second)
+	for s.takeWriteErr() == nil {
+		if time.Now().After(deadline) {
+			t.Fatal("writer did not give up on the stalled receiver")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("flush took %s, want the %s deadline", elapsed, drainFlushDeadline)
+	}
+	// Giving up closes the connection on the receiver side too.
+	buf := make([]byte, 16)
+	_ = server.SetReadDeadline(time.Now().Add(3 * time.Second))
+	if _, err := server.Read(buf); err == nil {
+		t.Fatal("the connection stayed open after the flush gave up")
+	}
+}
+
+// TestWriteFailureIsReportedAsSendFailed pins the reason fix: when the
+// writer fails first, the close event carries the send error instead of a
+// blank "clean close".
+func TestWriteFailureIsReportedAsSendFailed(t *testing.T) {
+	h := NewHost()
+	defer h.Close()
+	client, server := net.Pipe()
+	_ = server.Close() // the peer is gone before anything is written
+
+	s := &tcpSlot{ch: TCPControl, host: h, gen: 1}
+	if !s.attach(client) {
+		t.Fatal("attach failed")
+	}
+	s.startWriter()
+	if err := s.send([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for s.takeWriteErr() == nil {
+		if time.Now().After(deadline) {
+			t.Fatal("writer did not record the send failure")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	go s.readLoop()
+	ev := waitEvent(t, h, EventTCPClosed)
+	if !strings.Contains(ev.Err, "send failed") {
+		t.Fatalf("close reason = %q, want the send failure", ev.Err)
+	}
 }
 
 func TestUDPBindSendReceive(t *testing.T) {

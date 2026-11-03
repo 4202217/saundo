@@ -221,6 +221,7 @@ type tcpSlot struct {
 	conn     net.Conn
 	draining bool
 	aborted  bool
+	writeErr error
 }
 
 func (s *tcpSlot) initCond() {
@@ -304,6 +305,11 @@ func (s *tcpSlot) startWriter() {
 				return
 			}
 			if _, err := conn.Write(data); err != nil {
+				s.mu.Lock()
+				if s.writeErr == nil {
+					s.writeErr = err
+				}
+				s.mu.Unlock()
 				_ = conn.Close()
 				return
 			}
@@ -325,7 +331,12 @@ func (s *tcpSlot) readLoop() {
 				return
 			}
 			reason := ""
-			if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+			if werr := s.takeWriteErr(); werr != nil {
+				// The writer failed first: report its error instead of the
+				// read-side EOF it induced, so a send failure does not pose
+				// as "connection closed by the device".
+				reason = fmt.Sprintf("send failed: %v", werr)
+			} else if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
 				reason = err.Error()
 			}
 			s.host.emit(Event{Kind: EventTCPClosed, TCP: s.ch, Gen: s.gen, Err: reason})
@@ -334,9 +345,19 @@ func (s *tcpSlot) readLoop() {
 	}
 }
 
+// drainFlushDeadline bounds a teardown flush. The C++ blueprint drains for
+// at most 500 ms for the same reason: a receiver that stops reading must not
+// hold the writer, and the connection, open forever.
+const drainFlushDeadline = 500 * time.Millisecond
+
 func (s *tcpSlot) drain() {
 	s.mu.Lock()
 	s.draining = true
+	if s.conn != nil {
+		// A writer blocked in Write never rechecks draining; the deadline is
+		// what gets it out.
+		_ = s.conn.SetWriteDeadline(time.Now().Add(drainFlushDeadline))
+	}
 	if s.cond != nil {
 		s.cond.Broadcast()
 	}
@@ -346,6 +367,13 @@ func (s *tcpSlot) drain() {
 		// Connect still in flight; abort it so it does not open later.
 		s.abort()
 	}
+}
+
+// takeWriteErr returns the first write error the writer recorded, if any.
+func (s *tcpSlot) takeWriteErr() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.writeErr
 }
 
 func (s *tcpSlot) abort() {
