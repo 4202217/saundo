@@ -280,6 +280,7 @@ type Engine struct {
 	reconnectWanted  bool
 	reconnectAt      time.Time
 	reconnectNum     int
+	lastMissingLogAt time.Time
 	audioPaused      bool
 	pauseUnsupported bool
 	autoTried        bool
@@ -998,10 +999,16 @@ func (e *Engine) attemptReconnect() {
 	e.reconnectAt = time.Time{}
 	d, ok := e.find(e.selectedID)
 	if !ok {
+		// The wait is indefinite by design; the log line is not. Throttle it
+		// so a device that never returns logs once a minute, not every 5 s.
 		e.reconnectAt = e.now().Add(5 * time.Second)
-		e.logf("reconnect: device %s not discovered yet", e.selectedID)
+		if e.lastMissingLogAt.IsZero() || e.now().Sub(e.lastMissingLogAt) >= time.Minute {
+			e.lastMissingLogAt = e.now()
+			e.logf("reconnect: device %s not discovered yet", e.selectedID)
+		}
 		return
 	}
+	e.lastMissingLogAt = time.Time{}
 	e.connect(d)
 }
 

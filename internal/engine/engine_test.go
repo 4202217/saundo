@@ -344,6 +344,57 @@ func TestConnectClearsStalePINPrompt(t *testing.T) {
 	}
 }
 
+// TestReconnectWaitThrottlesLogging pins the wait-log throttle: waiting for
+// a device that never comes back logs once per minute, and finding it again
+// makes the next disappearance log right away.
+func TestReconnectWaitThrottlesLogging(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.fake.state = sender.StateIdle
+	h.e.onClosed()
+
+	// The device is gone entirely: the retry waits, logging only on entry
+	// and then once per minute.
+	h.e.selectedID = "AA:BB:CC:DD:EE:99"
+	h.advance(time.Second)
+	h.e.attemptReconnect()
+	h.advance(5 * time.Second)
+	h.e.attemptReconnect()
+	if n := countLogLines(h, "not discovered yet"); n != 1 {
+		t.Fatalf("missing-device log lines = %d, want 1", n)
+	}
+
+	// The device returns; the engine reconnects and clears the throttle.
+	h.e.selectedID = testDeviceID
+	h.e.setDevices([]device.Device{onlineDevice()})
+	h.e.attemptReconnect()
+	if h.sessions != 2 {
+		t.Fatalf("sessions = %d, want 2", h.sessions)
+	}
+
+	// A later disappearance logs immediately again.
+	h.fake.state = sender.StateIdle
+	h.e.onClosed()
+	h.e.selectedID = "AA:BB:CC:DD:EE:99"
+	h.advance(time.Second)
+	h.e.attemptReconnect()
+	if n := countLogLines(h, "not discovered yet"); n != 2 {
+		t.Fatalf("missing-device log lines after reset = %d, want 2", n)
+	}
+}
+
+func countLogLines(h *harness, substr string) int {
+	n := 0
+	for _, l := range h.e.log.Lines() {
+		if strings.Contains(l, substr) {
+			n++
+		}
+	}
+	return n
+}
+
 func TestReconnectToggleOffCancelsPending(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()
