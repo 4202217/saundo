@@ -19,6 +19,9 @@ const (
 	airplayService = "_airplay._tcp"
 )
 
+// mdnsQuery is the query entry point, swappable in tests.
+var mdnsQuery = mdns.Query
+
 // Service continuously browses both AirPlay service types.
 type Service struct {
 	mu      sync.Mutex
@@ -71,10 +74,12 @@ func (s *Service) Start() {
 	})
 }
 
-// Stop ends browsing and waits for the loops to exit.
+// Stop ends browsing. It does not join an in-flight query: mdns queries run
+// up to queryTimeout with no way to interrupt them, and joining one stalled
+// Engine.Stop — and with it the UI quit — for seconds. The run loop exits on
+// its own as soon as the in-flight query returns.
 func (s *Service) Stop() {
 	s.stopOnce.Do(func() { close(s.stop) })
-	<-s.done
 }
 
 // Snapshot returns the current devices sorted by name, each marked Online
@@ -178,7 +183,7 @@ func (s *Service) queryOnce() {
 					}
 				}
 			}()
-			_ = mdns.Query(&mdns.QueryParam{
+			_ = mdnsQuery(&mdns.QueryParam{
 				Service: service,
 				Domain:  "local.",
 				Timeout: s.queryTimeout,

@@ -3,6 +3,7 @@ package discovery
 import (
 	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -400,5 +401,35 @@ func TestMergePrefersRAOPEndpointAndAirPlayName(t *testing.T) {
 	}
 	if got[0].Name != "New Name" || got[0].Port != 7000 {
 		t.Fatalf("merged = %+v", got[0])
+	}
+}
+
+// TestStopReturnsDuringInFlightQuery pins the stop semantics: Stop must not
+// join a blocking mdns query, or quitting the app stalls on it.
+func TestStopReturnsDuringInFlightQuery(t *testing.T) {
+	block := make(chan struct{})
+	started := make(chan struct{})
+	releaseOnce := sync.OnceFunc(func() { close(block) })
+	prev := mdnsQuery
+	mdnsQuery = func(*mdns.QueryParam) error {
+		close(started)
+		<-block
+		return nil
+	}
+	defer func() { mdnsQuery = prev; releaseOnce() }()
+
+	s := New(0, 0)
+	s.Start()
+	<-started
+
+	stopped := make(chan struct{})
+	go func() {
+		s.Stop()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("Stop waited for the in-flight query")
 	}
 }

@@ -36,3 +36,16 @@ func TestRotation(t *testing.T) {
 		t.Fatal("rotated file is empty")
 	}
 }
+
+// TestPrintfAfterCloseIsNoOp pins the shutdown guard: a late logger must not
+// write a closed file or panic.
+func TestPrintfAfterCloseIsNoOp(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "saundo.log")
+	l := New(path)
+	l.Printf("before-close")
+	l.Close()
+	l.Printf("after-close") // must not panic or write
+	if n := len(l.Lines()); n != 1 {
+		t.Fatalf("lines = %d, want only the pre-close line", n)
+	}
+}

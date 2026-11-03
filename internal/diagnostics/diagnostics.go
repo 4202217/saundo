@@ -19,6 +19,7 @@ type Log struct {
 	path     string
 	maxBytes int64
 	lines    []string
+	closed   bool
 }
 
 // New opens the log at path, creating its directory. A file that cannot open
@@ -44,7 +45,8 @@ func DefaultPath() string {
 	return filepath.Join(dir, "saundo", "saundo.log")
 }
 
-// Printf appends one timestamped line.
+// Printf appends one timestamped line. After Close it is a no-op, so a
+// goroutine that logs late during shutdown cannot write a closed file.
 func (l *Log) Printf(format string, args ...any) {
 	if l == nil {
 		return
@@ -52,6 +54,9 @@ func (l *Log) Printf(format string, args ...any) {
 	line := time.Now().Format("15:04:05.000 ") + fmt.Sprintf(format, args...)
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.closed {
+		return
+	}
 	l.lines = append(l.lines, line)
 	if len(l.lines) > keepLines {
 		l.lines = l.lines[len(l.lines)-keepLines:]
@@ -95,4 +100,5 @@ func (l *Log) Close() {
 		_ = l.file.Close()
 		l.file = nil
 	}
+	l.closed = true
 }
