@@ -156,6 +156,10 @@ func (h *Host) UDPBind(ch UDPChannel) (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
+	// Retransmit and timing requests arrive in bursts; the Go default receive
+	// buffer (~64 KB on Windows) drops them sooner than needed. The C++
+	// blueprint sets 256 KB for the same reason.
+	_ = conn.SetReadBuffer(256 * 1024)
 	slot := &udpSlot{ch: ch, host: h, conn: conn, done: make(chan struct{})}
 	h.mu.Lock()
 	if h.closed {
