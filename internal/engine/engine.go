@@ -121,6 +121,10 @@ type captureStart struct {
 // sender.Sender with its net host and PTP clock; tests replace it.
 type transport interface {
 	Events() <-chan raopio.Event
+	// Dead closes when the transport is beyond saving (a stereo member
+	// died, a launch failed) and closeSession must run. Nil for transports
+	// that never signal this.
+	Dead() <-chan struct{}
 	Start(host string, port uint16, name string)
 	Stop()
 	Active() bool
@@ -156,6 +160,7 @@ type session struct {
 }
 
 func (s *session) Events() <-chan raopio.Event { return s.host.Events() }
+func (s *session) Dead() <-chan struct{}       { return nil }
 func (s *session) Start(host string, port uint16, name string) {
 	s.sender.Start(host, port, name)
 }
@@ -554,8 +559,10 @@ func (e *Engine) run() {
 	e.maybeAutoConnect()
 	for {
 		var evCh <-chan raopio.Event
+		var deadCh <-chan struct{}
 		if e.tr != nil {
 			evCh = e.tr.Events()
+			deadCh = e.tr.Dead()
 		}
 		var updates <-chan []device.Device
 		if e.discovery != nil {
@@ -586,6 +593,13 @@ func (e *Engine) run() {
 			if e.tr != nil {
 				e.tr.HandleEvent(ev)
 			}
+		case <-deadCh:
+			timer.Stop()
+			// The transport signaled it is beyond saving. closeSession does
+			// the teardown here, on the engine goroutine, outside
+			// HandleEvent — the sender's single-goroutine contract holds and
+			// the stop cannot re-enter a sender callback.
+			e.closeSession()
 		case devs := <-updates:
 			timer.Stop()
 			e.setDevices(devs)

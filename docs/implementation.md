@@ -21,7 +21,11 @@ through bounded channels:
 - **The engine goroutine** (`internal/engine`, `Engine.run`) is the only
   caller of sender methods. It drains the command channel, runs the timers
   (reconnect backoff, silence suspend, capture restart), and publishes a
-  `Snapshot` on every state change.
+  `Snapshot` on every state change. A stereo group whose member dies
+  signals the loop through the transport's `Dead` channel, and the loop
+  runs `closeSession` itself, so the group teardown also happens on this
+  goroutine — never inside a sender callback and never on another
+  goroutine.
 - **The sender event loop** (`internal/airplay/sender`) owns all protocol
   sockets and timers. It is sans-i/o: `internal/airplay/io` (package
   `raopio`) defines the six-method `IO` seam (TCP connect/send/close, UDP

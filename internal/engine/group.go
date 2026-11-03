@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -22,9 +21,11 @@ type groupTransport struct {
 	rings   []*ring.Buffer
 	master  *ptp.Master
 
-	events chan raopio.Event
-	stopCh chan struct{}
-	once   sync.Once
+	events   chan raopio.Event
+	stopCh   chan struct{}
+	once     sync.Once
+	dead     chan struct{}
+	deadOnce sync.Once
 
 	onLaunched    func(ok bool, err string)
 	onClosed      func()
@@ -58,7 +59,9 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 	for _, m := range d.Members {
 		hosts = append(hosts, m.Host)
 	}
-	usePTP := d.Features&ptpFeatureBit != 0 && strings.HasPrefix(d.Model, "AudioAccessory")
+	// One predicate for both routes: a group routes PTP exactly when a single
+	// device would (HAP + feature bit 41 + AudioAccessory/Mac model).
+	usePTP := usesPTP(d)
 	var master *ptp.Master
 	if usePTP {
 		m, err := ptp.NewMaster(hosts)
@@ -72,6 +75,7 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		master:        master,
 		events:        make(chan raopio.Event, 512),
 		stopCh:        make(chan struct{}),
+		dead:          make(chan struct{}),
 		onLaunched:    e.onLaunched,
 		onClosed:      e.onClosed,
 		onPinRequired: e.onPinRequired,
@@ -155,6 +159,16 @@ func (g *groupTransport) forward(m *groupMember) {
 
 func (g *groupTransport) Events() <-chan raopio.Event { return g.events }
 func (g *groupTransport) Rings() []*ring.Buffer       { return g.rings }
+
+// Dead closes when a member died or a launch failed. The engine selects on
+// it and runs closeSession on the engine goroutine: the stop must not happen
+// inside a sender callback (HandleEvent re-entrancy) nor on another
+// goroutine (the sender methods are single-goroutine).
+func (g *groupTransport) Dead() <-chan struct{} { return g.dead }
+
+func (g *groupTransport) signalDead() {
+	g.deadOnce.Do(func() { close(g.dead) })
+}
 
 func (g *groupTransport) Start(string, uint16, string) {
 	if g.master != nil {
@@ -353,7 +367,7 @@ func (g *groupTransport) memberLaunched(idx int, ok bool, err string) {
 		if g.onLaunched != nil {
 			g.onLaunched(false, fmt.Sprintf("%s：%s", g.members[idx].device.Name, err))
 		}
-		go g.Stop()
+		g.signalDead()
 		return
 	}
 	launched := true
@@ -379,7 +393,7 @@ func (g *groupTransport) memberClosed(idx int) {
 	if g.onClosed != nil {
 		g.onClosed()
 	}
-	go g.Stop()
+	g.signalDead()
 }
 
 func (g *groupTransport) memberStateChanged(int, sender.State) { g.stateChanged() }
