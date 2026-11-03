@@ -1,11 +1,19 @@
-<!-- reviewed-through: 2026-11-03 -->
+<!-- reviewed-through: 2026-11-04 -->
 
 # Verification
 
 This document is the acceptance path for saundo. The automated suite covers
 the crypto core and the full sender handshake against an in-process fake
-receiver. Real-device behavior is verified with the steps below. Results
-append in dated sections; nothing below is rewritten.
+receiver. Real-device behavior is verified with the steps below.
+
+Dated results append below and are never rewritten. They are compressed,
+never deleted, once every claim in a dated section has a durable home: a
+named test pins it, devices.md or protocol.md records it, the code that owns
+the behavior documents it, or a later dated entry supersedes it. The release
+audit moves whatever qualifies to the Graduated section at the end of this
+file — one entry per batch: date, surviving conclusion, pin. When the file
+passes roughly 800 lines, compress at the next opportunity without waiting
+for a release.
 
 ## Currently pending
 
@@ -190,117 +198,6 @@ DPAPI. They are keyed by the receiver's `deviceid`.
 - 启动时自动连接上次设备 reconnects the last device when discovery finds it.
 - Settings are stored in `%APPDATA%\saundo\settings.json`.
 
-## Results from 2026-10-31
-
-On a LAN with two HomePods on software 27.2 (model `AudioAccessory5,1`):
-
-- mDNS found both HomePods and merged their `_raop` and `_airplay`
-  advertisements into one device each, with the friendly names `HomePod L` and
-  `HomePod R`.
-- HAP transient pairing, the encrypted control channel, session SETUP, the
-  event channel, RECORD, and stream SETUP all succeeded against HomePod L.
-- HomePod software 27 required PTP. With `timingProtocol: NTP` it accepted SETUP
-  and RECORD but silently ignored the stream SETUP. With `timingProtocol: PTP`,
-  `timingPeerInfo`/`timingPeerList`, and SETPEERS, it accepted the stream and
-  began streaming.
-- The PTP follower synchronized to the HomePod's own grandmaster: about 8
-  Sync/Follow_Up exchanges per second, a stable offset within roughly 1 ms, and
-  delay responses with a 4 to 11 ms round trip. The HomePod's PTP clock is
-  boot-relative, not Unix epoch; only the offset matters.
-- A 35-second muted session kept the event channel alive, answered feedback
-  every two seconds, and sent 1,543,520 frames of ALAC silence without a drop.
-- A four-second 440 Hz tone at 50% volume was then sent to HomePod L. The
-  session stayed in streaming, and the receiver's volume was restored to its
-  initial 10% (`initialVolume: -27` dBFS) before TEARDOWN.
-
-The application itself was then exercised through its real window and tray:
-
-- With `autoConnect` enabled in `%APPDATA%\saundo\settings.json`, the app
-  discovered HomePod L, created the PTP follower, opened WASAPI loopback at
-  48 kHz, paired with HAP transient, and reached `正在播放到 HomePod L` with
-  `ALAC · 44.1 kHz · 立体声 · PTP · 已同步`. The log showed the stream SETUP,
-  feedback every two seconds, and no drop for more than six minutes.
-- The window's 断开 button stopped the session (`state: idle`,
-  `session stopped`). The 连接 button re-paired and streamed again.
-- Moving the volume slider sent `SET_PARAMETER volume` and the HomePod answered
-  200. The slider was returned to the receiver's original 10%.
-- Closing the window hid it and left the process running. The tray icon was
-  found in the Windows hidden-icons overflow with the tooltip
-  `saundo · 正在播放到 HomePod L`, and clicking it restored the window.
-- A second run exercised the complete system-audio path. With the app streaming
-  to HomePod L, the app volume was set to 50% through the slider and the HomePod
-  acknowledged the change. The PC output was unmuted at 69%, a four-second
-  440 Hz WAV was played through the default device, and the app captured it with
-  WASAPI loopback, resampled it, encoded ALAC, and sent it over the PTP session.
-  The session stayed live. The PC output was muted again and the app volume was
-  returned to about 10%. The user confirmed hearing the four-second tone on
-  HomePod L.
-
-The Windows Firewall prompt appeared on launch. The session worked because the
-PTP and mDNS traffic was solicited, but approving the app on the private network
-is recommended so unsolicited event and timing traffic is never blocked.
-
-Not verified on hardware: Apple TV on-screen PIN pairing and stored-credential
-reconnect, macOS receivers, and a real default-device change during playback.
-Audible output is confirmed by the user.
-
-## Batch results (2026-10-31, second pass)
-
-Each item below shipped with the test that pins it. `make check` (gofmt gate,
-`go vet`, `go test ./...`) is green after the batch unless noted.
-
-- **Auto-reconnect.** The engine retries a dropped or failed session with a
-  1s/2s/5s/10s/15s backoff, capped at five attempts, then surfaces
-  自动重连 5 次后停止. A user-initiated disconnect never schedules a retry,
-  and toggling 断开后自动重连 off cancels a pending retry. Pinned by five
-  engine unit tests (`internal/engine/engine_test.go`). A hardware drop was
-  not reproduced, so the live path is covered by the unit tests only.
-- **Per-device volume and receiver-volume adoption.** A remembered device
-  reconnects at its stored volume; a first connection adopts the receiver's
-  own volume from `initialVolume` instead of forcing 0 dB. Pinned by the
-  sender test `TestInitialVolumeAdoptedWhenUserDidNotSetOne` and three engine
-  tests.
-- **Asynchronous capture restart.** Switching capture endpoints no longer
-  blocks the event loop on WASAPI initialization; a queued restart supersedes
-  the in-flight one. Pinned by `TestAsyncCaptureStartDoesNotBlock`, and a
-  mid-session capture-rate change updates the sender and resets the ring
-  without touching the session (`TestCaptureRateChangeMidSession`). A real
-  default-device switch during playback is still on the manual list.
-- **Device online status and AirPlay groups.** Discovery marks a device
-  offline after three missed query cycles, prunes it after 90 seconds, parses
-  `gpn`/`gcgl`/`igl`, and merges group fields across the two services. The UI
-  shows 离线 and the group name. Pinned by three discovery tests.
-- **Log rotation and copy.** The log rotates at 5 MB to `saundo.log.1`;
-  复制日志 puts the visible log on the clipboard (verified live: the
-  clipboard contained the `saundo dev` line). Rotation pinned by
-  `TestRotation`.
-- **Single instance.** `mygo.App.RequestSingleInstanceLock` runs first; a
-  second launch hands over and exits 0, leaving one process (verified live).
-- **Autostart toggle.** 开机自动启动 writes and removes the
-  `HKCU\...\Run` value `saundo = "...saundo.exe" --mygo-opened-at-login`
-  through `mygo.App.SetOpenAtLogin` (verified live, both directions).
-- **Now Playing send path.** `SetNowPlaying` rides as DMAP
-  `application/x-dmap-tagged` with `minm`/`asal`/`asar` tags; pinned by
-  `TestNowPlayingRidesAsDMAP`. The Windows SMTC source landed in the third
-  pass; see the Now Playing display section below.
-- **Legacy Apple TV receivers.** A Xiaomi TV advertising `AppleTV3,2`
-  accepts `pair-pin-start` (200) but rejects pair-setup M1 with HTTP 400:
-  pre-HomeKit legacy pairing. Later live testing showed its audio requires
-  FairPlay, so discovery maps `AppleTV3,x` to `AuthLegacyPin` and the sender
-  fails fast with a FairPlay message. Pinned by
-  `TestLegacyAppleTVFailsFastForFairPlay` and
-  `TestRedmiFairPlayReceiverAndNameDecoding`.
-- **30-minute soak.** `TestLiveSoak` streamed silence to HomePod L for exactly
-  30 minutes: 79,380,224 frames — precisely 44100 × 1800, one packet pace the
-  whole way — with zero ring drops, the PTP clock ready throughout, feedback
-  answered every 2 seconds, and no session drop.
-- **Cold start after a long session.** Immediately after the 30-minute soak,
-  a fresh session needed more than the 10-second handshake window to
-  re-establish PTP twice in a row, so the handshake deadline now extends to
-  30 seconds while waiting for the clock (pinned by
-  `TestPTPWaitToleratesSlowClock`). With that window, the measured cold start
-  to streaming was 10.81 s (`TestLiveColdStartTiming`, acceptance < 15 s).
-
 ## PTP and Windows Firewall
 
 HomePod software 27 uses PTP over UDP ports 319 (event) and 320 (general).
@@ -369,57 +266,6 @@ blocked; the UI reports a PTP timeout with this hint.
   `Tray.OnAppearanceChange`. It does not encode connection status; the tooltip
   and tray menu carry that. `TestTrayIconMonochrome` pins the 32 px size and
   the black or white ink. The exe's static icon is the light Signal tile.
-
-## Build fix (2026-10-31)
-
-- **Blank terminal beside the app.** `make build` omitted `-H windowsgui`, so
-  `bin/saundo.exe` linked as a console-subsystem PE (subsystem 3) and
-  Windows allocated an empty console window on every double-click. The build
-  now links `-H windowsgui` and the binary reports subsystem 2 (verified by
-  reading the PE optional header). `TestBuildTargetProducesGUIBinary` fails if
-  the flag is removed from the Makefile.
-- **Embedded icon path.** mygo resolves the default `resources/icon.png`
-  against `cmd/saundo`, where no resources directory exists, so the exe
-  carried Windows' generic application icon. The earlier PowerShell check
-  printed `ICON OK` for that generic icon, which only proved a non-null icon
-  was returned. `mygo.json` now names `../../resources/icon.png`; extracting
-  the icon from `cmd/saundo/build/windows-amd64/saundo.exe` shows the
-  new 32 px mark. `TestMyGoIconPathExists` fails when the path is missing or
-  is not a square PNG.
-- **Bin build carries the icon.** `make build` used a plain `go build`, so
-  `bin/saundo.exe` had no Windows icon resource and no mygo manifest. It
-  now runs `mygo build -platform windows/amd64` with `MYGO_LDFLAGS` carrying
-  the version, then copies the result to `bin/saundo.exe`.
-  `TestBuildTargetProducesGUIBinary` fails if the target stops using mygo.
-
-## Bug fixes (2026-10-31, fourth pass)
-
-- **Connected device display.** The engine's `selectedID` was initialized from
-  `lastDeviceId` and `connect` never updated it. The snapshot's selected ID,
-  the connected name, the UI 已连接 badge, the remembered volume, and the
-  reconnect target therefore stayed on the old device. A live run at 13:59
-  connected HomePod R: the sender logged `streaming to "HomePod R"` while the
-  window showed `正在播放到 HomePod L` and the HomePod L row carried 已连接.
-  `connect` now selects the device being connected, and `lastDeviceId` is
-  persisted after the session first reaches streaming, so a failed attempt
-  never becomes the next auto-connect target. Pinned by
-  `TestConnectSelectsTheDeviceBeingConnected` and
-  `TestFailedLaunchDoesNotReplaceLastDevice`. The same window then showed
-  正在播放到 HomePod R and `settings.json` stored HomePod R's ID.
-- **Sticky capture error.** WASAPI loopback sets `DATA_DISCONTINUITY` when the
-  render stream pauses or the device is reconfigured, and the flag can arrive
-  spuriously (miniaudio documents the same behavior). Capture reported it as
-  an error, and the engine never cleared `captureError`, so 采集错误 stayed on
-  screen until restart. On the pre-fix build a normal 400 ms tone produced
-  20,160 frames and one discontinuity error, and the window kept showing
-  `采集错误：capture: audio discontinuity on the capture stream`. Capture now
-  ignores the flag, and a successful capture notification clears any stale
-  error. Pinned by the new zero-error assertion in
-  `TestLoopbackReceivesSamples` (it failed with one error before the fix) and
-  by `TestCaptureErrorClearsWhenCaptureRecovers`. After the fix the same live
-  tone left the status at `采集：PHL 27E2F7901 ... · 48000 Hz` with no error.
-- `gofmt -l .` and `go vet ./...` printed nothing; `go test ./...` passed every
-  package.
 
 ## Stereo groups (2026-10-31, fifth pass)
 
@@ -767,6 +613,37 @@ Audio streamed normally. Four issues surfaced:
   reconnect. The mode values are reference-backed; the 200 ms default is the
   value the receiver has been used with.
 
+## Receiver migration and launch auto-connect (2026-11-04)
+
+Built `bin/saundo.exe` from this tree and relaunched it twice on the
+development PC with a real HomePod stereo pair on the LAN.
+
+- **Migration ran in `Run()`.** The first launch of the new build logged
+  `receiver migration: 0 passwords moved, 0 kept (DPAPI unavailable),
+  auto-connect seeded=true`. The legacy `settings.json` carried
+  `autoConnect=true` and a `lastDeviceId` naming the stereo pair; the
+  migration put that flag on the pair's `stereo:<tsid>` registry entry,
+  cleared the legacy flag, and wrote `receivers.json`.
+- **The registry drove the next launch.** On the second launch
+  `settings.json` had `autoConnect=false`, and the engine still
+  auto-connected the same pair from its registry entry. No user action
+  preceded either connection.
+- **Discovered target waited for presence.** The pair appeared in discovery
+  about four seconds after launch; the engine then opened both member
+  sessions. Both SETPEERS replies were 200, the sender-supplied PTP clock
+  synchronized, and both members reached encrypted RTP streaming at
+  44100 Hz (`state: streaming`, `stereo group "HomePods": streaming to 2
+  members`). The group row and its PTP session behaved as on the last
+  verified build.
+- **Evidence.** `%APPDATA%\saundo\saundo.log`, the 2026-11-04 01:31 and
+  01:36 startup blocks; `receivers.json` after the first launch.
+- **Not verified live.** Manual add/edit/remove, hide/show filtering, the
+  per-receiver delay restart, receiver-password save and clear, and a manual
+  receiver with no mDNS advertisement. Those paths are pinned by the
+  `internal/receivers`, `internal/engine`, and `internal/app` tests, and
+  their states render in the `settings-receivers-*` and
+  `dialog-receiver-*` previews.
+
 ## Failure modes and meanings
 
 | Symptom | Likely cause |
@@ -793,3 +670,45 @@ When behavior differs from this document, capture:
 Then update [devices.md](devices.md) or [protocol.md](protocol.md) with the
 finding — whichever describes the behavior — before changing the
 protocol order or keys.
+
+## Graduated
+
+Dated batches compressed under the rule at the top of this file: every claim
+has a durable home — a named test, devices.md or protocol.md, the code that
+owns the behavior, or a later dated entry. Each entry keeps the date, the
+surviving conclusion, and the pin.
+
+- 2026-10-31, first device run: HomePod 27.2 (`AudioAccessory5,1`) accepts
+  the stream only with `timingProtocol: PTP`, `timingPeerInfo`/`timingPeerList`,
+  and SETPEERS — an NTP-timed stream is silently ignored; the rule lives in
+  protocol.md and devices.md. The PTP follower held roughly 1 ms offset
+  (boot-relative clock; only the offset matters). A muted 35-second session
+  and a 440 Hz tone streamed clean, and the user confirmed hearing the tone.
+  The real-window run (autoConnect to streaming, 断开/连接, volume 200s, tray
+  restore from the hidden-icons overflow) was re-proven in the tray flyout
+  section below.
+- 2026-10-31, second batch — each claim pinned by its test: auto-reconnect
+  backoff 1s/2s/5s/10s/15s, five attempts (engine tests); remembered volume
+  and `initialVolume` adoption (`TestInitialVolumeAdoptedWhenUserDidNotSetOne`);
+  async capture restart (`TestAsyncCaptureStartDoesNotBlock`,
+  `TestCaptureRateChangeMidSession`); offline marking and `gpn`/`gcgl`/`igl`
+  group fields (three discovery tests); log rotation (`TestRotation`);
+  single-instance handover and the autostart registry toggle (live, both
+  directions); Now Playing as DMAP (`TestNowPlayingRidesAsDMAP`); FairPlay
+  fail-fast for `AppleTV3,x` (`TestLegacyAppleTVFailsFastForFairPlay`,
+  `TestRedmiFairPlayReceiverAndNameDecoding`). The 30-minute soak
+  (`TestLiveSoak`) sent exactly 79,380,224 frames — 44100 × 1800 — with zero
+  ring drops; the handshake deadline extended to 30 s for a slow PTP clock
+  (`TestPTPWaitToleratesSlowClock`), cold start 10.81 s
+  (`TestLiveColdStartTiming`, acceptance < 15 s).
+- 2026-10-31, build fixes: `-H windowsgui` links subsystem 2
+  (`TestBuildTargetProducesGUIBinary`); the icon lives at
+  `../../resources/icon.png` (`TestMyGoIconPathExists`); `bin/saundo.exe`
+  comes from `mygo build` (same pin).
+- 2026-10-31, fourth pass: connect selects the device being connected, and
+  `lastDeviceId` persists only after streaming
+  (`TestConnectSelectsTheDeviceBeingConnected`,
+  `TestFailedLaunchDoesNotReplaceLastDevice`); capture ignores
+  `DATA_DISCONTINUITY` and a successful capture clears a stale error
+  (zero-error assertion in `TestLoopbackReceivesSamples`,
+  `TestCaptureErrorClearsWhenCaptureRecovers`).

@@ -35,7 +35,7 @@ Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release co
 
 - `README.md` and `README.zh-CN.md`: feature list, screenshots, install, and update surface. The update surface is the settings Updates page and its notes dialog. There is no standalone update window.
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
-- `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list.
+- `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
 - `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
