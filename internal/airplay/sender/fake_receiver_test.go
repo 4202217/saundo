@@ -246,6 +246,11 @@ type fakeReceiver struct {
 	verifyKey     []byte
 	lastClientPub []byte
 
+	// rejectVerifyWithTLV makes the next pair-verify M2 fail with this TLV
+	// error code — a receiver that forgot the pairing. One-shot: after the
+	// sender re-pairs, the receiver accepts it.
+	rejectVerifyWithTLV byte
+
 	eventReadKey  []byte
 	eventWriteKey []byte
 	eventReadCtr  uint64
@@ -559,6 +564,15 @@ func (f *fakeReceiver) pairVerify(req request) {
 	state, _ := crypto.GetTLV(items, crypto.TLVState)
 	switch {
 	case len(state) == 1 && state[0] == 1:
+		if f.rejectVerifyWithTLV != 0 {
+			code := f.rejectVerifyWithTLV
+			f.rejectVerifyWithTLV = 0
+			f.reply(req, 200, "application/octet-stream", crypto.EncodeTLV([]crypto.TLV{
+				{Type: crypto.TLVState, Value: []byte{2}},
+				{Type: crypto.TLVError, Value: []byte{code}},
+			}))
+			return
+		}
 		clientPub, _ := crypto.GetTLV(items, crypto.TLVPublicKey)
 		f.lastClientPub = append([]byte(nil), clientPub...)
 		f.verifyPub, f.verifyPriv, _ = crypto.X25519Generate()

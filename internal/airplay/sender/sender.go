@@ -321,18 +321,19 @@ type Sender struct {
 	groupUUID   string
 	timingPeers []string
 
-	authMethod             device.Auth
-	airplay2               bool
-	deviceID               string
-	credsJSON              string
-	digestPassword         string
-	pairStage              pairStage
-	waitingForPin          bool
-	triedTransientOnPin403 bool
-	srpSalt                []byte
-	srpServerB             []byte
-	pairSetupSessionKey    []byte
-	ap2                    *ap2State
+	authMethod                   device.Auth
+	airplay2                     bool
+	deviceID                     string
+	credsJSON                    string
+	digestPassword               string
+	pairStage                    pairStage
+	waitingForPin                bool
+	triedTransientOnPin403       bool
+	triedRepairOnVerifyAuthError bool
+	srpSalt                      []byte
+	srpServerB                   []byte
+	pairSetupSessionKey          []byte
+	ap2                          *ap2State
 
 	digestRealm       string
 	digestNonce       string
@@ -540,6 +541,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.volQuery = false
 	s.receiverVol = -1
 	s.triedTransientOnPin403 = false
+	s.triedRepairOnVerifyAuthError = false
 	s.srpSalt = s.srpSalt[:0]
 	s.srpServerB = s.srpServerB[:0]
 	s.pairSetupSessionKey = nil

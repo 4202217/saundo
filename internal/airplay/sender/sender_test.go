@@ -244,6 +244,52 @@ func TestAP2PinPairsAndReconnectsWithCredentials(t *testing.T) {
 	requireAudioMatches(t, r2, src2)
 }
 
+// TestAP2VerifyRejectionRepairsWithFreshPairing pins the dead-end fix: a
+// receiver that forgot the pairing rejects the resumed pair-verify, and the
+// sender must pair afresh on the same connection instead of failing the
+// session and retrying identical credentials forever.
+func TestAP2VerifyRejectionRepairsWithFreshPairing(t *testing.T) {
+	r := newRig(t, modePIN, device.AuthHAPPIN, true, nil)
+	r.start()
+	r.sender.SubmitPin("1234")
+	r.step()
+	r.sender.Tick()
+	requireLaunched(t, r)
+	if len(r.creds) != 1 {
+		t.Fatalf("credentials obtained = %d", len(r.creds))
+	}
+	stored := &storedPairing{
+		clientID:      r.rx.clientID,
+		clientLTPK:    r.rx.clientLTPK,
+		accessoryID:   r.rx.accessoryID,
+		accessoryLTPK: r.rx.accessoryLTPK,
+		accessorySeed: r.rx.accessorySeed,
+	}
+
+	// The receiver forgot the pairing: the resumed pair-verify is rejected.
+	r2 := newRig(t, modeVerify, device.AuthHAPPIN, true, stored)
+	r2.sender.SetAuth(device.AuthHAPPIN, true, "AA:BB:CC:DD:EE:FF", r.creds[0], "")
+	r2.rx.rejectVerifyWithTLV = 6
+	r2.start()
+	if len(r2.pins) != 1 {
+		t.Fatalf("repair did not re-enter PIN pairing, pins = %v", r2.pins)
+	}
+	r2.sender.SubmitPin("1234")
+	r2.step()
+	r2.sender.Tick()
+	requireLaunched(t, r2)
+	if r2.rx.requests["POST /pair-setup"] != 3 {
+		// M1 + M3 + M5: one complete fresh pairing on the same connection.
+		t.Fatalf("repair pair-setup requests = %d, want 3", r2.rx.requests["POST /pair-setup"])
+	}
+	if r2.rx.requests["POST /pair-verify"] < 2 {
+		t.Fatalf("pair-verify requests = %d, want the rejected one plus the repair", r2.rx.requests["POST /pair-verify"])
+	}
+	if len(r2.creds) != 1 {
+		t.Fatalf("credentials after repair = %d, want fresh ones", len(r2.creds))
+	}
+}
+
 func TestAP1SessionSendsRawPCM(t *testing.T) {
 	r := newRig(t, modeAP1, device.AuthNone, false, nil)
 	rb, src := fillRing(44100)

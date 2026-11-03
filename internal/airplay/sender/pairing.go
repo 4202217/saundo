@@ -430,6 +430,24 @@ func (s *Sender) handlePairVerifyM2(body []byte) {
 		return
 	}
 	if code, ok := tlvError(items); ok {
+		if !s.triedRepairOnVerifyAuthError && s.credsJSON != "" {
+			// The receiver no longer knows this pairing — it was reset or
+			// unpaired on its side. Drop the stored credentials and pair
+			// afresh on the same connection, mirroring the 470/403
+			// cross-fallbacks. Retrying the stored pairing would fail
+			// identically until the user hand-deleted credentials.dat.
+			s.info("%q rejected the stored pairing (pair-verify error %d), pairing afresh", s.name, code)
+			s.triedRepairOnVerifyAuthError = true
+			s.credsJSON = ""
+			s.ap2 = &ap2State{sessionUUID: upperASCII(uuidV4Lower())}
+			s.pairSetupSessionKey = nil
+			if s.authMethod == device.AuthHAPPIN {
+				s.sendPairPinStart()
+			} else {
+				s.sendPairSetupM1()
+			}
+			return
+		}
 		s.fail(fmtError("Pair-verify rejected (error %d)", code))
 		return
 	}
