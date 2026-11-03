@@ -324,6 +324,24 @@ func TestUserDisconnectDoesNotReconnect(t *testing.T) {
 	}
 }
 
+// TestConnectClearsStalePINPrompt pins the stale-PIN fix: connecting again
+// while a pairing waits for a code must close the dialog instead of leaving
+// it on screen for a session that no longer exists.
+func TestConnectClearsStalePINPrompt(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.e.onPinRequired("客厅 HomePod")
+	if !h.e.Snapshot().PinRequired {
+		t.Fatal("precondition: PIN prompt not raised")
+	}
+	h.connect()
+	snap := h.e.Snapshot()
+	if snap.PinRequired || snap.PinDevice != "" {
+		t.Fatalf("stale PIN prompt survived: required=%v device=%q", snap.PinRequired, snap.PinDevice)
+	}
+}
+
 func TestReconnectToggleOffCancelsPending(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

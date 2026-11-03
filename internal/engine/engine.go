@@ -863,6 +863,10 @@ func (e *Engine) handleCommand(cmd command) {
 // connect starts a session with d. It keeps reconnectPending: only a
 // successful launch or a user disconnect clears it.
 func (e *Engine) connect(d device.Device) {
+	// A new connect supersedes the previous session's PIN dialog; a pairing
+	// that needs a code raises PinRequired again on its own.
+	e.pinRequired = false
+	e.pinDevice = ""
 	if d.IsStereoGroup() && (!d.Online || len(d.Members) != 2) {
 		e.lastError = "立体声组需要两台成员都在线"
 		e.publish()
