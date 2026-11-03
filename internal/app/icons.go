@@ -48,15 +48,15 @@ func iconSVG(source string) *ui.SVG {
 	return ui.MustParseSVG([]byte(source))
 }
 
-// faceFor returns the state face of a stream phase. At rest it is the
-// app's plain smile, the default mark.
-func faceFor(p phase) *ui.SVG {
-	switch p {
-	case phaseStreaming:
+// faceIcon returns the state face named by the tray's face string. The
+// resting smile is the app's plain mark.
+func faceIcon(face string) *ui.SVG {
+	switch face {
+	case "stream":
 		return faceStream
-	case phaseConnecting:
+	case "connect":
 		return faceConnect
-	case phaseError:
+	case "error":
 		return faceError
 	default:
 		return iconMark

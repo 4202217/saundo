@@ -549,6 +549,26 @@ func TestTrayAnimationSettingPersists(t *testing.T) {
 	}
 }
 
+func TestFlyoutFooterFaceFollowsTray(t *testing.T) {
+	snap := engine.Snapshot{State: sender.StateStreaming}
+	if got := footerFace(snap); got != faceStream {
+		t.Fatal("streaming footer face is not the stream face")
+	}
+	snap.AudioIdle = true
+	if got := footerFace(snap); got != iconMark {
+		t.Fatal("audio-idle footer face is not the smile")
+	}
+	snap.State = sender.StateConnecting
+	if got := footerFace(snap); got != faceConnect {
+		t.Fatal("connecting footer face is not the connect face")
+	}
+	snap.State = sender.StateIdle
+	snap.Error = "boom"
+	if got := footerFace(snap); got != faceError {
+		t.Fatal("failed footer face is not the error face")
+	}
+}
+
 func TestTrayIconFollowsPhase(t *testing.T) {
 	a := previewApp()
 	if got := a.face(); got != "stream" {

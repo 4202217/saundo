@@ -333,7 +333,7 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 	ph := phaseOf(a.snap)
 	color := phaseColor(ph, p)
 	ui.Row(c).Height(34).Padding(4, 12, 6, 14).Gap(6).Children(func() {
-		ui.Icon(c, faceFor(ph)).Size(16, 16).TextColor(color)
+		ui.Icon(c, footerFace(a.snap)).Size(16, 16).TextColor(color)
 		ui.Text(c, a.phaseLabel()).FontSize(11.5).TextColor(color).Grow(1).SingleLine().Ellipsis("…")
 		if a.updateChipVisible() {
 			chip := ui.ButtonBase(c).Height(22).Radius(11).Padding(0, 9).Center().Shrink(0).
@@ -363,6 +363,11 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 			ui.Text(c, locales.LogTitle()).FontSize(12).TextColor(p.ctl).SingleLine()
 		})
 	})
+}
+
+// footerFace picks the flyout footer's state face, which follows the tray.
+func footerFace(s engine.Snapshot) *ui.SVG {
+	return faceIcon(faceOf(s))
 }
 
 func (a *App) syncText() string {

@@ -46,10 +46,14 @@ func phaseColor(p phase, pal palette) ui.Color {
 
 // face is the tray's state face; at rest, or connected with no audible audio,
 // it is the plain smile.
-func (a *App) face() string {
-	switch phaseOf(a.snap) {
+func (a *App) face() string { return faceOf(a.snap) }
+
+// faceOf is the state face for a snapshot. At rest, or connected with no
+// audible audio, it is the plain smile.
+func faceOf(s engine.Snapshot) string {
+	switch phaseOf(s) {
 	case phaseStreaming:
-		if a.snap.AudioIdle {
+		if s.AudioIdle {
 			return "smile"
 		}
 		return "stream"
