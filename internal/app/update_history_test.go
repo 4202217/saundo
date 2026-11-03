@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+func TestChangelogURLLocale(t *testing.T) {
+	cases := map[string]string{
+		"":        updateChangelog,
+		"en":      updateChangelog,
+		"zh-CN":   updateChangelogZH,
+		"zh-Hant": updateChangelogZH,
+	}
+	for locale, want := range cases {
+		if got := changelogURL(locale); got != want {
+			t.Errorf("changelogURL(%q) = %q, want %q", locale, got, want)
+		}
+	}
+}
+
 func TestParseChangelog(t *testing.T) {
 	text := "# Changelog\n\nAll notable changes.\n\n" +
 		"## 0.4.2 - 2026-11-08\n\n### Changed\n\n- b\n\n" +

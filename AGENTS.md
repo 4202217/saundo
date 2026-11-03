@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Operating guide for coding agents working in this repository. Read this file before changing code. All project documentation is written in English; README.zh-CN.md is the Chinese counterpart of README.md and is kept in sync with it.
+Operating guide for coding agents working in this repository. Read this file before changing code. All project documentation is written in English; README.zh-CN.md and CHANGELOG.zh-CN.md are the Chinese counterparts of README.md and CHANGELOG.md, kept in sync with them.
 
 ## Project
 

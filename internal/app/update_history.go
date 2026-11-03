@@ -11,17 +11,27 @@ import (
 
 	"golang.org/x/mod/semver"
 
+	"github.com/egoist/mygo"
+
 	"saundo/cmd/saundo/locales"
 )
 
 // The repository the updater is built with (updates.github in mygo.json).
-// The notes dialog reads the changelog for the versions between the running
-// build and the offered one; the signed manifest stays the source for the
-// newest notes.
+// The notes dialog reads the localized changelog for the versions between
+// the running build and the offered one; the signed manifest stays the
+// source for the newest notes.
 const (
-	updateRepo      = "4202217/saundo"
-	updateChangelog = "https://raw.githubusercontent.com/" + updateRepo + "/main/CHANGELOG.md"
+	updateRepo        = "4202217/saundo"
+	updateChangelog   = "https://raw.githubusercontent.com/" + updateRepo + "/main/CHANGELOG.md"
+	updateChangelogZH = "https://raw.githubusercontent.com/" + updateRepo + "/main/CHANGELOG.zh-CN.md"
 )
+
+func changelogURL(locale string) string {
+	if strings.HasPrefix(strings.ToLower(locale), "zh") {
+		return updateChangelogZH
+	}
+	return updateChangelog
+}
 
 // releaseNote is one version's release notes.
 type releaseNote struct {
@@ -72,9 +82,10 @@ func (a *App) loadReleaseHistory() {
 }
 
 func fetchReleaseNotes(current, latest string) ([]releaseNote, error) {
-	text, err := fetchText(updateChangelog)
+	url := changelogURL(mygo.App.Locale())
+	text, err := fetchText(url)
 	if err != nil {
-		text, err = fetchText(strings.Replace(updateChangelog, "/main/", "/master/", 1))
+		text, err = fetchText(strings.Replace(url, "/main/", "/master/", 1))
 		if err != nil {
 			return nil, err
 		}

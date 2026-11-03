@@ -13,7 +13,7 @@ release notes.
 - Dropped samples are shown only while streaming; idle capture no longer
   reports a growing count.
 - Non-ASCII sender names are encoded as UTF-16BE in the AP2 session plist,
-  so a Mac receiver shows "声渡" instead of mojibake.
+  so a Mac receiver shows the Chinese name instead of mojibake.
 - The settings window uses one background across its title bar, sidebar, and
   content.
 

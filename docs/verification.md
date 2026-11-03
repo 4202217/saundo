@@ -30,6 +30,8 @@ live state:
   changing Windows animation effects (Reduce Motion) while running.
 - The settings 更新 page and notes dialog: available, downloading, ready, and
   failed states; the release-history list; install from the page.
+- The localized update history: the settings 更新 page reads
+  `CHANGELOG.zh-CN.md` when the app language is Chinese.
 
 ## Automated checks
 
