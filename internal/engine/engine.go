@@ -966,8 +966,15 @@ func (e *Engine) reconnectPendingOff() {
 }
 
 // attemptReconnect retries the selected device; if it is gone, it waits for
-// discovery to bring it back. It consumes the pending retry time.
+// discovery to bring it back. It consumes the pending retry time. A retry
+// that comes due while a live session exists is stale — the user connected
+// again after it was scheduled — so it is pushed out instead of tearing down
+// that session's handshake or PIN wait.
 func (e *Engine) attemptReconnect() {
+	if e.tr != nil && e.tr.Active() {
+		e.reconnectAt = e.now().Add(5 * time.Second)
+		return
+	}
 	e.reconnectAt = time.Time{}
 	d, ok := e.find(e.selectedID)
 	if !ok {

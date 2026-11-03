@@ -217,6 +217,7 @@ func TestReconnectBackoffThenSuccess(t *testing.T) {
 	h.connect()
 	h.launch()
 
+	h.fake.state = sender.StateIdle // the receiver went away; the sender is idle before Closed fires
 	h.e.onClosed()
 	if !h.e.reconnectWanted || h.e.reconnectAt.IsZero() {
 		t.Fatal("no reconnect scheduled after close")
@@ -238,9 +239,38 @@ func TestReconnectBackoffThenSuccess(t *testing.T) {
 		t.Fatal("successful launch did not reset the reconnect state")
 	}
 
+	h.fake.state = sender.StateIdle
 	h.e.onClosed()
 	if got := h.e.reconnectAt.Sub(h.now); got != time.Second {
 		t.Fatalf("backoff after reset = %s, want 1s", got)
+	}
+}
+
+// TestStaleReconnectDoesNotKillActiveSession pins the guard against the
+// stale-retry scenario: the user reconnects while a retry is pending, and
+// the due timer must not tear down that live handshake.
+func TestStaleReconnectDoesNotKillActiveSession(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	h.fake.state = sender.StateIdle
+	h.e.onClosed() // schedules a retry in 1 s
+	h.advance(500 * time.Millisecond)
+	h.connect() // the user reconnects before the retry fires
+	if h.sessions != 2 {
+		t.Fatalf("sessions = %d, want 2", h.sessions)
+	}
+	h.fake.state = sender.StateConnecting // the replacement session is mid-handshake
+
+	h.advance(500 * time.Millisecond) // the stale retry comes due
+	h.e.attemptReconnect()
+	if h.sessions != 2 {
+		t.Fatal("stale reconnect tore down the active handshake")
+	}
+	if got := h.e.reconnectAt.Sub(h.now); got != 5*time.Second {
+		t.Fatalf("retry not rescheduled: %s, want 5s", got)
 	}
 }
 
@@ -251,6 +281,7 @@ func TestReconnectBackoffEscalatesAndGivesUp(t *testing.T) {
 	h.launch()
 
 	// First failure: 1 s. Each failed launch schedules the next attempt.
+	h.fake.state = sender.StateIdle
 	h.e.onClosed()
 	if got := h.e.reconnectAt.Sub(h.now); got != time.Second {
 		t.Fatalf("first backoff = %s, want 1s", got)
