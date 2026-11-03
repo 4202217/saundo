@@ -943,6 +943,23 @@ func (e *Engine) connect(d device.Device) {
 			return
 		}
 	}
+	if d.IsStereoGroup() {
+		// A member that needs a receiver password and has none would burn
+		// the reconnect budget on 401 digest challenges; prompt for it the
+		// same way a single receiver would.
+		for _, m := range d.Members {
+			if !needsReceiverPassword(m.Auth) || (e.hasPassword(m.ID) && e.memberPassword(m) != "") {
+				continue
+			}
+			e.passwordRequired = true
+			e.passwordDevice = m.Name
+			e.passwordDeviceID = m.ID
+			e.lastError = ""
+			e.logf("AirPlay password required for %s (stereo member)", m.Name)
+			e.publish()
+			return
+		}
+	}
 	e.clearPasswordPrompt()
 	e.closeSession()
 	// The device being connected becomes the selection, so snapshots,

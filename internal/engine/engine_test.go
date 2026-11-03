@@ -691,6 +691,29 @@ func TestOfflineStereoGroupDoesNotStart(t *testing.T) {
 	}
 }
 
+// TestStereoMemberPasswordPrompts pins the member gate: a group member that
+// needs a receiver password and has none raises the password dialog instead
+// of burning reconnects on 401 digest challenges.
+func TestStereoMemberPasswordPrompts(t *testing.T) {
+	h := newHarness(t)
+	group := device.Device{
+		ID: device.StereoGroupID("tsid"), Name: "HomePods", StereoID: "tsid", Online: true,
+		Members: []device.Device{
+			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Host: "192.0.2.10", Auth: device.AuthHAPPassword, Online: true},
+			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Host: "192.0.2.11", Auth: device.AuthHAPPassword, Online: true},
+		},
+	}
+	h.e.setDevices([]device.Device{group})
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: group.ID})
+	if h.sessions != 0 {
+		t.Fatal("the group connected without the member's password")
+	}
+	snap := h.e.Snapshot()
+	if !snap.PasswordRequired || snap.PasswordDeviceID != "AA:BB:CC:DD:EE:01" {
+		t.Fatalf("password prompt = %+v, want the left member", snap)
+	}
+}
+
 func TestGroupMemberRingsTakeOverCapture(t *testing.T) {
 	h := newHarness(t)
 	rings := []*ring.Buffer{ring.New(16), ring.New(16)}
