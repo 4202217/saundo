@@ -40,6 +40,7 @@ const (
 	backlogSize        = 1024
 	pacerInterval      = 8 * time.Millisecond
 	maxPacketsPerTick  = 16
+	pacerLagWarnStreak = 5
 	handshakeTimeout   = 10 * time.Second
 	pinWaitTimeout     = 180 * time.Second
 	feedbackInterval   = 25 * time.Second
@@ -271,6 +272,12 @@ type Sender struct {
 	pinTimer   timer
 	feedback   timer
 	volumePoll timer
+
+	// Pacer health: how far the last tick left the stream behind the
+	// wall-clock target, and the consecutive-late-tick streak. A streak is
+	// the only signal that this host cannot encode and send at realtime.
+	pacerLagFrames uint64
+	pacerLagStreak int
 	// volQuery marks an in-flight GET /info volume poll, and receiverVol is
 	// the last percentage reported to the host (-1 = nothing yet).
 	volQuery    bool

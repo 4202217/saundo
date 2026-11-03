@@ -486,6 +486,54 @@ func TestHandshakeTimeoutFails(t *testing.T) {
 	}
 }
 
+// TestPacerLagWarnsAfterConsecutiveLateTicks pins the keep-up telemetry: a
+// host that cannot meet the wall-clock target warns once per episode after
+// five consecutive late pacer ticks, and a caught-up tick clears the lag.
+func TestPacerLagWarnsAfterConsecutiveLateTicks(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	rb, _ := fillRing(44100)
+	r.sender.AttachRing(rb)
+	r.start()
+	requireLaunched(t, r)
+
+	// One Tick 200 ms behind the target sends its 16-packet burst and still
+	// ends behind, because the target moved ~8820 frames in a single step.
+	for i := 0; i < 4; i++ {
+		r.now = r.now.Add(200 * time.Millisecond)
+		r.sender.Tick()
+	}
+	if _, lagging := r.sender.PacerLag(); lagging {
+		t.Fatal("warned before five consecutive late ticks")
+	}
+	r.now = r.now.Add(200 * time.Millisecond)
+	r.sender.Tick()
+	frames, lagging := r.sender.PacerLag()
+	if !lagging || frames == 0 {
+		t.Fatalf("fifth late tick: frames=%d lagging=%v", frames, lagging)
+	}
+	warns := 0
+	for _, l := range r.logs {
+		if strings.Contains(l, "cannot keep up") {
+			warns++
+		}
+	}
+	if warns != 1 {
+		t.Fatalf("keep-up warnings = %d, want 1", warns)
+	}
+
+	// Recovery: normal-paced ticks catch the burst cap up to the target and
+	// clear both the lag and the streak.
+	for i := 0; i < 20; i++ {
+		r.advance(50 * time.Millisecond)
+		if frames, lagging := r.sender.PacerLag(); !lagging && frames == 0 {
+			return
+		}
+	}
+	if frames, lagging := r.sender.PacerLag(); lagging || frames != 0 {
+		t.Fatalf("recovery left lag frames=%d lagging=%v", frames, lagging)
+	}
+}
+
 func TestStopSendsTeardown(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	rb, _ := fillRing(4410)

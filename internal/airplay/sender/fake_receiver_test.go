@@ -3,6 +3,7 @@ package sender
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -53,6 +54,7 @@ type rig struct {
 	creds        []string
 	states       []State
 	volumeEvents []float64
+	logs         []string
 }
 
 func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *storedPairing) *rig {
@@ -82,6 +84,7 @@ func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *
 		StateChanged:        func(s State) { r.states = append(r.states, s) },
 		VolumeChanged:       func(p float64) { r.volumeEvents = append(r.volumeEvents, p) },
 	}, func(level Level, format string, args ...any) {
+		r.logs = append(r.logs, fmt.Sprintf(format, args...))
 		t.Logf("[%d] "+format, append([]any{level}, args...)...)
 	})
 	r.sender.SetClock(func() time.Time { return r.now })

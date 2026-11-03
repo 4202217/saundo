@@ -17,7 +17,9 @@ func (s *Sender) rtpTime32() uint32 {
 
 // onPacerTick keeps frames on the wire tracking wall clock at 44100 per second.
 // A late tick is repaid in a capped burst so a scheduler stall does not flood
-// the receiver.
+// the receiver. Ticks that still end behind the target after the burst are
+// counted; a streak of them is the only signal that this host cannot encode
+// and send at realtime.
 func (s *Sender) onPacerTick() {
 	elapsed := s.now().Sub(s.clockStart).Nanoseconds()
 	if elapsed < 0 {
@@ -29,6 +31,25 @@ func (s *Sender) onPacerTick() {
 		s.sendAudioPacket()
 		sent++
 	}
+	// A healthy tick ends less than one packet behind the target; only a
+	// residual at least a full packet wide means the burst cap bound the
+	// send and this host is genuinely falling behind.
+	if gap := target - s.framesSent; gap >= framesPerPacket {
+		s.pacerLagFrames = gap
+		s.pacerLagStreak++
+		if s.pacerLagStreak == pacerLagWarnStreak {
+			s.warn("sender cannot keep up: %d frames behind after %d late pacer ticks", s.pacerLagFrames, s.pacerLagStreak)
+		}
+		return
+	}
+	s.pacerLagFrames = 0
+	s.pacerLagStreak = 0
+}
+
+// PacerLag reports how far the last pacer tick left the stream behind the
+// wall-clock target, and whether late ticks have accumulated to a warning.
+func (s *Sender) PacerLag() (frames uint64, lagging bool) {
+	return s.pacerLagFrames, s.pacerLagStreak >= pacerLagWarnStreak
 }
 
 // SetPaused suspends or resumes the audio pacer. While suspended the sender
