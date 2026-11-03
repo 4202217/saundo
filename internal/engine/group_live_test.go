@@ -11,6 +11,7 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/diagnostics"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -28,7 +29,8 @@ func TestLiveStereoGroup(t *testing.T) {
 	if err := sets.Save(sets.Load()); err != nil {
 		t.Fatal(err)
 	}
-	e := New(sets, creds.NewStoreAt(filepath.Join(dir, "creds")), &diagnostics.Log{}, nil)
+	e := NewWithReceivers(sets, creds.NewStoreAt(filepath.Join(dir, "creds")),
+		receivers.NewStoreAt(filepath.Join(dir, "receivers.json")), &diagnostics.Log{}, nil)
 	e.Start()
 	defer e.Stop()
 

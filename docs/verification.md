@@ -40,6 +40,10 @@ live state:
   failed states; the release-history list; install from the page.
 - The localized update history: the settings 更新 page reads
   `CHANGELOG.zh-CN.md` when the app language is Chinese.
+- Receiver management live paths: manual add/edit/remove, hide/show filtering,
+  the per-receiver delay restart, receiver-password save and clear, and a
+  manual receiver with no mDNS advertisement. Pinned by the receivers, engine,
+  and app tests and the `settings-receivers-*` / `dialog-receiver-*` previews.
 
 ## Automated checks
 

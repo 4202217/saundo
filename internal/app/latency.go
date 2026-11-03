@@ -5,6 +5,7 @@ import (
 
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -110,8 +111,33 @@ func (a *App) latencyMS() int {
 	return settings.LatencyLowMS
 }
 
-// latencyDisplay is the value shown in the playback head's ALAC line.
-func (a *App) latencyDisplay() string { return settings.LatencyText(a.latencyMS()) }
+// latencyDisplay is the value shown in the playback head's ALAC line: the
+// global base plus the active receiver's DSP/DAC delay, clamped to the
+// sender's window. An idle engine shows the base only, because no receiver
+// is streaming.
+func (a *App) latencyDisplay() string {
+	ms := a.latencyMS()
+	if phaseOf(a.snap) != phaseIdle && a.snap.SelectedID != "" {
+		if delay, ok := a.receiverDelay(a.snap.SelectedID); ok {
+			ms = receivers.EffectiveLatencyMS(ms, delay)
+		}
+	}
+	return settings.LatencyText(ms)
+}
+
+// receiverDelay reads the row's delay, preferring an in-flight slider draft
+// so the ALAC line follows the drag before the engine applies it.
+func (a *App) receiverDelay(key string) (int, bool) {
+	if delay, ok := a.receiverDelayPend[key]; ok {
+		return delay, true
+	}
+	for _, v := range a.snap.Receivers {
+		if v.Key == key {
+			return v.DelayMS, true
+		}
+	}
+	return 0, false
+}
 
 func (a *App) latencyModeIndex() int {
 	switch a.latencyMode {

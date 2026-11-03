@@ -182,16 +182,47 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	stereo.selID = ""
 	save("flyout-no-device", stereo.view, flyoutWidth, flyoutHeightFor(0, true), false)
 
-	pages := []settingsPage{pageGeneral, pageConnection, pageAudio, pageCapture}
+	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture}
 	for _, page := range pages {
 		a := fixture()
 		a.page = page
-		name := []string{"settings-general", "settings-connection", "settings-audio", "settings-capture"}[page]
+		if page == pageReceivers {
+			a.applyReceiverFixtures()
+		}
+		name := []string{"settings-general", "settings-connection", "settings-receivers", "settings-audio", "settings-capture"}[page]
 		save(name+"-light", a.settingsView, 720, 500, false)
 	}
 	darkSettings := fixture()
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)
+
+	// The receivers page: an expanded row, and the hidden group open.
+	receiversPage := fixture()
+	receiversPage.page = pageReceivers
+	receiversPage.applyReceiverFixtures()
+	receiversPage.receiverOpen = map[string]bool{"m:ab12": true}
+	receiversPage.receiverHiddenOpen = true
+	save("settings-receivers-expanded-light", receiversPage.settingsView, 720, 500, false)
+	save("settings-receivers-expanded-dark", receiversPage.settingsView, 720, 500, true)
+
+	receiversHidden := fixture()
+	receiversHidden.page = pageReceivers
+	receiversHidden.applyReceiverFixtures()
+	receiversHidden.receiverHiddenOpen = true
+	save("settings-receivers-hidden-light", receiversHidden.settingsView, 720, 500, false)
+	receiversPage.openAddReceiver()
+	save("dialog-receiver-add", receiversPage.settingsView, 720, 500, false)
+	receiversPage.closeReceiverDialog()
+	if v, ok := receiversPage.receiverViewFor("m:ab12"); ok {
+		receiversPage.beginEditReceiver(v)
+		save("dialog-receiver-edit", receiversPage.settingsView, 720, 500, false)
+		receiversPage.openRemoveReceiver(v)
+		save("dialog-receiver-remove", receiversPage.settingsView, 720, 500, false)
+		receiversPage.closeReceiverDialog()
+		receiversPage.receiverDialog = receiverDialogState{kind: receiverDialogPassword, key: v.Key, entered: false}
+		receiversPage.receiverDialogOpen = true
+		save("dialog-receiver-password", receiversPage.settingsView, 720, 500, false)
+	}
 
 	customSettings := fixture()
 	customSettings.page = pageAudio

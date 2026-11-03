@@ -2,19 +2,16 @@ package engine
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"saundo/internal/airplay/creds"
 	"saundo/internal/airplay/device"
 	raopio "saundo/internal/airplay/io"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/ring"
 	"saundo/internal/capture"
-	"saundo/internal/diagnostics"
 	"saundo/internal/settings"
 )
 
@@ -118,30 +115,7 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	dir := t.TempDir()
-	sets := settings.NewStoreAt(filepath.Join(dir, "settings.json"))
-	cfg := sets.Load()
-	if err := sets.Save(cfg); err != nil {
-		t.Fatal(err)
-	}
-	h := &harness{e: New(sets, creds.NewStoreAt(filepath.Join(dir, "creds")), &diagnostics.Log{}, nil), now: time.Now()}
-	h.e.now = func() time.Time { return h.now }
-	h.e.newSession = func(d device.Device) (transport, func(), error) {
-		h.sessions++
-		h.fake = newFakeTransport(sender.Events{
-			Launched:            h.e.onLaunched,
-			Closed:              h.e.onClosed,
-			PinRequired:         h.e.onPinRequired,
-			CredentialsObtained: h.e.onCredentials,
-			StateChanged:        h.e.onStateChanged,
-		})
-		h.fake.rings = h.rings
-		return h.fake, func() { h.fake.stopped = true }, nil
-	}
-	h.e.captureStartFn = func(capture.Config) (captureSource, error) {
-		return &fakeCaptureSource{}, nil
-	}
-	return h
+	return newHarnessWithRegistry(t)
 }
 
 func (h *harness) addDevice() {
@@ -336,8 +310,11 @@ func TestLatencyAndPasswordReachSession(t *testing.T) {
 	h.addDevice()
 	h.e.handleCommand(command{kind: cmdLatency, value: 500})
 	h.e.handleCommand(command{kind: cmdPassword, deviceID: testDeviceID, name: "secret"})
-	if h.e.setsValue.LatencyMS != 500 || h.e.setsValue.Passwords[testDeviceID] != "secret" {
-		t.Fatalf("settings not stored: %+v", h.e.setsValue)
+	if h.e.setsValue.LatencyMS != 500 {
+		t.Fatalf("latency not stored: %+v", h.e.setsValue)
+	}
+	if !h.e.creds.HasPassword(testDeviceID) {
+		t.Fatal("password did not reach the DPAPI store")
 	}
 	h.connect()
 	if h.fake.authPW != "secret" {

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-01 -->
+<!-- reviewed-through: 2026-11-04 -->
 
 # Receiver profiles
 
@@ -29,7 +29,7 @@ Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
 
 - Advertises the HAP feature bits with **no `pw` TXT** and `sf` bit 7 set (`sf=0x284` on the Mac14,2).
 - Transient pairing (`Flags=0x10`) is rejected with TLV error 3. It pairs with HAP pair-setup method 0 keyed by the receiver password: M1 without Flags, M3 with the password as the SRP secret, M5/M6, then pair-verify (protocol.md §2.3).
-- The app prompts for the password on first connect with a masked dialog, saves it per device, and reconnects; the settings page can change or clear it. A receiver that needs a password and has none stored never starts a session.
+- The app prompts for the password on first connect with a masked dialog, saves it per receiver in DPAPI, and reconnects; the receiver's row on the settings 接收器 page can change or clear it. A receiver that needs a password and has none stored never starts a session.
 - The AP2 session SETUP answers 401 with a Digest challenge; the sender replays with RFC 2069, username `AirPlay` (protocol.md §4).
 - `shk` is the Events-Write key (protocol.md §2.5).
 - **PTP required** (feature bit 41); the same follower serves it, its clock likewise boot-relative.
@@ -54,6 +54,28 @@ Tested on a Redmi TV, 2026-11-01.
 
 - A receiver advertising only `_raop` without HAP bits stays on the plaintext AirPlay 1 path: RECORD starts the stream, the 25 s probe keeps it alive, and the ring-empty state pushes continuous silence (no suspend).
 - AP1 sessions are deliberately excluded from the silence-suspend behavior (protocol.md §6).
+
+## Manual receivers (no mDNS)
+
+- Added on the settings 接收器 page with a name, one of three types, and a
+  bare IP or hostname. The port defaults to 5000 for AirPort Express and
+  AirPlay 1 and 7000 for AirPlay 2. The row keys by `m:<uuid>`; editing
+  keeps the key and updates the fields.
+- There is no advertisement, so there are no feature bits and no `model`.
+  A manual row therefore always runs NTP. A receiver that requires PTP
+  (HomePod software 27, macOS) must be discovered; the finalized add dialog
+  has no PTP control.
+- The declared type chooses the pairing path: AirPort Express uses
+  auth-setup, AirPlay 2 uses HAP transient pairing or HAP password pairing
+  when a password is stored, and AirPlay 1 uses the plaintext path or
+  digest password authentication.
+- The password is stored in DPAPI under the `password:m:<uuid>` namespace,
+  never in `settings.json` or the log. An unreadable stored password is
+  treated as absent: the engine prompts again instead of attempting the
+  permissive path.
+- A manual row is always attemptable (`Online` true), even when the
+  receiver is powered off; a failed dial surfaces as a session error and
+  falls into the reconnect policy.
 
 ## AirPort (auth-setup) — untested path
 

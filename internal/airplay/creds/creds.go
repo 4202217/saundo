@@ -5,6 +5,8 @@ package creds
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -75,11 +77,16 @@ func NewStore() *Store {
 // NewStoreAt is the testable form of NewStore.
 func NewStoreAt(path string) *Store { return &Store{path: path} }
 
+// ErrCorrupt reports a credentials file this process cannot read. Loads fail
+// closed to "", and writes refuse to replace the file, so one bad save cannot
+// destroy the HAP keys and receiver passwords it cannot decrypt.
+var ErrCorrupt = errors.New("creds: unreadable credentials file")
+
 // Load returns the stored JSON for deviceID, or "".
 func (s *Store) Load(deviceID string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	all := s.readAll()
+	all, _ := s.readAll()
 	return all[deviceID]
 }
 
@@ -87,7 +94,10 @@ func (s *Store) Load(deviceID string) string {
 func (s *Store) Save(deviceID, credsJSON string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	all := s.readAll()
+	all, err := s.readAll()
+	if err != nil {
+		return err
+	}
 	all[deviceID] = credsJSON
 	return s.writeAll(all)
 }
@@ -96,23 +106,90 @@ func (s *Store) Save(deviceID, credsJSON string) error {
 func (s *Store) Delete(deviceID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	all := s.readAll()
+	all, err := s.readAll()
+	if err != nil {
+		return err
+	}
 	delete(all, deviceID)
 	return s.writeAll(all)
 }
 
-func (s *Store) readAll() map[string]string {
+// passwordKeyPrefix namespaces receiver passwords inside the same DPAPI
+// file the HAP long-term keys use. Old builds never look up these keys, so
+// the map stays forward and backward compatible.
+const passwordKeyPrefix = "password:"
+
+func passwordKey(deviceID string) string { return passwordKeyPrefix + deviceID }
+
+// LoadPassword returns the stored AirPlay receiver password, or "". A
+// decrypt failure reads as "", which the engine's password gate treats as
+// "prompt the user" — the fail-closed path.
+func (s *Store) LoadPassword(deviceID string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	all, _ := s.readAll()
+	return all[passwordKey(deviceID)]
+}
+
+// SavePassword stores the receiver's AirPlay password. An empty password
+// deletes it.
+func (s *Store) SavePassword(deviceID, password string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	all, err := s.readAll()
+	if err != nil {
+		return err
+	}
+	if password == "" {
+		delete(all, passwordKey(deviceID))
+	} else {
+		all[passwordKey(deviceID)] = password
+	}
+	return s.writeAll(all)
+}
+
+// DeletePassword removes the receiver's stored password.
+func (s *Store) DeletePassword(deviceID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	all, err := s.readAll()
+	if err != nil {
+		return err
+	}
+	delete(all, passwordKey(deviceID))
+	return s.writeAll(all)
+}
+
+// HasPassword reports whether a password exists for the receiver. The
+// engine keeps this projection so the merge does not decrypt DPAPI per row.
+func (s *Store) HasPassword(deviceID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	all, err := s.readAll()
+	if err != nil {
+		return false
+	}
+	_, ok := all[passwordKey(deviceID)]
+	return ok
+}
+
+func (s *Store) readAll() (map[string]string, error) {
 	all := make(map[string]string)
 	blob, err := os.ReadFile(s.path)
 	if err != nil {
-		return all
+		if os.IsNotExist(err) {
+			return all, nil
+		}
+		return all, fmt.Errorf("creds: read: %w", err)
 	}
 	plain, err := unprotect(blob)
 	if err != nil {
-		return all
+		return all, fmt.Errorf("%w: %v", ErrCorrupt, err)
 	}
-	_ = json.Unmarshal(plain, &all)
-	return all
+	if err := json.Unmarshal(plain, &all); err != nil {
+		return all, fmt.Errorf("%w: %v", ErrCorrupt, err)
+	}
+	return all, nil
 }
 
 func (s *Store) writeAll(all map[string]string) error {

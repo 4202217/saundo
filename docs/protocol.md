@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-01 -->
+<!-- reviewed-through: 2026-11-04 -->
 
 # AirPlay 2 wire protocol
 
@@ -19,6 +19,12 @@ Browse mDNS for `_raop._tcp` and `_airplay._tcp`. Parse `deviceid`, `features`, 
 - `AppleTV3,x` model strings map to `AuthLegacyPin` and fail fast with a FairPlay message (see [devices.md](devices.md)).
 
 The engine enables the AP2 path for every HAP pairing (`AuthHAPTransient`, `AuthHAPPIN`, `AuthHAPPassword`). A `_raop`-only receiver without HAP stays on the plaintext AirPlay 1 path.
+
+### 1.1 Manual receivers
+
+A receiver typed into the settings 接收器 page has no advertisement, so the engine synthesizes its description from the declared type. AirPort Express uses auth-setup; AirPlay 2 uses HAP transient pairing, or HAP password pairing when a password is stored; AirPlay 1 uses the plaintext path, or digest password authentication when a password is stored. The control port defaults to 5000 for AirPort Express and AirPlay 1 and 7000 for AirPlay 2. A manual AirPlay 2 row without a password attempts transient pairing; a receiver that requires a password rejects it, so the password must be stored on the row.
+
+Without TXT records there are no feature bits, including the PTP bit. A manual session therefore always runs NTP. A receiver that requires PTP (HomePod software 27, macOS) must be discovered; the add dialog has no PTP override. The password is stored in DPAPI under the `password:<key>` namespace, consumed locally by HAP SRP or the AP1 Digest computation, and never written to the diagnostic log.
 
 ## 2. Pairing
 

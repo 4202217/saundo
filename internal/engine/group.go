@@ -117,7 +117,6 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 		s.AttachRing(memberRing)
 		s.SetStartGate(gate)
-		s.SetLatency(e.setsValue.LatencyMS)
 		if d.StereoID != "" {
 			s.SetGroupUUID(d.StereoID)
 		}

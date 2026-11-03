@@ -38,6 +38,7 @@ Windows Firewall prompts on first launch — allow it on private networks: disco
 - **System audio capture** — WASAPI loopback of the default output, a fixed endpoint, or a single application.
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock (the sender is the PTP master for stereo pairs), encrypted control and event channels, retransmit on request.
 - **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
+- **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own DPAPI-stored password.
 - **Now Playing** — reads the Windows media session (SMTC) and pushes title · artist · album to the receiver, toggleable.
 - **Latency modes.** Low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the flyout or the audio page. A live change restarts the stream with a spinner.
 - **A tray that shows the state.** The smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.

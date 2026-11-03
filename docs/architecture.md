@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-01 -->
+<!-- reviewed-through: 2026-11-04 -->
 
 # saundo Architecture and Technology Selection
 
@@ -129,7 +129,7 @@ GPLv3+ (dual-licensed with a commercial option), last commit 2026-10-29. It uses
                                     │ HomePod / ATV   │
                                     └─────────────────┘
 
-Cross-cutting: Settings (JSON), Credentials (DPAPI), Diagnostics (logs and metrics)
+Cross-cutting: Settings (JSON), Receiver registry (JSON), Credentials (DPAPI), Diagnostics (logs and metrics)
 ```
 
 There are three concurrency roles:

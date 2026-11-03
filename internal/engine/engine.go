@@ -5,7 +5,6 @@ package engine
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,12 +19,14 @@ import (
 	"saundo/internal/capture"
 	"saundo/internal/diagnostics"
 	"saundo/internal/discovery"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
 // Snapshot is the complete state the UI draws.
 type Snapshot struct {
 	Devices          []device.Device
+	Receivers        []receivers.View
 	SelectedID       string
 	State            sender.State
 	ConnectedName    string
@@ -37,7 +38,6 @@ type Snapshot struct {
 	PasswordDeviceID string
 	Volume           float64
 	Name             string
-	AutoConnect      bool
 	Reconnect        bool
 	Reconnecting     bool
 	// AudioIdle is true while the engine has suspended RTP after sustained
@@ -73,7 +73,6 @@ const (
 	cmdRefresh
 	cmdStrictAuth
 	cmdName
-	cmdAutoConnect
 	cmdReconnect
 	cmdShowNowPlaying
 	cmdTrayAnimation
@@ -83,6 +82,9 @@ const (
 	cmdCaptureProcess
 	cmdPassword
 	cmdQuit
+	cmdAddReceiver
+	cmdUpdateReceiver
+	cmdRemoveReceiver
 )
 
 type command struct {
@@ -94,6 +96,8 @@ type command struct {
 	album     string
 	reconnect bool
 	show      bool
+	spec      receivers.Spec
+	patch     receivers.Patch
 }
 
 type captureInfo struct {
@@ -277,14 +281,25 @@ type Engine struct {
 	audioPaused      bool
 	pauseUnsupported bool
 	autoTried        bool
+
+	// receivers owns per-receiver configuration. reg is the authoritative
+	// in-memory copy; only this goroutine mutates it or saves the store.
+	recvStore      *receivers.Store
+	reg            receivers.Registry
+	discovered     []device.Device
+	receiversViews []receivers.View
+	passwords      map[string]bool
 }
 
-// New creates the engine. onChange may be nil; it runs on the engine goroutine.
-func New(sets *settings.Store, credsStore *creds.Store, log *diagnostics.Log, onChange func(Snapshot)) *Engine {
+// NewWithReceivers creates the engine over explicit settings, credentials,
+// and receiver stores. The startup migration hands in the same registry
+// store it initialized, so the engine reads what the migration wrote.
+func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *receivers.Store, log *diagnostics.Log, onChange func(Snapshot)) *Engine {
 	cfg := sets.Load()
 	e := &Engine{
 		sets:            sets,
 		creds:           credsStore,
+		recvStore:       recvStore,
 		log:             log,
 		onChange:        onChange,
 		ring:            ring.New(48000 * 2 * 4),
@@ -301,11 +316,27 @@ func New(sets *settings.Store, credsStore *creds.Store, log *diagnostics.Log, on
 		captureProcess:  cfg.CaptureProcessPID,
 		now:             time.Now,
 		stopping:        false,
+		passwords:       map[string]bool{},
+	}
+	// A registry that cannot be read leaves the engine with no remembered
+	// receivers but does not stop it; manual and discovered receivers still
+	// work. The corrupt-file guard keeps a later save from destroying the
+	// file while it cannot be parsed.
+	if reg, err := recvStore.Load(); err != nil {
+		e.logf("receivers registry: %v", err)
+	} else {
+		e.reg = reg
+	}
+	for _, entry := range e.reg.Entries {
+		if e.creds.HasPassword(entry.Key) {
+			e.passwords[entry.Key] = true
+		}
 	}
 	e.newSession = e.openSession
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
 	e.silence = newSilenceMeter(e.captureSink)
+	e.rebuildTargets()
 	e.snap = e.buildSnapshot()
 	return e
 }
@@ -353,7 +384,6 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 		Cushion: sender.DefaultStartCushion,
 		Trim:    e.ring,
 	}))
-	s.SetLatency(e.setsValue.LatencyMS)
 	if clock != nil {
 		s.SetPTPClock(clock)
 	}
@@ -442,15 +472,6 @@ func (e *Engine) SetName(name string) {
 	e.send(command{kind: cmdName, text: name})
 }
 
-// SetAutoConnect controls whether the last device reconnects on launch.
-func (e *Engine) SetAutoConnect(on bool) {
-	v := 0.0
-	if on {
-		v = 1
-	}
-	e.send(command{kind: cmdAutoConnect, value: v})
-}
-
 // SetCaptureProcess selects application capture; pid 0 returns to endpoint
 // capture.
 func (e *Engine) SetCaptureProcess(pid uint32, name string) {
@@ -476,7 +497,9 @@ func (e *Engine) SetLatencySettings(mode settings.LatencyMode, customMS int, sho
 	e.send(command{kind: cmdLatencySettings, text: string(mode), value: float64(customMS), show: showSwitch})
 }
 
-// SetReceiverPassword stores the RTSP password for a device.
+// SetReceiverPassword stores the RTSP password for a device; the engine
+// moves it into the DPAPI store. See receivers.go for the management
+// commands.
 func (e *Engine) SetReceiverPassword(deviceID, password string) {
 	e.send(command{kind: cmdPassword, deviceID: deviceID, name: password})
 }
@@ -522,6 +545,10 @@ func (e *Engine) send(cmd command) {
 
 func (e *Engine) run() {
 	defer close(e.done)
+	// The launch auto-connect happens before the first select, so a manual
+	// receiver starts without waiting for an mDNS cycle. A discovered target
+	// waits for setDevices to report it online.
+	e.maybeAutoConnect()
 	for {
 		var evCh <-chan raopio.Event
 		if e.tr != nil {
@@ -693,6 +720,7 @@ func (e *Engine) detachMemberRings() {
 func (e *Engine) handleCommand(cmd command) {
 	switch cmd.kind {
 	case cmdConnect:
+		e.autoTried = true
 		if d, ok := e.find(cmd.deviceID); ok {
 			e.userDisconnect = false
 			e.connect(d)
@@ -701,6 +729,7 @@ func (e *Engine) handleCommand(cmd command) {
 			e.publish()
 		}
 	case cmdDisconnect:
+		e.autoTried = true
 		e.userDisconnect = true
 		e.reconnectWanted = false
 		e.reconnectPendingOff()
@@ -757,7 +786,9 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdLatency:
 		e.setsValue.LatencyMS = int(cmd.value)
 		if e.tr != nil {
-			e.tr.SetLatency(e.setsValue.LatencyMS)
+			// The active receiver keeps its own DSP/DAC delay: the base is
+			// only half of the value the SETUP carries.
+			e.tr.SetLatency(e.latencyFor(e.selectedID))
 		}
 		e.saveSettings()
 		if cmd.reconnect && e.tr != nil && e.tr.Active() {
@@ -774,11 +805,9 @@ func (e *Engine) handleCommand(cmd command) {
 		e.saveSettings()
 		e.publish()
 	case cmdPassword:
-		if e.setsValue.Passwords == nil {
-			e.setsValue.Passwords = make(map[string]string)
+		if err := e.savePassword(cmd.deviceID, cmd.name); err != nil {
+			e.lastError = "无法保存接收器密码：" + err.Error()
 		}
-		e.setsValue.Passwords[cmd.deviceID] = cmd.name
-		e.saveSettings()
 		e.publish()
 	case cmdRefresh:
 		if e.discovery != nil {
@@ -802,10 +831,6 @@ func (e *Engine) handleCommand(cmd command) {
 		}
 		e.saveSettings()
 		e.publish()
-	case cmdAutoConnect:
-		e.setsValue.AutoConnect = cmd.value != 0
-		e.saveSettings()
-		e.publish()
 	case cmdReconnect:
 		e.setsValue.Reconnect = cmd.value != 0
 		if !e.setsValue.Reconnect {
@@ -826,6 +851,12 @@ func (e *Engine) handleCommand(cmd command) {
 			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album)
 			e.publish()
 		}
+	case cmdAddReceiver:
+		e.handleAddReceiver(cmd.spec)
+	case cmdUpdateReceiver:
+		e.handleUpdateReceiver(cmd.deviceID, cmd.patch)
+	case cmdRemoveReceiver:
+		e.handleRemoveReceiver(cmd.deviceID)
 	}
 }
 
@@ -843,14 +874,25 @@ func (e *Engine) connect(d device.Device) {
 		e.publish()
 		return
 	}
-	if !d.IsStereoGroup() && needsReceiverPassword(d.Auth) && e.setsValue.Passwords[d.ID] == "" {
-		e.passwordRequired = true
-		e.passwordDevice = d.Name
-		e.passwordDeviceID = d.ID
-		e.lastError = ""
-		e.logf("AirPlay password required for %s", d.Name)
-		e.publish()
-		return
+	password := ""
+	if !d.IsStereoGroup() && e.hasPassword(d.ID) {
+		password = e.passwordFor(d.ID)
+	}
+	if !d.IsStereoGroup() && needsReceiverPassword(d.Auth) {
+		if !e.hasPassword(d.ID) || password == "" {
+			// No stored password, or one the DPAPI file could not decrypt:
+			// prompt instead of attempting the permissive path.
+			if e.hasPassword(d.ID) {
+				e.logf("stored receiver password for %s is unreadable; prompting again", d.ID)
+			}
+			e.passwordRequired = true
+			e.passwordDevice = d.Name
+			e.passwordDeviceID = d.ID
+			e.lastError = ""
+			e.logf("AirPlay password required for %s", d.Name)
+			e.publish()
+			return
+		}
 	}
 	e.clearPasswordPrompt()
 	e.closeSession()
@@ -872,15 +914,15 @@ func (e *Engine) connect(d device.Device) {
 	tr.SetIdentity(sender.Identity{Name: e.setsValue.Name, DeviceID: e.setsValue.DeviceID, Model: "iPhone14,3"})
 	if d.IsStereoGroup() {
 		for _, m := range d.Members {
-			tr.SetMemberAuth(m, e.creds.Load(m.ID), e.setsValue.Passwords[m.ID])
+			tr.SetMemberAuth(m, e.creds.Load(m.ID), e.memberPassword(m))
 		}
 	} else {
-		tr.SetAuth(d.Auth, airplay2, d.ID, e.creds.Load(d.ID), e.setsValue.Passwords[d.ID])
+		tr.SetAuth(d.Auth, airplay2, d.ID, e.creds.Load(d.ID), password)
 	}
 	if rings := tr.Rings(); len(rings) > 0 {
 		e.attachMemberRings(rings)
 	}
-	tr.SetLatency(e.setsValue.LatencyMS)
+	tr.SetLatency(e.latencyFor(d.ID))
 	tr.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 	if e.captureRate > 0 {
 		tr.SetInputFormat(e.captureRate)
@@ -910,6 +952,7 @@ func (e *Engine) planReconnect() {
 	}
 	delay := reconnectBackoff[min(e.reconnectNum, len(reconnectBackoff)-1)]
 	e.reconnectNum++
+	e.reconnectWanted = true
 	e.reconnectAt = e.now().Add(delay)
 	e.logf("reconnect scheduled in %s (attempt %d)", delay, e.reconnectNum)
 	e.publish()
@@ -1045,26 +1088,114 @@ func (e *Engine) logf(format string, args ...any) {
 }
 
 func (e *Engine) setDevices(devs []device.Device) {
-	e.devices = devs
-	sort.Slice(devs, func(i, j int) bool {
-		if devs[i].Name == devs[j].Name {
-			return devs[i].ID < devs[j].ID
-		}
-		return devs[i].Name < devs[j].Name
-	})
-	if e.selectedID == "" && len(devs) > 0 {
-		e.selectedID = devs[0].ID
-	}
-	if !e.autoTried && e.setsValue.AutoConnect && e.setsValue.LastDeviceID != "" &&
-		(e.tr == nil || !e.tr.Active()) {
-		if d, ok := e.find(e.setsValue.LastDeviceID); ok {
-			e.autoTried = true
-			e.userDisconnect = false
-			e.connect(d)
-			return
-		}
+	e.discovered = devs
+	e.rememberDiscovered()
+	e.rebuildTargets()
+	if e.maybeAutoConnect() {
+		return
 	}
 	e.publish()
+}
+
+// maybeAutoConnect connects the launch target once, when it is addressable:
+// a manual receiver immediately, a discovered one on the first snapshot that
+// reports it online. A user connect or disconnect ends the launch phase, and
+// a failure falls through to the ordinary reconnect policy.
+func (e *Engine) maybeAutoConnect() bool {
+	if e.autoTried {
+		return false
+	}
+	key, ok := receivers.AutoTarget(e.reg)
+	if !ok {
+		e.autoTried = true
+		return false
+	}
+	if e.tr != nil || e.reconnectWanted {
+		e.autoTried = true
+		return false
+	}
+	target, found := e.target(key)
+	if !found || !target.Device.Online {
+		return false
+	}
+	e.autoTried = true
+	e.userDisconnect = false
+	e.connect(target.Device)
+	return true
+}
+
+// rememberDiscovered persists first sightings, and refreshes the name and
+// model of a remembered receiver, so the receiver list keeps offline rows
+// after a receiver leaves the network. Stereo pairs are remembered under
+// their group key so their hidden, delay, password, and auto-connect settings
+// survive the pair going offline. Only an actual change writes the file.
+func (e *Engine) rememberDiscovered() {
+	changed := false
+	for _, d := range e.discovered {
+		entry, ok := e.reg.Get(d.ID)
+		if !ok {
+			// A password moved by the startup migration belongs to a device
+			// that had no registry entry yet; seed the projection on the
+			// first sighting.
+			if e.creds.HasPassword(d.ID) {
+				e.passwords[d.ID] = true
+			}
+			e.reg.Put(receivers.Entry{
+				Key: d.ID, Kind: receivers.KindDiscovered,
+				Name: d.Name, Model: d.Model, AirPlay2: d.AirPlay2,
+			})
+			changed = true
+			continue
+		}
+		if entry.IsManual() {
+			// A typed-in receiver keeps its own name, endpoint, and type.
+			continue
+		}
+		entryChanged := false
+		if d.Name != "" && entry.Name != d.Name {
+			entry.Name = d.Name
+			entryChanged = true
+		}
+		if d.Model != "" && entry.Model != d.Model {
+			entry.Model = d.Model
+			entryChanged = true
+		}
+		if d.AirPlay2 && !entry.AirPlay2 {
+			entry.AirPlay2 = true
+			entryChanged = true
+		}
+		if entryChanged {
+			e.reg.Put(entry)
+			changed = true
+		}
+	}
+	if changed {
+		e.saveRegistry()
+	}
+}
+
+// saveRegistry persists the in-memory registry. A failure keeps the
+// in-memory copy working; the corrupt-file guard refuses to write over an
+// unreadable file.
+func (e *Engine) saveRegistry() {
+	if err := e.recvStore.Save(e.reg); err != nil {
+		e.logf("receivers save: %v", err)
+	}
+}
+
+// rebuildTargets re-projects the registry and discovery onto the row lists.
+// Presentation rules live in receivers; the engine supplies inputs.
+func (e *Engine) rebuildTargets() {
+	targets := receivers.Merge(e.reg, e.discovered, func(k string) bool { return e.passwords[k] })
+	active := ""
+	if e.tr != nil || e.reconnectWanted {
+		active = e.selectedID
+	}
+	e.devices = receivers.Visible(targets, active)
+	e.receiversViews = make([]receivers.View, len(targets))
+	for i, t := range targets {
+		e.receiversViews[i] = t.View(e.passwords[t.Entry.Key])
+	}
 }
 
 func (e *Engine) find(id string) (device.Device, bool) {
@@ -1074,6 +1205,50 @@ func (e *Engine) find(id string) (device.Device, bool) {
 		}
 	}
 	return device.Device{}, false
+}
+
+// target is the merged row for a key: the wire device plus its entry.
+func (e *Engine) target(id string) (receivers.Target, bool) {
+	for _, t := range receivers.Merge(e.reg, e.discovered, func(k string) bool { return e.passwords[k] }) {
+		if t.Entry.Key == id {
+			return t, true
+		}
+	}
+	return receivers.Target{}, false
+}
+
+// hasPassword reports whether a stored receiver password exists.
+func (e *Engine) hasPassword(key string) bool { return e.passwords[key] }
+
+// passwordFor is the stored password for a receiver, "" when absent.
+func (e *Engine) passwordFor(key string) string {
+	if pw := e.creds.LoadPassword(key); pw != "" {
+		return pw
+	}
+	return ""
+}
+
+// memberPassword resolves a stereo member's password: the member's own,
+// else the group's, so one saved password can serve both members.
+func (e *Engine) memberPassword(m device.Device) string {
+	if pw := e.creds.LoadPassword(m.ID); pw != "" {
+		return pw
+	}
+	if m.StereoID != "" {
+		return e.creds.LoadPassword(device.StereoGroupID(m.StereoID))
+	}
+	return ""
+}
+
+// latencyFor is the presentation latency one receiver gets: the global base
+// plus its DSP/DAC delay, clamped to the sender's window. This is the value
+// the stream SETUP carries and the flyout shows.
+func (e *Engine) latencyFor(key string) int {
+	delay := 0
+	if entry, ok := e.reg.Get(key); ok {
+		delay = entry.DelayMS
+	}
+	return receivers.EffectiveLatencyMS(e.setsValue.LatencyMS, delay)
 }
 
 func (e *Engine) nameFor(id string) string {
@@ -1227,8 +1402,11 @@ func (e *Engine) buildSnapshot() Snapshot {
 	}
 	devs := make([]device.Device, len(e.devices))
 	copy(devs, e.devices)
+	views := make([]receivers.View, len(e.receiversViews))
+	copy(views, e.receiversViews)
 	return Snapshot{
 		Devices:            devs,
+		Receivers:          views,
 		SelectedID:         e.selectedID,
 		State:              state,
 		ConnectedName:      e.connectedName,
@@ -1240,7 +1418,6 @@ func (e *Engine) buildSnapshot() Snapshot {
 		PasswordDeviceID:   e.passwordDeviceID,
 		Volume:             e.volume,
 		Name:               e.setsValue.Name,
-		AutoConnect:        e.setsValue.AutoConnect,
 		Reconnect:          e.setsValue.Reconnect,
 		Reconnecting:       e.reconnectWanted && !e.reconnectAt.IsZero(),
 		AudioIdle:          e.audioPaused,
@@ -1264,6 +1441,10 @@ func (e *Engine) buildSnapshot() Snapshot {
 }
 
 func (e *Engine) publish() {
+	// publish is the single projection point: every mutation lands through
+	// it, so the row lists always reflect the registry, discovery, and the
+	// active key together.
+	e.rebuildTargets()
 	snap := e.buildSnapshot()
 	e.mu.Lock()
 	e.snap = snap

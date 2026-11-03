@@ -808,6 +808,16 @@ func (msgs Messages) SettingsNavConnection() string {
 	return Catalog.Format(msgs.locale, "settingsNavConnection", nil)
 }
 
+// SettingsNavReceivers says "Receivers"
+// in the language the app shows.
+func SettingsNavReceivers() string { return In(i18n.Locale()).SettingsNavReceivers() }
+
+// SettingsNavReceivers says "Receivers"
+// in the language of msgs.
+func (msgs Messages) SettingsNavReceivers() string {
+	return Catalog.Format(msgs.locale, "settingsNavReceivers", nil)
+}
+
 // SettingsNavAudio says "Audio"
 // in the language the app shows.
 func SettingsNavAudio() string { return In(i18n.Locale()).SettingsNavAudio() }
@@ -838,14 +848,24 @@ func (msgs Messages) PageGeneralDesc() string {
 	return Catalog.Format(msgs.locale, "pageGeneralDesc", nil)
 }
 
-// PageConnectionDesc says "Pairing, reconnection, and verification."
+// PageConnectionDesc says "Reconnection and verification."
 // in the language the app shows.
 func PageConnectionDesc() string { return In(i18n.Locale()).PageConnectionDesc() }
 
-// PageConnectionDesc says "Pairing, reconnection, and verification."
+// PageConnectionDesc says "Reconnection and verification."
 // in the language of msgs.
 func (msgs Messages) PageConnectionDesc() string {
 	return Catalog.Format(msgs.locale, "pageConnectionDesc", nil)
+}
+
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver sync."
+// in the language the app shows.
+func PageReceiversDesc() string { return In(i18n.Locale()).PageReceiversDesc() }
+
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver sync."
+// in the language of msgs.
+func (msgs Messages) PageReceiversDesc() string {
+	return Catalog.Format(msgs.locale, "pageReceiversDesc", nil)
 }
 
 // PageAudioDesc says "Trade sync against stability; switching mid-session reconnects."
@@ -1100,26 +1120,6 @@ func (msgs Messages) SettingsBeta() string {
 	return Catalog.Format(msgs.locale, "settingsBeta", nil)
 }
 
-// SettingsAutoConnect says "Connect to the last device at launch"
-// in the language the app shows.
-func SettingsAutoConnect() string { return In(i18n.Locale()).SettingsAutoConnect() }
-
-// SettingsAutoConnect says "Connect to the last device at launch"
-// in the language of msgs.
-func (msgs Messages) SettingsAutoConnect() string {
-	return Catalog.Format(msgs.locale, "settingsAutoConnect", nil)
-}
-
-// SettingsAutoConnectDesc says "The device that last streamed successfully"
-// in the language the app shows.
-func SettingsAutoConnectDesc() string { return In(i18n.Locale()).SettingsAutoConnectDesc() }
-
-// SettingsAutoConnectDesc says "The device that last streamed successfully"
-// in the language of msgs.
-func (msgs Messages) SettingsAutoConnectDesc() string {
-	return Catalog.Format(msgs.locale, "settingsAutoConnectDesc", nil)
-}
-
 // SettingsReconnect says "Reconnect after a drop"
 // in the language the app shows.
 func SettingsReconnect() string { return In(i18n.Locale()).SettingsReconnect() }
@@ -1160,46 +1160,626 @@ func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
 }
 
-// SettingsReceiverPassword says "Receiver password"
+// ReceiverGroupEnabled says "Enabled"
 // in the language the app shows.
-func SettingsReceiverPassword() string { return In(i18n.Locale()).SettingsReceiverPassword() }
+func ReceiverGroupEnabled() string { return In(i18n.Locale()).ReceiverGroupEnabled() }
 
-// SettingsReceiverPassword says "Receiver password"
+// ReceiverGroupEnabled says "Enabled"
 // in the language of msgs.
-func (msgs Messages) SettingsReceiverPassword() string {
-	return Catalog.Format(msgs.locale, "settingsReceiverPassword", nil)
+func (msgs Messages) ReceiverGroupEnabled() string {
+	return Catalog.Format(msgs.locale, "receiverGroupEnabled", nil)
 }
 
-// SettingsReceiverPasswordDesc says "Save for the selected device"
+// ReceiverGroupHidden says "Hidden"
 // in the language the app shows.
-func SettingsReceiverPasswordDesc() string { return In(i18n.Locale()).SettingsReceiverPasswordDesc() }
+func ReceiverGroupHidden() string { return In(i18n.Locale()).ReceiverGroupHidden() }
 
-// SettingsReceiverPasswordDesc says "Save for the selected device"
+// ReceiverGroupHidden says "Hidden"
 // in the language of msgs.
-func (msgs Messages) SettingsReceiverPasswordDesc() string {
-	return Catalog.Format(msgs.locale, "settingsReceiverPasswordDesc", nil)
+func (msgs Messages) ReceiverGroupHidden() string {
+	return Catalog.Format(msgs.locale, "receiverGroupHidden", nil)
 }
 
-// SettingsPasswordSavedTo says "Saved to {name}"
+// ReceiverAddTitle says "Add receiver"
 // in the language the app shows.
-func SettingsPasswordSavedTo(name string) string {
-	return In(i18n.Locale()).SettingsPasswordSavedTo(name)
+func ReceiverAddTitle() string { return In(i18n.Locale()).ReceiverAddTitle() }
+
+// ReceiverAddTitle says "Add receiver"
+// in the language of msgs.
+func (msgs Messages) ReceiverAddTitle() string {
+	return Catalog.Format(msgs.locale, "receiverAddTitle", nil)
 }
 
-// SettingsPasswordSavedTo says "Saved to {name}"
+// ReceiverAddSub says "Fill in an IP or hostname manually, for receivers mDNS cannot find"
+// in the language the app shows.
+func ReceiverAddSub() string { return In(i18n.Locale()).ReceiverAddSub() }
+
+// ReceiverAddSub says "Fill in an IP or hostname manually, for receivers mDNS cannot find"
 // in the language of msgs.
-func (msgs Messages) SettingsPasswordSavedTo(name string) string {
-	return Catalog.Format(msgs.locale, "settingsPasswordSavedTo", map[string]any{"name": name})
+func (msgs Messages) ReceiverAddSub() string {
+	return Catalog.Format(msgs.locale, "receiverAddSub", nil)
 }
 
-// SettingsChooseDeviceFirst says "Choose a device in the panel first"
+// ReceiverEmptyTitle says "No visible receivers"
 // in the language the app shows.
-func SettingsChooseDeviceFirst() string { return In(i18n.Locale()).SettingsChooseDeviceFirst() }
+func ReceiverEmptyTitle() string { return In(i18n.Locale()).ReceiverEmptyTitle() }
 
-// SettingsChooseDeviceFirst says "Choose a device in the panel first"
+// ReceiverEmptyTitle says "No visible receivers"
 // in the language of msgs.
-func (msgs Messages) SettingsChooseDeviceFirst() string {
-	return Catalog.Format(msgs.locale, "settingsChooseDeviceFirst", nil)
+func (msgs Messages) ReceiverEmptyTitle() string {
+	return Catalog.Format(msgs.locale, "receiverEmptyTitle", nil)
+}
+
+// ReceiverEmptyHiddenHint says "Turn a switch back on in the hidden group below."
+// in the language the app shows.
+func ReceiverEmptyHiddenHint() string { return In(i18n.Locale()).ReceiverEmptyHiddenHint() }
+
+// ReceiverEmptyHiddenHint says "Turn a switch back on in the hidden group below."
+// in the language of msgs.
+func (msgs Messages) ReceiverEmptyHiddenHint() string {
+	return Catalog.Format(msgs.locale, "receiverEmptyHiddenHint", nil)
+}
+
+// ReceiverEmptyAddHint says "Add one manually with \"Add receiver\" below."
+// in the language the app shows.
+func ReceiverEmptyAddHint() string { return In(i18n.Locale()).ReceiverEmptyAddHint() }
+
+// ReceiverEmptyAddHint says "Add one manually with \"Add receiver\" below."
+// in the language of msgs.
+func (msgs Messages) ReceiverEmptyAddHint() string {
+	return Catalog.Format(msgs.locale, "receiverEmptyAddHint", nil)
+}
+
+// ReceiverChipManual says "Manual"
+// in the language the app shows.
+func ReceiverChipManual() string { return In(i18n.Locale()).ReceiverChipManual() }
+
+// ReceiverChipManual says "Manual"
+// in the language of msgs.
+func (msgs Messages) ReceiverChipManual() string {
+	return Catalog.Format(msgs.locale, "receiverChipManual", nil)
+}
+
+// ReceiverChipAuto says "Auto-connect"
+// in the language the app shows.
+func ReceiverChipAuto() string { return In(i18n.Locale()).ReceiverChipAuto() }
+
+// ReceiverChipAuto says "Auto-connect"
+// in the language of msgs.
+func (msgs Messages) ReceiverChipAuto() string {
+	return Catalog.Format(msgs.locale, "receiverChipAuto", nil)
+}
+
+// ReceiverChipHidden says "Hidden"
+// in the language the app shows.
+func ReceiverChipHidden() string { return In(i18n.Locale()).ReceiverChipHidden() }
+
+// ReceiverChipHidden says "Hidden"
+// in the language of msgs.
+func (msgs Messages) ReceiverChipHidden() string {
+	return Catalog.Format(msgs.locale, "receiverChipHidden", nil)
+}
+
+// ReceiverEnableSwitch says "Show in the panel; off moves the row to the hidden group"
+// in the language the app shows.
+func ReceiverEnableSwitch() string { return In(i18n.Locale()).ReceiverEnableSwitch() }
+
+// ReceiverEnableSwitch says "Show in the panel; off moves the row to the hidden group"
+// in the language of msgs.
+func (msgs Messages) ReceiverEnableSwitch() string {
+	return Catalog.Format(msgs.locale, "receiverEnableSwitch", nil)
+}
+
+// ReceiverAutoToggle says "Connect at launch"
+// in the language the app shows.
+func ReceiverAutoToggle() string { return In(i18n.Locale()).ReceiverAutoToggle() }
+
+// ReceiverAutoToggle says "Connect at launch"
+// in the language of msgs.
+func (msgs Messages) ReceiverAutoToggle() string {
+	return Catalog.Format(msgs.locale, "receiverAutoToggle", nil)
+}
+
+// ReceiverAutoToggleDesc says "One receiver at a time; toggling one clears the others"
+// in the language the app shows.
+func ReceiverAutoToggleDesc() string { return In(i18n.Locale()).ReceiverAutoToggleDesc() }
+
+// ReceiverAutoToggleDesc says "One receiver at a time; toggling one clears the others"
+// in the language of msgs.
+func (msgs Messages) ReceiverAutoToggleDesc() string {
+	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)
+}
+
+// ReceiverDelayTitle says "DSP/DAC delay"
+// in the language the app shows.
+func ReceiverDelayTitle() string { return In(i18n.Locale()).ReceiverDelayTitle() }
+
+// ReceiverDelayTitle says "DSP/DAC delay"
+// in the language of msgs.
+func (msgs Messages) ReceiverDelayTitle() string {
+	return Catalog.Format(msgs.locale, "receiverDelayTitle", nil)
+}
+
+// ReceiverDelayDesc says "Compensate the receiver's own audio buffering"
+// in the language the app shows.
+func ReceiverDelayDesc() string { return In(i18n.Locale()).ReceiverDelayDesc() }
+
+// ReceiverDelayDesc says "Compensate the receiver's own audio buffering"
+// in the language of msgs.
+func (msgs Messages) ReceiverDelayDesc() string {
+	return Catalog.Format(msgs.locale, "receiverDelayDesc", nil)
+}
+
+// ReceiverDelayUnit says "{ms} ms"
+// in the language the app shows.
+func ReceiverDelayUnit(ms int) string { return In(i18n.Locale()).ReceiverDelayUnit(ms) }
+
+// ReceiverDelayUnit says "{ms} ms"
+// in the language of msgs.
+func (msgs Messages) ReceiverDelayUnit(ms int) string {
+	return Catalog.Format(msgs.locale, "receiverDelayUnit", map[string]any{"ms": ms})
+}
+
+// ReceiverPasswordTitle says "Receiver password"
+// in the language the app shows.
+func ReceiverPasswordTitle() string { return In(i18n.Locale()).ReceiverPasswordTitle() }
+
+// ReceiverPasswordTitle says "Receiver password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordTitle() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordTitle", nil)
+}
+
+// ReceiverPasswordSaved says "Saved · used for AirPlay password authentication"
+// in the language the app shows.
+func ReceiverPasswordSaved() string { return In(i18n.Locale()).ReceiverPasswordSaved() }
+
+// ReceiverPasswordSaved says "Saved · used for AirPlay password authentication"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordSaved() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordSaved", nil)
+}
+
+// ReceiverPasswordUnset says "Not set · fill in only when this receiver asks for a password"
+// in the language the app shows.
+func ReceiverPasswordUnset() string { return In(i18n.Locale()).ReceiverPasswordUnset() }
+
+// ReceiverPasswordUnset says "Not set · fill in only when this receiver asks for a password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordUnset() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordUnset", nil)
+}
+
+// ReceiverPasswordChange says "Change"
+// in the language the app shows.
+func ReceiverPasswordChange() string { return In(i18n.Locale()).ReceiverPasswordChange() }
+
+// ReceiverPasswordChange says "Change"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordChange() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordChange", nil)
+}
+
+// ReceiverPasswordSet says "Set"
+// in the language the app shows.
+func ReceiverPasswordSet() string { return In(i18n.Locale()).ReceiverPasswordSet() }
+
+// ReceiverPasswordSet says "Set"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordSet() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordSet", nil)
+}
+
+// ReceiverEditButton says "Edit"
+// in the language the app shows.
+func ReceiverEditButton() string { return In(i18n.Locale()).ReceiverEditButton() }
+
+// ReceiverEditButton says "Edit"
+// in the language of msgs.
+func (msgs Messages) ReceiverEditButton() string {
+	return Catalog.Format(msgs.locale, "receiverEditButton", nil)
+}
+
+// ReceiverRemove says "Remove receiver"
+// in the language the app shows.
+func ReceiverRemove() string { return In(i18n.Locale()).ReceiverRemove() }
+
+// ReceiverRemove says "Remove receiver"
+// in the language of msgs.
+func (msgs Messages) ReceiverRemove() string {
+	return Catalog.Format(msgs.locale, "receiverRemove", nil)
+}
+
+// ReceiverRemoveConfirm says "Remove"
+// in the language the app shows.
+func ReceiverRemoveConfirm() string { return In(i18n.Locale()).ReceiverRemoveConfirm() }
+
+// ReceiverRemoveConfirm says "Remove"
+// in the language of msgs.
+func (msgs Messages) ReceiverRemoveConfirm() string {
+	return Catalog.Format(msgs.locale, "receiverRemoveConfirm", nil)
+}
+
+// ReceiverRemoveConfirmTitle says "Remove receiver?"
+// in the language the app shows.
+func ReceiverRemoveConfirmTitle() string { return In(i18n.Locale()).ReceiverRemoveConfirmTitle() }
+
+// ReceiverRemoveConfirmTitle says "Remove receiver?"
+// in the language of msgs.
+func (msgs Messages) ReceiverRemoveConfirmTitle() string {
+	return Catalog.Format(msgs.locale, "receiverRemoveConfirmTitle", nil)
+}
+
+// ReceiverRemoveConfirmSub says "{name} · {model}"
+// in the language the app shows.
+func ReceiverRemoveConfirmSub(name string, model string) string {
+	return In(i18n.Locale()).ReceiverRemoveConfirmSub(name, model)
+}
+
+// ReceiverRemoveConfirmSub says "{name} · {model}"
+// in the language of msgs.
+func (msgs Messages) ReceiverRemoveConfirmSub(name string, model string) string {
+	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name, "model": model})
+}
+
+// ReceiverRemoveHint1 says "The receiver leaves settings and the device list; the receiver itself is not changed."
+// in the language the app shows.
+func ReceiverRemoveHint1() string { return In(i18n.Locale()).ReceiverRemoveHint1() }
+
+// ReceiverRemoveHint1 says "The receiver leaves settings and the device list; the receiver itself is not changed."
+// in the language of msgs.
+func (msgs Messages) ReceiverRemoveHint1() string {
+	return Catalog.Format(msgs.locale, "receiverRemoveHint1", nil)
+}
+
+// ReceiverRemoveHint2 says "You can add it again later with \"Add receiver\"."
+// in the language the app shows.
+func ReceiverRemoveHint2() string { return In(i18n.Locale()).ReceiverRemoveHint2() }
+
+// ReceiverRemoveHint2 says "You can add it again later with \"Add receiver\"."
+// in the language of msgs.
+func (msgs Messages) ReceiverRemoveHint2() string {
+	return Catalog.Format(msgs.locale, "receiverRemoveHint2", nil)
+}
+
+// ReceiverDialogTitleAdd says "Add receiver"
+// in the language the app shows.
+func ReceiverDialogTitleAdd() string { return In(i18n.Locale()).ReceiverDialogTitleAdd() }
+
+// ReceiverDialogTitleAdd says "Add receiver"
+// in the language of msgs.
+func (msgs Messages) ReceiverDialogTitleAdd() string {
+	return Catalog.Format(msgs.locale, "receiverDialogTitleAdd", nil)
+}
+
+// ReceiverDialogTitleEdit says "Edit receiver"
+// in the language the app shows.
+func ReceiverDialogTitleEdit() string { return In(i18n.Locale()).ReceiverDialogTitleEdit() }
+
+// ReceiverDialogTitleEdit says "Edit receiver"
+// in the language of msgs.
+func (msgs Messages) ReceiverDialogTitleEdit() string {
+	return Catalog.Format(msgs.locale, "receiverDialogTitleEdit", nil)
+}
+
+// ReceiverDialogSubAdd says "For receivers mDNS cannot discover."
+// in the language the app shows.
+func ReceiverDialogSubAdd() string { return In(i18n.Locale()).ReceiverDialogSubAdd() }
+
+// ReceiverDialogSubAdd says "For receivers mDNS cannot discover."
+// in the language of msgs.
+func (msgs Messages) ReceiverDialogSubAdd() string {
+	return Catalog.Format(msgs.locale, "receiverDialogSubAdd", nil)
+}
+
+// ReceiverDialogSubEdit says "Change the manually added receiver's details."
+// in the language the app shows.
+func ReceiverDialogSubEdit() string { return In(i18n.Locale()).ReceiverDialogSubEdit() }
+
+// ReceiverDialogSubEdit says "Change the manually added receiver's details."
+// in the language of msgs.
+func (msgs Messages) ReceiverDialogSubEdit() string {
+	return Catalog.Format(msgs.locale, "receiverDialogSubEdit", nil)
+}
+
+// ReceiverFieldName says "Name"
+// in the language the app shows.
+func ReceiverFieldName() string { return In(i18n.Locale()).ReceiverFieldName() }
+
+// ReceiverFieldName says "Name"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldName() string {
+	return Catalog.Format(msgs.locale, "receiverFieldName", nil)
+}
+
+// ReceiverFieldNamePlaceholder says "Bedroom, Living room…"
+// in the language the app shows.
+func ReceiverFieldNamePlaceholder() string { return In(i18n.Locale()).ReceiverFieldNamePlaceholder() }
+
+// ReceiverFieldNamePlaceholder says "Bedroom, Living room…"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldNamePlaceholder() string {
+	return Catalog.Format(msgs.locale, "receiverFieldNamePlaceholder", nil)
+}
+
+// ReceiverFieldType says "Type"
+// in the language the app shows.
+func ReceiverFieldType() string { return In(i18n.Locale()).ReceiverFieldType() }
+
+// ReceiverFieldType says "Type"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldType() string {
+	return Catalog.Format(msgs.locale, "receiverFieldType", nil)
+}
+
+// ReceiverTypeExpress says "AirPort Express"
+// in the language the app shows.
+func ReceiverTypeExpress() string { return In(i18n.Locale()).ReceiverTypeExpress() }
+
+// ReceiverTypeExpress says "AirPort Express"
+// in the language of msgs.
+func (msgs Messages) ReceiverTypeExpress() string {
+	return Catalog.Format(msgs.locale, "receiverTypeExpress", nil)
+}
+
+// ReceiverTypeAP1 says "AirPlay 1 receiver"
+// in the language the app shows.
+func ReceiverTypeAP1() string { return In(i18n.Locale()).ReceiverTypeAP1() }
+
+// ReceiverTypeAP1 says "AirPlay 1 receiver"
+// in the language of msgs.
+func (msgs Messages) ReceiverTypeAP1() string {
+	return Catalog.Format(msgs.locale, "receiverTypeAP1", nil)
+}
+
+// ReceiverTypeAP2 says "AirPlay 2 receiver"
+// in the language the app shows.
+func ReceiverTypeAP2() string { return In(i18n.Locale()).ReceiverTypeAP2() }
+
+// ReceiverTypeAP2 says "AirPlay 2 receiver"
+// in the language of msgs.
+func (msgs Messages) ReceiverTypeAP2() string {
+	return Catalog.Format(msgs.locale, "receiverTypeAP2", nil)
+}
+
+// ReceiverFieldHost says "IP address or hostname"
+// in the language the app shows.
+func ReceiverFieldHost() string { return In(i18n.Locale()).ReceiverFieldHost() }
+
+// ReceiverFieldHost says "IP address or hostname"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldHost() string {
+	return Catalog.Format(msgs.locale, "receiverFieldHost", nil)
+}
+
+// ReceiverFieldPort says "Port"
+// in the language the app shows.
+func ReceiverFieldPort() string { return In(i18n.Locale()).ReceiverFieldPort() }
+
+// ReceiverFieldPort says "Port"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldPort() string {
+	return Catalog.Format(msgs.locale, "receiverFieldPort", nil)
+}
+
+// ReceiverPortHint says "usually 5000 or 7000"
+// in the language the app shows.
+func ReceiverPortHint() string { return In(i18n.Locale()).ReceiverPortHint() }
+
+// ReceiverPortHint says "usually 5000 or 7000"
+// in the language of msgs.
+func (msgs Messages) ReceiverPortHint() string {
+	return Catalog.Format(msgs.locale, "receiverPortHint", nil)
+}
+
+// ReceiverFieldAuth says "Password authentication"
+// in the language the app shows.
+func ReceiverFieldAuth() string { return In(i18n.Locale()).ReceiverFieldAuth() }
+
+// ReceiverFieldAuth says "Password authentication"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldAuth() string {
+	return Catalog.Format(msgs.locale, "receiverFieldAuth", nil)
+}
+
+// ReceiverFieldAuthHint says "only when the receiver asks for one"
+// in the language the app shows.
+func ReceiverFieldAuthHint() string { return In(i18n.Locale()).ReceiverFieldAuthHint() }
+
+// ReceiverFieldAuthHint says "only when the receiver asks for one"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldAuthHint() string {
+	return Catalog.Format(msgs.locale, "receiverFieldAuthHint", nil)
+}
+
+// ReceiverAuthNone says "None"
+// in the language the app shows.
+func ReceiverAuthNone() string { return In(i18n.Locale()).ReceiverAuthNone() }
+
+// ReceiverAuthNone says "None"
+// in the language of msgs.
+func (msgs Messages) ReceiverAuthNone() string {
+	return Catalog.Format(msgs.locale, "receiverAuthNone", nil)
+}
+
+// ReceiverAuthPassword says "Receiver password"
+// in the language the app shows.
+func ReceiverAuthPassword() string { return In(i18n.Locale()).ReceiverAuthPassword() }
+
+// ReceiverAuthPassword says "Receiver password"
+// in the language of msgs.
+func (msgs Messages) ReceiverAuthPassword() string {
+	return Catalog.Format(msgs.locale, "receiverAuthPassword", nil)
+}
+
+// ReceiverFieldPassword says "Receiver password"
+// in the language the app shows.
+func ReceiverFieldPassword() string { return In(i18n.Locale()).ReceiverFieldPassword() }
+
+// ReceiverFieldPassword says "Receiver password"
+// in the language of msgs.
+func (msgs Messages) ReceiverFieldPassword() string {
+	return Catalog.Format(msgs.locale, "receiverFieldPassword", nil)
+}
+
+// ReceiverPasswordNewLabel says "New password"
+// in the language the app shows.
+func ReceiverPasswordNewLabel() string { return In(i18n.Locale()).ReceiverPasswordNewLabel() }
+
+// ReceiverPasswordNewLabel says "New password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordNewLabel() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordNewLabel", nil)
+}
+
+// ReceiverPasswordPlaceholderNew says "Enter the AirPlay password"
+// in the language the app shows.
+func ReceiverPasswordPlaceholderNew() string {
+	return In(i18n.Locale()).ReceiverPasswordPlaceholderNew()
+}
+
+// ReceiverPasswordPlaceholderNew says "Enter the AirPlay password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordPlaceholderNew() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordPlaceholderNew", nil)
+}
+
+// ReceiverPasswordPlaceholderKeep says "Leave empty to keep the saved password"
+// in the language the app shows.
+func ReceiverPasswordPlaceholderKeep() string {
+	return In(i18n.Locale()).ReceiverPasswordPlaceholderKeep()
+}
+
+// ReceiverPasswordPlaceholderKeep says "Leave empty to keep the saved password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordPlaceholderKeep() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordPlaceholderKeep", nil)
+}
+
+// ReceiverErrorName says "Enter a name."
+// in the language the app shows.
+func ReceiverErrorName() string { return In(i18n.Locale()).ReceiverErrorName() }
+
+// ReceiverErrorName says "Enter a name."
+// in the language of msgs.
+func (msgs Messages) ReceiverErrorName() string {
+	return Catalog.Format(msgs.locale, "receiverErrorName", nil)
+}
+
+// ReceiverErrorHost says "Enter an IP address or hostname."
+// in the language the app shows.
+func ReceiverErrorHost() string { return In(i18n.Locale()).ReceiverErrorHost() }
+
+// ReceiverErrorHost says "Enter an IP address or hostname."
+// in the language of msgs.
+func (msgs Messages) ReceiverErrorHost() string {
+	return Catalog.Format(msgs.locale, "receiverErrorHost", nil)
+}
+
+// ReceiverErrorPort says "The port should be between 1 and 65535."
+// in the language the app shows.
+func ReceiverErrorPort() string { return In(i18n.Locale()).ReceiverErrorPort() }
+
+// ReceiverErrorPort says "The port should be between 1 and 65535."
+// in the language of msgs.
+func (msgs Messages) ReceiverErrorPort() string {
+	return Catalog.Format(msgs.locale, "receiverErrorPort", nil)
+}
+
+// ReceiverErrorPassword says "Enter a password, or set password authentication to None."
+// in the language the app shows.
+func ReceiverErrorPassword() string { return In(i18n.Locale()).ReceiverErrorPassword() }
+
+// ReceiverErrorPassword says "Enter a password, or set password authentication to None."
+// in the language of msgs.
+func (msgs Messages) ReceiverErrorPassword() string {
+	return Catalog.Format(msgs.locale, "receiverErrorPassword", nil)
+}
+
+// ReceiverDialogSave says "Save"
+// in the language the app shows.
+func ReceiverDialogSave() string { return In(i18n.Locale()).ReceiverDialogSave() }
+
+// ReceiverDialogSave says "Save"
+// in the language of msgs.
+func (msgs Messages) ReceiverDialogSave() string {
+	return Catalog.Format(msgs.locale, "receiverDialogSave", nil)
+}
+
+// ReceiverDialogAdd says "Add"
+// in the language the app shows.
+func ReceiverDialogAdd() string { return In(i18n.Locale()).ReceiverDialogAdd() }
+
+// ReceiverDialogAdd says "Add"
+// in the language of msgs.
+func (msgs Messages) ReceiverDialogAdd() string {
+	return Catalog.Format(msgs.locale, "receiverDialogAdd", nil)
+}
+
+// ReceiverPasswordDialogTitleSet says "Set receiver password"
+// in the language the app shows.
+func ReceiverPasswordDialogTitleSet() string {
+	return In(i18n.Locale()).ReceiverPasswordDialogTitleSet()
+}
+
+// ReceiverPasswordDialogTitleSet says "Set receiver password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordDialogTitleSet() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordDialogTitleSet", nil)
+}
+
+// ReceiverPasswordDialogTitleChange says "Change receiver password"
+// in the language the app shows.
+func ReceiverPasswordDialogTitleChange() string {
+	return In(i18n.Locale()).ReceiverPasswordDialogTitleChange()
+}
+
+// ReceiverPasswordDialogTitleChange says "Change receiver password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordDialogTitleChange() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordDialogTitleChange", nil)
+}
+
+// ReceiverPasswordDialogSub says "{name} · AirPlay password authentication"
+// in the language the app shows.
+func ReceiverPasswordDialogSub(name string) string {
+	return In(i18n.Locale()).ReceiverPasswordDialogSub(name)
+}
+
+// ReceiverPasswordDialogSub says "{name} · AirPlay password authentication"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordDialogSub(name string) string {
+	return Catalog.Format(msgs.locale, "receiverPasswordDialogSub", map[string]any{"name": name})
+}
+
+// ReceiverPasswordDialogHint says "Stored on this PC only; used when connecting to this receiver, never written to the diagnostic log."
+// in the language the app shows.
+func ReceiverPasswordDialogHint() string { return In(i18n.Locale()).ReceiverPasswordDialogHint() }
+
+// ReceiverPasswordDialogHint says "Stored on this PC only; used when connecting to this receiver, never written to the diagnostic log."
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordDialogHint() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordDialogHint", nil)
+}
+
+// ReceiverPasswordClear says "Clear saved password"
+// in the language the app shows.
+func ReceiverPasswordClear() string { return In(i18n.Locale()).ReceiverPasswordClear() }
+
+// ReceiverPasswordClear says "Clear saved password"
+// in the language of msgs.
+func (msgs Messages) ReceiverPasswordClear() string {
+	return Catalog.Format(msgs.locale, "receiverPasswordClear", nil)
+}
+
+// ReceiverErrorPasswordRequired says "Enter a new password."
+// in the language the app shows.
+func ReceiverErrorPasswordRequired() string { return In(i18n.Locale()).ReceiverErrorPasswordRequired() }
+
+// ReceiverErrorPasswordRequired says "Enter a new password."
+// in the language of msgs.
+func (msgs Messages) ReceiverErrorPasswordRequired() string {
+	return Catalog.Format(msgs.locale, "receiverErrorPasswordRequired", nil)
 }
 
 // SettingsLatency says "Latency mode"

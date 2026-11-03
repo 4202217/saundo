@@ -21,6 +21,7 @@ import (
 	"saundo/internal/diagnostics"
 	"saundo/internal/engine"
 	"saundo/internal/nowplaying"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -92,7 +93,15 @@ type App struct {
 	latencyPendingSnap engine.Snapshot
 	latencyHasPending  bool
 	latencyHoldTimer   *time.Timer
-	passwordDraft      string
+
+	receiverOpen       map[string]bool
+	receiverHiddenOpen bool
+	receiverDialog     receiverDialogState
+	receiverDialogOpen bool
+	receiverDraft      receiverDraft
+	receiverDelaySeq   uint64
+	receiverDelayTimer *time.Timer
+	receiverDelayPend  map[string]int
 
 	readNowPlaying    func() (nowplaying.Track, bool, error)
 	pushNowPlaying    func(title, artist, album string)
@@ -105,7 +114,6 @@ type App struct {
 
 	nameDraft      string
 	strict         bool
-	autoConn       bool
 	reconnect      bool
 	launchAtStart  bool
 	showNowPlaying bool
@@ -157,7 +165,6 @@ func Run() error {
 	a.selID = cfg.LastDeviceID
 	a.nameDraft = cfg.Name
 	a.strict = cfg.StrictReceiverAuth
-	a.autoConn = cfg.AutoConnect
 	a.reconnect = cfg.Reconnect
 	a.launchAtStart = cfg.LaunchAtStart
 	a.trayAnimation = cfg.TrayAnimation
@@ -182,7 +189,22 @@ func Run() error {
 	a.appIDs = []string{"0"}
 	a.appChoice = locales.CaptureAllSystem()
 
-	a.eng = engine.New(a.sets, creds.NewStore(), a.log, a.onEngineChange)
+	// Move the legacy per-receiver state before the engine reads either
+	// store: plaintext passwords into DPAPI, and one auto-connect entry
+	// seeded from the old flag and last device. Reload the app's settings
+	// copy afterwards, so a later whole-file save cannot write the moved
+	// plaintext or the cleared flag back.
+	credsStore := creds.NewStore()
+	recvStore := receivers.NewStore()
+	if res, err := receivers.MigrateSettings(a.sets, credsStore, recvStore); err != nil {
+		a.log.Printf("receiver migration: %v", err)
+	} else if res.MovedPasswords > 0 || res.SeededAuto || res.KeptPasswords > 0 {
+		a.log.Printf("receiver migration: %d passwords moved, %d kept (DPAPI unavailable), auto-connect seeded=%v",
+			res.MovedPasswords, res.KeptPasswords, res.SeededAuto)
+	}
+	a.cfg = a.sets.Load()
+
+	a.eng = engine.NewWithReceivers(a.sets, credsStore, recvStore, a.log, a.onEngineChange)
 
 	mygo.App.OnSecondInstance(func(_ []string, _ string) { a.showWindow() })
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
@@ -446,8 +468,18 @@ func (a *App) onEngineChange(snap engine.Snapshot) {
 
 func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.snap = snap
+	// A delay draft stays visible until the engine's row carries it, so the
+	// slider never snaps back to the old value between the command and the
+	// next snapshot.
+	for key, ms := range a.receiverDelayPend {
+		for _, v := range snap.Receivers {
+			if v.Key == key && v.DelayMS == ms {
+				delete(a.receiverDelayPend, key)
+				break
+			}
+		}
+	}
 	a.strict = snap.StrictAuth
-	a.autoConn = snap.AutoConnect
 	a.reconnect = snap.Reconnect
 	a.showNowPlaying = snap.ShowNowPlaying
 	if a.trayAnimation != snap.TrayAnimation {

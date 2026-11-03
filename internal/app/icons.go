@@ -33,6 +33,10 @@ var (
 	iconCheck    = iconSVG(`<svg viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`)
 	iconChevron  = iconSVG(`<svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`)
 	iconDownload = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M5 19h14"/></g></svg>`)
+	iconPlus     = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></g></svg>`)
+	iconPencil   = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14.5 5.5l4 4"/></g></svg>`)
+	iconKey      = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="15.5" r="3.5"/><path d="M11 13 20 4M17 7l2.5 2.5M14.5 9.5l2 2"/></g></svg>`)
+	iconEyeOff   = iconSVG(`<svg viewBox="0 0 20 20" fill="none"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 10s2.6-4.5 7.2-4.5S17.2 10 17.2 10s-2.6 4.5-7.2 4.5S2.8 10 2.8 10Z"/><circle cx="10" cy="10" r="2"/><path d="M4 4l12 12"/></g></svg>`)
 
 	iconSliders = iconSVG(`<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></g><g fill="currentColor"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg>`)
 	iconWave    = iconSVG(`<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 8v4M8 5v10M12 8v4M16 6v8"/></g></svg>`)

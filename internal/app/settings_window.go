@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"strings"
+
 	"time"
 
 	"github.com/egoist/mygo"
@@ -19,6 +19,7 @@ type settingsPage uint8
 const (
 	pageGeneral settingsPage = iota
 	pageConnection
+	pageReceivers
 	pageAudio
 	pageCapture
 	pageUpdate
@@ -30,6 +31,7 @@ var settingsNav = []struct {
 }{
 	{pageGeneral, iconSliders},
 	{pageConnection, iconLink},
+	{pageReceivers, iconSpeaker},
 	{pageAudio, iconWave},
 	{pageCapture, iconScreen},
 	{pageUpdate, iconRefresh},
@@ -39,6 +41,8 @@ func pageTitle(page settingsPage) string {
 	switch page {
 	case pageConnection:
 		return locales.SettingsNavConnection()
+	case pageReceivers:
+		return locales.SettingsNavReceivers()
 	case pageAudio:
 		return locales.SettingsNavAudio()
 	case pageCapture:
@@ -211,6 +215,8 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 					a.generalPage(c, p)
 				case pageConnection:
 					a.connectionPage(c, p)
+				case pageReceivers:
+					a.receiversPage(c, p)
 				case pageAudio:
 					a.audioPage(c, p)
 				case pageCapture:
@@ -227,6 +233,8 @@ func pageCopy(page settingsPage) (title, desc string) {
 	switch page {
 	case pageConnection:
 		return pageTitle(page), locales.PageConnectionDesc()
+	case pageReceivers:
+		return pageTitle(page), locales.PageReceiversDesc()
 	case pageAudio:
 		return pageTitle(page), locales.PageAudioDesc()
 	case pageCapture:
@@ -476,26 +484,12 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 		a.deviceSummary(c, p, d)
 	}
 	pageCard(c, p, func() {
-		settingRow(c, p, locales.SettingsAutoConnect(), locales.SettingsAutoConnectDesc(), func() {
-			toggle(c, p, &a.autoConn, locales.SettingsAutoConnect(), func(v bool) { a.eng.SetAutoConnect(v) })
-		})
-		rowLine(c, p)
 		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
 			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.eng.SetReconnect(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
 			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
-		})
-		rowLine(c, p)
-		settingRow(c, p, locales.SettingsReceiverPassword(), a.passwordTargetText(), func() {
-			ui.Row(c).Gap(6).Children(func() {
-				field := fieldInput(c, p, &a.passwordDraft, locales.SettingsReceiverPasswordDesc(), locales.SettingsReceiverPassword()).Password()
-				if field.Submitted() {
-					a.saveReceiverPassword()
-				}
-				chipButton(c, p, locales.SettingsSave(), func() { a.saveReceiverPassword() })
-			})
 		})
 	})
 }
@@ -758,23 +752,6 @@ func (a *App) applyCaptureProcess() {
 			return
 		}
 	}
-}
-
-func (a *App) saveReceiverPassword() {
-	if a.selID == "" {
-		return
-	}
-	a.eng.SetReceiverPassword(a.selID, strings.TrimSpace(a.passwordDraft))
-}
-
-// passwordTargetText names the device the receiver password is saved to.
-func (a *App) passwordTargetText() string {
-	for _, d := range a.snap.Devices {
-		if d.ID == a.selID {
-			return locales.SettingsPasswordSavedTo(d.Name)
-		}
-	}
-	return locales.SettingsChooseDeviceFirst()
 }
 
 func captureStatusText(s engine.Snapshot) string {
