@@ -19,46 +19,38 @@ gh secret set MYGO_UPDATER_PRIVATE_KEY < "C:\Users\<you>\AppData\Roaming\mygo\up
 
 ## Docs audit
 
-Audit the docs against the tree before the version bump. Fix drift in the release commit.
+Audit the docs against the tree before the release commit. Fix drift in the same commit.
 
-- `README.md` and `README.zh-CN.md`: the feature list, screenshots, install, and update surface. The update surface is the settings 更新 page and its notes dialog. There is no standalone update window.
+- `README.md` and `README.zh-CN.md`: the feature list, screenshots, install, and update surface. The update surface is the settings Updates page and its notes dialog. There is no standalone update window.
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and the dated evidence. Keep every unverified feature in the list.
-- `CHANGELOG.md`: the `## <version> - <date>` section.
+- `CHANGELOG.md`: the English canonical. It must be ASCII and use English UI descriptions. Add the `## <version> - <date>` section.
+- `CHANGELOG.zh-CN.md`: the Chinese counterpart with the same version headings. The app's update history reads it when `App.Locale` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
-
-Commit the docs audit with the version and changelog under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
 
 ## Version and changelog
 
-The version is `cmd/saundo/mygo.json` `version`. The release notes are the `## <version> - <date>` section of `CHANGELOG.md`. `mygo build` embeds that section in the update manifest, and the settings 更新 page shows it.
+The version is `cmd/saundo/mygo.json` `version`. The release notes are the `## <version> - <date>` section of `CHANGELOG.md`. `mygo build` embeds that section in the update manifest, and the settings Updates page shows the release history from the localized changelog.
 
 ```bash
 VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd/saundo/mygo.json | head -n 1)"
 ```
 
 1. Bump `version` in `cmd/saundo/mygo.json`.
-2. Add the matching `## <version> - <date>` section to `CHANGELOG.md`.
-3. Commit the docs audit, both changes, and the changelog.
-4. Create the tag only after the commit passes the gates below. The workflow checks that the tag and the configuration version agree.
+2. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
+3. Build and verify the local candidate, then record the result in `docs/verification.md`.
+4. Commit the version, both changelogs, the docs audit, and the local verification as `build: release <version>`.
+5. Run the preflight, then tag that release commit. Do not add a commit between the release commit and the tag.
 
 ## Local gate
 
-Run the acceptance gate before tagging:
+Run the acceptance gate before the release commit:
 
 ```bash
 make check
 ```
 
 If make is absent, run the commands in `AGENTS.md`.
-
-After the release commit, run the preflight:
-
-```bash
-bash scripts/release-check.sh
-```
-
-The script checks the clean tree, version, tag, changelog, docs files, links and screenshots, public repository, update secret, release workflow, and current update feed. Stop on a failure.
 
 Build the app locally:
 
@@ -79,11 +71,19 @@ MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
   go tool mygo build -platform windows/amd64 -skip-installer
 ```
 
-Check `build/windows-amd64/update-windows-amd64.json`. It must carry the expected version, the changelog notes, and a signature.
+Check `build/windows-amd64/update-windows-amd64.json`. It must carry the expected version, the English changelog notes, and a signature. Install the local candidate on the Windows test machine and verify it before the release commit.
 
-## Publish
+After the release commit, run the preflight:
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`.
+```bash
+bash scripts/release-check.sh
+```
+
+The script checks the clean tree, the release commit subject, the version, the tag, the English and Chinese changelogs, the docs files, links and screenshots, the public repository, the update secret, the release workflow, and the current update feed. Stop on a failure.
+
+## Tag and push
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`. The tag points to the release commit.
 
 1. `check` runs the catalogs, vet, and tests.
 2. `draft` checks the tag against `mygo.json` and creates a draft release.
@@ -93,18 +93,22 @@ Review the draft, then install it on a clean Windows 10 or 11 machine and check:
 
 - The installer runs, installs per user, and appears in Settings > Apps.
 - The app discovers a receiver, connects, and streams.
-- The previous release updates to the new one through the settings 更新 page and its notes dialog.
+- The settings Updates page and notes dialog render. The release history shows the localized changelog.
 - Settings, credentials, and the language choice survive the update.
 - Uninstalling leaves the expected data, or the docs say what it keeps.
 - The installer is unsigned unless signing is configured. SmartScreen warns. Check the installer SHA256 against the release `SHA256SUMS`.
 
-Set the draft body from the changelog before publishing. The workflow's generated notes are sparse.
+The draft is invisible to the updater. The previous release updates to this one after publish. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
+
+Set the draft body from the bilingual release notes before publishing. The workflow's generated notes are sparse.
 
 ```bash
 VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd/saundo/mygo.json | head -n 1)"
 bash scripts/release-notes.sh "$VERSION" > ".audit/release-notes-$VERSION.md"
 gh release edit "v$VERSION" --notes-file ".audit/release-notes-$VERSION.md"
 ```
+
+The release body carries the English section and the Chinese section below `<!-- lang:zh -->`. The app's update history reads the localized changelog. The signed manifest notes come from the English `CHANGELOG.md`.
 
 Publish the draft when the checks pass:
 
@@ -126,7 +130,7 @@ The first updater-enabled release is the baseline. A build from before the updat
 
 ## Beta releases
 
-Tag a beta as `v0.5.0-beta.1` and publish its GitHub release as a prerelease. Apps with **Beta updates** on call `SetPrereleases(true)` and see it. Stable apps skip it. The `CHANGELOG.md` section must use the same version string, `## 0.5.0-beta.1`. The first stable release after the beta must use a higher stable version.
+Tag a beta as `v0.5.0-beta.1` and publish its GitHub release as a prerelease. Apps with **Beta updates** on call `SetPrereleases(true)` and see it. Stable apps skip it. `CHANGELOG.md` and `CHANGELOG.zh-CN.md` must use the same version heading. The first stable release after the beta must use a higher stable version.
 
 ## Signing
 

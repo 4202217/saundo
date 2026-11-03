@@ -48,8 +48,32 @@ else
   fail "changelog section for $version is empty"
 fi
 
+if LC_ALL=C grep -q '[^ -~]' CHANGELOG.md; then
+  fail "CHANGELOG.md contains non-ASCII text; keep the English canonical changelog ASCII"
+else
+  ok "CHANGELOG.md is ASCII"
+fi
+if [ -f CHANGELOG.zh-CN.md ]; then
+  en_versions="$(grep '^## ' CHANGELOG.md | sed 's/[[:space:]]*-[[:space:]]*[0-9-]*$//' | sort)"
+  zh_versions="$(grep '^## ' CHANGELOG.zh-CN.md | sed 's/[[:space:]]*-[[:space:]]*[0-9-]*$//' | sort)"
+  if [ "$en_versions" = "$zh_versions" ]; then
+    ok "English and Chinese changelog versions match"
+  else
+    fail "CHANGELOG.zh-CN.md version headings differ from CHANGELOG.md"
+  fi
+else
+  fail "missing CHANGELOG.zh-CN.md"
+fi
+
+subject="$(git log -1 --format=%s)"
+if [ "$subject" = "build: release $version" ]; then
+  ok "HEAD is the release commit"
+else
+  fail "HEAD is not build: release $version; tag the release commit, not a later verification commit"
+fi
+
 required=(
-  AGENTS.md README.md README.zh-CN.md CHANGELOG.md LICENSE NOTICE
+  AGENTS.md README.md README.zh-CN.md CHANGELOG.md CHANGELOG.zh-CN.md LICENSE NOTICE
   LICENSES/Apache-2.0.txt LICENSES/MIT-pyatv.txt
   docs/architecture.md docs/protocol.md docs/devices.md docs/implementation.md docs/ui.md docs/verification.md docs/releasing.md
   docs/screenshots/flyout-stream-light-en.png docs/screenshots/flyout-stream-light-zh.png
@@ -85,6 +109,7 @@ grep -q 'reviewed-through' docs/verification.md && ok "docs/verification.md has 
 
 grep -q '"github"[[:space:]]*:[[:space:]]*"4202217/saundo"' cmd/saundo/mygo.json || fail "mygo.json has no updates.github for 4202217/saundo"
 grep -q '"publicKey"[[:space:]]*:' cmd/saundo/mygo.json || fail "mygo.json has no updates.publicKey"
+grep -q '"changelog"[[:space:]]*:[[:space:]]*"../../CHANGELOG.md"' cmd/saundo/mygo.json || fail "mygo.json does not use the English CHANGELOG.md"
 grep -Fq 'tags: ["v*"]' .github/workflows/release.yml || fail "release.yml is not tag-triggered"
 grep -q 'MYGO_UPDATER_PRIVATE_KEY' .github/workflows/release.yml || fail "release.yml does not read MYGO_UPDATER_PRIVATE_KEY"
 
