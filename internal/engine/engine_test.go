@@ -47,6 +47,7 @@ func newFakeTransport(ev sender.Events) *fakeTransport {
 }
 
 func (f *fakeTransport) Events() <-chan raopio.Event { return f.evs }
+func (f *fakeTransport) Dead() <-chan struct{}       { return nil }
 func (f *fakeTransport) Start(host string, port uint16, name string) {
 	f.started = true
 }
@@ -133,6 +134,12 @@ func (h *harness) connect() {
 
 func (h *harness) launch() {
 	h.fake.launch(true, "")
+}
+
+// flushSettings forces the debounced settings write, for tests that assert
+// what persisted.
+func (h *harness) flushSettings() {
+	h.e.saveSettingsNow()
 }
 
 func (h *harness) advance(d time.Duration) {
@@ -573,6 +580,7 @@ func TestConnectSelectsTheDeviceBeingConnected(t *testing.T) {
 	if snap.ConnectedName != "客厅 HomePod" {
 		t.Fatalf("connected name = %q, want 客厅 HomePod", snap.ConnectedName)
 	}
+	h.flushSettings()
 	if got := h.e.sets.Load().LastDeviceID; got != testDeviceID {
 		t.Fatalf("persisted last device = %q, want %q", got, testDeviceID)
 	}
@@ -582,15 +590,17 @@ func TestFailedLaunchDoesNotReplaceLastDevice(t *testing.T) {
 	h := newHarness(t)
 	const lastID = "AA:BB:CC:DD:EE:99"
 	h.e.setsValue.LastDeviceID = lastID
+	h.flushSettings() // the previous target is on disk
 	h.addDevice()
 	h.connect()
 	h.fake.launch(false, "Device refused")
+	h.flushSettings()
 
 	if got := h.e.setsValue.LastDeviceID; got != lastID {
 		t.Fatalf("last device after a failed launch = %q, want %q", got, lastID)
 	}
-	if got := h.e.sets.Load().LastDeviceID; got != "" {
-		t.Fatalf("failed launch persisted last device %q", got)
+	if got := h.e.sets.Load().LastDeviceID; got != lastID {
+		t.Fatalf("failed launch replaced the persisted last device with %q", got)
 	}
 }
 
@@ -666,11 +676,13 @@ func TestTrayAnimationCommandPersists(t *testing.T) {
 	if h.e.buildSnapshot().TrayAnimation {
 		t.Fatal("snapshot kept tray animation on")
 	}
+	h.flushSettings()
 	if h.e.sets.Load().TrayAnimation {
 		t.Fatal("tray animation off was not saved")
 	}
 	h.e.setsValue.Volume = 42
-	h.e.saveSettings()
+	h.e.markSettingsDirty()
+	h.flushSettings()
 	if h.e.sets.Load().TrayAnimation {
 		t.Fatal("a later settings save reverted tray animation")
 	}
@@ -678,6 +690,7 @@ func TestTrayAnimationCommandPersists(t *testing.T) {
 	if !h.e.buildSnapshot().TrayAnimation {
 		t.Fatal("snapshot did not turn tray animation on")
 	}
+	h.flushSettings()
 	if !h.e.sets.Load().TrayAnimation {
 		t.Fatal("tray animation on was not saved")
 	}
@@ -759,6 +772,7 @@ func TestLatencyApplyReportsOfflineDevice(t *testing.T) {
 func TestLatencySettingsReachStore(t *testing.T) {
 	h := newHarness(t)
 	h.e.handleCommand(command{kind: cmdLatencySettings, text: "standard", value: 1500, show: true})
+	h.flushSettings()
 	got := h.e.sets.Load()
 	if got.LatencyMode != settings.LatencyStandard || got.LatencyCustomMS != 1500 || !got.ShowLatencySwitch {
 		t.Fatalf("latency settings = %+v", got)

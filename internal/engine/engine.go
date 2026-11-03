@@ -215,6 +215,10 @@ func usesPTP(d device.Device) bool {
 // maxReconnectAttempts bounds automatic retries before giving up.
 const maxReconnectAttempts = 5
 
+// settingsSaveDebounce coalesces settings writes on the run loop: a volume
+// drag or a burst of toggles costs one disk write, not one per change.
+const settingsSaveDebounce = 500 * time.Millisecond
+
 // audioPauseAfter is how long the capture stream must be digitally silent
 // before the engine suspends the audio pacer. Two seconds keeps a gap between
 // tracks streaming while stopping a real pause quickly.
@@ -286,6 +290,7 @@ type Engine struct {
 	reconnectAt      time.Time
 	reconnectNum     int
 	lastMissingLogAt time.Time
+	settingsDirtyAt  time.Time
 	audioPaused      bool
 	pauseUnsupported bool
 	autoTried        bool
@@ -634,6 +639,9 @@ func (e *Engine) nextWake() time.Time {
 	if e.reconnectWanted && !e.reconnectAt.IsZero() && (wake.IsZero() || e.reconnectAt.Before(wake)) {
 		wake = e.reconnectAt
 	}
+	if !e.settingsDirtyAt.IsZero() && (wake.IsZero() || e.settingsDirtyAt.Before(wake)) {
+		wake = e.settingsDirtyAt
+	}
 	return wake
 }
 
@@ -642,6 +650,9 @@ func (e *Engine) onWake() {
 	if e.reconnectWanted && !e.reconnectAt.IsZero() && !now.Before(e.reconnectAt) {
 		e.attemptReconnect()
 		return
+	}
+	if !e.settingsDirtyAt.IsZero() && !now.Before(e.settingsDirtyAt) {
+		e.saveSettingsNow()
 	}
 	e.updateAudioPause(now)
 	if e.tr != nil {
@@ -680,6 +691,7 @@ func (e *Engine) updateAudioPause(now time.Time) {
 func (e *Engine) shutdown() {
 	e.stopping = true
 	e.closeSession()
+	e.saveSettingsNow()
 	if e.capture != nil {
 		e.capture.Stop()
 		e.capture = nil
@@ -767,7 +779,7 @@ func (e *Engine) handleCommand(cmd command) {
 			}
 			e.setsValue.VolumeByDevice[e.selectedID] = e.volume
 		}
-		e.saveSettings()
+		e.markSettingsDirty()
 		if e.tr != nil {
 			e.tr.SetVolume(e.volume)
 		}
@@ -789,7 +801,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.CaptureEndpointName = cmd.name
 		e.setsValue.CaptureProcessPID = 0
 		e.setsValue.CaptureProcessName = ""
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.restartCapture()
 		e.publish()
 	case cmdCaptureProcess:
@@ -797,7 +809,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.captureName = cmd.name
 		e.setsValue.CaptureProcessPID = e.captureProcess
 		e.setsValue.CaptureProcessName = cmd.name
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.restartCapture()
 		e.publish()
 	case cmdLatency:
@@ -807,7 +819,7 @@ func (e *Engine) handleCommand(cmd command) {
 			// only half of the value the SETUP carries.
 			e.tr.SetLatency(e.latencyFor(e.selectedID))
 		}
-		e.saveSettings()
+		e.markSettingsDirty()
 		if cmd.reconnect && e.tr != nil && e.tr.Active() {
 			// A PIN wait is pairing progress, not a live stream: restarting
 			// over it would discard the code the user is typing.
@@ -833,7 +845,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.LatencyMode = settings.LatencyMode(cmd.text)
 		e.setsValue.LatencyCustomMS = int(cmd.value)
 		e.setsValue.ShowLatencySwitch = cmd.show
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.publish()
 	case cmdPassword:
 		if err := e.savePassword(cmd.deviceID, cmd.name); err != nil {
@@ -849,7 +861,7 @@ func (e *Engine) handleCommand(cmd command) {
 		if e.tr != nil {
 			e.tr.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 		}
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.publish()
 	case cmdName:
 		name := strings.TrimSpace(cmd.text)
@@ -860,22 +872,22 @@ func (e *Engine) handleCommand(cmd command) {
 		if e.tr != nil {
 			e.tr.SetIdentity(sender.Identity{Name: name, DeviceID: e.setsValue.DeviceID, Model: "iPhone14,3"})
 		}
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.publish()
 	case cmdReconnect:
 		e.setsValue.Reconnect = cmd.value != 0
 		if !e.setsValue.Reconnect {
 			e.reconnectPendingOff()
 		}
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.publish()
 	case cmdShowNowPlaying:
 		e.setsValue.ShowNowPlaying = cmd.value != 0
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.publish()
 	case cmdTrayAnimation:
 		e.setsValue.TrayAnimation = cmd.value != 0
-		e.saveSettings()
+		e.markSettingsDirty()
 		e.publish()
 	case cmdNowPlaying:
 		if e.setsValue.ShowNowPlaying && e.tr != nil {
@@ -1035,7 +1047,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.connectedName = e.nameFor(e.selectedID)
 		if e.setsValue.LastDeviceID != e.selectedID {
 			e.setsValue.LastDeviceID = e.selectedID
-			e.saveSettings()
+			e.markSettingsDirty()
 		}
 		e.lastError = ""
 		e.reconnectWanted = true
@@ -1047,7 +1059,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 			if p, ok := e.tr.InitialVolumePercent(); ok {
 				e.volume = clamp(p, 0, 100)
 				e.setsValue.Volume = e.volume
-				e.saveSettings()
+				e.markSettingsDirty()
 			}
 		}
 		e.logf("streaming to %s", e.connectedName)
@@ -1117,7 +1129,7 @@ func (e *Engine) onReceiverVolume(pct float64) {
 		}
 		e.setsValue.VolumeByDevice[e.selectedID] = e.volume
 	}
-	e.saveSettings()
+	e.markSettingsDirty()
 	e.publish()
 }
 
@@ -1424,7 +1436,17 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 	e.publish()
 }
 
-func (e *Engine) saveSettings() {
+// markSettingsDirty schedules a settings write. The run loop coalesces
+// writes at settingsSaveDebounce so interaction bursts cost one disk write;
+// shutdown flushes whatever is pending.
+func (e *Engine) markSettingsDirty() {
+	if e.settingsDirtyAt.IsZero() {
+		e.settingsDirtyAt = e.now().Add(settingsSaveDebounce)
+	}
+}
+
+func (e *Engine) saveSettingsNow() {
+	e.settingsDirtyAt = time.Time{}
 	if e.sets != nil {
 		_ = e.sets.Save(e.setsValue)
 	}

@@ -89,9 +89,6 @@ func (s *Sender) writeRTSP(data []byte) {
 }
 
 func (s *Sender) onRTSPData(data []byte) {
-	if len(data) > 0 {
-		s.info("control rx %d bytes", len(data))
-	}
 	if !s.controlEncrypted || s.ap2 == nil {
 		s.rxBuf = append(s.rxBuf, data...)
 	} else {

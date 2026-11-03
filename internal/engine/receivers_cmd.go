@@ -128,11 +128,11 @@ func (e *Engine) handleRemoveReceiver(key string) {
 	delete(e.passwords, key)
 	if e.setsValue.VolumeByDevice != nil {
 		delete(e.setsValue.VolumeByDevice, key)
-		e.saveSettings()
+		e.markSettingsDirty()
 	}
 	if e.setsValue.LastDeviceID == key {
 		e.setsValue.LastDeviceID = ""
-		e.saveSettings()
+		e.markSettingsDirty()
 	}
 	if e.selectedID == key {
 		e.selectedID = ""
