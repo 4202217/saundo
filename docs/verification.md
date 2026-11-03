@@ -24,6 +24,12 @@ live state:
 - Device churn while the adaptive-height flyout is open, and its upward growth.
 - The tray menu's 设置… entry, and a settings-window redraw driven by an
   engine snapshot change.
+- Latency modes: listening at low, standard, stable, and custom; the restart
+  gap; the 3 s streaming hold on a slow reconnect; custom values below 200 ms.
+- Tray animation: toggling the setting while connecting or streaming, and
+  changing Windows animation effects (Reduce Motion) while running.
+- The settings 更新 page and notes dialog: available, downloading, ready, and
+  failed states; the release-history list; install from the page.
 
 ## Automated checks
 

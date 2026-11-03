@@ -39,7 +39,10 @@ Windows Firewall prompts on first launch — allow it on private networks: disco
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock (the sender is the PTP master for stereo pairs), encrypted control and event channels, retransmit on request.
 - **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
 - **Now Playing** — reads the Windows media session (SMTC) and pushes title · artist · album to the receiver, toggleable.
-- **English and Simplified Chinese** — the interface follows the Windows language by default, with a language setting and a localized update window.
+- **Latency modes.** Low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the flyout or the audio page. A live change restarts the stream with a spinner.
+- **A tray that shows the state.** The smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
+- **Updates in the app.** The settings 更新 page shows available releases, their notes, and the release history. It installs the signed update. The flyout chip and the tray tooltip point to it.
+- **English and Simplified Chinese.** The interface follows the Windows language by default, with a language setting and a localized update page and notes dialog.
 - **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are DPAPI-encrypted.
 - **Stays out of the way** — suspends the stream after 2 s of digital silence and resumes cleanly, auto-reconnects with backoff, and follows volume changes made on the receiver.
 
