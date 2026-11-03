@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-02 -->
+<!-- reviewed-through: 2026-11-03 -->
 
 # Verification
 
@@ -324,10 +324,18 @@ blocked; the UI reports a PTP timeout with this hint.
   worker's source). A moved knob reaches the UI through
   `Events.VolumeChanged`, mirrors into the per-device memory, and the slider
   follows. Pinned by `TestReceiverVolumePollAdoptsHardwareChanges`.
-- **Latency UI.** The 播放延迟 slider (20-2000 ms) drives the stream SETUP's
-  `latencyMin`/`latencyMax` and the sync-packet timeline on both PTP and NTP
-  sessions; pinned by `TestLatencyAppliesToStreamSetup` and
-  `TestLatencyAndPasswordReachSession`.
+- **Latency UI.** The 音频 page's mode card offers 低延迟 200 ms, 标准 1.5 s,
+  稳定 2 s, and a custom 20–2000 ms value; the header switch 面板快捷切换
+  shows or hides the flyout's four-segment row. The playback head's ALAC line
+  carries the resolved value, e.g.
+  `ALAC · 44.1 kHz · PTP · 已同步 · 延迟 700 ms`. Preset changes restart a
+  live session; the custom slider applies 500 ms after the last change. The
+  resolved `LatencyMS` still drives the stream SETUP's
+  `latencyMin`/`latencyMax` and the sync-packet timeline on PTP and NTP
+  sessions; pinned by `TestLatencyAppliesToStreamSetup`,
+  `TestLatencyAndPasswordReachSession`, `TestApplyLatencyRestartsActiveSession`,
+  `TestFlyoutLatencySegmentSelects`, `TestAudioModeTileSelects`, and
+  `TestFlyoutHeightForDeviceRows`.
 - **Password receivers.** The receiver-password field stores a per-device password
   that `SetAuth` passes to the RTSP digest path (pinned by
   `TestLatencyAndPasswordReachSession`).
@@ -695,6 +703,61 @@ Audio streamed normally. Four issues surfaced:
 - The static stream icon is animation frame 0, and the static connect icon is three uniform 2.6 px dots. Switching the animation on or off therefore does not change the mouth size.
 - Measured on the 4K 200% taskbar: `Tray.SetIcon` averaged 0.5 to 0.8 ms per frame. GDI objects stayed at 53 across 20-second runs, with no handle leak. Explorer CPU with the taskbar visible ranged from 1.6 percent of one core for the static icon to 4.8 percent for the 100 ms animation over 20-second samples; the figure is noisy and the app-side cost stayed under 1 percent. A 60 ms frame interval produced a 10 ms worst-case call, so 100 ms is the default.
 - `TestTrayAnimationDefaultsOnAndRoundTrips`, `TestTrayAnimationSettingPersists`, `TestTrayAnimationCommandPersists`, `TestTrayAnimationFaces`, and `TestSettingsPagesRender` pin the default, the app and engine copies of the switch, the animated faces, and the settings row. Not verified: a live HomePod run of the final settings toggle; the timing above was measured in the prototype's demo mode, which uses the same animator and `SetIcon` path.
+
+## Latency modes (2026-11-03)
+
+- **Design.** 低延迟 is 200 ms and stays the default; 标准 is 1.5 s; 稳定 is
+  2 s; 自定义 accepts 20–2000 ms. The flyout shows the four segments and the
+  current value on the ALAC line, with no slider or value button of its own.
+  The settings 音频 page owns the mode tiles and the custom slider.
+- **References.** pyatv, owntone, shairport-sync, and UxPlay advertise 11025
+  samples (250 ms) as the minimum; pyatv uses 66150 samples (1.5 s) for RAOP,
+  shairport-sync's receiver default is 88200 (2 s), and RAOP-Player clamps to
+  `RAOP_LATENCY_MIN` 11025. The 200 ms default is this project's HomePod
+  SETUP value. A 100 ms preset was dropped because no target receiver has a
+  record at that value; custom values below 200 ms are marked unverified.
+- **Migration.** A stored 200, 1500, or 2000 ms selects the matching preset;
+  any other stored value becomes custom with that value. A missing mode keeps
+  the old latency as its custom value. `ShowLatencySwitch` defaults on.
+- **Engine.** `SetLatency` keeps applying on the next session.
+  `ApplyLatency` sets the value and restarts a live session so the receiver's
+  stream SETUP carries it; `SetLatencySettings` keeps the app-only mode,
+  custom value, and switch in the engine's settings copy so a later engine
+  save cannot overwrite them. A preset click updates the selection, the ALAC
+  line, and the engine's stored value at once, but the restart waits 300 ms
+  for the last click; the custom slider waits 500 ms. Rapid low → standard →
+  stable therefore sends one restart with the final mode. While that restart
+  runs, the app holds the last streaming snapshot for up to 3 s, so the device
+  row, footer, capture line, and tray keep their streaming face; a spinner
+  follows the 播放 label so the line never shifts. Errors and user disconnects
+  end the hold at once. The debounce is UI timing and is not pinned by a
+  timing test; the selection and `ApplyLatency` restart paths are tested.
+- **Tests.** `TestLatencyModeDefaults`, `TestLegacyLatencyMSChoosesMode`,
+  `TestLatencyPresetNormalizesAndCustomRoundTrips`, `TestLatencyText`,
+  `TestApplyLatencyRestartsActiveSession`, `TestLatencyApplyHoldsStreamingSnapshot`,
+  `TestLatencySpinnerKeepsALACLineAnchored`, `TestLatencySettingsReachStore`,
+  `TestFlyoutLatencySegmentSelects`, `TestAudioModeTileSelects`,
+  `TestFlyoutLatencySwitchCanHide`, `TestFlyoutCustomLatencyOnALACLine`,
+  `TestAudioCustomModeRendersSlider`, and `TestFlyoutHeightForDeviceRows`.
+  The mygo previews `settings-audio-light`, `settings-audio-custom-light` and
+  `-dark`, `flyout-custom-light` and `-dark`, `flyout-latency-applying`, and
+  `flyout-switch-off` render
+  the states in both languages.
+- **Short windows.** Each settings page body scrolls inside the fixed title
+  area, which ends in a divider. The overlay scrollbar runs in the 20 DIP
+  gutter at the window edge, clear of the cards, and the audio page's
+  read-only rows use the shared `settingRow` so their padding matches the
+  other pages. At the 420 DIP minimum the audio page keeps the custom card
+  and its slider whole and scrolls to the read-only rows; the compact and
+  scrolled previews (`settings-audio-compact-light` and `-dark`,
+  `settings-audio-compact-scrolled-light` and `-dark`) render those states,
+  and `TestSettingsAudioPageScrollsAtMinimumHeight` scrolls the sync row into
+  view.
+- **Not verified.** Listening at each mode on a live HomePod, the reconnect
+  gap when a preset restarts a session, and a measured dropout or
+  end-to-end-latency sweep. The 3 s hold was not tuned on a slow HomePod
+  reconnect. The mode values are reference-backed; the 200 ms default is the
+  value the receiver has been used with.
 
 ## Failure modes and meanings
 

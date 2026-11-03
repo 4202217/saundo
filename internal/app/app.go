@@ -81,8 +81,18 @@ type App struct {
 	appIDs    []string
 	appChoice string
 
-	latency       float64
-	passwordDraft string
+	latency            float64
+	latencyMode        settings.LatencyMode
+	latencyCustom      float64
+	showLatencySwitch  bool
+	latencyTimer       *time.Timer
+	latencySeq         uint64
+	latencyApplying    bool
+	latencySawChange   bool
+	latencyPendingSnap engine.Snapshot
+	latencyHasPending  bool
+	latencyHoldTimer   *time.Timer
+	passwordDraft      string
 
 	readNowPlaying    func() (nowplaying.Track, bool, error)
 	pushNowPlaying    func(title, artist, album string)
@@ -159,6 +169,15 @@ func Run() error {
 	if a.latency <= 0 {
 		a.latency = 200
 	}
+	a.latencyMode = cfg.LatencyMode
+	if a.latencyMode == "" {
+		a.latencyMode = settings.LatencyModeForMS(int(a.latency + 0.5))
+	}
+	a.latencyCustom = float64(cfg.LatencyCustomMS)
+	if a.latencyCustom <= 0 {
+		a.latencyCustom = float64(settings.DefaultLatencyCustomMS)
+	}
+	a.showLatencySwitch = cfg.ShowLatencySwitch
 	a.appNames = []string{locales.CaptureAllSystem()}
 	a.appIDs = []string{"0"}
 	a.appChoice = locales.CaptureAllSystem()
@@ -168,6 +187,12 @@ func Run() error {
 	mygo.App.OnSecondInstance(func(_ []string, _ string) { a.showWindow() })
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
 		a.quitting = true
+		if a.latencyTimer != nil {
+			a.latencyTimer.Stop()
+		}
+		if a.latencyHoldTimer != nil {
+			a.latencyHoldTimer.Stop()
+		}
 		a.eng.Stop()
 	})
 	// Windows leaves a tray icon behind after its app until the pointer
@@ -211,7 +236,7 @@ func (a *App) ready() {
 		})
 		// Discovery has not reported yet, so the flyout opens at the empty
 		// state's height and grows as devices arrive.
-		a.flyoutH = flyoutHeightFor(0)
+		a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch)
 		a.win = mygo.NewFlyout(mygo.FlyoutOptions{
 			Tray:      a.tray,
 			Placement: mygo.PlacementBottom,
@@ -419,7 +444,7 @@ func (a *App) onEngineChange(snap engine.Snapshot) {
 	a.updateUI(func() { a.apply(snap) })
 }
 
-func (a *App) apply(snap engine.Snapshot) {
+func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.snap = snap
 	a.strict = snap.StrictAuth
 	a.autoConn = snap.AutoConnect
@@ -474,7 +499,7 @@ func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightFor(len(a.snap.Devices))
+	h := flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch)
 	if h == a.flyoutH {
 		return
 	}
@@ -577,7 +602,7 @@ func (a *App) rebuildTray() {
 		}
 		if connecting {
 			items = append(items, &mygo.MenuItem{Label: locales.TrayDisconnect(), Icon: a.menuIcons["disconnect"], Click: func(*mygo.MenuItem, *mygo.Window) {
-				a.eng.Disconnect()
+				a.disconnect()
 			}})
 		} else {
 			items = append(items, &mygo.MenuItem{Label: locales.TrayConnectLast(), Icon: a.menuIcons["connect"], Disabled: a.selID == "", Click: func(*mygo.MenuItem, *mygo.Window) {

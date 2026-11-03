@@ -40,15 +40,18 @@ func withLocale(t *testing.T, tag string) {
 
 func previewApp() *App {
 	a := &App{
-		volume:        65,
-		captureNames:  []string{locales.CaptureFollowSystem(), "Speakers"},
-		captureIDs:    []string{"", "{endpoint}"},
-		captureChoice: locales.CaptureFollowSystem(),
-		appNames:      []string{locales.CaptureAllSystem(), "Spotify"},
-		appIDs:        []string{"0", "1234"},
-		appChoice:     locales.CaptureAllSystem(),
-		nameDraft:     "声渡",
-		latency:       200,
+		volume:            65,
+		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
+		captureIDs:        []string{"", "{endpoint}"},
+		captureChoice:     locales.CaptureFollowSystem(),
+		appNames:          []string{locales.CaptureAllSystem(), "Spotify"},
+		appIDs:            []string{"0", "1234"},
+		appChoice:         locales.CaptureAllSystem(),
+		nameDraft:         "声渡",
+		latency:           200,
+		latencyMode:       "low",
+		latencyCustom:     700,
+		showLatencySwitch: true,
 	}
 	a.selID = "AA:BB:CC:DD:EE:01"
 	a.snap = engine.Snapshot{
@@ -76,11 +79,11 @@ func previewApp() *App {
 
 func TestViewRendersDevicesAndStatus(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{
 		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
-		"ALAC · 44.1 kHz · PTP · 已同步", "推送", "未检测到媒体", "诊断日志",
+		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "推送", "未检测到媒体", "诊断日志",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
@@ -97,7 +100,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 func TestEnglishLocaleRenders(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{
 		"saundo", "AIRPLAY 2", "Devices", "3 devices", "65%", "Streaming to HomePods",
 		"No media detected", "Diagnostics",
@@ -111,7 +114,7 @@ func TestEnglishLocaleRenders(t *testing.T) {
 func TestPseudoLocaleRenders(t *testing.T) {
 	withLocale(t, "en-XA")
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	if len(tt.Texts()) == 0 {
 		t.Fatal("pseudo-locale view rendered no text")
 	}
@@ -170,7 +173,7 @@ func TestPasswordPromptRenders(t *testing.T) {
 	a.snap.PasswordDevice = "MacBook"
 	a.snap.PasswordDeviceID = "AA:BB:CC:DD:EE:02"
 	a.passwordOpen = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{
 		"输入接收端密码", "输入 MacBook 的 AirPlay 接收密码。",
 		"密码保存在本机，只用于这台设备。", "连接", "取消",
@@ -188,7 +191,7 @@ func TestSettingsPagesRender(t *testing.T) {
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动、外观与版本。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言", "关于", "声渡 · saundo"}},
 		{pageConnection, []string{"连接", "配对、重连与验证策略", "HomePods", "已连接", "启动时自动连接上次设备", "断开后自动重连", "严格验证接收器", "接收端密码", "保存到 HomePods"}},
-		{pageAudio, []string{"音频", "播放延迟", "200 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
+		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 	}
@@ -209,7 +212,7 @@ func TestSettingsPagesRender(t *testing.T) {
 
 func TestFlyoutKeepsPlaybackControlsOnly(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, moved := range []string{
 		"开机自动启动", "启动时自动连接上次设备", "断开后自动重连",
 		"严格验证接收器", "播放延迟", "接收端密码", "系统输出",
@@ -234,7 +237,7 @@ func TestStereoGroupRowRenders(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.snap.ConnectedName = ""
 	a.selID = device.StereoGroupID("tsid")
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{"HomePods", "立体声组 2/2"} {
 		if !tt.HasText(want) {
 			t.Fatalf("group view is missing %q; texts: %q", want, tt.Texts())
@@ -248,7 +251,7 @@ func TestNowPlayingRowShowsTrack(t *testing.T) {
 	a.nowTrack = nowplaying.Track{Title: "夜曲", Artist: "周杰伦", Album: "十一月的萧邦"}
 	a.showNowPlaying = true
 	a.snap.ShowNowPlaying = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{"夜曲 · 周杰伦", "正在播放 · 十一月的萧邦", "推送"} {
 		if !tt.HasText(want) {
 			t.Fatalf("now-playing row is missing %q; texts: %q", want, tt.Texts())
@@ -261,7 +264,7 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.snap.Error = "接收器没有响应"
 	a.snap.ConnectedName = ""
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{"重试", "连接失败：接收器没有响应", "连接失败"} {
 		if !tt.HasText(want) {
 			t.Fatalf("error state is missing %q; texts: %q", want, tt.Texts())
@@ -275,7 +278,7 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 	a.snap.SelectedID = ""
 	a.snap.State = sender.StateIdle
 	a.selID = ""
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{"0 台", "正在搜索附近的 AirPlay 设备…", "重新搜索"} {
 		if !tt.HasText(want) {
 			t.Fatalf("empty state is missing %q; texts: %q", want, tt.Texts())
@@ -286,8 +289,11 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
 	cases := map[int]int{0: 470, 1: 388, 2: 444, 3: 500, 5: 500}
 	for devices, want := range cases {
-		if got := flyoutHeightFor(devices); got != want {
-			t.Errorf("flyoutHeightFor(%d) = %d, want %d", devices, got, want)
+		if got := flyoutHeightFor(devices, false); got != want {
+			t.Errorf("flyoutHeightFor(%d, false) = %d, want %d", devices, got, want)
+		}
+		if got := flyoutHeightFor(devices, true); got != want+latencySwitchHeight {
+			t.Errorf("flyoutHeightFor(%d, true) = %d, want %d", devices, got, want+latencySwitchHeight)
 		}
 	}
 }
@@ -297,7 +303,7 @@ func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 	for devices := 0; devices <= deviceRows; devices++ {
 		a := previewApp()
 		a.snap.Devices = a.snap.Devices[:devices]
-		tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(devices))
+		tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(devices, a.showLatencySwitch))
 		tt.Frame()
 		card, ok := tt.Find("设备列表")
 		if !ok {
@@ -324,7 +330,7 @@ func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
 	find := func(devices int) ui.Rect {
 		a := previewApp()
 		a.snap.Devices = a.snap.Devices[:devices]
-		tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(devices))
+		tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(devices, a.showLatencySwitch))
 		tt.Frame()
 		r, ok := tt.Find(capture)
 		if !ok {
@@ -416,7 +422,7 @@ func TestPinDialogRenders(t *testing.T) {
 	a.snap.PinRequired = true
 	a.snap.PinDevice = "Apple TV"
 	a.pinOpen = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	for _, want := range []string{
 		"输入配对码", "在 Apple TV 的屏幕上查看配对码。", "配对码只用于本次配对。", "取消", "配对",
 	} {
@@ -451,7 +457,7 @@ func TestPhaseOf(t *testing.T) {
 func TestDeviceRowSelectsOnClick(t *testing.T) {
 	a := previewApp()
 	a.selID = "AA:BB:CC:DD:EE:01"
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	tt.Frame()
 	if err := tt.Click("HomePod mini"); err != nil {
 		t.Fatal(err)
@@ -613,5 +619,137 @@ func writePreview(t *testing.T, tt *ui.Tester, path string) {
 	defer f.Close()
 	if err := png.Encode(f, tt.Image()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFlyoutLatencySwitchCanHide(t *testing.T) {
+	a := previewApp()
+	a.showLatencySwitch = false
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), false))
+	if tt.HasText("低延迟") {
+		t.Fatalf("hidden switch still shows the mode row: %q", tt.Texts())
+	}
+	if !tt.HasText("延迟 200 ms") {
+		t.Fatalf("the ALAC line lost the latency: %q", tt.Texts())
+	}
+}
+
+func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
+	a := previewApp()
+	a.latencyMode = "custom"
+	a.latencyCustom = 700
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true))
+	if !tt.HasText("延迟 700 ms") || !tt.HasText("自定义") {
+		t.Fatalf("custom latency not shown: %q", tt.Texts())
+	}
+}
+
+func TestFlyoutLatencySegmentSelects(t *testing.T) {
+	a := previewApp()
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true))
+	tt.Frame()
+	if err := tt.Click("标准"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.latencyMode != "standard" || a.latency != 1500 {
+		t.Fatalf("selected %q/%v, want standard/1500", a.latencyMode, a.latency)
+	}
+	if !tt.HasText("延迟 1.5 s") {
+		t.Fatalf("the ALAC line did not follow: %q", tt.Texts())
+	}
+}
+
+func TestAudioCustomModeRendersSlider(t *testing.T) {
+	a := previewApp()
+	a.page = pageAudio
+	a.latencyMode = "custom"
+	a.latencyCustom = 700
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{"自定义", "700 ms", "20 ms", "2 s"} {
+		if !tt.HasText(want) {
+			t.Fatalf("custom audio page is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+}
+
+func TestAudioModeTileSelects(t *testing.T) {
+	a := previewApp()
+	a.page = pageAudio
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	if err := tt.Click("标准 · 1.5 s"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.latencyMode != "standard" || a.latency != 1500 {
+		t.Fatalf("selected %q/%v, want standard/1500", a.latencyMode, a.latency)
+	}
+}
+
+func TestLatencyApplyHoldsStreamingSnapshot(t *testing.T) {
+	a := previewApp()
+	held := a.snap
+	a.latencyApplying = true
+	a.apply(engine.Snapshot{
+		Devices: held.Devices, SelectedID: held.SelectedID,
+		State: sender.StateHandshake, ConnectedName: held.ConnectedName,
+	})
+	if a.snap.State != held.State || a.snap.ConnectedName != held.ConnectedName {
+		t.Fatalf("snapshot was not held: %+v", a.snap)
+	}
+	a.apply(engine.Snapshot{
+		Devices: held.Devices, SelectedID: held.SelectedID,
+		State: sender.StateStreaming, ConnectedName: held.ConnectedName,
+	})
+	if a.latencyApplying {
+		t.Fatal("the hold did not finish on streaming")
+	}
+	if a.snap.State != sender.StateStreaming {
+		t.Fatalf("final state = %v", a.snap.State)
+	}
+}
+
+func TestLatencySpinnerKeepsALACLineAnchored(t *testing.T) {
+	withLocale(t, "zh-CN")
+	a := previewApp()
+	const note = "ALAC · 44.1 kHz · PTP · 已同步 · 延迟 200 ms"
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true))
+	tt.Frame()
+	before, ok := tt.Find(note)
+	if !ok {
+		t.Fatalf("ALAC line is missing: %q", tt.Texts())
+	}
+	a.latencyApplying = true
+	tt.Frame()
+	after, ok := tt.Find(note)
+	if !ok {
+		t.Fatalf("ALAC line is missing while applying: %q", tt.Texts())
+	}
+	if before.X != after.X || before.W != after.W {
+		t.Fatalf("ALAC line moved from %.1f/%.1f to %.1f/%.1f", before.X, before.W, after.X, after.W)
+	}
+}
+
+func TestSettingsAudioPageScrollsAtMinimumHeight(t *testing.T) {
+	withLocale(t, "zh-CN")
+	a := previewApp()
+	a.page = pageAudio
+	a.latencyMode = "custom"
+	a.latencyCustom = 700
+	tt := ui.NewTester(a.settingsView, 720, 420)
+	tt.Frame()
+	before, ok := tt.Find("同步方式")
+	if !ok {
+		t.Fatalf("the sync row is missing: %q", tt.Texts())
+	}
+	tt.Scroll(500, 300, 0, 160)
+	tt.Frame()
+	after, ok := tt.Find("同步方式")
+	if !ok {
+		t.Fatalf("the sync row is missing after scrolling: %q", tt.Texts())
+	}
+	if after.Y >= before.Y {
+		t.Fatalf("the audio page did not scroll: sync row %.1f -> %.1f", before.Y, after.Y)
 	}
 }

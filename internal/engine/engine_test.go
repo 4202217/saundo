@@ -621,3 +621,28 @@ func TestNowPlayingCommandForwardsWhenEnabled(t *testing.T) {
 		t.Fatalf("now playing = %q", h.fake.nowPlaying)
 	}
 }
+
+func TestApplyLatencyRestartsActiveSession(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.e.handleCommand(command{kind: cmdLatency, value: 200})
+	h.connect()
+	h.launch()
+	before := h.sessions
+	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
+	if h.sessions != before+1 {
+		t.Fatalf("sessions = %d, want %d after applying latency", h.sessions, before+1)
+	}
+	if len(h.fake.latencies) == 0 || h.fake.latencies[len(h.fake.latencies)-1] != 1500 {
+		t.Fatalf("new session latency = %v, want 1500", h.fake.latencies)
+	}
+}
+
+func TestLatencySettingsReachStore(t *testing.T) {
+	h := newHarness(t)
+	h.e.handleCommand(command{kind: cmdLatencySettings, text: "standard", value: 1500, show: true})
+	got := h.e.sets.Load()
+	if got.LatencyMode != settings.LatencyStandard || got.LatencyCustomMS != 1500 || !got.ShowLatencySwitch {
+		t.Fatalf("latency settings = %+v", got)
+	}
+}

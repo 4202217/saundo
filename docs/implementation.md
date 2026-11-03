@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-02 -->
+<!-- reviewed-through: 2026-11-03 -->
 
 # Implementation overview
 
@@ -60,8 +60,16 @@ The app also polls the Windows SMTC session every two seconds
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetVolume`, `SubmitPIN`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
-`SetCaptureProcess`, `SetLatency`, `SetStrictAuth`, `SetName`,
-`SetAutoConnect`, `SetReconnect`, `SetShowNowPlaying`, `SetNowPlaying`.
+`SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
+`SetStrictAuth`, `SetName`, `SetAutoConnect`, `SetReconnect`,
+`SetShowNowPlaying`, `SetNowPlaying`. `SetLatency` applies on the next
+session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
+app-only latency mode fields in the engine settings copy. The app holds the
+last streaming snapshot for up to 3 s while an apply restarts, so the flyout
+keeps its streaming faces; only the latency row changes and a spinner follows
+the playback label. Preset clicks debounce the restart for 300 ms and custom
+edits for 500 ms, so rapid switching coalesces into one restart with the final
+mode.
 
 ## A connect, end to end
 

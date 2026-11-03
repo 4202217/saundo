@@ -66,6 +66,26 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 			t.Fatal(err)
 		}
 	}
+	// saveScrolled shows the page scrolled with the pointer over it, so the
+	// scrollbar and the fixed title divider are visible.
+	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool) {
+		tt := ui.NewTester(view, w, h)
+		tt.SetScale(2)
+		tt.SetLocale(locale)
+		tt.SetDark(dark)
+		tt.Advance(400 * time.Millisecond)
+		tt.Move(600, 300)
+		tt.Scroll(600, 300, 0, 80)
+		tt.Frame()
+		f, err := os.Create(filepath.Join(dir, name+"-"+suffix+".png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	// frames writes the first frame and two more as the motion runs, to
 	// check an enter animation instead of its end state.
 	frames := func(name string, view func(*ui.Context), w, h int) {
@@ -107,19 +127,19 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	stream.showNowPlaying = true
 	stream.snap.ShowNowPlaying = true
 
-	save("flyout-stream-light", stream.view, flyoutWidth, flyoutHeight, false)
-	save("flyout-stream-dark", stream.view, flyoutWidth, flyoutHeight, true)
+	save("flyout-stream-light", stream.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-stream-dark", stream.view, flyoutWidth, flyoutHeightFor(deviceRows, true), true)
 
 	idle := fixture()
 	idle.snap.State = sender.StateIdle
 	idle.snap.ConnectedName = ""
 	idle.snap.PTPActive = false
-	save("flyout-idle", idle.view, flyoutWidth, flyoutHeight, false)
+	save("flyout-idle", idle.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
 
 	connecting := fixture()
 	connecting.snap.State = sender.StateHandshake
 	connecting.snap.ConnectedName = ""
-	save("flyout-connecting", connecting.view, flyoutWidth, flyoutHeight, false)
+	save("flyout-connecting", connecting.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
 
 	failed := fixture()
 	failed.snap.State = sender.StateIdle
@@ -128,20 +148,39 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		failed.snap.Error = "接收器没有响应。"
 	}
 	failed.snap.ConnectedName = ""
-	save("flyout-error", failed.view, flyoutWidth, flyoutHeight, false)
+	save("flyout-error", failed.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+
+	customFly := fixture()
+	customFly.latencyMode = settings.LatencyCustom
+	customFly.latencyCustom = 700
+	customFly.latency = 700
+	customFly.snap.LatencyMS = 700
+	save("flyout-custom-light", customFly.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-custom-dark", customFly.view, flyoutWidth, flyoutHeightFor(deviceRows, true), true)
+
+	offFly := fixture()
+	offFly.showLatencySwitch = false
+	save("flyout-switch-off", offFly.view, flyoutWidth, flyoutHeightFor(deviceRows, false), false)
+
+	applying := fixture()
+	applying.latencyMode = settings.LatencyStandard
+	applying.latency = 1500
+	applying.latencyApplying = true
+	save("flyout-latency-applying", applying.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-latency-applying-dark", applying.view, flyoutWidth, flyoutHeightFor(deviceRows, true), true)
 
 	empty := fixture()
 	empty.snap.Devices = nil
 	empty.snap.State = sender.StateIdle
 	empty.snap.SelectedID = ""
 	empty.selID = ""
-	save("flyout-empty", empty.view, flyoutWidth, flyoutHeightFor(0), false)
+	save("flyout-empty", empty.view, flyoutWidth, flyoutHeightFor(0, true), false)
 
 	stereo := fixture()
 	stereo.snap.Devices = nil
 	stereo.snap.SelectedID = ""
 	stereo.selID = ""
-	save("flyout-no-device", stereo.view, flyoutWidth, flyoutHeightFor(0), false)
+	save("flyout-no-device", stereo.view, flyoutWidth, flyoutHeightFor(0, true), false)
 
 	pages := []settingsPage{pageGeneral, pageConnection, pageAudio, pageCapture}
 	for _, page := range pages {
@@ -154,19 +193,31 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)
 
+	customSettings := fixture()
+	customSettings.page = pageAudio
+	customSettings.latencyMode = settings.LatencyCustom
+	customSettings.latencyCustom = 700
+	customSettings.latency = 700
+	save("settings-audio-custom-light", customSettings.settingsView, 720, 500, false)
+	save("settings-audio-custom-dark", customSettings.settingsView, 720, 500, true)
+	save("settings-audio-compact-light", customSettings.settingsView, 720, 420, false)
+	save("settings-audio-compact-dark", customSettings.settingsView, 720, 420, true)
+	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false)
+	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true)
+
 	pin := fixture()
 	pin.snap.PinRequired = true
 	pin.snap.PinDevice = "Apple TV"
 	pin.pinOpen = true
 	pin.pinCode = "3939"
-	save("dialog-pin", pin.view, flyoutWidth, flyoutHeight, false)
+	save("dialog-pin", pin.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
 
 	password := fixture()
 	password.snap.PasswordRequired = true
 	password.snap.PasswordDevice = "MacBook"
 	password.passwordOpen = true
 	password.passwordPrompt = "hunter2"
-	save("dialog-password", password.view, flyoutWidth, flyoutHeight, false)
+	save("dialog-password", password.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
 
 	log := fixture()
 	log.showLog = true
@@ -178,15 +229,15 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		"2026-11-01 12:00:04 ptp: follower ready",
 		"2026-11-01 12:00:05 capture open: PHL 27E2F7901 (NVIDIA High Definition Audio) (48000 Hz)",
 	}
-	save("dialog-log", log.view, flyoutWidth, flyoutHeight, false)
+	save("dialog-log", log.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
 
-	frames("probe-flyout-enter", fixture().view, flyoutWidth, flyoutHeight)
+	frames("probe-flyout-enter", fixture().view, flyoutWidth, flyoutHeightFor(deviceRows, true))
 	pinProbe := fixture()
 	pinProbe.snap.PinRequired = true
 	pinProbe.snap.PinDevice = "Apple TV"
 	pinProbe.pinOpen = true
 	pinProbe.pinCode = "3939"
-	frames("probe-pin-enter", pinProbe.view, flyoutWidth, flyoutHeight)
+	frames("probe-pin-enter", pinProbe.view, flyoutWidth, flyoutHeightFor(deviceRows, true))
 	settingsProbe := fixture()
 	settingsProbe.page = pageConnection
 	frames("probe-settings-enter", settingsProbe.settingsView, 720, 500)
@@ -200,10 +251,10 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	mac.snap.State = sender.StateIdle
 	mac.snap.ConnectedName = ""
 	mac.selID = ""
-	save("flyout-mac", mac.view, flyoutWidth, flyoutHeightFor(1), false)
+	save("flyout-mac", mac.view, flyoutWidth, flyoutHeightFor(1, true), false)
 
 	hover := fixture()
-	tt := ui.NewTester(hover.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(hover.view, flyoutWidth, flyoutHeightFor(deviceRows, true))
 	tt.SetScale(2)
 	tt.SetLocale(locale)
 	tt.Advance(400 * time.Millisecond)
@@ -266,7 +317,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	upd.upd.phase = updateReady
 	save("settings-update-ready", upd.settingsView, 720, 500, false)
 	upd.upd.phase = updateAvailable
-	save("flyout-update-chip", upd.view, flyoutWidth, flyoutHeight, false)
+	save("flyout-update-chip", upd.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
 
 	upd.upd = updateState{phase: updateChecking}
 	save("settings-update-checking", upd.settingsView, 720, 500, false)

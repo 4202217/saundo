@@ -79,18 +79,21 @@ const (
 	cmdTrayAnimation
 	cmdNowPlaying
 	cmdLatency
+	cmdLatencySettings
 	cmdCaptureProcess
 	cmdPassword
 	cmdQuit
 )
 
 type command struct {
-	kind     commandKind
-	deviceID string
-	value    float64
-	text     string
-	name     string
-	album    string
+	kind      commandKind
+	deviceID  string
+	value     float64
+	text      string
+	name      string
+	album     string
+	reconnect bool
+	show      bool
 }
 
 type captureInfo struct {
@@ -460,6 +463,19 @@ func (e *Engine) SetLatency(ms int) {
 	e.send(command{kind: cmdLatency, value: float64(ms)})
 }
 
+// ApplyLatency sets the presentation latency and restarts an active session
+// so the receiver picks it up now. An idle engine applies it on the next
+// connection like SetLatency.
+func (e *Engine) ApplyLatency(ms int) {
+	e.send(command{kind: cmdLatency, value: float64(ms), reconnect: true})
+}
+
+// SetLatencySettings keeps the engine's settings copy in step with the
+// app-only latency fields, so the next settings save cannot overwrite them.
+func (e *Engine) SetLatencySettings(mode settings.LatencyMode, customMS int, showSwitch bool) {
+	e.send(command{kind: cmdLatencySettings, text: string(mode), value: float64(customMS), show: showSwitch})
+}
+
 // SetReceiverPassword stores the RTSP password for a device.
 func (e *Engine) SetReceiverPassword(deviceID, password string) {
 	e.send(command{kind: cmdPassword, deviceID: deviceID, name: password})
@@ -743,6 +759,18 @@ func (e *Engine) handleCommand(cmd command) {
 		if e.tr != nil {
 			e.tr.SetLatency(e.setsValue.LatencyMS)
 		}
+		e.saveSettings()
+		if cmd.reconnect && e.tr != nil && e.tr.Active() {
+			if d, ok := e.find(e.selectedID); ok {
+				e.userDisconnect = false
+				e.connect(d)
+			}
+		}
+		e.publish()
+	case cmdLatencySettings:
+		e.setsValue.LatencyMode = settings.LatencyMode(cmd.text)
+		e.setsValue.LatencyCustomMS = int(cmd.value)
+		e.setsValue.ShowLatencySwitch = cmd.show
 		e.saveSettings()
 		e.publish()
 	case cmdPassword:

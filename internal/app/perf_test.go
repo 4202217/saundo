@@ -29,7 +29,7 @@ func idleFrames(t *testing.T, tt *ui.Tester) int {
 // and nothing moving, it asks for no frames.
 func TestFlyoutIdleRequestsNoFrames(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeight)
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
 	if n := idleFrames(t, tt); n > 1 {
 		t.Fatalf("the idle flyout asked for %d frames a second", n)
 	}
@@ -52,7 +52,7 @@ func TestEmptyStatePulsesUntilDevicesArrive(t *testing.T) {
 	a.snap.Devices = nil
 	a.snap.SelectedID = ""
 	a.selID = ""
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0))
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch))
 	tt.Frame()
 	tt.Advance(400 * time.Millisecond)
 	tt.Frame()

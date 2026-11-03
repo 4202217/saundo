@@ -22,6 +22,9 @@ const (
 	deviceRows        = 3
 	deviceRowHeight   = 56
 	deviceEmptyHeight = 140
+
+	// latencySwitchHeight is the four-segment row and its divider.
+	latencySwitchHeight = 44
 )
 
 // deviceCardHeight is the height of the device card for n devices.
@@ -36,8 +39,12 @@ func deviceCardHeight(n int) float32 {
 // device card and the playback card the same for any device count: the
 // design's height fits deviceRows rows, and each missing row, or the empty
 // state, shortens the window by as much as the card lost.
-func flyoutHeightFor(n int) int {
-	return flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n))
+func flyoutHeightFor(n int, showLatencySwitch bool) int {
+	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n))
+	if showLatencySwitch {
+		h += latencySwitchHeight
+	}
+	return h
 }
 
 func (a *App) view(c *ui.Context) {
@@ -190,11 +197,11 @@ func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
 func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, active bool) {
 	switch {
 	case active && ph == phaseConnecting:
-		textButton(c, p, locales.ActionCancel(), nil, p.ctl, func() { a.eng.Disconnect() })
+		textButton(c, p, locales.ActionCancel(), nil, p.ctl, func() { a.disconnect() })
 	case active && ph == phaseError:
 		textButton(c, p, locales.ActionRetry(), iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
 	case active:
-		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.eng.Disconnect() })
+		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.disconnect() })
 	case !d.Online:
 		textButton(c, p, locales.ActionOffline(), iconSlash, p.muted, nil)
 	case ph != phaseIdle:
@@ -204,12 +211,26 @@ func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, act
 	}
 }
 
+// playbackHead is the playback section header. A latency apply shows a small
+// spinner after the section label; the right-aligned ALAC line never moves.
+func (a *App) playbackHead(c *ui.Context, p palette, note string) {
+	ui.Row(c).Padding(6, 2, 2, 2).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, locales.FlyoutPlayback()).FontSize(11).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		if a.latencyApplying {
+			ui.Spinner(c).Size(10, 10).TextColor(p.accent).Margin(0, 0, 0, 6)
+		}
+		ui.Spacer(c)
+		ui.Text(c, note).FontSize(11.5).TextColor(p.muted).SingleLine()
+	})
+}
+
 func (a *App) playbackSection(c *ui.Context, p palette) {
 	note := locales.FlyoutFormat()
 	if phaseOf(a.snap) == phaseStreaming {
 		note += " · " + a.syncText()
 	}
-	sectionHead(c, p, locales.FlyoutPlayback(), note)
+	note += " · " + locales.FlyoutLatency(a.latencyDisplay())
+	a.playbackHead(c, p, note)
 
 	card := ui.Column(c).Radius(10).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
@@ -222,6 +243,10 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Margin(5, 0, 0, 0)
 		})
 		rowLine(c, p)
+		if a.showLatencySwitch {
+			ui.Column(c).Padding(6, 12, 7, 12).Children(func() { a.latencySwitch(c, p) })
+			rowLine(c, p)
+		}
 		a.nowPlayingRow(c, p)
 		// The error bar already cost the room the capture line took.
 		if phaseOf(a.snap) != phaseError {
@@ -231,6 +256,48 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 			})
 		}
 	})
+}
+
+// latencySwitch is the four-segment mode control. It carries no value of its
+// own; the playback head's ALAC line shows the current latency.
+func (a *App) latencySwitch(c *ui.Context, p palette) {
+	seg := a.latencyModeIndex()
+	parts := ui.SegmentedBase(c, &seg, 4)
+	parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
+		Label(locales.SettingsLatency()).Children(func() {
+		icons := []*ui.SVG{iconLatencyLow, iconLatencyStandard, iconLatencyStable, iconSliders}
+		names := []string{
+			locales.SettingsLatencyLow(),
+			locales.SettingsLatencyStandard(),
+			locales.SettingsLatencyStable(),
+			locales.SettingsLatencyCustom(),
+		}
+		for i := range names {
+			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).Cursor(ui.CursorPointer).Label(names[i])
+			if i == seg {
+				if p.dark {
+					s.Background(p.pillHover)
+				} else {
+					s.Background(p.card)
+				}
+				s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
+			}
+			s.Children(func() {
+				ic := ui.Icon(c, icons[i]).Size(12, 12)
+				tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
+				if i == seg {
+					ic.TextColor(p.accent)
+					tx.TextColor(p.fg)
+				} else {
+					ic.TextColor(p.muted)
+					tx.TextColor(p.muted)
+				}
+			})
+		}
+	})
+	if parts.Track.Changed() {
+		a.setLatencyMode(latencyModeAt(seg))
+	}
 }
 
 func (a *App) nowPlayingRow(c *ui.Context, p palette) {
@@ -316,6 +383,8 @@ func (a *App) phaseLabel() string {
 }
 
 func (a *App) connectDevice(id string) {
+	a.cancelLatencyApply()
+	a.finishLatencyApply()
 	a.selID = id
 	a.eng.Connect(id)
 }

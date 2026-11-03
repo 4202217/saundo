@@ -11,6 +11,7 @@ import (
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/engine"
+	"saundo/internal/settings"
 )
 
 type settingsPage uint8
@@ -184,29 +185,40 @@ func (a *App) sidebarItem(c *ui.Context, p palette, page settingsPage, icon *ui.
 
 func (a *App) settingsBody(c *ui.Context, p palette) {
 	title, desc := pageCopy(a.page)
-	body := ui.Column(c).Grow(1).FillHeight().Padding(14, 20, 10, 20)
+	// The body runs to the window edge so the overlay scrollbar sits there;
+	// the header and cards keep their 20 DIP right margin, giving the bar a
+	// gutter it cannot draw over.
+	body := ui.Column(c).Grow(1).FillHeight().Padding(14, 0, 10, 20)
 	enterPose(c, body, &a.settingsEntered)
 	body.Children(func() {
-		ui.Text(c, title).FontSize(18).FontWeight(650)
-		ui.Text(c, desc).FontSize(13).TextColor(p.muted).Margin(4, 0, 0, 0)
-		content := ui.Column(c).Key(a.page).Grow(1).Transition(ui.ElementTransition{
-			Duration: 160 * time.Millisecond,
-			Enter:    &ui.Motion{X: -6, Opacity: 0},
-			Exit:     &ui.Motion{X: 6, Opacity: 0},
+		ui.Column(c).Padding(0, 20, 0, 0).Children(func() {
+			ui.Text(c, title).FontSize(18).FontWeight(650)
+			ui.Text(c, desc).FontSize(13).TextColor(p.muted).Margin(4, 0, 0, 0)
+			ui.Box(c).Height(1).Background(p.line).Margin(10, 0, 0, 0)
 		})
-		content.Children(func() {
-			switch a.page {
-			case pageGeneral:
-				a.generalPage(c, p)
-			case pageConnection:
-				a.connectionPage(c, p)
-			case pageAudio:
-				a.audioPage(c, p)
-			case pageCapture:
-				a.capturePage(c, p)
-			case pageUpdate:
-				a.updatePage(c, p)
-			}
+		// The page body scrolls under the fixed title and divider so a short
+		// window (the 420 DIP minimum) reaches the whole latency card and the
+		// read-only rows.
+		ui.Scroll(c).Grow(1).Padding(4, 20, 0, 0).Children(func() {
+			content := ui.Column(c).Key(a.page).Transition(ui.ElementTransition{
+				Duration: 160 * time.Millisecond,
+				Enter:    &ui.Motion{X: -6, Opacity: 0},
+				Exit:     &ui.Motion{X: 6, Opacity: 0},
+			})
+			content.Children(func() {
+				switch a.page {
+				case pageGeneral:
+					a.generalPage(c, p)
+				case pageConnection:
+					a.connectionPage(c, p)
+				case pageAudio:
+					a.audioPage(c, p)
+				case pageCapture:
+					a.capturePage(c, p)
+				case pageUpdate:
+					a.updatePage(c, p)
+				}
+			})
 		})
 	})
 }
@@ -489,21 +501,44 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 }
 
 func (a *App) audioPage(c *ui.Context, p palette) {
-	pageCard(c, p, func() {
-		ui.Column(c).Padding(9, 14, 10, 14).Children(func() {
-			ui.Row(c).Children(func() {
-				ui.Column(c).Grow(1).Gap(2).Children(func() {
-					ui.Text(c, locales.SettingsLatency()).FontSize(13).FontWeight(500)
-					ui.Text(c, locales.SettingsLatencyDesc()).FontSize(11.5).
-						TextColor(p.muted).SingleLine().Ellipsis("…")
-				})
-				ui.Text(c, locales.SettingsLatencyValue(int(a.latency+0.5))).FontSize(12).TextColor(p.muted)
+	mode := a.latencyMode
+	card := ui.Column(c).Margin(12, 0, 0, 0).Radius(12).
+		Background(p.card).Border(1, p.line).Clip()
+	card.Children(func() {
+		ui.Row(c).Height(40).Padding(0, 14).Gap(8).Children(func() {
+			ui.Box(c).Size(22, 22).Radius(6).Shrink(0).Background(p.accentSoft).Center().Children(func() {
+				ui.Icon(c, iconStopwatch).Size(13, 13).TextColor(p.accent)
 			})
-			slider(c, p, &a.latency, 20, 2000, locales.SettingsLatency(), func(v float64) {
-				a.eng.SetLatency(int(v))
-			}).Margin(4, 0, 0, 0)
+			ui.Text(c, locales.SettingsLatency()).FontSize(13).FontWeight(600).Grow(1)
+			if a.latencyApplying {
+				ui.Spinner(c).Size(10, 10).TextColor(p.accent)
+			}
+			ui.Text(c, locales.SettingsLatencyPanelSwitch()).FontSize(11.5).TextColor(p.muted)
+			toggle(c, p, &a.showLatencySwitch, locales.SettingsLatencyPanelSwitch(), func(v bool) {
+				a.setShowLatencySwitch(v)
+			})
 		})
-		rowLine(c, p)
+
+		ui.RadioGroup(c, func() {
+			ui.Row(c).Padding(0, 14).Gap(8).Children(func() {
+				a.latencyModeTile(c, p, &mode, settings.LatencyLow, iconLatencyLow,
+					locales.SettingsLatencyLow(), settings.LatencyText(settings.LatencyLowMS),
+					locales.SettingsLatencyLowDesc())
+				a.latencyModeTile(c, p, &mode, settings.LatencyStandard, iconLatencyStandard,
+					locales.SettingsLatencyStandard(), settings.LatencyText(settings.LatencyStandardMS),
+					locales.SettingsLatencyStandardDesc())
+				a.latencyModeTile(c, p, &mode, settings.LatencyStable, iconLatencyStable,
+					locales.SettingsLatencyStable(), settings.LatencyText(settings.LatencyStableMS),
+					locales.SettingsLatencyStableDesc())
+			})
+			a.latencyCustomTile(c, p, &mode)
+		}).Label(locales.SettingsLatency())
+
+		ui.Text(c, locales.SettingsLatencyNote()).FontSize(11).TextColor(p.muted).
+			Margin(6, 14, 8, 14).SingleLine().Ellipsis("…")
+	})
+
+	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsAudioFormat(), locales.SettingsAudioFormatDesc(), func() {
 			staticText(c, p, locales.AudioFormatValue())
 		})
@@ -516,6 +551,105 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 			staticText(c, p, mode)
 		})
 	})
+}
+
+// latencyModeTile is one of the three preset cards. The whole card is a radio
+// so the group keeps keyboard and assistive access.
+func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMode,
+	value settings.LatencyMode, icon *ui.SVG, name, latency, desc string) {
+	selected := *mode == value
+	tile := ui.RadioBase(c, mode, value).
+		Grow(1).Height(99).Padding(10).Radius(10).Gap(0).
+		AlignItems(ui.Start).Justify(ui.Start).Cursor(ui.CursorPointer).
+		Label(name+" · "+latency).Border(1, p.line).Background(p.pill)
+	if selected {
+		tile.Background(p.accentSoft).BorderColor(p.accent)
+	}
+	tile.Children(func() {
+		ui.Column(c).Grow(1).Gap(0).Children(func() {
+			ui.Row(c).Gap(6).Children(func() {
+				ui.Box(c).Size(28, 28).Radius(8).Shrink(0).Center().Background(p.card).Children(func() {
+					iv := ui.Icon(c, icon).Size(16, 16).TextColor(p.muted)
+					if selected {
+						iv.TextColor(p.accent)
+					}
+				})
+				ui.Text(c, name).FontSize(12.5).FontWeight(500).Grow(1).SingleLine()
+				checkDot(c, p, selected)
+			})
+			valueText := ui.Text(c, latency).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 2, 0)
+			if selected {
+				valueText.TextColor(p.accent).FontWeight(500)
+			}
+			ui.Text(c, desc).FontSize(11).TextColor(p.muted)
+		})
+	})
+	if tile.Changed() {
+		a.setLatencyMode(*mode)
+	}
+}
+
+// latencyCustomTile is the full-width custom entry; its slider expands only
+// while custom is the selected mode.
+func (a *App) latencyCustomTile(c *ui.Context, p palette, mode *settings.LatencyMode) {
+	selected := *mode == settings.LatencyCustom
+	// The radio group already spaces its children by 8 DIP; a top margin here
+	// would double that gap above the custom tile.
+	outer := ui.Column(c).Margin(0, 14, 0, 14).Radius(10).Clip().
+		Border(1, p.line).Background(p.pill)
+	if selected {
+		outer.Background(p.accentSoft).BorderColor(p.accent)
+	}
+	outer.Children(func() {
+		top := ui.RadioBase(c, mode, settings.LatencyCustom).
+			Height(52).Padding(10, 12).Gap(10).AlignItems(ui.Center).Justify(ui.Start).
+			Cursor(ui.CursorPointer).
+			Label(locales.SettingsLatencyCustom() + " · " + settings.LatencyText(int(a.latencyCustom+0.5)))
+		top.Children(func() {
+			ui.Box(c).Size(28, 28).Radius(8).Shrink(0).Center().Background(p.card).Children(func() {
+				iv := ui.Icon(c, iconSliders).Size(16, 16).TextColor(p.muted)
+				if selected {
+					iv.TextColor(p.accent)
+				}
+			})
+			ui.Column(c).Grow(1).Gap(1).Children(func() {
+				ui.Text(c, locales.SettingsLatencyCustom()).FontSize(13).FontWeight(500).SingleLine()
+				ui.Text(c, locales.SettingsLatencyCustomDesc()).FontSize(11).TextColor(p.muted).
+					SingleLine().Ellipsis("…")
+			})
+			val := ui.Text(c, settings.LatencyText(int(a.latencyCustom+0.5))).FontSize(12).TextColor(p.muted)
+			if selected {
+				val.TextColor(p.accent).FontWeight(500)
+			}
+			checkDot(c, p, selected)
+		})
+		if top.Changed() {
+			a.setLatencyMode(settings.LatencyCustom)
+		}
+		if selected {
+			ui.Column(c).Padding(0, 12, 10, 38).Children(func() {
+				slider(c, p, &a.latencyCustom, 20, 2000, locales.SettingsLatencyCustom(), func(v float64) {
+					a.setLatencyCustom(v)
+				}).Margin(4, 0, 0, 0)
+				ui.Row(c).Children(func() {
+					ui.Text(c, "20 ms").FontSize(10.5).TextColor(p.muted)
+					ui.Spacer(c)
+					ui.Text(c, "2 s").FontSize(10.5).TextColor(p.muted)
+				})
+			})
+		}
+	})
+}
+
+// checkDot is the selected-state ring on a latency card.
+func checkDot(c *ui.Context, p palette, selected bool) {
+	box := ui.Box(c).Size(14, 14).Radius(7).Shrink(0).Center().Border(1.5, p.faint)
+	if selected {
+		box.Background(p.accent).BorderWidth(0, 0, 0, 0)
+		box.Children(func() {
+			ui.Icon(c, iconCheck).Size(9, 9).TextColor(p.accentFg)
+		})
+	}
 }
 
 func (a *App) capturePage(c *ui.Context, p palette) {

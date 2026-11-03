@@ -60,6 +60,12 @@
   "flyoutSearchAgain": "Search again",
   "flyoutPlayback": "Playback",
   "flyoutFormat": "ALAC · 44.1 kHz",
+  "flyoutLatency": "Latency {value}",
+  "@flyoutLatency": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
   "flyoutSyncNTP": "NTP",
   "flyoutSyncPTPReady": "PTP · Synced",
   "flyoutSyncPTPPending": "PTP · Syncing",
@@ -149,7 +155,7 @@
   "settingsNavCapture": "Capture",
   "pageGeneralDesc": "Sender identity, startup, appearance, and version.",
   "pageConnectionDesc": "Pairing, reconnection, and verification.",
-  "pageAudioDesc": "Playback latency and transport format.",
+  "pageAudioDesc": "Trade sync against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio or a single app.",
   "settingsSenderName": "Sender name",
   "settingsSenderNameDesc": "The name receivers show",
@@ -194,14 +200,17 @@
     }
   },
   "settingsChooseDeviceFirst": "Choose a device in the panel first",
-  "settingsLatency": "Playback latency",
-  "settingsLatencyDesc": "Takes effect after reconnecting; a larger value leaves more headroom for sync",
-  "settingsLatencyValue": "{ms, number, integer} ms",
-  "@settingsLatencyValue": {
-    "placeholders": {
-      "ms": { "type": "int" }
-    }
-  },
+  "settingsLatency": "Latency mode",
+  "settingsLatencyPanelSwitch": "Panel switch",
+  "settingsLatencyLow": "Low latency",
+  "settingsLatencyLowDesc": "Default; may drop on weak Wi-Fi",
+  "settingsLatencyStandard": "Standard",
+  "settingsLatencyStandardDesc": "Reference buffering; steadier day to day",
+  "settingsLatencyStable": "Stable",
+  "settingsLatencyStableDesc": "Receiver default; favors continuity on weak Wi-Fi",
+  "settingsLatencyCustom": "Custom",
+  "settingsLatencyCustomDesc": "Manual 20–2000 ms; under 200 ms unverified",
+  "settingsLatencyNote": "Some receivers, such as macOS, use their own fixed latency.",
   "settingsAudioFormat": "Audio format",
   "settingsAudioFormatDesc": "Fixed format, compatible with all AirPlay 2 receivers",
   "audioFormatValue": "ALAC · 44.1 kHz · Stereo",

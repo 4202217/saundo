@@ -396,6 +396,16 @@ func (msgs Messages) FlyoutFormat() string {
 	return Catalog.Format(msgs.locale, "flyoutFormat", nil)
 }
 
+// FlyoutLatency says "Latency {value}"
+// in the language the app shows.
+func FlyoutLatency(value string) string { return In(i18n.Locale()).FlyoutLatency(value) }
+
+// FlyoutLatency says "Latency {value}"
+// in the language of msgs.
+func (msgs Messages) FlyoutLatency(value string) string {
+	return Catalog.Format(msgs.locale, "flyoutLatency", map[string]any{"value": value})
+}
+
 // FlyoutSyncNTP says "NTP"
 // in the language the app shows.
 func FlyoutSyncNTP() string { return In(i18n.Locale()).FlyoutSyncNTP() }
@@ -838,11 +848,11 @@ func (msgs Messages) PageConnectionDesc() string {
 	return Catalog.Format(msgs.locale, "pageConnectionDesc", nil)
 }
 
-// PageAudioDesc says "Playback latency and transport format."
+// PageAudioDesc says "Trade sync against stability; switching mid-session reconnects."
 // in the language the app shows.
 func PageAudioDesc() string { return In(i18n.Locale()).PageAudioDesc() }
 
-// PageAudioDesc says "Playback latency and transport format."
+// PageAudioDesc says "Trade sync against stability; switching mid-session reconnects."
 // in the language of msgs.
 func (msgs Messages) PageAudioDesc() string {
 	return Catalog.Format(msgs.locale, "pageAudioDesc", nil)
@@ -1192,34 +1202,114 @@ func (msgs Messages) SettingsChooseDeviceFirst() string {
 	return Catalog.Format(msgs.locale, "settingsChooseDeviceFirst", nil)
 }
 
-// SettingsLatency says "Playback latency"
+// SettingsLatency says "Latency mode"
 // in the language the app shows.
 func SettingsLatency() string { return In(i18n.Locale()).SettingsLatency() }
 
-// SettingsLatency says "Playback latency"
+// SettingsLatency says "Latency mode"
 // in the language of msgs.
 func (msgs Messages) SettingsLatency() string {
 	return Catalog.Format(msgs.locale, "settingsLatency", nil)
 }
 
-// SettingsLatencyDesc says "Takes effect after reconnecting; a larger value leaves more headroom for sync"
+// SettingsLatencyPanelSwitch says "Panel switch"
 // in the language the app shows.
-func SettingsLatencyDesc() string { return In(i18n.Locale()).SettingsLatencyDesc() }
+func SettingsLatencyPanelSwitch() string { return In(i18n.Locale()).SettingsLatencyPanelSwitch() }
 
-// SettingsLatencyDesc says "Takes effect after reconnecting; a larger value leaves more headroom for sync"
+// SettingsLatencyPanelSwitch says "Panel switch"
 // in the language of msgs.
-func (msgs Messages) SettingsLatencyDesc() string {
-	return Catalog.Format(msgs.locale, "settingsLatencyDesc", nil)
+func (msgs Messages) SettingsLatencyPanelSwitch() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyPanelSwitch", nil)
 }
 
-// SettingsLatencyValue says "{ms, number, integer} ms"
+// SettingsLatencyLow says "Low latency"
 // in the language the app shows.
-func SettingsLatencyValue(ms int) string { return In(i18n.Locale()).SettingsLatencyValue(ms) }
+func SettingsLatencyLow() string { return In(i18n.Locale()).SettingsLatencyLow() }
 
-// SettingsLatencyValue says "{ms, number, integer} ms"
+// SettingsLatencyLow says "Low latency"
 // in the language of msgs.
-func (msgs Messages) SettingsLatencyValue(ms int) string {
-	return Catalog.Format(msgs.locale, "settingsLatencyValue", map[string]any{"ms": ms})
+func (msgs Messages) SettingsLatencyLow() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyLow", nil)
+}
+
+// SettingsLatencyLowDesc says "Default; may drop on weak Wi-Fi"
+// in the language the app shows.
+func SettingsLatencyLowDesc() string { return In(i18n.Locale()).SettingsLatencyLowDesc() }
+
+// SettingsLatencyLowDesc says "Default; may drop on weak Wi-Fi"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyLowDesc() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyLowDesc", nil)
+}
+
+// SettingsLatencyStandard says "Standard"
+// in the language the app shows.
+func SettingsLatencyStandard() string { return In(i18n.Locale()).SettingsLatencyStandard() }
+
+// SettingsLatencyStandard says "Standard"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyStandard() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyStandard", nil)
+}
+
+// SettingsLatencyStandardDesc says "Reference buffering; steadier day to day"
+// in the language the app shows.
+func SettingsLatencyStandardDesc() string { return In(i18n.Locale()).SettingsLatencyStandardDesc() }
+
+// SettingsLatencyStandardDesc says "Reference buffering; steadier day to day"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyStandardDesc() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyStandardDesc", nil)
+}
+
+// SettingsLatencyStable says "Stable"
+// in the language the app shows.
+func SettingsLatencyStable() string { return In(i18n.Locale()).SettingsLatencyStable() }
+
+// SettingsLatencyStable says "Stable"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyStable() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyStable", nil)
+}
+
+// SettingsLatencyStableDesc says "Receiver default; favors continuity on weak Wi-Fi"
+// in the language the app shows.
+func SettingsLatencyStableDesc() string { return In(i18n.Locale()).SettingsLatencyStableDesc() }
+
+// SettingsLatencyStableDesc says "Receiver default; favors continuity on weak Wi-Fi"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyStableDesc() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyStableDesc", nil)
+}
+
+// SettingsLatencyCustom says "Custom"
+// in the language the app shows.
+func SettingsLatencyCustom() string { return In(i18n.Locale()).SettingsLatencyCustom() }
+
+// SettingsLatencyCustom says "Custom"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyCustom() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyCustom", nil)
+}
+
+// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms unverified"
+// in the language the app shows.
+func SettingsLatencyCustomDesc() string { return In(i18n.Locale()).SettingsLatencyCustomDesc() }
+
+// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms unverified"
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyCustomDesc() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyCustomDesc", nil)
+}
+
+// SettingsLatencyNote says "Some receivers, such as macOS, use their own fixed latency."
+// in the language the app shows.
+func SettingsLatencyNote() string { return In(i18n.Locale()).SettingsLatencyNote() }
+
+// SettingsLatencyNote says "Some receivers, such as macOS, use their own fixed latency."
+// in the language of msgs.
+func (msgs Messages) SettingsLatencyNote() string {
+	return Catalog.Format(msgs.locale, "settingsLatencyNote", nil)
 }
 
 // SettingsAudioFormat says "Audio format"

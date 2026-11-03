@@ -7,7 +7,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
+)
+
+// LatencyMode is the named latency preset the user picked.
+type LatencyMode string
+
+const (
+	LatencyLow      LatencyMode = "low"
+	LatencyStandard LatencyMode = "standard"
+	LatencyStable   LatencyMode = "stable"
+	LatencyCustom   LatencyMode = "custom"
+)
+
+const (
+	LatencyLowMS           = 200
+	LatencyStandardMS      = 1500
+	LatencyStableMS        = 2000
+	DefaultLatencyCustomMS = 700
 )
 
 // Settings is the user's configuration.
@@ -18,6 +36,9 @@ type Settings struct {
 	VolumeByDevice      map[string]float64 `json:"volumeByDevice"`
 	Passwords           map[string]string  `json:"passwords"`
 	LatencyMS           int                `json:"latencyMs"`
+	LatencyMode         LatencyMode        `json:"latencyMode"`
+	LatencyCustomMS     int                `json:"latencyCustomMs"`
+	ShowLatencySwitch   bool               `json:"showLatencySwitch"`
 	CaptureEndpointID   string             `json:"captureEndpointId"`
 	CaptureEndpointName string             `json:"captureEndpointName"`
 	CaptureProcessPID   uint32             `json:"captureProcessPid"`
@@ -40,15 +61,18 @@ type Settings struct {
 // Default returns the first-run configuration.
 func Default() Settings {
 	return Settings{
-		Name:           "声渡",
-		DeviceID:       newDeviceID(),
-		Volume:         80,
-		AutoUpdate:     true,
-		VolumeByDevice: make(map[string]float64),
-		Passwords:      make(map[string]string),
-		LatencyMS:      200,
-		Reconnect:      true,
-		TrayAnimation:  true,
+		Name:              "声渡",
+		DeviceID:          newDeviceID(),
+		Volume:            80,
+		AutoUpdate:        true,
+		VolumeByDevice:    make(map[string]float64),
+		Passwords:         make(map[string]string),
+		LatencyMS:         LatencyLowMS,
+		LatencyMode:       LatencyLow,
+		LatencyCustomMS:   DefaultLatencyCustomMS,
+		ShowLatencySwitch: true,
+		Reconnect:         true,
+		TrayAnimation:     true,
 	}
 }
 
@@ -80,6 +104,9 @@ func (s *Store) Load() Settings {
 	if err != nil {
 		return out
 	}
+	// A missing latencyMode must stay distinguishable from the default, so a
+	// legacy file's latencyMs can choose the mode.
+	out.LatencyMode = ""
 	if err := json.Unmarshal(data, &out); err != nil {
 		return Default()
 	}
@@ -99,9 +126,73 @@ func (s *Store) Load() Settings {
 		out.Passwords = make(map[string]string)
 	}
 	if out.LatencyMS < 20 || out.LatencyMS > 2000 {
-		out.LatencyMS = 200
+		out.LatencyMS = LatencyLowMS
+	}
+	if out.LatencyCustomMS < 20 || out.LatencyCustomMS > 2000 {
+		out.LatencyCustomMS = DefaultLatencyCustomMS
+	}
+	switch out.LatencyMode {
+	case LatencyLow, LatencyStandard, LatencyStable:
+		out.LatencyMS = LatencyModeValue(out.LatencyMode, out.LatencyCustomMS)
+	case LatencyCustom:
+		out.LatencyCustomMS = out.LatencyMS
+	default:
+		out.LatencyMode = LatencyModeForMS(out.LatencyMS)
+		if out.LatencyMode == LatencyCustom {
+			out.LatencyCustomMS = out.LatencyMS
+		}
 	}
 	return out
+}
+
+// LatencyModeForMS names the preset a stored millisecond value corresponds to.
+func LatencyModeForMS(ms int) LatencyMode {
+	switch ms {
+	case LatencyLowMS:
+		return LatencyLow
+	case LatencyStandardMS:
+		return LatencyStandard
+	case LatencyStableMS:
+		return LatencyStable
+	}
+	return LatencyCustom
+}
+
+// LatencyModeValue is the presentation latency a mode resolves to.
+func LatencyModeValue(mode LatencyMode, customMS int) int {
+	switch mode {
+	case LatencyLow:
+		return LatencyLowMS
+	case LatencyStandard:
+		return LatencyStandardMS
+	case LatencyStable:
+		return LatencyStableMS
+	case LatencyCustom:
+		return clampLatency(customMS)
+	}
+	return LatencyLowMS
+}
+
+// LatencyText renders a latency value for the UI: "200 ms", "1.5 s", "2 s".
+func LatencyText(ms int) string {
+	switch {
+	case ms >= 1000 && ms%1000 == 0:
+		return strconv.Itoa(ms/1000) + " s"
+	case ms > 1000:
+		return strconv.FormatFloat(float64(ms)/1000, 'f', 1, 64) + " s"
+	default:
+		return strconv.Itoa(ms) + " ms"
+	}
+}
+
+func clampLatency(ms int) int {
+	if ms < 20 {
+		return 20
+	}
+	if ms > 2000 {
+		return 2000
+	}
+	return ms
 }
 
 // Save writes the settings atomically.
