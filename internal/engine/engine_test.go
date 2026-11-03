@@ -34,6 +34,7 @@ type fakeTransport struct {
 	authPW     string
 	nowPlaying []string
 	pins       []string
+	waitingPin bool
 	pauses     []bool
 	pauseOK    bool
 	initialPct float64
@@ -80,6 +81,7 @@ func (f *fakeTransport) SetLatency(ms int)             { f.latencies = append(f.
 func (f *fakeTransport) SetVolume(p float64)           { f.volumes = append(f.volumes, p) }
 func (f *fakeTransport) SetStrictReceiverAuth(v bool)  { f.strict = v }
 func (f *fakeTransport) SubmitPin(code string)         { f.pins = append(f.pins, code) }
+func (f *fakeTransport) WaitingForPin() bool           { return f.waitingPin }
 func (f *fakeTransport) InitialVolumePercent() (float64, bool) {
 	return f.initialPct, f.hasInitial
 }
@@ -650,7 +652,7 @@ func TestNowPlayingCommandForwardsWhenEnabled(t *testing.T) {
 
 func TestApplyLatencyRestartsActiveSession(t *testing.T) {
 	h := newHarness(t)
-	h.addDevice()
+	h.addDeviceOnline()
 	h.e.handleCommand(command{kind: cmdLatency, value: 200})
 	h.connect()
 	h.launch()
@@ -661,6 +663,45 @@ func TestApplyLatencyRestartsActiveSession(t *testing.T) {
 	}
 	if len(h.fake.latencies) == 0 || h.fake.latencies[len(h.fake.latencies)-1] != 1500 {
 		t.Fatalf("new session latency = %v, want 1500", h.fake.latencies)
+	}
+}
+
+// TestLatencyApplySparesPINWait pins the pairing guard: a latency restart
+// must not tear down a session that is waiting for the user's PIN.
+func TestLatencyApplySparesPINWait(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.fake.state = sender.StatePairing
+	h.fake.waitingPin = true
+	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
+	if h.sessions != 1 {
+		t.Fatal("latency apply destroyed the PIN wait")
+	}
+	if h.e.setsValue.LatencyMS != 1500 {
+		t.Fatalf("latency not saved: %d", h.e.setsValue.LatencyMS)
+	}
+	if h.e.lastError != "" {
+		t.Fatalf("unexpected error: %q", h.e.lastError)
+	}
+}
+
+// TestLatencyApplyReportsOfflineDevice pins the reporting fix: when the
+// selected receiver has dropped off discovery the latency is still saved,
+// but the engine says the session was left alone instead of silently
+// dialing a device it cannot see.
+func TestLatencyApplyReportsOfflineDevice(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.e.setDevices(nil) // the registry keeps the row; discovery no longer sees it
+	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
+	if h.sessions != 1 {
+		t.Fatal("latency apply rebuilt a session to an offline device")
+	}
+	if h.e.lastError == "" {
+		t.Fatal("offline device was not reported")
 	}
 }
 

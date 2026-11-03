@@ -303,6 +303,15 @@ func (g *groupTransport) SubmitPin(code string) {
 	}
 }
 
+func (g *groupTransport) WaitingForPin() bool {
+	for _, m := range g.members {
+		if m.sender.WaitingForPin() {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *groupTransport) InitialVolumePercent() (float64, bool) {
 	for _, m := range g.members {
 		if pct, ok := m.sender.InitialVolumePercent(); ok {

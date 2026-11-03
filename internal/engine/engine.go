@@ -142,6 +142,7 @@ type transport interface {
 	SetVolume(pct float64)
 	SetStrictReceiverAuth(strict bool)
 	SubmitPin(code string)
+	WaitingForPin() bool
 	InitialVolumePercent() (float64, bool)
 	SetNowPlaying(title, artist, album string)
 	PTP() (active, ready bool, offsetMS float64)
@@ -180,6 +181,7 @@ func (s *session) SetLatency(ms int)             { s.sender.SetLatency(ms) }
 func (s *session) SetVolume(pct float64)         { s.sender.SetVolume(pct) }
 func (s *session) SetStrictReceiverAuth(v bool)  { s.sender.SetStrictReceiverAuth(v) }
 func (s *session) SubmitPin(code string)         { s.sender.SubmitPin(code) }
+func (s *session) WaitingForPin() bool           { return s.sender.WaitingForPin() }
 func (s *session) InitialVolumePercent() (float64, bool) {
 	return s.sender.InitialVolumePercent()
 }
@@ -792,7 +794,21 @@ func (e *Engine) handleCommand(cmd command) {
 		}
 		e.saveSettings()
 		if cmd.reconnect && e.tr != nil && e.tr.Active() {
-			if d, ok := e.find(e.selectedID); ok {
+			// A PIN wait is pairing progress, not a live stream: restarting
+			// over it would discard the code the user is typing.
+			if e.tr.WaitingForPin() {
+				e.logf("latency apply: %s is waiting for a PIN; session left alone", e.selectedID)
+				break
+			}
+			d, ok := e.find(e.selectedID)
+			switch {
+			case !ok:
+				e.lastError = "延迟已保存，但未找到设备，会话未重启"
+				e.logf("latency apply: device %s not found; session left running", e.selectedID)
+			case !d.Online:
+				e.lastError = "延迟已保存，但设备当前不在线，会话未重启"
+				e.logf("latency apply: %s is offline; session left running", e.selectedID)
+			default:
 				e.userDisconnect = false
 				e.connect(d)
 			}
