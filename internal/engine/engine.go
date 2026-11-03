@@ -101,6 +101,7 @@ type command struct {
 }
 
 type captureInfo struct {
+	gen  int
 	rate int
 	name string
 	err  error
@@ -285,6 +286,7 @@ type Engine struct {
 	captureError     string
 	captureStarting  bool
 	captureQueued    bool
+	captureGen       int
 	userDisconnect   bool
 	reconnectWanted  bool
 	reconnectAt      time.Time
@@ -1323,11 +1325,16 @@ func (e *Engine) startCapture() {
 }
 
 // restartCapture closes the old source and starts a new one on a goroutine so
-// the event loop never blocks on WASAPI initialization.
+// the event loop never blocks on WASAPI initialization or teardown. The old
+// source stops off the loop too; until its pump exits, both sources feed the
+// sink for a bounded moment, which the ring's overwrite-oldest policy and the
+// start trim absorb. Its late callbacks carry a stale generation and are
+// dropped.
 func (e *Engine) restartCapture() {
 	if e.capture != nil {
-		e.capture.Stop()
+		old := e.capture
 		e.capture = nil
+		go old.Stop()
 	}
 	e.captureRunning = false
 	if e.captureStarting {
@@ -1339,25 +1346,27 @@ func (e *Engine) restartCapture() {
 
 func (e *Engine) beginCaptureStart() {
 	e.captureStarting = true
+	e.captureGen++
+	gen := e.captureGen
 	cfg := capture.Config{
 		Ring:       e.silence,
 		EndpointID: e.captureEndpoint,
 		ProcessID:  e.captureProcess,
 		OnFormat: func(rate int) {
 			select {
-			case e.captureInfo <- captureInfo{rate: rate}:
+			case e.captureInfo <- captureInfo{gen: gen, rate: rate}:
 			default:
 			}
 		},
 		OnError: func(err error) {
 			select {
-			case e.captureInfo <- captureInfo{err: err}:
+			case e.captureInfo <- captureInfo{gen: gen, err: err}:
 			default:
 			}
 		},
 		OnDevice: func(name string) {
 			select {
-			case e.captureInfo <- captureInfo{name: name}:
+			case e.captureInfo <- captureInfo{gen: gen, name: name}:
 			default:
 			}
 		},
@@ -1416,6 +1425,11 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 }
 
 func (e *Engine) applyCaptureInfo(info captureInfo) {
+	if info.gen != e.captureGen {
+		// A source that is being torn down reported late; the live source's
+		// word is the only one that counts.
+		return
+	}
 	if info.rate > 0 && info.rate != e.captureRate {
 		e.captureRate = info.rate
 		if e.tr != nil {

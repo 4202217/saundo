@@ -555,6 +555,59 @@ func TestAsyncCaptureStartDoesNotBlock(t *testing.T) {
 	}
 }
 
+// blockingSource models a WASAPI teardown that takes a while.
+type blockingSource struct {
+	release chan struct{}
+	stopped chan struct{}
+}
+
+func (b *blockingSource) Stop() {
+	close(b.stopped)
+	<-b.release
+}
+
+func (b *blockingSource) Stats() capture.Stats {
+	return capture.Stats{Running: true, Rate: 48000}
+}
+
+// TestRestartCaptureDoesNotBlockOnOldSourceStop pins the async teardown:
+// restarting capture must not wait for the old source's Stop, the way it
+// does not wait for WASAPI initialization.
+func TestRestartCaptureDoesNotBlockOnOldSourceStop(t *testing.T) {
+	h := newHarness(t)
+	release := make(chan struct{})
+	blocked := &blockingSource{release: release, stopped: make(chan struct{})}
+	h.e.captureStartFn = func(capture.Config) (captureSource, error) {
+		return blocked, nil
+	}
+	h.e.restartCapture()
+	var res captureStart
+	select {
+	case res = <-h.e.captureResult:
+	case <-time.After(2 * time.Second):
+		t.Fatal("no capture result")
+	}
+	h.e.applyCaptureStart(res) // adopts the blocking source
+
+	start := time.Now()
+	h.e.restartCapture() // must not wait for the blocked Stop
+	if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+		t.Fatalf("restartCapture blocked on the old source's Stop for %s", elapsed)
+	}
+	if !h.e.captureStarting {
+		t.Fatal("the replacement capture did not start")
+	}
+	waitFor(t, func() bool {
+		select {
+		case <-blocked.stopped:
+			return true
+		default:
+			return false
+		}
+	})
+	close(release)
+}
+
 func TestConnectSelectsTheDeviceBeingConnected(t *testing.T) {
 	h := newHarness(t)
 	const staleID = "AA:BB:CC:DD:EE:99"
