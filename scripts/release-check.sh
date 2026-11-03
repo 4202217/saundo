@@ -56,7 +56,7 @@ required=(
   docs/screenshots/settings-connection-light-en.png docs/screenshots/settings-connection-light-zh.png
   cmd/saundo/mygo.json cmd/saundo/locales/en.json cmd/saundo/locales/zh-CN.json
   internal/app/update.go internal/app/update_dialog.go internal/app/update_history.go
-  .github/workflows/release.yml scripts/release-check.sh
+  .github/workflows/release.yml scripts/release-check.sh scripts/release-notes.sh
   .claude/skills/release/SKILL.md
 )
 for f in "${required[@]}"; do

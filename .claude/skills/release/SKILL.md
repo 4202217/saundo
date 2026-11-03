@@ -120,7 +120,7 @@ The workflow's generated notes are sparse. Set the draft body from the changelog
 
 ```bash
 VERSION=...
-awk -v v="$VERSION" '$0 == "## " v || index($0, "## " v " ") == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > ".audit/release-notes-$VERSION.md"
+bash scripts/release-notes.sh "$VERSION" > ".audit/release-notes-$VERSION.md"
 gh release edit "v$VERSION" --notes-file ".audit/release-notes-$VERSION.md"
 ```
 
