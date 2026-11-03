@@ -17,7 +17,8 @@ var ErrSlotClosed = errors.New("raopio: socket is closed")
 // every read, connect, and close as an Event on Events. The engine drains that
 // channel and drives the sender from one goroutine.
 type Host struct {
-	events chan Event
+	events  chan Event
+	dropped atomic.Uint64
 
 	mu      sync.Mutex
 	tcp     [2]*tcpSlot
@@ -69,8 +70,14 @@ func (h *Host) emit(ev Event) {
 	default:
 		// The engine drains this channel promptly. If it cannot, the session
 		// is already broken; dropping a datagram beats deadlocking a reader.
+		// The counter keeps the loss observable instead of silent.
+		h.dropped.Add(1)
 	}
 }
+
+// Dropped returns how many events were dropped because the event channel
+// was full.
+func (h *Host) Dropped() uint64 { return h.dropped.Load() }
 
 // TCPConnect starts a non-blocking connect. Completion arrives as
 // EventTCPConnected or EventTCPConnectFailed.

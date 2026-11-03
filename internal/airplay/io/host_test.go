@@ -167,6 +167,24 @@ func TestWriteFailureIsReportedAsSendFailed(t *testing.T) {
 	}
 }
 
+// TestEmitCountsDropsWhenFull pins the drop counter: a full event channel
+// drops the newest event and counts it instead of losing it silently.
+func TestEmitCountsDropsWhenFull(t *testing.T) {
+	h := NewHost()
+	defer h.Close()
+	for i := 0; i < 256; i++ {
+		h.emit(Event{Kind: EventUDPDatagram})
+	}
+	if h.Dropped() != 0 {
+		t.Fatalf("dropped = %d before the channel was full", h.Dropped())
+	}
+	h.emit(Event{Kind: EventUDPDatagram})
+	h.emit(Event{Kind: EventUDPDatagram})
+	if got := h.Dropped(); got != 2 {
+		t.Fatalf("dropped = %d, want 2", got)
+	}
+}
+
 func TestUDPBindSendReceive(t *testing.T) {
 	peer, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
 	if err != nil {
