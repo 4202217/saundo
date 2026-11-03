@@ -18,6 +18,7 @@ type Log struct {
 	file     *os.File
 	path     string
 	maxBytes int64
+	written  int64
 	lines    []string
 	closed   bool
 }
@@ -32,6 +33,13 @@ func New(path string) *Log {
 	l.path = path
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err == nil {
 		l.file, _ = os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	}
+	if l.file != nil {
+		// One size sample at open keeps the rotation decision off the hot
+		// path; the counter tracks everything this process appends.
+		if info, err := l.file.Stat(); err == nil {
+			l.written = info.Size()
+		}
 	}
 	return l
 }
@@ -62,21 +70,23 @@ func (l *Log) Printf(format string, args ...any) {
 		l.lines = l.lines[len(l.lines)-keepLines:]
 	}
 	if l.file != nil {
-		_, _ = l.file.WriteString(time.Now().Format("2006-01-02 ") + line + "\n")
+		n, _ := l.file.WriteString(time.Now().Format("2006-01-02 ") + line + "\n")
+		l.written += int64(n)
 		l.rotateLocked()
 	}
 }
 
 // rotateLocked moves an oversized log to path+".1" and reopens a fresh one.
+// The size is tracked by counter, not by a per-line Stat.
 func (l *Log) rotateLocked() {
-	info, err := l.file.Stat()
-	if err != nil || info.Size() < l.maxBytes {
+	if l.written < l.maxBytes {
 		return
 	}
 	_ = l.file.Close()
 	_ = os.Remove(l.path + ".1")
 	_ = os.Rename(l.path, l.path+".1")
 	l.file, _ = os.OpenFile(l.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	l.written = 0
 }
 
 // Lines returns a copy of the recent lines.
