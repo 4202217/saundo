@@ -38,6 +38,9 @@ jobs:
         run: go tool mygo vet .
       - name: Tests
         run: go test -short ./...
+      - name: Verify map
+        shell: bash
+        run: scripts/check-verify-map.sh
       - name: Build
         working-directory: cmd/saundo
         run: go tool mygo build -platform windows/amd64 -skip-installer

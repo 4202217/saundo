@@ -55,7 +55,7 @@ if (Test-Path $log) {
     $fatal = Get-Content $log -Tail 60 | Select-String -Pattern "fatal:"
     if ($fatal) { Line "FAIL" "log contains a fatal: line" ; $fail = $true }
 } else {
-    Line "WARN" ("{0} missing on disk. The app may hold a deleted handle: the live log is the flyout's 诊断日志 card (复制日志 puts it on the clipboard)." -f $log)
+    Line "WARN" ("{0} missing on disk. The app may hold a deleted handle: the live log is the flyout's 诊断日志 card (its 复制 button puts it on the clipboard)." -f $log)
 }
 
 # --- 4. Windows owned by the pid --------------------------------------------

@@ -4,8 +4,9 @@
 
 - mDNS browse on the LAN; `_raop`/`_airplay` advertisements merge into one
   device row; the subtitle shows model and pairing path.
-- Offline marking (three missed query cycles) and pruning after 90 s; a row
-  shows 离线.
+- Offline marking after about three missed query cycles
+  (`staleAfter = 3×interval + timeout`) and pruning after 90 s; a row shows
+  离线.
 - Stereo-group collapse (`tsid`): one `HomePods · 立体声组 · 2/2` row, leader
   first, member rows hidden, group offline unless both members are online.
 - Connect paths by auth kind: HAP transient (fixed PIN `3939`, stops at M4),
@@ -14,7 +15,7 @@
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  attempts, then 自动重连 5 次后停止.
+  attempts, then 自动重连 5 次后停止 (`engine.go:221,236-239`).
 
 ## How to get to it (user POV)
 
@@ -46,7 +47,8 @@ by 断开 and confirm `session stopped` plus the row returning to idle.
 
 Proven end state: the flyout shows 正在播放到 `<name>` with the
 `ALAC · 44.1 kHz · 立体声 · PTP · 已同步` line (PTP on HomePod/Mac), the row
-carries 已连接, and the log shows feedback answered every 2 s.
+carries 已连接, and the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK`
+every 2 s.
 
 ## Gotchas
 

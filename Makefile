@@ -40,4 +40,4 @@ fmt:
 check:
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./...
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./... && ./scripts/check-verify-map.sh

@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Drive the real saundo app and prove behavior with evidence — launch or attach, run the doctor, exercise a feature, capture proof. Use when a change needs live verification beyond `make check`, when filling a `Currently pending` item in docs/verification.md, or when a bug report needs reproduction.
+description: Drive the real saundo app and prove behavior with evidence — launch or attach, run the doctor, exercise a feature, capture proof. Use when a change needs live verification beyond `make check`, when filling a "Currently pending" item in docs/verification.md, or when a bug report needs reproduction.
 ---
 
 # Verify saundo
@@ -8,7 +8,7 @@ description: Drive the real saundo app and prove behavior with evidence — laun
 `make check` proves the logic. This skill proves the app: launch it (or attach
 to the running instance), exercise a feature the way a user would, and leave
 evidence behind. The per-feature journeys live in [features/](features/);
-docs/verification.md holds the acceptance history and the `Currently pending`
+docs/verification.md holds the acceptance history and the "Currently pending"
 list this skill exists to fill.
 
 ## The three harnesses
@@ -115,7 +115,8 @@ in the run, run the doctor again before concluding anything.
 
 Known trap it reports: `saundo.log` can be missing on disk while the app
 runs — a deleted file leaves the app writing to a dangling handle. The live
-log is then the flyout's 诊断日志 card (复制日志 copies it to the clipboard).
+log is then the flyout's 诊断日志 card (its 复制 button puts it on the
+clipboard).
 
 ## 4. Drive
 
@@ -146,7 +147,8 @@ go test -v ./internal/airplay/sender/
   real window (the flyout is layered — PrintWindow, not a screen grab):
   ```bash
   powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
-  # settings window: -Class MyGoWindow -TitleLike "saundo"
+  # settings window: -Class MyGoWindow -ProcId <pid> — its title follows the
+  # app locale (设置 · 声渡 under zh-CN, Settings · saundo under en)
   ```
 - Act: real user paths only. Click the tray icon or the flyout's own
   buttons; the tray icon lives in the taskbar or the hidden-icons overflow,
@@ -227,5 +229,7 @@ Gotchas; never weaken the journey to make it pass.
 ## Keeping this skill current
 
 When the app changes shape (new window class, renamed page, moved control),
-update features/ and this file in the same change. `/maintain-verification-skill`
+update features/ and this file in the same change. `scripts/check-verify-map.sh`
+(part of `make check`) turns stale assertions in these pages into a red
+gate — fix the page, not the gate. `/maintain-verification-skill`
 is the maintenance loop for exactly that.

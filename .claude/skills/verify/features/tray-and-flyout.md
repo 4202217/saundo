@@ -4,14 +4,20 @@
 
 - Tray icon: black ink on a light taskbar, white on a dark one, re-drawn on
   appearance change; static face when 托盘动画 is off or Reduce Motion is on.
-- Tray animation: 12 frames at 100 ms while connecting (three pulsing dots)
-  or streaming (five bars riding a sine wave); eyes static.
+- Tray animation: 12 frames at 100 ms (`tray_anim.go:11-12`) while
+  connecting (three pulsing dots) or streaming (five bars riding a sine
+  wave); eyes static.
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
-- Right click opens the menu: 显示面板, 设置…, 检查更新, 断开/连接上次设备,
-  退出. The menu is installed only for the duration of the popup.
-- Adaptive height: 500 DIP at three or more devices, 444 at two, 388 at one,
-  470 when empty; resize grows the flyout upward from the tray anchor.
+- Right click opens the menu: 显示控制面板, 设置…, 检查更新…, 断开连接 or
+  连接上次设备, 退出声渡. The menu is installed only for the duration of the
+  popup.
+- Adaptive height: `flyoutHeightFor` derives the height from the device
+  card's own geometry — base 500 DIP with a full three-row card, shrinking
+  by one row height per missing device, growing by the latency-switch
+  height when 面板快捷切换 is on; the resize grows the flyout upward from
+  the tray anchor (`flyout.go:42-48`, pinned by
+  `TestFlyoutHeightForDeviceRows`).
 - Silent start: login launch and `--tray` hide the panel; the tooltip
   carries the status (`saundo · 正在播放到 <name>`).
 - Single instance: a second launch hands its command line over and exits 0.
@@ -33,7 +39,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/script
 Find the icon through UI Automation: the overflow flyout exposes a `saundo`
 button; invoke it and watch the main window handle appear/vanish
 (`MyGoFlyoutShadow`). A second launch must exit 0 and leave one process —
-`echo $?` after `bin/saundo.exe` documents the handover. Animation frames
+checking `$?` after launching `bin/saundo.exe` documents the handover. Animation frames
 are pinned headless by `TestTrayAnimationFaces`; the toggle paths by
 `TestTrayAnimationDefaultsOnAndRoundTrips`.
 
@@ -47,7 +53,9 @@ saundo.exe process exists throughout.
   tray menu, not by the icon's face.
 - The flyout is frameless and layered: a plain screen grab can miss it;
   use PrintWindow (capture-window.ps1), and expect class
-  `MyGoFlyoutShadow`.
+  `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:17`) — a
+  capture reporting ~420 px (or a 1.25× multiple of it under DPI
+  virtualization) is correct; 480 was an old design value.
 - A flyout hidden at capture time is a normal state (app in tray), not a
   failure — the doctor lists window absence as OK.
 - `SetIcon` costs 0.5–0.8 ms per frame at 100 ms; do not "fix" explorer CPU

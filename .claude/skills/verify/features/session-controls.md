@@ -13,20 +13,24 @@ capture status, and the diagnostics log card.
 - Latency: flyout segments 低延迟 200 ms (default) / 标准 1.5 s / 稳定 2 s /
   自定义 20–2000 ms; the value shows on the ALAC line
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
-  the custom slider 500 ms; the effective value is base + the receiver's
-  DSP/DAC delay, clamped 20–4000 ms. The 面板快捷切换 header switch hides the
-  segment row.
+  the custom slider 500 ms (constants `latency.go:20-21`); the effective
+  value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
+  (`receivers.go:44-45,155-167`). The 面板快捷切换 switch that hides the
+  segment row lives in the settings window's 音频 page latency-card header,
+  not in the flyout.
 - Now Playing row: `title · artist`, falls back to 未检测到媒体, refreshes
   every 2 s from Windows SMTC; the 推送 switch forwards changed tracks as
   DMAP only while streaming.
-- Capture line: `采集：<endpoint> · <rate> Hz`; 采集设备 follows the Windows
-  default or pins a specific endpoint (a queued async restart supersedes the
-  in-flight one); 丢帧 shows only while streaming (zero while idle).
+- Capture line: `采集 {endpoint}` with the rate formatted as kHz
+  (`48 kHz`); 采集设备 follows the Windows default or pins a specific
+  endpoint (a queued async restart supersedes the in-flight one); 丢帧
+  shows only while streaming (zero while idle).
 - Silence suspend: after 2 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
-  resumes with a re-anchored RTP timeline and a 50 ms cushion trim.
-- Diagnostics card: rolling log; 复制日志 puts the visible log on the
-  clipboard.
+  resumes with a re-anchored RTP timeline and a 50 ms cushion trim
+  (`silence.go:31-46`, resume `stream.go:76-98`).
+- Diagnostics card: the 诊断日志 card opens a log dialog whose 复制 button
+  puts the visible log on the clipboard (`flyout.go:449-481`).
 
 ## How to get to it (user POV)
 
@@ -66,5 +70,8 @@ that is actually rendering.
   that is the two-way sync, not a fight between user input and the engine.
 - Capture restarts are async: a quick endpoint switch queues and supersedes;
   two restarts in the log do not mean two capture streams.
-- `SETRATEANCHORTIME rate=0` returns status `-12782` from HomePods even on
-  success paths — the realtime stream takes timing from the sync channel.
+- The sender never sends `SETRATEANCHORTIME` — the realtime stream takes
+  its timeline from the UDP sync channel (protocol.md). If you exercise the
+  method by hand, a HomePod answers plist `status: -12782` even with a
+  well-formed anchor; the method is for buffered streams, and the reply is
+  not an auth or formatting failure.
