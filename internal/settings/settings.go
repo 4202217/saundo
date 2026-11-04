@@ -11,6 +11,16 @@ import (
 	"sync"
 )
 
+// ThemeMode is the user's light or dark appearance choice. System follows
+// Windows.
+type ThemeMode string
+
+const (
+	ThemeSystem ThemeMode = "system"
+	ThemeLight  ThemeMode = "light"
+	ThemeDark   ThemeMode = "dark"
+)
+
 // LatencyMode is the named latency preset the user picked.
 type LatencyMode string
 
@@ -51,6 +61,7 @@ type Settings struct {
 	TrayAnimation       bool               `json:"trayAnimation"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
+	Theme               ThemeMode          `json:"theme"`
 	Beta                bool               `json:"beta"`
 	AutoUpdate          bool               `json:"autoUpdate"`
 	AutoDownload        bool               `json:"autoDownload"`
@@ -73,6 +84,7 @@ func Default() Settings {
 		ShowLatencySwitch: true,
 		Reconnect:         true,
 		TrayAnimation:     true,
+		Theme:             ThemeSystem,
 	}
 }
 
@@ -141,6 +153,11 @@ func (s *Store) Load() Settings {
 		if out.LatencyMode == LatencyCustom {
 			out.LatencyCustomMS = out.LatencyMS
 		}
+	}
+	switch out.Theme {
+	case ThemeLight, ThemeDark:
+	default:
+		out.Theme = ThemeSystem
 	}
 	return out
 }

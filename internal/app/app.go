@@ -107,11 +107,14 @@ type App struct {
 	readNowPlaying    func() (nowplaying.Track, bool, error)
 	pushNowPlaying    func(title, artist, album string)
 	nowPlayingSetting func() (show, streaming bool)
-	nowTrack          nowplaying.Track
-	nowOK             bool
-	nowErr            string
-	nowSent           string
-	lastStreaming     bool
+	// setThemeSource applies the appearance; a test replaces it, because
+	// mygo.Theme.SetSource needs the running application's main thread.
+	setThemeSource func(mygo.ThemeSource)
+	nowTrack       nowplaying.Track
+	nowOK          bool
+	nowErr         string
+	nowSent        string
+	lastStreaming  bool
 
 	nameDraft      string
 	strict         bool
@@ -146,14 +149,15 @@ func Run() error {
 	mygo.App.SetName("saundo")
 
 	a := &App{
-		sets:          settings.NewStore(),
-		log:           diagnostics.New(""),
-		updates:       mygoUpdates{},
-		quit:          make(chan struct{}),
-		captureNames:  []string{locales.CaptureFollowSystem()},
-		captureIDs:    []string{""},
-		captureChoice: locales.CaptureFollowSystem(),
-		volume:        80,
+		sets:           settings.NewStore(),
+		setThemeSource: mygo.Theme.SetSource,
+		log:            diagnostics.New(""),
+		updates:        mygoUpdates{},
+		quit:           make(chan struct{}),
+		captureNames:   []string{locales.CaptureFollowSystem()},
+		captureIDs:     []string{""},
+		captureChoice:  locales.CaptureFollowSystem(),
+		volume:         80,
 	}
 	a.log.Printf("saundo %s", Version)
 
@@ -165,6 +169,8 @@ func Run() error {
 	}
 	a.cfg = cfg
 	mygo.App.SetLocale(cfg.Language)
+	// Set before Run so the first window paints in the saved appearance.
+	mygo.Theme.SetSource(appearanceSource(cfg.Theme))
 	a.beta = cfg.Beta
 	mygo.Updater.SetPrereleases(cfg.Beta)
 	a.volume = cfg.Volume
@@ -841,4 +847,36 @@ func (a *App) setLanguage(label string) {
 	cfg.Language = tag
 	_ = a.sets.Save(cfg)
 	mygo.App.SetLocale(tag)
+}
+
+// themeLabel is the settings select's value for the saved appearance.
+func (a *App) themeLabel() string {
+	switch a.cfg.Theme {
+	case settings.ThemeLight:
+		return locales.ThemeLight()
+	case settings.ThemeDark:
+		return locales.ThemeDark()
+	default:
+		return locales.ThemeSystem()
+	}
+}
+
+// setTheme saves the chosen appearance and applies it at once.
+func (a *App) setTheme(label string) {
+	mode := settings.ThemeSystem
+	switch label {
+	case locales.ThemeLight():
+		mode = settings.ThemeLight
+	case locales.ThemeDark():
+		mode = settings.ThemeDark
+	}
+	a.cfg.Theme = mode
+	if a.sets != nil {
+		cfg := a.sets.Load()
+		cfg.Theme = mode
+		_ = a.sets.Save(cfg)
+	}
+	if a.setThemeSource != nil {
+		a.setThemeSource(appearanceSource(mode))
+	}
 }

@@ -11,7 +11,8 @@ Seven pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
 ## Sub-features
 
 - 通用 page: 发送端名称 (the name receivers show on their next connection),
-  开机自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language.
+  开机自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language, and
+  外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at once).
 - 连接 page: a status card for the current device, 断开后自动重连, and
   严格验证接收器. Launch auto-connect is not here — it is per receiver on
   the 接收器 page.

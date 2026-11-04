@@ -284,6 +284,14 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 				a.setLanguage(choice)
 			}
 		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsTheme(), locales.SettingsThemeDesc(), func() {
+			choice := a.themeLabel()
+			options := []string{locales.ThemeSystem(), locales.ThemeLight(), locales.ThemeDark()}
+			if fieldSelect(c, p, &choice, options, locales.SettingsTheme()).Changed() {
+				a.setTheme(choice)
+			}
+		})
 	})
 }
 

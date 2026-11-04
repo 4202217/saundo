@@ -1,6 +1,11 @@
 package app
 
-import "github.com/egoist/mygo/ui"
+import (
+	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
+
+	"saundo/internal/settings"
+)
 
 // palette holds the design's tokens that the stock theme has no field for.
 // It follows the system's appearance, as the theme does.
@@ -95,6 +100,17 @@ func (p palette) theme(base *ui.Theme) *ui.Theme {
 	t.Radius = 7
 	t.FontSize = 13
 	return &t
+}
+
+// appearanceSource maps the saved appearance choice to the framework's.
+func appearanceSource(mode settings.ThemeMode) mygo.ThemeSource {
+	switch mode {
+	case settings.ThemeLight:
+		return mygo.ThemeLight
+	case settings.ThemeDark:
+		return mygo.ThemeDark
+	}
+	return mygo.ThemeSystem
 }
 
 // design applies the saundo theme to this frame and returns its palette.

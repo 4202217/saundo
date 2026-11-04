@@ -190,7 +190,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言", "外观"}},
 		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
@@ -600,6 +600,33 @@ func TestTrayAnimationSettingPersists(t *testing.T) {
 	}
 	if a.sets.Load().TrayAnimation {
 		t.Fatal("setting did not persist")
+	}
+}
+
+func TestThemeSettingPersistsAndMapsToTheFramework(t *testing.T) {
+	a := previewApp()
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	var applied []mygo.ThemeSource
+	a.setThemeSource = func(source mygo.ThemeSource) { applied = append(applied, source) }
+	a.setTheme(locales.ThemeDark())
+	if a.cfg.Theme != settings.ThemeDark {
+		t.Fatalf("setting did not choose dark: %q", a.cfg.Theme)
+	}
+	if a.sets.Load().Theme != settings.ThemeDark {
+		t.Fatal("setting did not persist")
+	}
+	if got := a.themeLabel(); got != locales.ThemeDark() {
+		t.Fatalf("themeLabel = %q, want %q", got, locales.ThemeDark())
+	}
+	if len(applied) != 1 || applied[0] != mygo.ThemeDark {
+		t.Fatalf("applied appearances = %v, want [dark]", applied)
+	}
+	a.setTheme(locales.ThemeSystem())
+	if a.sets.Load().Theme != settings.ThemeSystem {
+		t.Fatal("follow system did not persist")
+	}
+	if len(applied) != 2 || applied[1] != mygo.ThemeSystem {
+		t.Fatalf("applied appearances = %v, want [dark system]", applied)
 	}
 }
 

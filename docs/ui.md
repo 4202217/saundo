@@ -10,7 +10,7 @@ Sources: `mygo-cloudmusic` for native UI structure and style; Tuneblade for the 
 
 ## Tokens and widgets
 
-- Every color comes from the `palette` struct in `theme.go`, which maps the platform theme onto the design's light and dark palettes (`bg`, `panel`, `card`, `pill`, `line`, `fg`, `muted`, `accent`, `sel`, `green`, `red` families). Never hardcode a color; never branch on dark mode outside `theme.go`.
+- Every color comes from the `palette` struct in `theme.go`, which maps the platform theme onto the design's light and dark palettes (`bg`, `panel`, `card`, `pill`, `line`, `fg`, `muted`, `accent`, `sel`, `green`, `red` families). The platform theme is Windows' appearance unless 通用 → 外观 pins 浅色 or 深色; that choice is saved as `theme` in `settings.json` and applied through `mygo.Theme.SetSource` before the first window paints. Never hardcode a color; never branch on dark mode outside `theme.go`.
 - Every repeated control comes from `ui_kit.go`: `sectionHead`, `iconButton`, `textButton` (a row action without a handler is a status, not a button — it takes no focus), `chipButton`, `primaryButton`, `quietButton`, `chip` (neutral/OK/accent), `toggle`, `slider`, `settingRow` (and `settingRowColors` for the greyed hidden group), `rowLine`, `fieldInput`, `fieldSelect`, `staticText`. Do not rebuild these inline.
 - One `phase` — idle, connecting, streaming, error — derives from the engine's finer-grained sender states (`phaseOf`) and drives the whole interface's color (`phaseColor`). `face` adds one distinction inside streaming: a stream with no audible audio shows the resting face. New UI speaks in phases, not in sender states.
 

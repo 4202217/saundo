@@ -1150,6 +1150,56 @@ func (msgs Messages) LanguageChinese() string {
 	return Catalog.Format(msgs.locale, "languageChinese", nil)
 }
 
+// SettingsTheme says "Appearance"
+// in the language the app shows.
+func SettingsTheme() string { return In(i18n.Locale()).SettingsTheme() }
+
+// SettingsTheme says "Appearance"
+// in the language of msgs.
+func (msgs Messages) SettingsTheme() string {
+	return Catalog.Format(msgs.locale, "settingsTheme", nil)
+}
+
+// SettingsThemeDesc says "Follow Windows, or keep the interface light or dark"
+// in the language the app shows.
+func SettingsThemeDesc() string { return In(i18n.Locale()).SettingsThemeDesc() }
+
+// SettingsThemeDesc says "Follow Windows, or keep the interface light or dark"
+// in the language of msgs.
+func (msgs Messages) SettingsThemeDesc() string {
+	return Catalog.Format(msgs.locale, "settingsThemeDesc", nil)
+}
+
+// ThemeSystem says "Follow system"
+// in the language the app shows.
+func ThemeSystem() string { return In(i18n.Locale()).ThemeSystem() }
+
+// ThemeSystem says "Follow system"
+// in the language of msgs.
+func (msgs Messages) ThemeSystem() string {
+	return Catalog.Format(msgs.locale, "themeSystem", nil)
+}
+
+// ThemeLight says "Light"
+// in the language the app shows.
+func ThemeLight() string { return In(i18n.Locale()).ThemeLight() }
+
+// ThemeLight says "Light"
+// in the language of msgs.
+func (msgs Messages) ThemeLight() string {
+	return Catalog.Format(msgs.locale, "themeLight", nil)
+}
+
+// ThemeDark says "Dark"
+// in the language the app shows.
+func ThemeDark() string { return In(i18n.Locale()).ThemeDark() }
+
+// ThemeDark says "Dark"
+// in the language of msgs.
+func (msgs Messages) ThemeDark() string {
+	return Catalog.Format(msgs.locale, "themeDark", nil)
+}
+
 // SettingsAbout says "About"
 // in the language the app shows.
 func SettingsAbout() string { return In(i18n.Locale()).SettingsAbout() }

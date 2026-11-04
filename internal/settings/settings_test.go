@@ -54,6 +54,28 @@ func TestTrayAnimationDefaultsOnAndRoundTrips(t *testing.T) {
 	}
 }
 
+func TestThemeDefaultsToSystemAndRoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	s := NewStoreAt(path)
+	if got := s.Load().Theme; got != ThemeSystem {
+		t.Fatalf("default theme = %q, want system", got)
+	}
+	if err := os.WriteFile(path, []byte(`{"name":"x","theme":"midnight"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Load().Theme; got != ThemeSystem {
+		t.Fatalf("unknown theme = %q, want system", got)
+	}
+	cfg := s.Load()
+	cfg.Theme = ThemeDark
+	if err := s.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Load().Theme; got != ThemeDark {
+		t.Fatalf("theme after save = %q, want dark", got)
+	}
+}
+
 func TestLoadDefaultsAndSave(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	s := NewStoreAt(path)
