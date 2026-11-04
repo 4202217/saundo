@@ -36,7 +36,6 @@ type Service struct {
 	dropAfter time.Duration
 	now       func() time.Time
 	stop      chan struct{}
-	done      chan struct{}
 	startOnce sync.Once
 	stopOnce  sync.Once
 }
@@ -63,7 +62,6 @@ func New(queryInterval, queryTimeout time.Duration) *Service {
 		dropAfter:     90 * time.Second,
 		now:           time.Now,
 		stop:          make(chan struct{}),
-		done:          make(chan struct{}),
 	}
 }
 
@@ -152,7 +150,6 @@ func stereoGroup(tsid string, members []device.Device) device.Device {
 func (s *Service) Updates() <-chan []device.Device { return s.updates }
 
 func (s *Service) run() {
-	defer close(s.done)
 	ticker := time.NewTicker(s.queryInterval)
 	defer ticker.Stop()
 	s.queryOnce()
