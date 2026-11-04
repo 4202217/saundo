@@ -131,17 +131,23 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	if len(hidden) > 0 {
 		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
 			parts := ui.CollapsibleBase(c, &a.receiverHiddenOpen)
-			trigger := parts.Trigger.Height(28).Radius(7).Padding(0, 8, 0, 4).Gap(6).
+			trigger := parts.Trigger.Height(28).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
 				Label(locales.ReceiverGroupHidden())
-			if trigger.Hovered() {
-				trigger.Background(p.pill)
-			}
 			trigger.Children(func() {
-				chev := ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted)
-				chev.Rotate((1 - parts.Progress()) * -90)
-				ui.Text(c, locales.ReceiverGroupHidden()).FontSize(11).FontWeight(600).LetterSpacing(0.3).TextColor(p.muted)
-				groupCount(c, p, len(hidden))
+				// The hover pill wraps the chevron, label, and count, not the
+				// full-width trigger, so the empty right side stays flat.
+				cluster := ui.Row(c).Height(28).Radius(7).Padding(0, 8, 0, 4).Gap(6).
+					AlignItems(ui.Center).Shrink(0)
+				if trigger.Hovered() {
+					cluster.Background(p.pill)
+				}
+				cluster.Children(func() {
+					chev := ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted)
+					chev.Rotate((1 - parts.Progress()) * -90)
+					ui.Text(c, locales.ReceiverGroupHidden()).FontSize(11).FontWeight(600).LetterSpacing(0.3).TextColor(p.muted)
+					groupCount(c, p, len(hidden))
+				})
 			})
 			if panel := parts.Panel(func() {
 				list := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
@@ -171,18 +177,22 @@ func groupCount(c *ui.Context, p palette, n int) {
 func (a *App) receiverAddRow(c *ui.Context, p palette) {
 	row := ui.ButtonBase(c).Margin(12, 0, 0, 0).MinHeight(44).Padding(9, 14).Gap(10).Shrink(0).
 		Radius(12).Cursor(ui.CursorPointer).Justify(ui.Start).AlignItems(ui.Center).
-		Label(locales.ReceiverAddTitle()).Border(1, p.line.Mix(p.muted, 0.45)).
+		Label(locales.ReceiverAddTitle()).Border(1, p.line.Mix(p.muted, 0.2)).
 		BorderStyle(ui.BorderDashed)
 	row.Background(ui.Transparent)
-	if row.Hovered() {
+	hovered := row.Hovered()
+	if hovered {
 		row.Background(p.pill)
-		row.BorderColor(p.muted)
 	}
 	row.OnClick(func() {
 		a.openAddReceiver()
 	})
 	row.Children(func() {
-		ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.accentSoft).Children(func() {
+		tile := ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.accentSoft)
+		if hovered {
+			tile.Background(p.accentSoft.Mix(p.accent, 0.2))
+		}
+		tile.Children(func() {
 			ui.Icon(c, iconPlus).Size(12, 12).TextColor(p.accent)
 		})
 		ui.Column(c).Gap(1).Grow(1).Children(func() {
