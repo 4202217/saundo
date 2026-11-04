@@ -8,7 +8,8 @@ import (
 
 // The tray shows the state face of the moment in the ink of the taskbar:
 // state faces are the app's smile with a mouth that says what it is doing.
-// At rest it is the plain smile, the app's own mark.
+// Disconnected, it is the open-eyed line face; connected with no audible
+// audio, the plain smile.
 //
 //go:embed assets/tray-*.png
 var trayAssets embed.FS
@@ -22,7 +23,7 @@ var trayPNGs = loadTrayPNGs()
 
 func loadTrayPNGs() map[trayIconKey][]byte {
 	m := make(map[trayIconKey][]byte, 10)
-	for _, face := range []string{"stream", "connect", "error", "smile"} {
+	for _, face := range []string{"stream", "connect", "error", "smile", "idle-open"} {
 		for _, theme := range []string{"light", "dark"} {
 			name := fmt.Sprintf("assets/tray-%s-%s-32.png", theme, face)
 			png, err := trayAssets.ReadFile(name)

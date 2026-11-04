@@ -48,8 +48,9 @@ func phaseColor(p phase, pal palette) ui.Color {
 // it is the plain smile.
 func (a *App) face() string { return faceOf(a.snap) }
 
-// faceOf is the state face for a snapshot. At rest, or connected with no
-// audible audio, it is the plain smile.
+// faceOf is the state face for a snapshot. Connected with no audible audio
+// is the plain smile; disconnected is the open-eyed line face, so the tray
+// separates an idle app from a silent stream.
 func faceOf(s engine.Snapshot) string {
 	switch phaseOf(s) {
 	case phaseStreaming:
@@ -62,7 +63,7 @@ func faceOf(s engine.Snapshot) string {
 	case phaseError:
 		return "error"
 	}
-	return "smile"
+	return "idle-open"
 }
 
 // sectionHead is the small label above a card.

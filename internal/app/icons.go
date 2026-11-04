@@ -13,10 +13,11 @@ var (
 
 	// The state faces: the app's smile changes its mouth to show what it is
 	// doing. The tray shows the same faces as its icon.
-	faceStream  = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></svg>`)
-	faceConnect = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></svg>`)
-	faceError   = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`)
-	faceSearch  = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><circle cx="12.15" cy="15.4" r="1.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`)
+	faceIdleOpen = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`)
+	faceStream   = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></svg>`)
+	faceConnect  = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></svg>`)
+	faceError    = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`)
+	faceSearch   = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><circle cx="12.15" cy="15.4" r="1.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`)
 
 	iconSpeaker = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="5.5"/><path d="M9.5 18.5h5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></g></svg>`)
 	iconTV      = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="12" rx="2.5"/><path d="M10 9.2l4 2.3-4 2.3z" fill="currentColor" stroke="none"/></g></svg>`)
@@ -61,6 +62,8 @@ func faceIcon(face string) *ui.SVG {
 		return faceConnect
 	case "error":
 		return faceError
+	case "idle-open":
+		return faceIdleOpen
 	default:
 		return iconMark
 	}

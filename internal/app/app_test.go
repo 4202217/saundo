@@ -568,6 +568,10 @@ func TestFlyoutFooterFaceFollowsTray(t *testing.T) {
 	if got := footerFace(snap); got != faceError {
 		t.Fatal("failed footer face is not the error face")
 	}
+	snap.Error = ""
+	if got := footerFace(snap); got != faceIdleOpen {
+		t.Fatal("idle footer face is not the open-eyed line face")
+	}
 }
 
 func TestTrayIconFollowsPhase(t *testing.T) {
@@ -589,11 +593,11 @@ func TestTrayIconFollowsPhase(t *testing.T) {
 		t.Fatalf("error face = %q", got)
 	}
 	a.snap.Error = ""
-	if got := a.face(); got != "smile" {
+	if got := a.face(); got != "idle-open" {
 		t.Fatalf("idle face = %q", got)
 	}
 	a.snap.Devices = nil
-	if got := a.face(); got != "smile" {
+	if got := a.face(); got != "idle-open" {
 		t.Fatalf("empty face = %q", got)
 	}
 }
@@ -618,7 +622,7 @@ func TestDeviceIconFollowsModel(t *testing.T) {
 }
 
 func TestTrayAssetsDecode(t *testing.T) {
-	for _, face := range []string{"stream", "connect", "error", "smile"} {
+	for _, face := range []string{"stream", "connect", "error", "smile", "idle-open"} {
 		for _, dark := range []bool{false, true} {
 			img, err := png.Decode(bytes.NewReader(trayPNGs[trayIconKey{face: face, dark: dark}]))
 			if err != nil {
