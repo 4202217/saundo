@@ -408,19 +408,24 @@ func TestMergePrefersRAOPEndpointAndAirPlayName(t *testing.T) {
 // join a blocking mdns query, or quitting the app stalls on it.
 func TestStopReturnsDuringInFlightQuery(t *testing.T) {
 	block := make(chan struct{})
-	started := make(chan struct{})
 	releaseOnce := sync.OnceFunc(func() { close(block) })
+	var entered, finished sync.WaitGroup
+	entered.Add(2)
+	finished.Add(2)
 	prev := mdnsQuery
 	mdnsQuery = func(*mdns.QueryParam) error {
-		close(started)
+		entered.Done()
 		<-block
+		finished.Done()
 		return nil
 	}
-	defer func() { mdnsQuery = prev; releaseOnce() }()
+	// Restore the global only after both service queries have left the mock,
+	// so the race detector sees no unsynchronized read of mdnsQuery.
+	defer func() { releaseOnce(); finished.Wait(); mdnsQuery = prev }()
 
 	s := New(0, 0)
 	s.Start()
-	<-started
+	entered.Wait()
 
 	stopped := make(chan struct{})
 	go func() {
