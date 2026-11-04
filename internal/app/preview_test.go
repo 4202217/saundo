@@ -50,6 +50,11 @@ func sampleTrack(locale string) nowplaying.Track {
 
 func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	t.Helper()
+	// A local build stamps git describe, the widest version the About pill
+	// has to hold.
+	oldVersion := Version
+	Version = "0.4.2-5-g1e8e94c-dirty"
+	defer func() { Version = oldVersion }()
 	save := func(name string, view func(*ui.Context), w, h int, dark bool) {
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
@@ -182,19 +187,29 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	stereo.selID = ""
 	save("flyout-no-device", stereo.view, flyoutWidth, flyoutHeightFor(0, true), false)
 
-	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture}
+	pageNames := map[settingsPage]string{
+		pageGeneral:    "settings-general",
+		pageConnection: "settings-connection",
+		pageReceivers:  "settings-receivers",
+		pageAudio:      "settings-audio",
+		pageCapture:    "settings-capture",
+		pageAbout:      "settings-about",
+	}
+	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture, pageAbout}
 	for _, page := range pages {
 		a := fixture()
 		a.page = page
 		if page == pageReceivers {
 			a.applyReceiverFixtures()
 		}
-		name := []string{"settings-general", "settings-connection", "settings-receivers", "settings-audio", "settings-capture"}[page]
-		save(name+"-light", a.settingsView, 720, 500, false)
+		save(pageNames[page]+"-light", a.settingsView, 720, 500, false)
 	}
 	darkSettings := fixture()
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)
+	darkAbout := fixture()
+	darkAbout.page = pageAbout
+	save("settings-about-dark", darkAbout.settingsView, 720, 500, true)
 
 	// The receivers page: an expanded row, and the hidden group open.
 	receiversPage := fixture()

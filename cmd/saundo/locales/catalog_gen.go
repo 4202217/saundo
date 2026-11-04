@@ -64,6 +64,148 @@ func (msgs Messages) AboutBrand() string {
 	return Catalog.Format(msgs.locale, "aboutBrand", nil)
 }
 
+// AboutTagline says "Ferry whatever Windows is playing to AirPlay 2."
+// in the language the app shows.
+func AboutTagline() string { return In(i18n.Locale()).AboutTagline() }
+
+// AboutTagline says "Ferry whatever Windows is playing to AirPlay 2."
+// in the language of msgs.
+func (msgs Messages) AboutTagline() string {
+	return Catalog.Format(msgs.locale, "aboutTagline", nil)
+}
+
+// AboutVersion says "Version {version} · {channel}"
+// in the language the app shows.
+func AboutVersion(version string, channel string) string {
+	return In(i18n.Locale()).AboutVersion(version, channel)
+}
+
+// AboutVersion says "Version {version} · {channel}"
+// in the language of msgs.
+func (msgs Messages) AboutVersion(version string, channel string) string {
+	return Catalog.Format(msgs.locale, "aboutVersion", map[string]any{"version": version, "channel": channel})
+}
+
+// AboutVersionLocal says "Version {version} · Local build"
+// in the language the app shows.
+func AboutVersionLocal(version string) string { return In(i18n.Locale()).AboutVersionLocal(version) }
+
+// AboutVersionLocal says "Version {version} · Local build"
+// in the language of msgs.
+func (msgs Messages) AboutVersionLocal(version string) string {
+	return Catalog.Format(msgs.locale, "aboutVersionLocal", map[string]any{"version": version})
+}
+
+// AboutVersionDev says "Development build"
+// in the language the app shows.
+func AboutVersionDev() string { return In(i18n.Locale()).AboutVersionDev() }
+
+// AboutVersionDev says "Development build"
+// in the language of msgs.
+func (msgs Messages) AboutVersionDev() string {
+	return Catalog.Format(msgs.locale, "aboutVersionDev", nil)
+}
+
+// AboutHome says "Project home"
+// in the language the app shows.
+func AboutHome() string { return In(i18n.Locale()).AboutHome() }
+
+// AboutHome says "Project home"
+// in the language of msgs.
+func (msgs Messages) AboutHome() string {
+	return Catalog.Format(msgs.locale, "aboutHome", nil)
+}
+
+// AboutHomeDesc says "Source code and documentation"
+// in the language the app shows.
+func AboutHomeDesc() string { return In(i18n.Locale()).AboutHomeDesc() }
+
+// AboutHomeDesc says "Source code and documentation"
+// in the language of msgs.
+func (msgs Messages) AboutHomeDesc() string {
+	return Catalog.Format(msgs.locale, "aboutHomeDesc", nil)
+}
+
+// AboutReleases says "Releases"
+// in the language the app shows.
+func AboutReleases() string { return In(i18n.Locale()).AboutReleases() }
+
+// AboutReleases says "Releases"
+// in the language of msgs.
+func (msgs Messages) AboutReleases() string {
+	return Catalog.Format(msgs.locale, "aboutReleases", nil)
+}
+
+// AboutReleasesDesc says "Installers and version history"
+// in the language the app shows.
+func AboutReleasesDesc() string { return In(i18n.Locale()).AboutReleasesDesc() }
+
+// AboutReleasesDesc says "Installers and version history"
+// in the language of msgs.
+func (msgs Messages) AboutReleasesDesc() string {
+	return Catalog.Format(msgs.locale, "aboutReleasesDesc", nil)
+}
+
+// AboutIssues says "Report an issue"
+// in the language the app shows.
+func AboutIssues() string { return In(i18n.Locale()).AboutIssues() }
+
+// AboutIssues says "Report an issue"
+// in the language of msgs.
+func (msgs Messages) AboutIssues() string {
+	return Catalog.Format(msgs.locale, "aboutIssues", nil)
+}
+
+// AboutIssuesDesc says "Report a problem or suggest a change"
+// in the language the app shows.
+func AboutIssuesDesc() string { return In(i18n.Locale()).AboutIssuesDesc() }
+
+// AboutIssuesDesc says "Report a problem or suggest a change"
+// in the language of msgs.
+func (msgs Messages) AboutIssuesDesc() string {
+	return Catalog.Format(msgs.locale, "aboutIssuesDesc", nil)
+}
+
+// AboutLicense says "License"
+// in the language the app shows.
+func AboutLicense() string { return In(i18n.Locale()).AboutLicense() }
+
+// AboutLicense says "License"
+// in the language of msgs.
+func (msgs Messages) AboutLicense() string {
+	return Catalog.Format(msgs.locale, "aboutLicense", nil)
+}
+
+// AboutLicenseDesc says "GPL-3.0-only · © 2026 4202217"
+// in the language the app shows.
+func AboutLicenseDesc() string { return In(i18n.Locale()).AboutLicenseDesc() }
+
+// AboutLicenseDesc says "GPL-3.0-only · © 2026 4202217"
+// in the language of msgs.
+func (msgs Messages) AboutLicenseDesc() string {
+	return Catalog.Format(msgs.locale, "aboutLicenseDesc", nil)
+}
+
+// AboutNotices says "Third-party notices"
+// in the language the app shows.
+func AboutNotices() string { return In(i18n.Locale()).AboutNotices() }
+
+// AboutNotices says "Third-party notices"
+// in the language of msgs.
+func (msgs Messages) AboutNotices() string {
+	return Catalog.Format(msgs.locale, "aboutNotices", nil)
+}
+
+// AboutNoticesDesc says "AirPlay 2 references and open-source components"
+// in the language the app shows.
+func AboutNoticesDesc() string { return In(i18n.Locale()).AboutNoticesDesc() }
+
+// AboutNoticesDesc says "AirPlay 2 references and open-source components"
+// in the language of msgs.
+func (msgs Messages) AboutNoticesDesc() string {
+	return Catalog.Format(msgs.locale, "aboutNoticesDesc", nil)
+}
+
 // SettingsWindowTitle says "Settings · saundo"
 // in the language the app shows.
 func SettingsWindowTitle() string { return In(i18n.Locale()).SettingsWindowTitle() }
@@ -838,11 +980,11 @@ func (msgs Messages) SettingsNavCapture() string {
 	return Catalog.Format(msgs.locale, "settingsNavCapture", nil)
 }
 
-// PageGeneralDesc says "Sender identity, startup, appearance, and version."
+// PageGeneralDesc says "Sender identity, startup, and appearance."
 // in the language the app shows.
 func PageGeneralDesc() string { return In(i18n.Locale()).PageGeneralDesc() }
 
-// PageGeneralDesc says "Sender identity, startup, appearance, and version."
+// PageGeneralDesc says "Sender identity, startup, and appearance."
 // in the language of msgs.
 func (msgs Messages) PageGeneralDesc() string {
 	return Catalog.Format(msgs.locale, "pageGeneralDesc", nil)
@@ -2162,6 +2304,16 @@ func PageUpdatesDesc() string { return In(i18n.Locale()).PageUpdatesDesc() }
 // in the language of msgs.
 func (msgs Messages) PageUpdatesDesc() string {
 	return Catalog.Format(msgs.locale, "pageUpdatesDesc", nil)
+}
+
+// PageAboutDesc says "Version, project links, and license."
+// in the language the app shows.
+func PageAboutDesc() string { return In(i18n.Locale()).PageAboutDesc() }
+
+// PageAboutDesc says "Version, project links, and license."
+// in the language of msgs.
+func (msgs Messages) PageAboutDesc() string {
+	return Catalog.Format(msgs.locale, "pageAboutDesc", nil)
 }
 
 // SettingsCurrentVersion says "Current version"

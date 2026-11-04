@@ -5,13 +5,13 @@ A separate `mygo.NewWindow` (`settings_window.go:82-108`): 720 DIP wide
 engine starts. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · saundo` under en — match windows by class `MyGoWindow` + pid,
 or `-TitleLike` the active locale's brand string, never a hardcoded title.
-Six pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
-采集, 更新; each page body scrolls in the gutter at the window edge.
+Seven pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
+采集, 更新, 关于; each page body scrolls in the gutter at the window edge.
 
 ## Sub-features
 
 - 通用 page: 发送端名称 (the name receivers show on their next connection),
-  开机自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language, about.
+  开机自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language.
 - 连接 page: a status card for the current device, 断开后自动重连, and
   严格验证接收器. Launch auto-connect is not here — it is per receiver on
   the 接收器 page.
@@ -31,6 +31,10 @@ Six pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音�
   capture (application list built from window titles + audio sessions).
 - 更新 page: update states, channel (stable/beta), release-history list —
   see [updates.md](updates.md).
+- 关于 page: the identity card shows the app's smile mark, the product
+  tagline, and the version line. Below it are the project links and the
+  license/notices rows, and the version line never shows the git describe
+  suffix.
 
 ## How to get to it (user POV)
 

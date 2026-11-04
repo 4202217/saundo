@@ -3,6 +3,31 @@
   "appName": "声渡",
   "appSubtitle": "saundo",
   "aboutBrand": "声渡 · saundo",
+  "aboutTagline": "把 Windows 上正在播放的声音，渡到 AirPlay 2。",
+  "aboutVersion": "版本 {version} · {channel}",
+  "@aboutVersion": {
+    "placeholders": {
+      "version": { "type": "String" },
+      "channel": { "type": "String" }
+    }
+  },
+  "aboutVersionLocal": "版本 {version} · 本地构建",
+  "@aboutVersionLocal": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "aboutVersionDev": "开发版",
+  "aboutHome": "项目主页",
+  "aboutHomeDesc": "源代码与文档",
+  "aboutReleases": "版本发布",
+  "aboutReleasesDesc": "下载安装包与历史版本",
+  "aboutIssues": "问题反馈",
+  "aboutIssuesDesc": "报告问题或提出建议",
+  "aboutLicense": "许可证",
+  "aboutLicenseDesc": "GPL-3.0-only · © 2026 4202217",
+  "aboutNotices": "第三方声明",
+  "aboutNoticesDesc": "AirPlay 2 参考实现与开源组件",
   "settingsWindowTitle": "设置 · 声渡",
   "trayShowPanel": "显示控制面板",
   "traySettings": "设置…",
@@ -88,7 +113,7 @@
   "settingsNavReceivers": "接收器",
   "settingsNavAudio": "音频",
   "settingsNavCapture": "采集",
-  "pageGeneralDesc": "发送端身份、启动、外观与版本。",
+  "pageGeneralDesc": "发送端身份、启动与外观。",
   "pageConnectionDesc": "重连与验证策略",
   "pageReceiversDesc": "管理接收器、自动连接、可见性与每台接收器的音画同步。",
   "pageAudioDesc": "在音画同步与连接稳定之间取舍；连接中切换会自动重连。",
@@ -239,6 +264,7 @@
 
   "settingsNavUpdates": "更新",
   "pageUpdatesDesc": "版本、自动检查与安装。",
+  "pageAboutDesc": "版本、项目链接与许可。",
   "settingsCurrentVersion": "当前版本",
   "settingsAutoUpdateDesc": "启动后检查一次，此后每天一次",
   "settingsAutoDownload": "自动下载并安装",

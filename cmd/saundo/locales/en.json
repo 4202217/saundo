@@ -3,6 +3,31 @@
   "appName": "saundo",
   "appSubtitle": "AIRPLAY 2",
   "aboutBrand": "saundo",
+  "aboutTagline": "Ferry whatever Windows is playing to AirPlay 2.",
+  "aboutVersion": "Version {version} · {channel}",
+  "@aboutVersion": {
+    "placeholders": {
+      "version": { "type": "String" },
+      "channel": { "type": "String" }
+    }
+  },
+  "aboutVersionLocal": "Version {version} · Local build",
+  "@aboutVersionLocal": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "aboutVersionDev": "Development build",
+  "aboutHome": "Project home",
+  "aboutHomeDesc": "Source code and documentation",
+  "aboutReleases": "Releases",
+  "aboutReleasesDesc": "Installers and version history",
+  "aboutIssues": "Report an issue",
+  "aboutIssuesDesc": "Report a problem or suggest a change",
+  "aboutLicense": "License",
+  "aboutLicenseDesc": "GPL-3.0-only · © 2026 4202217",
+  "aboutNotices": "Third-party notices",
+  "aboutNoticesDesc": "AirPlay 2 references and open-source components",
   "settingsWindowTitle": "Settings · saundo",
   "trayShowPanel": "Show control panel",
   "traySettings": "Settings…",
@@ -154,7 +179,7 @@
   "settingsNavReceivers": "Receivers",
   "settingsNavAudio": "Audio",
   "settingsNavCapture": "Capture",
-  "pageGeneralDesc": "Sender identity, startup, appearance, and version.",
+  "pageGeneralDesc": "Sender identity, startup, and appearance.",
   "pageConnectionDesc": "Reconnection and verification.",
   "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver sync.",
   "pageAudioDesc": "Trade sync against stability; switching mid-session reconnects.",
@@ -320,6 +345,7 @@
 
   "settingsNavUpdates": "Updates",
   "pageUpdatesDesc": "Versions, automatic checks, and installation.",
+  "pageAboutDesc": "Version, project links, and license.",
   "settingsCurrentVersion": "Current version",
   "settingsAutoUpdateDesc": "Check once after launch, then daily",
   "settingsAutoDownload": "Download and install automatically",

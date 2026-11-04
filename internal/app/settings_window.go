@@ -23,6 +23,7 @@ const (
 	pageAudio
 	pageCapture
 	pageUpdate
+	pageAbout
 )
 
 var settingsNav = []struct {
@@ -35,6 +36,7 @@ var settingsNav = []struct {
 	{pageAudio, iconWave},
 	{pageCapture, iconScreen},
 	{pageUpdate, iconRefresh},
+	{pageAbout, iconInfo},
 }
 
 func pageTitle(page settingsPage) string {
@@ -49,6 +51,8 @@ func pageTitle(page settingsPage) string {
 		return locales.SettingsNavCapture()
 	case pageUpdate:
 		return locales.SettingsNavUpdates()
+	case pageAbout:
+		return locales.SettingsAbout()
 	}
 	return locales.SettingsNavGeneral()
 }
@@ -223,6 +227,8 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 					a.capturePage(c, p)
 				case pageUpdate:
 					a.updatePage(c, p)
+				case pageAbout:
+					a.aboutPage(c, p)
 				}
 			})
 		})
@@ -241,6 +247,8 @@ func pageCopy(page settingsPage) (title, desc string) {
 		return pageTitle(page), locales.PageCaptureDesc()
 	case pageUpdate:
 		return pageTitle(page), locales.PageUpdatesDesc()
+	case pageAbout:
+		return pageTitle(page), locales.PageAboutDesc()
 	}
 	return pageTitle(page), locales.PageGeneralDesc()
 }
@@ -275,10 +283,6 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			if fieldSelect(c, p, &choice, options, locales.SettingsLanguage()).Changed() {
 				a.setLanguage(choice)
 			}
-		})
-		rowLine(c, p)
-		settingRow(c, p, locales.SettingsAbout(), locales.SettingsAboutBrand(), func() {
-			staticText(c, p, a.currentVersion())
 		})
 	})
 }

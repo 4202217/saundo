@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -189,12 +190,13 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动、外观与版本。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言", "关于", "声渡 · saundo"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言"}},
 		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
+		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "把 Windows 上正在播放的声音，渡到 AirPlay 2。", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
 	for _, tc := range cases {
 		a := previewApp()
@@ -208,6 +210,57 @@ func TestSettingsPagesRender(t *testing.T) {
 		if path := os.Getenv("SAUNDO_PREVIEW_SETTINGS"); path != "" {
 			writePreview(t, tt, path)
 		}
+	}
+}
+
+func TestAboutVersionText(t *testing.T) {
+	stable := locales.SettingsChannelStable()
+	beta := locales.SettingsChannelBeta()
+	cases := []struct{ version, channel, want string }{
+		{"0.4.2", stable, "版本 0.4.2 · 稳定版"},
+		{"v0.4.2", beta, "版本 0.4.2 · 测试版"},
+		{"0.4.2-5-g1e8e94c", stable, "版本 0.4.2 · 本地构建"},
+		{"0.4.2-5-g1e8e94c-dirty", stable, "版本 0.4.2 · 本地构建"},
+		{"0.5.0-beta.1", beta, "版本 0.5.0-beta.1 · 测试版"},
+		{"dev", stable, "开发版"},
+		{"", stable, "开发版"},
+	}
+	for _, tc := range cases {
+		if got := aboutVersionText(tc.version, tc.channel); got != tc.want {
+			t.Errorf("aboutVersionText(%q, %q) = %q, want %q", tc.version, tc.channel, got, tc.want)
+		}
+	}
+}
+
+func TestAboutPageShowsCleanVersion(t *testing.T) {
+	old := Version
+	Version = "0.4.2-5-g1e8e94c-dirty"
+	t.Cleanup(func() { Version = old })
+	a := previewApp()
+	a.page = pageAbout
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText("版本 0.4.2 · 本地构建") {
+		t.Fatalf("about page is missing the clean version line; texts: %q", tt.Texts())
+	}
+	if tt.HasText("0.4.2-5-g1e8e94c-dirty") {
+		t.Fatalf("about page still shows the git describe stamp; texts: %q", tt.Texts())
+	}
+}
+
+func TestAboutPageOpensProjectLinks(t *testing.T) {
+	a := previewApp()
+	a.page = pageAbout
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	for _, label := range []string{"项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"} {
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+	}
+	want := []string{aboutRepoURL, aboutReleasesURL, aboutIssuesURL, aboutLicenseURL, aboutNoticesURL}
+	if got := tt.OpenedURLs(); !slices.Equal(got, want) {
+		t.Fatalf("opened %q, want %q", got, want)
 	}
 }
 
