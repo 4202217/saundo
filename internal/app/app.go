@@ -713,12 +713,16 @@ func (a *App) submitPin() {
 func (a *App) submitPassword() {
 	password := strings.TrimSpace(a.passwordPrompt)
 	id := a.snap.PasswordDeviceID
+	target := a.snap.PasswordTargetID
+	if target == "" {
+		target = id
+	}
 	if password == "" || id == "" {
 		return
 	}
 	a.eng.SetReceiverPassword(id, password)
-	a.eng.Connect(id)
-	a.selID = id
+	a.eng.Connect(target)
+	a.selID = target
 	a.passwordOpen = false
 	a.passwordPrompt = ""
 }

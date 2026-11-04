@@ -36,6 +36,10 @@ type Snapshot struct {
 	PasswordRequired bool
 	PasswordDevice   string
 	PasswordDeviceID string
+	// PasswordTargetID is the target the UI reconnects after the password is
+	// saved. It differs from PasswordDeviceID for a stereo member, whose
+	// password is stored under the member key but whose pair is the target.
+	PasswordTargetID string
 	Volume           float64
 	Name             string
 	Reconnect        bool
@@ -276,6 +280,7 @@ type Engine struct {
 	passwordRequired bool
 	passwordDevice   string
 	passwordDeviceID string
+	passwordTargetID string
 	volume           float64
 	setsValue        settings.Settings
 	captureEndpoint  string
@@ -933,6 +938,7 @@ func (e *Engine) connect(d device.Device) {
 			e.passwordRequired = true
 			e.passwordDevice = d.Name
 			e.passwordDeviceID = d.ID
+			e.passwordTargetID = d.ID
 			e.lastError = ""
 			e.logf("AirPlay password required for %s", d.Name)
 			e.publish()
@@ -944,12 +950,15 @@ func (e *Engine) connect(d device.Device) {
 		// the reconnect budget on 401 digest challenges; prompt for it the
 		// same way a single receiver would.
 		for _, m := range d.Members {
-			if !needsReceiverPassword(m.Auth) || (e.hasPassword(m.ID) && e.memberPassword(m) != "") {
+			// memberPassword falls back to the pair's own key, so a password
+			// stored once for both members already satisfies this member.
+			if !needsReceiverPassword(m.Auth) || e.memberPassword(m) != "" {
 				continue
 			}
 			e.passwordRequired = true
 			e.passwordDevice = m.Name
 			e.passwordDeviceID = m.ID
+			e.passwordTargetID = d.ID
 			e.lastError = ""
 			e.logf("AirPlay password required for %s (stereo member)", m.Name)
 			e.publish()
@@ -1104,6 +1113,7 @@ func (e *Engine) clearPasswordPrompt() {
 	e.passwordRequired = false
 	e.passwordDevice = ""
 	e.passwordDeviceID = ""
+	e.passwordTargetID = ""
 }
 
 // needsReceiverPassword reports whether the auth path needs the receiver's
@@ -1513,6 +1523,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		PasswordRequired:   e.passwordRequired,
 		PasswordDevice:     e.passwordDevice,
 		PasswordDeviceID:   e.passwordDeviceID,
+		PasswordTargetID:   e.passwordTargetID,
 		Volume:             e.volume,
 		Name:               e.setsValue.Name,
 		Reconnect:          e.setsValue.Reconnect,

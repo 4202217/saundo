@@ -691,26 +691,69 @@ func TestOfflineStereoGroupDoesNotStart(t *testing.T) {
 	}
 }
 
+// stereoPasswordGroup is a two-member pair whose members both need a
+// receiver password.
+func stereoPasswordGroup() device.Device {
+	return device.Device{
+		ID: device.StereoGroupID("tsid"), Name: "HomePods", StereoID: "tsid", Online: true,
+		Members: []device.Device{
+			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Host: "192.0.2.10", Auth: device.AuthHAPPassword, StereoID: "tsid", Online: true},
+			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Host: "192.0.2.11", Auth: device.AuthHAPPassword, StereoID: "tsid", Online: true},
+		},
+	}
+}
+
 // TestStereoMemberPasswordPrompts pins the member gate: a group member that
 // needs a receiver password and has none raises the password dialog instead
 // of burning reconnects on 401 digest challenges.
 func TestStereoMemberPasswordPrompts(t *testing.T) {
 	h := newHarness(t)
-	group := device.Device{
-		ID: device.StereoGroupID("tsid"), Name: "HomePods", StereoID: "tsid", Online: true,
-		Members: []device.Device{
-			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Host: "192.0.2.10", Auth: device.AuthHAPPassword, Online: true},
-			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Host: "192.0.2.11", Auth: device.AuthHAPPassword, Online: true},
-		},
-	}
+	group := stereoPasswordGroup()
 	h.e.setDevices([]device.Device{group})
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: group.ID})
 	if h.sessions != 0 {
 		t.Fatal("the group connected without the member's password")
 	}
 	snap := h.e.Snapshot()
-	if !snap.PasswordRequired || snap.PasswordDeviceID != "AA:BB:CC:DD:EE:01" {
-		t.Fatalf("password prompt = %+v, want the left member", snap)
+	if !snap.PasswordRequired || snap.PasswordDeviceID != "AA:BB:CC:DD:EE:01" || snap.PasswordTargetID != group.ID {
+		t.Fatalf("password prompt = %+v, want the left member's password saved for the pair", snap)
+	}
+
+	// The UI saves each member's password under the member's own key and
+	// reconnects the pair: members are not addressable targets of their own.
+	// The second member prompts after the first password lands.
+	for _, member := range []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"} {
+		snap = h.e.Snapshot()
+		if !snap.PasswordRequired || snap.PasswordDeviceID != member || snap.PasswordTargetID != group.ID {
+			t.Fatalf("member prompt = %+v, want %s saved for the pair", snap, member)
+		}
+		h.e.handleCommand(command{kind: cmdPassword, deviceID: snap.PasswordDeviceID, name: "member-secret"})
+		h.e.handleCommand(command{kind: cmdConnect, deviceID: snap.PasswordTargetID})
+	}
+	if h.sessions != 1 {
+		t.Fatalf("sessions after both member passwords = %d, want 1", h.sessions)
+	}
+	if snap := h.e.Snapshot(); snap.PasswordRequired {
+		t.Fatal("the password prompt survived the submit")
+	}
+}
+
+// TestStereoGroupPasswordFallbackSkipsPrompt pins the shared-password case:
+// a password stored under the pair's own key already serves both members,
+// so the connect must not ask for it again.
+func TestStereoGroupPasswordFallbackSkipsPrompt(t *testing.T) {
+	h := newHarness(t)
+	group := stereoPasswordGroup()
+	h.e.setDevices([]device.Device{group})
+	if err := h.e.savePassword(group.ID, "pair-secret"); err != nil {
+		t.Fatal(err)
+	}
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: group.ID})
+	if snap := h.e.Snapshot(); snap.PasswordRequired {
+		t.Fatal("prompted even though the pair's password is stored")
+	}
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want 1", h.sessions)
 	}
 }
 
