@@ -39,7 +39,7 @@ If the evidence rules out the change the user asked for, show it and stop.
 Write one brief. Use it for the current session's mockup, and reuse it verbatim for every variant when fanning out. Carry:
 
 - The goal and the quoted complaint.
-- The surface and size. Settings is 720x500, minimum 640x420; the flyout is 420 wide.
+- The surface and size. Settings is 720x500, minimum 640x420. The flyout is 420 wide and its height follows `flyoutHeightFor`: 500 at three device rows, 56 less per missing row, 470 for the empty state, plus 44 while the latency row is shown.
 - The token and geometry source: `internal/app/theme.go`, and `.audit/mockup-final.html` when it is the visual baseline.
 - The locale source: `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-CN.json`. New copy needs a key and both languages.
 - Native constraints: mygo primitives only (`Column`, `Row`, `Box`, `Text`, `ButtonBase`, `Icon`, `toggle`, `slider`, `CollapsibleBase`), plus borders, radius, padding, opacity, and the palette. No images, web fonts, or gradients. Inline SVG only for icons in `internal/app/icons.go`.
@@ -51,14 +51,17 @@ When fanning out, only the model varies.
 
 ## 3. Build the mockup
 
-Default to one variant in the current session. Start from the template:
+Default to one variant in the current session. Choose the surface template:
 
 ```bash
 mkdir -p .audit/mockups/<topic>
+# Settings window:
 cp .claude/skills/ui-mockup/assets/mockup-template.html .audit/mockups/<topic>/mockup.html
+# Flyout:
+cp .claude/skills/ui-mockup/assets/flyout-template.html .audit/mockups/<topic>/flyout.html
 ```
 
-Edit only the marked blocks: `NAV`, `PAGE`, `STATES`, `COPY`, the three view functions, and the notes. Keep the tokens, window chrome, toolbar, and helpers. Render with headless Chrome, inspect the screenshot, and fix clipping, overflow, and wrapped copy. Use the template's `?view=&lang=&dark=&zoom=` parameters to screenshot a specific state.
+Edit only the marked blocks. In the settings template they are `NAV`, `PAGE`, `STATES`, `COPY`, the three view functions, and the notes. In the flyout template they are `COPY`, `DEVICES`, `STATES`, the state functions, and the notes. Keep the tokens, shell, toolbar, and helpers. Render with headless Chrome, inspect the screenshot, and fix clipping, overflow, and wrapped copy. Use the template's URL parameters to screenshot a specific state.
 
 Build three variants only when the user explicitly asks for variants, a model bakeoff, or collision thinking (碰撞). For three, run one per model from the pstack `arena runners` line, default opus, sonnet, and fable, each with its own output path. Use `pstack:poteto-agent` when available and run them in parallel. Require each to render and inspect its own screenshot.
 
@@ -125,7 +128,8 @@ Inspect the native PNGs for the chosen state, the normal state, both locales, an
 ## Gotchas
 
 - Keep one folder per decision under `.audit/mockups/<topic>/`. Never drop mockups at the repository root or in the `.audit` root.
-- Do not rebuild the window chrome. Copy `assets/mockup-template.html` and edit the marked blocks; a rebuilt shell drifts from the real 720x500 window.
+- Do not rebuild the window chrome. Copy `assets/mockup-template.html` or `assets/flyout-template.html` and edit the marked blocks; a rebuilt shell drifts from the real window.
+- The flyout height is not fixed. Keep the template's `flyoutHeight` rule so the device card and the playback card keep the same gap; do not stretch one without the other.
 - A dashed container beside the dashed add row reads as a second disabled row. Prefer plain prose for an informational empty state.
 - A zero count pill names a group with nothing in it. Render the group head only with rows, or suppress the pill.
 - The add row is the only add affordance. A decorative plus will be clicked.
@@ -137,4 +141,4 @@ Inspect the native PNGs for the chosen state, the normal state, both locales, an
 
 ## Report
 
-Name whether the run was one mockup or three variants, the render evidence, the pick and graft, the checks that ran and printed what, and the checks not run. State where the mockups live (`.audit/mockups/<topic>/`, never committed) and whether the implementation is committed.
+Name whether the run was one mockup or three variants, the surface template, the render evidence, the pick and graft, the checks that ran and printed what, and the checks not run. State where the mockups live (`.audit/mockups/<topic>/`, never committed) and whether the implementation is committed.

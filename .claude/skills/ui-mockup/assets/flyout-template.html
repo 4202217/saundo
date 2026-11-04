@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>saundo · flyout mockup</title>
+<!--
+  saundo flyout mockup template.
+
+  Copy this file to .audit/mockups/<topic>/flyout.html and edit only the
+  marked blocks: COPY, DEVICES, STATES, the state functions, and the notes.
+  Keep the tokens, flyout chrome, toolbar, and helpers.
+
+  The flyout is 420 wide. Its height follows flyoutHeightFor: 500 at three
+  device rows, 56 less per missing row, 470 for the empty state, and +44
+  when the latency row is shown. The device card and the playback card keep
+  the same gap; do not stretch one without the other.
+
+  Render:
+    chrome --headless=new --hide-scrollbars --window-size=1400,900 \
+      --screenshot=.audit/previews/<topic>.png file:///.../flyout.html
+
+  Headless shots can select a state from the URL:
+    ?state=idle|streaming|empty|error&lang=zh|en&dark=0|1&latency=0|1&zoom=1|1.25|1.5
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    --bg: #f4f4f6; --panel: #f2f2f5; --card: #ffffff; --card-hover: #f9f9fb;
+    --pill: #f1f1f4; --pill-hover: #e9e9ed; --line: #e3e3e8; --line2: #ececf0;
+    --fg: #1c1c21; --fg2: #4b4b53; --ctl: #63636b; --muted: #85858d; --faint: #b9b9c2;
+    --accent: #4f46e5; --accent-soft: #eeedfd; --accent-fg: #ffffff;
+    --sel: #ecebfb; --green: #189a58; --green-soft: #e4f6ec;
+    --red: #d64545; --red-soft: #fbe9e9;
+    --raised-shadow: 0 1px 2px rgba(0, 0, 0, .14);
+    --flyout-shadow: 0 22px 60px rgba(20, 22, 30, .30);
+    --ease: cubic-bezier(.16, 1, .3, 1);
+    color-scheme: light;
+    margin: 0;
+    background: #e8e8ed;
+    color: var(--fg);
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  body.dark {
+    --bg: #1a1a1e; --panel: #1b1c20; --card: #232327; --card-hover: #26262b;
+    --pill: #2d2d33; --pill-hover: #35353c; --line: #333339; --line2: #2c2c32;
+    --fg: #ededf1; --fg2: #b9b9c1; --ctl: #a1a1aa; --muted: #8b8b94; --faint: #56565f;
+    --accent: #a5b4fc; --accent-soft: #2b2c47; --accent-fg: #14142a;
+    --sel: #33345a; --green: #6fd99b; --green-soft: #1e3a2b;
+    --red: #f28b82; --red-soft: #45272a;
+    --raised-shadow: 0 1px 2px rgba(0, 0, 0, .48);
+    --flyout-shadow: 0 30px 90px rgba(0, 0, 0, .66);
+    color-scheme: dark;
+    background: #101013;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { border: 0; background: none; padding: 0; cursor: pointer; }
+  .icon { display: inline-flex; width: 14px; height: 14px; flex: none; }
+  .icon svg { display: block; width: 100%; height: 100%; }
+  button:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  /* ---------- mockup chrome ---------- */
+  .toolbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 22px;
+    background: rgba(255, 255, 255, .88);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(28, 28, 33, .08);
+  }
+  body.dark .toolbar { background: rgba(18, 18, 22, .88); border-bottom-color: rgba(255, 255, 255, .07); }
+  .brand { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .brand .mark { width: 17px; height: 17px; display: inline-flex; color: var(--fg); }
+  .brand .mark svg { display: block; width: 100%; height: 100%; }
+  .brand-name { font-size: 14px; font-weight: 650; letter-spacing: -.15px; }
+  .brand-sub { color: var(--muted); font-size: 11.5px; }
+  .tool-sep { width: 1px; height: 16px; background: var(--line); margin: 0 2px; }
+  .variant { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--fg2); white-space: nowrap; }
+  .variant-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .toolbar .spacer { flex: 1; }
+  .tool-label { font-size: 10.5px; color: var(--faint); letter-spacing: .4px; }
+  .tool-group { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 9px; background: var(--pill); }
+  .tool-group button {
+    height: 26px; min-width: 44px; padding: 0 8px; border-radius: 7px;
+    font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+    transition: background 120ms var(--ease), color 120ms var(--ease);
+  }
+  .tool-group button:hover { color: var(--fg2); }
+  .tool-group button.active { background: var(--card); color: var(--fg); box-shadow: var(--raised-shadow); }
+  .tool {
+    height: 30px; padding: 0 11px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--card);
+    font-size: 11.5px; color: var(--fg2); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tool:hover { background: var(--pill); color: var(--fg); }
+  .tool.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .tool .icon { width: 13px; height: 13px; color: var(--muted); }
+
+  .stagewrap {
+    display: flex; align-items: flex-start; justify-content: center;
+    gap: 32px; padding: 26px 24px 44px; flex-wrap: wrap;
+  }
+  .stage { flex: none; width: calc(420px * var(--zoom, 1)); height: calc(var(--fh, 500px) * var(--zoom, 1)); }
+  .notes { width: 306px; padding-top: 2px; font-size: 12px; line-height: 1.65; color: var(--fg2); }
+  .notes h2 { margin: 0 0 6px; font-size: 14.5px; font-weight: 650; letter-spacing: -.1px; color: var(--fg); }
+  .notes-intro { margin: 0; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
+  .notes .kicker { margin: 18px 0 7px; font-size: 10px; letter-spacing: .8px; color: var(--faint); }
+  .notes ul { margin: 0; padding: 0; list-style: none; }
+  .notes li { position: relative; margin: 0 0 8px; padding-left: 13px; font-size: 11.5px; line-height: 1.6; color: var(--fg2); }
+  .notes li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--faint); }
+  .notes li b { font-weight: 600; color: var(--fg); margin-right: 4px; }
+
+  /* ---------- flyout ---------- */
+  .flyout {
+    width: 420px; height: var(--fh, 500px); flex: none;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+    border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--fg);
+    box-shadow: var(--flyout-shadow);
+    transform: scale(var(--zoom, 1)); transform-origin: top left;
+  }
+  .flyout-head {
+    height: 46px; flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 0 10px 0 14px;
+  }
+  .flyout-head .mark { width: 21px; height: 21px; color: var(--fg); }
+  .app-name { font-size: 13.5px; font-weight: 600; line-height: 1.2; }
+  .app-sub { font-size: 8.5px; font-weight: 600; letter-spacing: 1.1px; color: var(--muted); line-height: 1.2; }
+  .flyout-head .spacer { flex: 1; }
+  .icon-btn {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted);
+  }
+  .icon-btn:hover { background: var(--pill); }
+  .icon-btn .icon { width: 14px; height: 14px; }
+
+  .flyout-body {
+    flex: 1; min-height: 0; display: flex; flex-direction: column;
+    padding: 2px 12px 8px 12px; gap: 8px;
+  }
+  .flyout-body .spacer { flex: 1; }
+  .section-head {
+    padding: 6px 2px 2px 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: .55px; color: var(--muted); }
+  .section-note { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); overflow: hidden;
+  }
+  .device-card { flex: none; }
+  .device-row {
+    height: 56px; display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+  }
+  .device-row + .device-row { border-top: 1px solid var(--line2); }
+  .device-row.selected { background: var(--sel); }
+  .device-row:hover:not(.selected) { background: var(--card-hover); }
+  .device-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+  .glyph {
+    position: relative; width: 30px; height: 30px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 15px; background: var(--pill); color: var(--fg2);
+  }
+  .glyph .icon { width: 16px; height: 16px; }
+  .device-row.selected .glyph { background: var(--card); color: var(--accent); }
+  .glyph .online {
+    position: absolute; right: -1px; bottom: -1px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 0 2px var(--card);
+  }
+  .device-row.selected .glyph .online { box-shadow: 0 0 0 2px var(--sel); }
+  .namecol { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+  .name { font-size: 13.5px; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { font-size: 11.5px; line-height: 1.35; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-action {
+    flex: none; display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 7px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  .row-action .icon { width: 13px; height: 13px; }
+  .row-action.accent { color: var(--accent); }
+  .row-action.strong { color: var(--fg2); }
+  .row-action.muted { color: var(--muted); }
+  .row-action:hover { background: var(--pill); }
+
+  .empty-card {
+    height: 140px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px; padding: 18px;
+    text-align: center;
+  }
+  .search-face { width: 28px; height: 28px; color: var(--faint); animation: pulse 1.2s ease-in-out infinite; }
+  .search-face svg { display: block; width: 100%; height: 100%; }
+  @keyframes pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  .empty-title { font-size: 12.5px; color: var(--fg2); }
+  .empty-hint { font-size: 11.5px; color: var(--muted); }
+  .empty-action { margin-top: 2px; padding: 2px 6px; border-radius: 6px; font-size: 12px; color: var(--accent); }
+  .empty-action:hover { background: var(--pill); }
+
+  .error-bar {
+    margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+    background: var(--red-soft); color: var(--red);
+    font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .playback-head { padding: 6px 2px 2px 2px; display: flex; align-items: center; gap: 8px; }
+  .playback-card { flex: none; }
+  .volume { padding: 10px 12px 8px 12px; }
+  .volume-head { display: flex; align-items: baseline; }
+  .volume-label { font-size: 13px; font-weight: 500; }
+  .volume-value { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .range { position: relative; height: 20px; margin-top: 5px; padding: 0 8px; }
+  .range::before {
+    content: ""; position: absolute; left: 8px; right: 8px; top: 8px;
+    height: 4px; border-radius: 2px; background: var(--line);
+  }
+  .range::after {
+    content: ""; position: absolute; left: 8px; top: 8px;
+    width: calc((100% - 16px) * var(--value, .65)); height: 4px;
+    border-radius: 2px; background: var(--fg);
+  }
+  .range-knob {
+    position: absolute; top: 2px; left: calc(8px + (100% - 16px) * var(--value, .65) - 8px);
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  }
+  .line { height: 1px; background: var(--line2); }
+  .latency { padding: 6px 12px 7px 12px; }
+  .seg {
+    height: 30px; display: flex; gap: 2px; padding: 2px;
+    border-radius: 8px; background: var(--pill);
+  }
+  .seg button {
+    flex: 1; height: 26px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    font-size: 11.5px; color: var(--muted); white-space: nowrap;
+  }
+  .seg button .icon { width: 12px; height: 12px; }
+  .seg button.active { background: var(--card); color: var(--fg); box-shadow: var(--raised-shadow); }
+  .seg button.active .icon { color: var(--accent); }
+
+  .now { height: 62px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
+  .now-tile {
+    width: 34px; height: 34px; flex: none; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .now-tile .icon { width: 16px; height: 16px; }
+  .now-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .now-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now-push { flex: none; display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
+  .switch { position: relative; width: 32px; height: 19px; flex: none; border-radius: 9.5px; background: var(--faint); }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 15px; height: 15px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  }
+  .switch.on { background: var(--fg); }
+  .switch.on::after { transform: translateX(13px); background: var(--bg); }
+  .capture { padding: 5px 12px 6px 12px; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .flyout-foot {
+    height: 34px; flex: none; display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px 6px 14px;
+  }
+  .face { width: 16px; height: 16px; flex: none; }
+  .face svg { display: block; width: 100%; height: 100%; }
+  .status { flex: 1; min-width: 0; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status.muted { color: var(--muted); }
+  .status.green { color: var(--green); }
+  .status.red { color: var(--red); }
+  .status.accent { color: var(--accent); }
+  .diag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; font-size: 12px; color: var(--ctl); }
+  .diag .icon { width: 13px; height: 13px; }
+  .diag:hover { background: var(--pill); }
+
+  @media (max-width: 1120px) {
+    .notes { width: min(720px, 100%); }
+    .stagewrap { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+<header class="toolbar">
+  <div class="brand"><span class="mark" id="brandMark"></span><span class="brand-name">saundo</span><span class="brand-sub">flyout mockup · template</span></div>
+  <span class="tool-sep"></span>
+  <div class="variant"><span class="variant-dot"></span><span>420 wide · adaptive height</span></div>
+  <div class="spacer"></div>
+  <span class="tool-label" id="stateLabel">状态</span>
+  <div class="tool-group" id="stateGroup" role="group"></div>
+  <button type="button" class="tool" id="latencyBtn">延迟条</button>
+  <span class="tool-label" id="zoomLabel">缩放</span>
+  <div class="tool-group" id="zoomGroup" role="group">
+    <button type="button" data-zoom="1" class="active">100%</button>
+    <button type="button" data-zoom="1.25">125%</button>
+    <button type="button" data-zoom="1.5">150%</button>
+  </div>
+  <button type="button" class="tool" id="langBtn">EN</button>
+  <button type="button" class="tool" id="themeBtn">深色</button>
+</header>
+
+<main class="stagewrap">
+  <section class="stage" id="stage"></section>
+  <aside class="notes" id="notes"></aside>
+</main>
+
+<script>
+const ICON = {
+  mark: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></svg>',
+  faceIdle: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  faceStream: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></svg>',
+  faceSearch: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><circle cx="12.15" cy="15.4" r="1.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+  faceError: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5h-4.5"/></g></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></g></svg>',
+  speaker: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="5.5"/><path d="M9.5 18.5h5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></g></svg>',
+  tv: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="12" rx="2.5"/><path d="M10 9.2l4 2.3-4 2.3z" fill="currentColor" stroke="none"/></g></svg>',
+  mac: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2.5 18.5h19"/></g></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></g></svg>',
+  unlink: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></g></svg>',
+  slash: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></g></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></g></svg>',
+  latencyLow: '<svg viewBox="0 0 24 24"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg>',
+  latencyStandard: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
+  latencyStable: '<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></g></svg>',
+  sliders: '<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></g><g fill="currentColor"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg>',
+  moon: '<svg viewBox="0 0 20 20" fill="none"><path d="M16 12.4A6.4 6.4 0 0 1 7.6 4a6.5 6.5 0 1 0 8.4 8.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+};
+function icon(name, cls = '') { return '<span class="icon ' + cls + '" aria-hidden="true">' + ICON[name] + '</span>'; }
+function esc(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+/* =========================================================================
+   EDIT FROM HERE
+   ========================================================================= */
+
+const COPY = {
+  zh: {
+    appName: '声渡', appSub: 'AIRPLAY 2',
+    devices: '设备', playback: '播放', volume: '音量', push: '推送', diagnostics: '诊断',
+    connect: '连接', disconnect: '断开', offline: '离线', retry: '重试',
+    searching: '正在搜索附近的 AirPlay 设备…',
+    searchHint: '请确认接收器在同一网络，并已开启 AirPlay。',
+    searchAgain: '重新搜索',
+    noMedia: '未检测到媒体', mediaSession: '系统媒体会话',
+    track: '夜航', trackSub: '白鲸电台 · 远洋信号',
+    capture: '采集 扬声器 · 48 kHz', captureStreaming: '采集 扬声器 · 48 kHz · 无丢帧',
+    latencyNote: '延迟 200 ms', format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步',
+    statusIdle: '未连接', statusStreaming: '正在播放到 客厅 HomePod', statusError: '连接失败',
+    errorBar: '连接失败: 请求超时',
+    latencyModes: ['低延迟', '标准', '稳定', '自定义']
+  },
+  en: {
+    appName: 'saundo', appSub: 'AIRPLAY 2',
+    devices: 'Devices', playback: 'Playback', volume: 'Volume', push: 'Push', diagnostics: 'Diagnostics',
+    connect: 'Connect', disconnect: 'Disconnect', offline: 'Offline', retry: 'Retry',
+    searching: 'Searching for AirPlay devices nearby…',
+    searchHint: 'Make sure the receiver is on the same network and AirPlay is on.',
+    searchAgain: 'Search again',
+    noMedia: 'No media detected', mediaSession: 'System media session',
+    track: 'Night Ferry', trackSub: 'Signal Coast · Open Water',
+    capture: 'Capture Speakers · 48 kHz', captureStreaming: 'Capture Speakers · 48 kHz · no drops',
+    latencyNote: 'Latency 200 ms', format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced',
+    statusIdle: 'Not connected', statusStreaming: 'Streaming to 客厅 HomePod', statusError: 'Connection failed',
+    errorBar: 'Connection failed: request timed out',
+    latencyModes: ['Low', 'Standard', 'Stable', 'Custom']
+  }
+};
+
+const STATES = [
+  { id: 'idle', zh: '空闲', en: 'Idle' },
+  { id: 'streaming', zh: '播放', en: 'Streaming' },
+  { id: 'empty', zh: '空态', en: 'Empty' },
+  { id: 'error', zh: '失败', en: 'Error' }
+];
+
+/* One entry per row; the height follows the count. Edit these for the
+   real fixture. `action` is connect, disconnect, offline, or retry. */
+const DEVICES = {
+  idle: [
+    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, action: 'connect' },
+    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+  ],
+  streaming: [
+    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
+    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+  ],
+  empty: [],
+  error: [
+    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'retry' },
+    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+  ]
+};
+
+/* Replace the notes with the stance, states, height rule, and rejects. */
+function notesHTML() {
+  return '<h2>设计说明 · Design notes</h2>' +
+    '<p class="notes-intro">Flyout shell template. The width is 420; the height follows the device count so the device card and the playback card keep the same gap. Replace the sample devices and copy.</p>' +
+    '<p class="kicker">状态 · STATES</p><ul>' +
+      '<li><b>空闲</b> Three devices, none connected; the footer is muted.</li>' +
+      '<li><b>播放</b> The first row is selected; the footer face and the ALAC line name the stream.</li>' +
+      '<li><b>空态</b> No devices; the 140 high search card; the window is 470 high.</li>' +
+      '<li><b>失败</b> The error bar replaces the capture line; the row action is Retry.</li>' +
+    '</ul>' +
+    '<p class="kicker">高度 · HEIGHT</p><ul>' +
+      '<li>500 at three rows, 56 less per missing row, 470 empty, +44 with the latency row.</li>' +
+      '<li>The device row is 56 high; the empty card is 140; the playback card never moves.</li>' +
+    '</ul>' +
+    '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
+      '<li><code>key</code> zh-CN / English</li>' +
+    '</ul>' +
+    '<p class="kicker">取舍 · REJECTED</p><ul>' +
+      '<li>The alternative you threw away, and why.</li>' +
+    '</ul>';
+}
+
+/* =========================================================================
+   STOP EDITING HERE
+   ========================================================================= */
+
+const params = new URLSearchParams(location.search);
+const state = {
+  view: params.get('state') || 'idle',
+  lang: params.get('lang') === 'en' ? 'en' : 'zh',
+  dark: params.get('dark') === '1',
+  latency: params.get('latency') === '1',
+  zoom: Number(params.get('zoom')) || 1
+};
+
+function t(key) { return COPY[state.lang][key]; }
+function deviceCardHeight(n) { return n <= 0 ? 140 : Math.min(n, 3) * 56 + 2; }
+function flyoutHeight(n, latency) { return 500 - (170 - deviceCardHeight(n)) + (latency ? 44 : 0); }
+function deviceIcon(model) {
+  if (model && model.startsWith('AppleTV')) return 'tv';
+  if (model && model.startsWith('Mac')) return 'mac';
+  return 'speaker';
+}
+function actionIcon(action) {
+  return action === 'disconnect' ? 'unlink' : action === 'offline' ? 'slash' : action === 'retry' ? 'refresh' : 'link';
+}
+function actionClass(action) {
+  return action === 'disconnect' ? 'strong' : action === 'offline' ? 'muted' : 'accent';
+}
+function deviceRowHTML(device) {
+  const cls = device.selected ? ' selected' : '';
+  const sub = device.model + ' · ' + device.host;
+  return '<div class="device-row' + cls + '">' +
+    '<div class="device-pick">' +
+      '<span class="glyph">' + icon(deviceIcon(device.model)) + (device.online ? '<i class="online"></i>' : '') + '</span>' +
+      '<span class="namecol"><span class="name">' + esc(device.name) + '</span><span class="sub">' + esc(sub) + '</span></span>' +
+    '</div>' +
+    '<button type="button" class="row-action ' + actionClass(device.action) + '">' +
+      icon(actionIcon(device.action)) + esc(t(device.action)) +
+    '</button>' +
+  '</div>';
+}
+function deviceSectionHTML(devices) {
+  const head = '<div class="section-head"><span class="section-label">' + esc(t('devices')) + '</span>' +
+    '<span class="section-note">' + esc(deviceCount(devices.length)) + '</span></div>';
+  let body;
+  if (devices.length === 0) {
+    body = '<div class="card device-card"><div class="empty-card">' +
+      '<span class="search-face">' + ICON.faceSearch + '</span>' +
+      '<span class="empty-title">' + esc(t('searching')) + '</span>' +
+      '<span class="empty-hint">' + esc(t('searchHint')) + '</span>' +
+      '<button type="button" class="empty-action">' + esc(t('searchAgain')) + '</button>' +
+    '</div></div>';
+  } else {
+    body = '<div class="card device-card">' + devices.map(deviceRowHTML).join('') + '</div>';
+  }
+  if (state.view === 'error') {
+    body += '<div class="error-bar">' + esc(t('errorBar')) + '</div>';
+  }
+  return head + body;
+}
+function deviceCount(n) {
+  if (n === 0) return state.lang === 'zh' ? '无设备' : 'No devices';
+  if (state.lang === 'zh') return n + ' 台设备';
+  return n + (n === 1 ? ' device' : ' devices');
+}
+function playbackNote() {
+  let note = t('format');
+  if (state.view === 'streaming') note += ' · ' + t('syncPTP');
+  return note + ' · ' + t('latencyNote');
+}
+function playbackSectionHTML() {
+  const head = '<div class="playback-head"><span class="section-label">' + esc(t('playback')) + '</span>' +
+    '<span class="section-note">' + esc(playbackNote()) + '</span></div>';
+  let card = '<div class="card playback-card">';
+  card += '<div class="volume"><div class="volume-head"><span class="volume-label">' + esc(t('volume')) + '</span>' +
+    '<span class="volume-value">65%</span></div>' +
+    '<div class="range" style="--value:.65"><span class="range-knob"></span></div></div>';
+  card += '<div class="line"></div>';
+  if (state.latency) {
+    card += '<div class="latency"><div class="seg">' +
+      ['latencyLow', 'latencyStandard', 'latencyStable', 'sliders'].map((name, i) =>
+        '<button type="button" class="' + (i === 0 ? 'active' : '') + '">' + icon(name) + esc(t('latencyModes')[i]) + '</button>').join('') +
+    '</div></div>';
+    card += '<div class="line"></div>';
+  }
+  const streaming = state.view === 'streaming';
+  card += '<div class="now">' +
+    '<span class="now-tile">' + icon('note') + '</span>' +
+    '<span class="now-copy"><span class="now-title">' + esc(streaming ? t('track') : t('noMedia')) + '</span>' +
+    '<span class="now-sub">' + esc(streaming ? t('trackSub') : t('mediaSession')) + '</span></span>' +
+    '<span class="now-push">' + esc(t('push')) + '<span class="switch on"></span></span>' +
+  '</div>';
+  if (state.view !== 'error') {
+    card += '<div class="line"></div><div class="capture">' + esc(streaming ? t('captureStreaming') : t('capture')) + '</div>';
+  }
+  card += '</div>';
+  return head + card;
+}
+function footerHTML() {
+  const map = {
+    idle: { face: 'faceIdle', status: 'statusIdle', cls: 'muted' },
+    streaming: { face: 'faceStream', status: 'statusStreaming', cls: 'green' },
+    empty: { face: 'faceSearch', status: 'statusIdle', cls: 'muted' },
+    error: { face: 'faceError', status: 'statusError', cls: 'red' }
+  };
+  const f = map[state.view] || map.idle;
+  return '<footer class="flyout-foot">' +
+    '<span class="face">' + ICON[f.face] + '</span>' +
+    '<span class="status ' + f.cls + '">' + esc(t(f.status)) + '</span>' +
+    '<button type="button" class="diag">' + icon('doc') + esc(t('diagnostics')) + '</button>' +
+  '</footer>';
+}
+function flyoutHTML(devices, height) {
+  return '<div class="flyout" style="--fh:' + height + 'px">' +
+    '<header class="flyout-head">' + icon('mark', 'mark') +
+      '<div><div class="app-name">' + esc(t('appName')) + '</div><div class="app-sub">' + esc(t('appSub')) + '</div></div>' +
+      '<span class="spacer"></span>' +
+      '<button type="button" class="icon-btn">' + icon('refresh') + '</button>' +
+      '<button type="button" class="icon-btn">' + icon('gear') + '</button>' +
+    '</header>' +
+    '<div class="flyout-body">' +
+      deviceSectionHTML(devices) +
+      '<div class="spacer"></div>' +
+      playbackSectionHTML() +
+    '</div>' +
+    footerHTML() +
+  '</div>';
+}
+
+function render() {
+  const devices = DEVICES[state.view] || DEVICES.idle;
+  const height = flyoutHeight(devices.length, state.latency);
+  document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
+  document.body.classList.toggle('dark', state.dark);
+  document.getElementById('brandMark').innerHTML = ICON.mark;
+  const stage = document.getElementById('stage');
+  stage.style.setProperty('--fh', height + 'px');
+  stage.style.setProperty('--zoom', state.zoom);
+  stage.innerHTML = flyoutHTML(devices, height);
+  document.getElementById('notes').innerHTML = notesHTML();
+  document.getElementById('langBtn').textContent = state.lang === 'zh' ? 'EN' : '中文';
+  document.getElementById('themeBtn').innerHTML = state.dark
+    ? (state.lang === 'zh' ? '浅色' : 'Light')
+    : icon('moon') + (state.lang === 'zh' ? '深色' : 'Dark');
+  document.getElementById('stateLabel').textContent = state.lang === 'zh' ? '状态' : 'State';
+  document.getElementById('zoomLabel').textContent = state.lang === 'zh' ? '缩放' : 'Zoom';
+  document.getElementById('latencyBtn').textContent = state.lang === 'zh'
+    ? (state.latency ? '延迟条 开' : '延迟条 关')
+    : (state.latency ? 'Latency row on' : 'Latency row off');
+  document.getElementById('latencyBtn').classList.toggle('active', state.latency);
+  document.getElementById('stateGroup').innerHTML = STATES.map(item =>
+    '<button type="button" data-state="' + item.id + '" class="' + (state.view === item.id ? 'active' : '') + '">' +
+    esc(item[state.lang]) + '</button>').join('');
+  document.querySelectorAll('#zoomGroup button').forEach(button => {
+    button.classList.toggle('active', Number(button.dataset.zoom) === state.zoom);
+  });
+}
+
+document.getElementById('stateGroup').addEventListener('click', e => {
+  const button = e.target.closest('[data-state]');
+  if (!button) return;
+  state.view = button.dataset.state;
+  render();
+});
+document.getElementById('zoomGroup').addEventListener('click', e => {
+  const button = e.target.closest('[data-zoom]');
+  if (!button) return;
+  state.zoom = Number(button.dataset.zoom);
+  render();
+});
+document.getElementById('latencyBtn').addEventListener('click', () => {
+  state.latency = !state.latency;
+  render();
+});
+document.getElementById('langBtn').addEventListener('click', () => {
+  state.lang = state.lang === 'zh' ? 'en' : 'zh';
+  render();
+});
+document.getElementById('themeBtn').addEventListener('click', () => {
+  state.dark = !state.dark;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
