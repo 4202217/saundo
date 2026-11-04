@@ -827,17 +827,13 @@ func (e *Engine) handleCommand(cmd command) {
 			// over it would discard the code the user is typing.
 			if e.tr.WaitingForPin() {
 				e.logf("latency apply: %s is waiting for a PIN; session left alone", e.selectedID)
-				break
-			}
-			d, ok := e.find(e.selectedID)
-			switch {
-			case !ok:
+			} else if d, ok := e.find(e.selectedID); !ok {
 				e.lastError = "延迟已保存，但未找到设备，会话未重启"
 				e.logf("latency apply: device %s not found; session left running", e.selectedID)
-			case !d.Online:
+			} else if !d.Online {
 				e.lastError = "延迟已保存，但设备当前不在线，会话未重启"
 				e.logf("latency apply: %s is offline; session left running", e.selectedID)
-			default:
+			} else {
 				e.userDisconnect = false
 				e.connect(d)
 			}

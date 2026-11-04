@@ -824,6 +824,9 @@ func TestLatencyApplySparesPINWait(t *testing.T) {
 	if h.e.lastError != "" {
 		t.Fatalf("unexpected error: %q", h.e.lastError)
 	}
+	if got := h.e.Snapshot().LatencyMS; got != 1500 {
+		t.Fatalf("snapshot latency = %d, want the applied 1500", got)
+	}
 }
 
 // TestLatencyApplyReportsOfflineDevice pins the reporting fix: when the
