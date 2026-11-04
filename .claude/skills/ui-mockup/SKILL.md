@@ -7,6 +7,12 @@ description: This skill should be used when the user asks to "mock up a UI chang
 
 Use rendered mockups to settle the shape before writing production code. The mockup is throwaway evidence; the commit is the durable record.
 
+## HTML first, Go after
+
+The mockup is a throwaway HTML sketch. The product is Go with mygo widgets. The HTML exists to settle layout, copy, and states quickly. Never ship it, embed it, or turn it into a WebView. The toolbar, window shadow, backdrop blur, and zoom around the 720x500 window are mockup scaffolding. The page inside the window is the part that becomes Go.
+
+Constrain the HTML to what mygo can express so the approved render translates one-to-one. Card to a `ui.Column` with the palette border and radius. Row to `ui.ButtonBase` or `ui.Row`. Switch and slider to `toggle` and `slider`. Add row to a dashed `ButtonBase`. Empty note and group head to `ui.Column` or `ui.Row` with `ui.Text`. Hidden group to `CollapsibleBase`. Chips to the shared chip helper.
+
 ## When to use
 
 - A new page, dialog, empty state, or interaction with more than one defensible shape.
