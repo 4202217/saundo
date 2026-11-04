@@ -116,3 +116,23 @@ func TestGroupMemberDeathSignalsEngineOnce(t *testing.T) {
 	}
 	g.signalDead() // idempotent
 }
+
+// TestGroupMemberCloseBeforeLaunchSignalsEngine pins the early-death path: a
+// member that closes before the cohort has reported a launch must still hand
+// the teardown to the engine, or the half-dead pair never reconnects.
+func TestGroupMemberCloseBeforeLaunchSignalsEngine(t *testing.T) {
+	g := buildGroup()
+	closed := 0
+	g.onClosed = func() { closed++ }
+
+	g.memberClosed(0)
+
+	select {
+	case <-g.dead:
+	default:
+		t.Fatal("member close before launch did not signal the engine")
+	}
+	if closed != 1 {
+		t.Fatalf("closed reports = %d, want 1", closed)
+	}
+}

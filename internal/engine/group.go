@@ -386,7 +386,9 @@ func (g *groupTransport) memberLaunched(idx int, ok bool, err string) {
 }
 
 func (g *groupTransport) memberClosed(idx int) {
-	if g.stopping || g.failed || !g.launchReported || g.closedReported {
+	// A close before the cohort reports its launch still means teardown: the
+	// member may have streamed while its partner had not launched yet.
+	if g.stopping || g.failed || g.closedReported {
 		return
 	}
 	g.closedReported = true
