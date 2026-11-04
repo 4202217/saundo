@@ -19,7 +19,10 @@ Six pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音�
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); per-receiver password
   row (masked, saved/cleared through the DPAPI store); add/edit/password/
-  remove dialogs (`receivers_dialogs.go`).
+  remove dialogs (`receivers_dialogs.go`). The 已启用 head renders only when
+  the list has rows. An empty page is plain prose: one discovery line when
+  nothing is found, or an all-hidden title plus the recovery hint when every
+  row is hidden; the add row is the only plus.
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 面板快捷切换
   header switch that shows or hides the flyout's latency segment row, and
@@ -40,7 +43,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse' -v ./internal/app/
 ```
 
 Live app: open via the flyout's gear (and once via the tray menu — the

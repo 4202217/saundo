@@ -210,6 +210,27 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	receiversHidden.applyReceiverFixtures()
 	receiversHidden.receiverHiddenOpen = true
 	save("settings-receivers-hidden-light", receiversHidden.settingsView, 720, 500, false)
+
+	receiversEmpty := fixture()
+	receiversEmpty.page = pageReceivers
+	receiversEmpty.snap.Receivers = nil
+	receiversEmpty.snap.Devices = nil
+	receiversEmpty.snap.SelectedID = ""
+	receiversEmpty.snap.ConnectedName = ""
+	receiversEmpty.snap.State = sender.StateIdle
+	receiversEmpty.selID = ""
+	save("settings-receivers-empty-light", receiversEmpty.settingsView, 720, 500, false)
+	save("settings-receivers-empty-dark", receiversEmpty.settingsView, 720, 500, true)
+
+	receiversAllHidden := receiverFixture()
+	receiversAllHidden.page = pageReceivers
+	receiversAllHidden.snap.Receivers = receiversAllHidden.snap.Receivers[1:2]
+	receiversAllHidden.snap.SelectedID = ""
+	receiversAllHidden.snap.ConnectedName = ""
+	receiversAllHidden.snap.State = sender.StateIdle
+	receiversAllHidden.selID = ""
+	save("settings-receivers-all-hidden-light", receiversAllHidden.settingsView, 720, 500, false)
+	save("settings-receivers-all-hidden-dark", receiversAllHidden.settingsView, 720, 500, true)
 	receiversPage.openAddReceiver()
 	save("dialog-receiver-add", receiversPage.settingsView, 720, 500, false)
 	receiversPage.closeReceiverDialog()

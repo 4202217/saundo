@@ -83,6 +83,61 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	}
 }
 
+// TestReceiverPageEmptyListShowsDiscoveryHint pins the empty page to plain
+// prose: one discovery line where the list would be, the add row, and no
+// 已启用 head at zero rows.
+func TestReceiverPageEmptyListShowsDiscoveryHint(t *testing.T) {
+	a := previewApp()
+	a.page = pageReceivers
+	a.snap.Receivers = nil
+	a.snap.Devices = nil
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText(locales.ReceiverDiscoveryHint()) {
+		t.Fatalf("discovery hint is missing: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.ReceiverAddTitle()) {
+		t.Fatalf("add row is missing: %q", tt.Texts())
+	}
+	if tt.HasText(locales.ReceiverGroupEnabled()) {
+		t.Fatalf("已启用 head rendered with zero rows: %q", tt.Texts())
+	}
+	if tt.HasText("没有可见的接收器") {
+		t.Fatalf("old empty card copy is on the page: %q", tt.Texts())
+	}
+}
+
+// TestReceiverPageAllHiddenShowsProse pins the all-hidden page to two prose
+// lines where the list would be, then the add row and the hidden group.
+func TestReceiverPageAllHiddenShowsProse(t *testing.T) {
+	a := previewApp()
+	a.page = pageReceivers
+	a.snap.Receivers = []receivers.View{
+		{
+			Key: "AA:01", Name: "卧室 HomePod mini", Kind: receivers.KindDiscovered,
+			Model: "AudioAccessory5,1", Hidden: true, DelayMS: 120,
+			Device: device.Device{ID: "AA:01", Name: "卧室 HomePod mini", Model: "AudioAccessory5,1"},
+			Entry:  receivers.Entry{Key: "AA:01", Kind: receivers.KindDiscovered, Name: "卧室 HomePod mini", Hidden: true, DelayMS: 120},
+		},
+	}
+	a.snap.Devices = nil
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText(locales.ReceiverEmptyAllHiddenTitle()) {
+		t.Fatalf("all-hidden title is missing: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.ReceiverEmptyHiddenHint()) {
+		t.Fatalf("hidden hint is missing: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.ReceiverAddTitle()) {
+		t.Fatalf("add row is missing: %q", tt.Texts())
+	}
+	if tt.HasText(locales.ReceiverGroupEnabled()) {
+		t.Fatalf("已启用 head rendered with zero visible rows: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.ReceiverGroupHidden()) {
+		t.Fatalf("hidden group is missing: %q", tt.Texts())
+	}
+}
+
 func TestReceiverPageScrollsAtMinimumHeight(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers

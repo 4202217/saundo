@@ -100,20 +100,29 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 		}
 	}
 
-	// 已启用 group head
-	ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11).FontWeight(600).LetterSpacing(0.3).TextColor(p.muted)
-		groupCount(c, p, len(visible))
-	})
+	// The 已启用 group head renders only when the list has rows, matching the
+	// hidden group's own non-empty rule. An empty page is plain prose where
+	// the list would be; the add row below keeps its margin in every state.
+	if len(visible) > 0 {
+		ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11).FontWeight(600).LetterSpacing(0.3).TextColor(p.muted)
+			groupCount(c, p, len(visible))
+		})
 
-	if len(visible) == 0 {
-		a.receiverEmptyCard(c, p, len(hidden) > 0)
-	} else {
 		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 		card.Children(func() {
 			for i, v := range visible {
 				a.receiverRow(c, p, v, false, i < len(visible)-1)
 			}
+		})
+	} else if len(hidden) > 0 {
+		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
+			ui.Text(c, locales.ReceiverEmptyAllHiddenTitle()).FontSize(12.5).FontWeight(500).TextColor(p.fg2)
+			ui.Text(c, locales.ReceiverEmptyHiddenHint()).FontSize(11.5).TextColor(p.muted).Margin(3, 0, 0, 0)
+		})
+	} else {
+		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
+			ui.Text(c, locales.ReceiverDiscoveryHint()).FontSize(11.5).TextColor(p.muted)
 		})
 	}
 
@@ -155,28 +164,6 @@ func groupCount(c *ui.Context, p palette, n int) {
 	ui.Box(c).Height(18).MinWidth(18).Radius(9).Padding(0, 6).Center().Shrink(0).
 		Background(p.pill).Children(func() {
 		ui.Textf(c, "%d", n).FontSize(10.5).TextColor(p.muted)
-	})
-}
-
-func (a *App) receiverEmptyCard(c *ui.Context, p palette, hasHidden bool) {
-	card := ui.Row(c).Margin(8, 0, 0, 0).MinHeight(48).Padding(12, 14).Gap(10).
-		Radius(12).Border(1, p.line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Shrink(0)
-	card.Children(func() {
-		icon := iconEyeOff
-		if !hasHidden {
-			icon = iconPlus
-		}
-		ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.pill).Children(func() {
-			ui.Icon(c, icon).Size(13, 13).TextColor(p.faint)
-		})
-		ui.Column(c).Gap(1).Children(func() {
-			ui.Text(c, locales.ReceiverEmptyTitle()).FontSize(12.5).FontWeight(500).TextColor(p.fg2)
-			hint := locales.ReceiverEmptyHiddenHint()
-			if !hasHidden {
-				hint = locales.ReceiverEmptyAddHint()
-			}
-			ui.Text(c, hint).FontSize(10.5).TextColor(p.muted)
-		})
 	})
 }
 

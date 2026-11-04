@@ -1200,16 +1200,6 @@ func (msgs Messages) ReceiverAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverAddSub", nil)
 }
 
-// ReceiverEmptyTitle says "No visible receivers"
-// in the language the app shows.
-func ReceiverEmptyTitle() string { return In(i18n.Locale()).ReceiverEmptyTitle() }
-
-// ReceiverEmptyTitle says "No visible receivers"
-// in the language of msgs.
-func (msgs Messages) ReceiverEmptyTitle() string {
-	return Catalog.Format(msgs.locale, "receiverEmptyTitle", nil)
-}
-
 // ReceiverEmptyHiddenHint says "Turn a switch back on in the hidden group below."
 // in the language the app shows.
 func ReceiverEmptyHiddenHint() string { return In(i18n.Locale()).ReceiverEmptyHiddenHint() }
@@ -1220,14 +1210,24 @@ func (msgs Messages) ReceiverEmptyHiddenHint() string {
 	return Catalog.Format(msgs.locale, "receiverEmptyHiddenHint", nil)
 }
 
-// ReceiverEmptyAddHint says "Add one manually with \"Add receiver\" below."
+// ReceiverEmptyAllHiddenTitle says "All receivers are hidden"
 // in the language the app shows.
-func ReceiverEmptyAddHint() string { return In(i18n.Locale()).ReceiverEmptyAddHint() }
+func ReceiverEmptyAllHiddenTitle() string { return In(i18n.Locale()).ReceiverEmptyAllHiddenTitle() }
 
-// ReceiverEmptyAddHint says "Add one manually with \"Add receiver\" below."
+// ReceiverEmptyAllHiddenTitle says "All receivers are hidden"
 // in the language of msgs.
-func (msgs Messages) ReceiverEmptyAddHint() string {
-	return Catalog.Format(msgs.locale, "receiverEmptyAddHint", nil)
+func (msgs Messages) ReceiverEmptyAllHiddenTitle() string {
+	return Catalog.Format(msgs.locale, "receiverEmptyAllHiddenTitle", nil)
+}
+
+// ReceiverDiscoveryHint says "AirPlay receivers on your network appear here automatically."
+// in the language the app shows.
+func ReceiverDiscoveryHint() string { return In(i18n.Locale()).ReceiverDiscoveryHint() }
+
+// ReceiverDiscoveryHint says "AirPlay receivers on your network appear here automatically."
+// in the language of msgs.
+func (msgs Messages) ReceiverDiscoveryHint() string {
+	return Catalog.Format(msgs.locale, "receiverDiscoveryHint", nil)
 }
 
 // ReceiverChipManual says "Manual"
