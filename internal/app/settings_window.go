@@ -204,7 +204,7 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 		// window (the 420 DIP minimum) reaches the whole latency card and the
 		// read-only rows.
 		ui.Scroll(c).Grow(1).Padding(4, 20, 0, 0).Children(func() {
-			content := ui.Column(c).Key(a.page).Transition(ui.ElementTransition{
+			content := ui.Column(c).Key(a.page).Shrink(0).Transition(ui.ElementTransition{
 				Duration: 160 * time.Millisecond,
 				Enter:    &ui.Motion{X: -6, Opacity: 0},
 				Exit:     &ui.Motion{X: 6, Opacity: 0},

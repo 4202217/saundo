@@ -2,9 +2,11 @@ package app
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/receivers"
@@ -120,6 +122,133 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	// The offline remembered row shows 未设置 for its password.
 	if !tt.HasText("未设置 · 仅在这台接收器要求密码时填写") {
 		t.Fatalf("unset password copy is missing; texts: %q", tt.Texts())
+	}
+}
+
+// TestReceiverDelayRowAlignsWithSettingRows pins the delay row to the same
+// left inset as the auto-connect and password rows.
+func TestReceiverDelayRowAlignsWithSettingRows(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	a.receiverOpen = map[string]bool{"AA:00": true}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	auto, ok := tt.Find("启动时自动连接")
+	if !ok {
+		t.Fatalf("auto-connect row is missing: %q", tt.Texts())
+	}
+	delay, ok := tt.Find("DSP/DAC 延迟")
+	if !ok {
+		t.Fatalf("delay row is missing: %q", tt.Texts())
+	}
+	if delay.X != auto.X {
+		t.Fatalf("delay row is not aligned with setting rows: auto x=%.1f delay x=%.1f", auto.X, delay.X)
+	}
+}
+
+// TestEnglishReceiverAuthLabelFitsOneLine keeps the English auth label from
+// wrapping and pushing its select below the port input.
+func TestEnglishReceiverAuthLabelFitsOneLine(t *testing.T) {
+	withLocale(t, "en")
+	a := receiverFixture()
+	a.page = pageReceivers
+	a.openAddReceiver()
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	label, ok := tt.Find(locales.ReceiverFieldAuth())
+	if !ok {
+		t.Fatalf("auth label is missing: %q", tt.Texts())
+	}
+	if label.H > 18 {
+		t.Fatalf("english auth label wraps: height %.1f, want one line", label.H)
+	}
+}
+
+// TestReceiverHiddenExpansionKeepsEnabledCardHeight pins the enabled card
+// against the hidden group and hidden row expansion animations, which used to
+// squeeze it for a frame before the scroll content settled.
+func TestReceiverHiddenExpansionKeepsEnabledCardHeight(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.SetDark(false)
+	tt.Frame()
+	row, ok := tt.Find("客厅 HomePod")
+	if !ok {
+		t.Fatalf("enabled receiver row is missing: %q", tt.Texts())
+	}
+	x := int(row.X) - 6
+	before := enabledCardHeight(t, tt, x)
+	if err := tt.Click(locales.ReceiverGroupHidden()); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 16; i++ {
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+		if got := enabledCardHeight(t, tt, x); got != before {
+			t.Fatalf("hidden group animation squeezed the enabled card: %d -> %d at frame %d", before, got, i)
+		}
+	}
+	if err := tt.Click("卧室 HomePod mini"); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 16; i++ {
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+		if got := enabledCardHeight(t, tt, x); got != before {
+			t.Fatalf("hidden row animation squeezed the enabled card: %d -> %d at frame %d", before, got, i)
+		}
+	}
+}
+
+// enabledCardHeight measures the first run of card-colored pixels at x. The
+// enabled receiver card is the first card below the group head.
+func enabledCardHeight(t *testing.T, tt *ui.Tester, x int) int {
+	t.Helper()
+	p := paletteFor(false)
+	card := p.card
+	top, bottom := -1, -1
+	img := tt.Image()
+	for y := 0; y < img.Bounds().Dy(); y++ {
+		c := img.RGBAAt(x, y)
+		if c.R == card.R && c.G == card.G && c.B == card.B {
+			if top < 0 {
+				top = y
+			}
+			bottom = y
+			continue
+		}
+		if top >= 0 {
+			break
+		}
+	}
+	if top < 0 {
+		t.Fatalf("enabled card is not visible at x=%d", x)
+	}
+	return bottom - top + 1
+}
+
+// TestCollapsingHiddenGroupCollapsesHiddenRows pins the group's collapse to
+// also dropping the expanded state of the hidden rows inside it.
+func TestCollapsingHiddenGroupCollapsesHiddenRows(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	a.receiverHiddenOpen = true
+	a.receiverOpen = map[string]bool{"AA:01": true}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	if !tt.HasText("卧室 HomePod mini") {
+		t.Fatalf("hidden receiver is missing: %q", tt.Texts())
+	}
+	if err := tt.Click(locales.ReceiverGroupHidden()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.receiverHiddenOpen {
+		t.Fatal("hidden group did not collapse")
+	}
+	if a.receiverOpen["AA:01"] {
+		t.Fatal("hidden receiver stayed expanded after collapsing the group")
 	}
 }
 

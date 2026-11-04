@@ -1572,21 +1572,21 @@ func (msgs Messages) ReceiverPortHint() string {
 	return Catalog.Format(msgs.locale, "receiverPortHint", nil)
 }
 
-// ReceiverFieldAuth says "Password authentication"
+// ReceiverFieldAuth says "Password"
 // in the language the app shows.
 func ReceiverFieldAuth() string { return In(i18n.Locale()).ReceiverFieldAuth() }
 
-// ReceiverFieldAuth says "Password authentication"
+// ReceiverFieldAuth says "Password"
 // in the language of msgs.
 func (msgs Messages) ReceiverFieldAuth() string {
 	return Catalog.Format(msgs.locale, "receiverFieldAuth", nil)
 }
 
-// ReceiverFieldAuthHint says "only when the receiver asks for one"
+// ReceiverFieldAuthHint says "if required"
 // in the language the app shows.
 func ReceiverFieldAuthHint() string { return In(i18n.Locale()).ReceiverFieldAuthHint() }
 
-// ReceiverFieldAuthHint says "only when the receiver asks for one"
+// ReceiverFieldAuthHint says "if required"
 // in the language of msgs.
 func (msgs Messages) ReceiverFieldAuthHint() string {
 	return Catalog.Format(msgs.locale, "receiverFieldAuthHint", nil)

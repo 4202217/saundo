@@ -92,6 +92,13 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 			visible = append(visible, v)
 		}
 	}
+	// Collapsing the group also collapses every row inside it, so reopening
+	// starts from a clean list rather than restoring stale expanded panels.
+	if !a.receiverHiddenOpen {
+		for _, v := range hidden {
+			delete(a.receiverOpen, v.Key)
+		}
+	}
 
 	// 已启用 group head
 	ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
@@ -102,7 +109,7 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	if len(visible) == 0 {
 		a.receiverEmptyCard(c, p, len(hidden) > 0)
 	} else {
-		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip()
+		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 		card.Children(func() {
 			for i, v := range visible {
 				a.receiverRow(c, p, v, false, i < len(visible)-1)
@@ -113,7 +120,7 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	a.receiverAddRow(c, p)
 
 	if len(hidden) > 0 {
-		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Children(func() {
+		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
 			parts := ui.CollapsibleBase(c, &a.receiverHiddenOpen)
 			trigger := parts.Trigger.Height(28).Radius(7).Padding(0, 8, 0, 4).Gap(6).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
@@ -128,7 +135,7 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 				groupCount(c, p, len(hidden))
 			})
 			if panel := parts.Panel(func() {
-				list := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip()
+				list := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 				list.Children(func() {
 					for i, v := range hidden {
 						a.receiverRow(c, p, v, true, i < len(hidden)-1)
@@ -153,7 +160,7 @@ func groupCount(c *ui.Context, p palette, n int) {
 
 func (a *App) receiverEmptyCard(c *ui.Context, p palette, hasHidden bool) {
 	card := ui.Row(c).Margin(8, 0, 0, 0).MinHeight(48).Padding(12, 14).Gap(10).
-		Radius(12).Border(1, p.line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center)
+		Radius(12).Border(1, p.line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Shrink(0)
 	card.Children(func() {
 		icon := iconEyeOff
 		if !hasHidden {
@@ -175,7 +182,7 @@ func (a *App) receiverEmptyCard(c *ui.Context, p palette, hasHidden bool) {
 
 // receiverAddRow is the dashed manual-add affordance under the card.
 func (a *App) receiverAddRow(c *ui.Context, p palette) {
-	row := ui.ButtonBase(c).Margin(12, 0, 0, 0).MinHeight(44).Padding(9, 14).Gap(10).
+	row := ui.ButtonBase(c).Margin(12, 0, 0, 0).MinHeight(44).Padding(9, 14).Gap(10).Shrink(0).
 		Radius(12).Cursor(ui.CursorPointer).Justify(ui.Start).AlignItems(ui.Center).
 		Label(locales.ReceiverAddTitle()).Border(1, p.line.Mix(p.muted, 0.45)).
 		BorderStyle(ui.BorderDashed)
@@ -202,7 +209,7 @@ func (a *App) receiverAddRow(c *ui.Context, p palette) {
 // chevron, and the expanded config. Hidden rows grey their parts.
 func (a *App) receiverRow(c *ui.Context, p palette, v receivers.View, hiddenGroup, divider bool) {
 	open := a.receiverOpen[v.Key]
-	row := ui.Column(c).Key(v.Key).
+	row := ui.Column(c).Key(v.Key).Shrink(0).
 		Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
 	if divider {
 		row.BorderWidth(0, 0, 1, 0).BorderColor(p.line2)
@@ -267,7 +274,7 @@ func (a *App) receiverRowBody(c *ui.Context, p palette, v receivers.View, hidden
 	if hiddenGroup {
 		titleColor, subColor = p.muted, p.faint
 	}
-	body := ui.Column(c).Padding(0, 14, 4, 14).BorderWidth(1, 0, 0, 0).BorderColor(p.line2)
+	body := ui.Column(c).Padding(0, 14, 4, 14).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0)
 	body.Children(func() {
 		auto := v.AutoConnect
 		settingRowColors(c, p, locales.ReceiverAutoToggle(), locales.ReceiverAutoToggleDesc(),
@@ -435,7 +442,7 @@ func (a *App) receiverDelayRow(c *ui.Context, p palette, v receivers.View, hidde
 	if hiddenGroup {
 		valueColor = p.muted
 	}
-	ui.Column(c).Padding(8, 0).Children(func() {
+	ui.Column(c).Padding(8, 14).Children(func() {
 		ui.Row(c).Gap(12).AlignItems(ui.End).Children(func() {
 			ui.Column(c).Grow(1).Gap(2).Children(func() {
 				title := p.fg
