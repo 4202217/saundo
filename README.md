@@ -49,14 +49,14 @@ Windows Firewall prompts on first launch — allow it on private networks: disco
 
 ## Install
 
-Requirements: Windows 10 or 11. The latest installer is on [Releases](https://github.com/4202217/saundo/releases/latest); it is not code-signed yet, so SmartScreen warns. To build from source, you need Go 1.27+ (the toolchain [mygo](https://github.com/egoist/mygo) needs):
+Requirements: Windows 10 or 11. The latest installer is on [Releases](https://github.com/4202217/saundo/releases/latest); it is not code-signed yet, so SmartScreen warns. To build from source, you need Go 1.27+ (the toolchain [mygo](https://github.com/egoist/mygo) needs) and `mingw32-make` from MinGW-w64:
 
 ```bash
-make check    # gofmt gate, go vet, mygo UI vet, go test — the acceptance gate
-make build    # builds bin/saundo.exe and an NSIS installer (bin/saundo-setup-*.exe) through mygo, then restarts the running app
+mingw32-make check  # gofmt gate, go vet, mygo UI vet, go test — the acceptance gate
+mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-setup-*.exe) through mygo, then restarts the running app
 ```
 
-If you build from source, run the installer `bin/saundo-setup-*.exe` after `make build`.
+If you build from source, run the installer `bin/saundo-setup-*.exe` after `mingw32-make build`.
 
 ## Receiver support
 

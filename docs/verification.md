@@ -49,8 +49,9 @@ live state:
 
 ## Automated checks
 
-Run `make check` from the repository root before declaring a build good; it
-chains the gofmt gate, `go vet`, and `go test ./...`. Without make:
+Run `mingw32-make check` from the repository root before declaring a build
+good; it chains the gofmt gate, `go vet`, and `go test ./...`. Without
+mingw32-make:
 
 ```bash
 go test ./...
@@ -102,10 +103,11 @@ SAUNDO_PTP_PEER=192.0.2.50 go test -run TestLivePTP -v ./internal/airplay/ptp/
 go build -ldflags "-H windowsgui" -o saundo.exe ./cmd/saundo
 ```
 
-`-H windowsgui` prevents a console window. `make build` passes the same flag,
-so `bin/saundo.exe` also opens without a terminal. For development, `go run
-./cmd/saundo` keeps the console and its log output. In the GUI build a fatal
-startup error goes to `%APPDATA%\saundo\saundo.log` instead of stderr.
+`-H windowsgui` prevents a console window. `mingw32-make build` passes the
+same flag, so `bin/saundo.exe` also opens without a terminal. For
+development, `go run ./cmd/saundo` keeps the console and its log output. In
+the GUI build a fatal startup error goes to `%APPDATA%\saundo\saundo.log`
+instead of stderr.
 
 ## Real-device checklist
 

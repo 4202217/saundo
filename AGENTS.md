@@ -27,19 +27,19 @@ If the architecture document conflicts with the reference implementation or real
 
 ## Commands
 
-Make targets (run from Git Bash; `mingw32-make` works too):
+Make targets (run from Git Bash with `mingw32-make`; `make` is not on PATH):
 
 ```bash
-make check    # gofmt gate + go vet + mygo UI vet + go test — the milestone gate
-make test     # go test ./...
-make race     # go test -race ./... (needs a C toolchain for the race detector)
-make vet      # go vet ./...
-make uivet    # go tool mygo vet . (native UI lifetime checks)
-make fmt      # gofmt -w .
-make build    # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe; scripts/build.sh then stops the running app and starts the new build
+mingw32-make check  # gofmt gate + go vet + mygo UI vet + go test — the milestone gate
+mingw32-make test   # go test ./...
+mingw32-make race   # go test -race ./... (needs a C toolchain for the race detector)
+mingw32-make vet    # go vet ./...
+mingw32-make uivet  # go tool mygo vet . (native UI lifetime checks)
+mingw32-make fmt    # gofmt -w .
+mingw32-make build  # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe; scripts/build.sh then stops the running app and starts the new build
 ```
 
-Without make, run the commands directly:
+Without mingw32-make, run the commands directly:
 
 ```bash
 go test ./...
@@ -48,9 +48,9 @@ go tool mygo vet .
 gofmt -l .
 ```
 
-If `go` is not on PATH, use `C:\Program Files\Go\bin\go.exe`, add that directory to PATH, or pass it to make: `make GO="C:\Program Files\Go\bin\go.exe" check`.
+If `go` is not on PATH, use `C:\Program Files\Go\bin\go.exe`, add that directory to PATH, or pass it to mingw32-make: `mingw32-make GO="C:\Program Files\Go\bin\go.exe" check`.
 
-Run `make check` (or all four commands) before declaring a milestone complete. A compiling binary is not a completed feature.
+Run `mingw32-make check` (or all four commands) before declaring a milestone complete. A compiling binary is not a completed feature.
 
 ## Architecture rules
 
@@ -94,7 +94,7 @@ Reporting:
 ## Testing and workflow
 
 - When real-device behavior differs, capture logs and packets first, then change code, and record the finding in `docs/verification.md` plus the matching profile in `docs/devices.md` or `docs/protocol.md` — in the same commit.
-- After every code change, run `make build` (`./scripts/build.sh` when make is absent) so the local binary matches the tree. It stops the running app, replaces `bin/saundo.exe`, and relaunches it.
+- After every code change, run `mingw32-make build` (`./scripts/build.sh` when mingw32-make is absent) so the local binary matches the tree. It stops the running app, replaces `bin/saundo.exe`, and relaunches it.
 - Ask the user only for genuine product decisions. Proceed on reversible engineering work.
 - Do not commit unless the user explicitly asks.
 - Keep all documentation in English.

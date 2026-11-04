@@ -3,7 +3,7 @@
 #
 # A running saundo.exe locks bin/saundo.exe on Windows, so the build stops
 # the app before the copy and waits for the handle to go, then launches the
-# new binary. `make build` runs this script.
+# new binary. `mingw32-make build` runs this script.
 set -u
 
 cd "$(dirname "$0")/.."

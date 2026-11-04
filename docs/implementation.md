@@ -134,7 +134,7 @@ All under `%APPDATA%\saundo\`:
 
 ## Build and packaging
 
-`make build` runs `scripts/build.sh`: `mygo build -platform windows/amd64`
+`mingw32-make build` runs `scripts/build.sh`: `mygo build -platform windows/amd64`
 with `MYGO_LDFLAGS` stamping `saundo/internal/app.Version` from
 `git describe`, the icon and manifest embedded from
 `cmd/saundo/mygo.json`. The script stops the running app, copies

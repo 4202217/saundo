@@ -4,7 +4,7 @@
 # string, .go path with line citation, and Go symbol named in
 # .claude/skills/verify/ must be findable in the tree, so docs drift turns
 # into a red gate instead of a wrong live verification. Wired into
-# `make check`; safe to run standalone.
+# `mingw32-make check`; safe to run standalone.
 #
 # Classification of a backticked span:
 #   CJK text          -> each CJK run must exist in a locale catalog or .go

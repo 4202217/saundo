@@ -1,11 +1,11 @@
 ---
 name: verify
-description: Drive the real saundo app and prove behavior with evidence — launch or attach, run the doctor, exercise a feature, capture proof. Use when a change needs live verification beyond `make check`, when filling a "Currently pending" item in docs/verification.md, or when a bug report needs reproduction.
+description: Drive the real saundo app and prove behavior with evidence — launch or attach, run the doctor, exercise a feature, capture proof. Use when a change needs live verification beyond `mingw32-make check`, when filling a "Currently pending" item in docs/verification.md, or when a bug report needs reproduction.
 ---
 
 # Verify saundo
 
-`make check` proves the logic. This skill proves the app: launch it (or attach
+`mingw32-make check` proves the logic. This skill proves the app: launch it (or attach
 to the running instance), exercise a feature the way a user would, and leave
 evidence behind. The per-feature journeys live in [features/](features/);
 docs/verification.md holds the acceptance history and the "Currently pending"
@@ -32,7 +32,7 @@ Pick by what the proof needs. Cheapest that proves the claim wins.
 
 Stop and report when any of these is true:
 
-- `make check` fails — fix or report before driving anything live.
+- `mingw32-make check` fails — fix or report before driving anything live.
 - A saundo instance is running and the proof needs a fresh launch: the
   single-instance lock means you cannot run two, and the running one may be
   the user's streaming session. Ask before stopping it.
@@ -45,12 +45,12 @@ Stop and report when any of these is true:
 ## 1. Gate
 
 ```bash
-make check
+mingw32-make check
 ```
 
 `gofmt -l .` + `mygo i18n check` + `go vet` + `mygo vet` + `go test ./...`.
-If make is missing, run the four commands from AGENTS.md. A live run on a
-red gate proves nothing about the change.
+If mingw32-make is missing, run the four commands from AGENTS.md. A live run
+on a red gate proves nothing about the change.
 
 ## 2. Launch
 
@@ -64,14 +64,14 @@ process you did not start.
 **Fresh launch** (needs no running instance):
 
 ```bash
-make build    # builds via mygo, stops the running app, starts bin/saundo.exe
+mingw32-make build  # builds via mygo, stops the running app, starts bin/saundo.exe
 # or, with console logs:
 go run ./cmd/saundo
 # or, hidden in the tray:
 bin/saundo.exe --tray
 ```
 
-`make build` kills saundo.exe by image name — that is its job, but it means
+`mingw32-make build` kills saundo.exe by image name — that is its job, but it means
 the user's instance dies with it. Say so before running it.
 
 Readiness — all three, in order:
@@ -230,6 +230,6 @@ Gotchas; never weaken the journey to make it pass.
 
 When the app changes shape (new window class, renamed page, moved control),
 update features/ and this file in the same change. `scripts/check-verify-map.sh`
-(part of `make check`) turns stale assertions in these pages into a red
+(part of `mingw32-make check`) turns stale assertions in these pages into a red
 gate — fix the page, not the gate. `/maintain-verification-skill`
 is the maintenance loop for exactly that.

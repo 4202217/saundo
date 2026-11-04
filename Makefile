@@ -1,8 +1,8 @@
 # saundo verification and build targets.
-# Recipes assume a POSIX shell (Git Bash); mingw32-make works too.
-# Run `make check` before declaring a milestone complete.
+# Recipes assume a POSIX shell (Git Bash); use mingw32-make, since make may not
+# be on PATH. Run `mingw32-make check` before declaring a milestone complete.
 #
-# `make build` goes through mygo so the exe carries resources/icon.png,
+# `mingw32-make build` goes through mygo so the exe carries resources/icon.png,
 # the manifest and the version. scripts/build.sh then stops the running app,
 # copies the exe to bin/saundo.exe, and starts it.
 

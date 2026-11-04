@@ -18,7 +18,7 @@ Stop and report when any of these is true:
 - The working tree is dirty.
 - The docs audit has an open item.
 - `cmd/saundo/mygo.json` and the tag disagree.
-- `make check` fails.
+- `mingw32-make check` fails.
 - The local build or its update manifest is wrong.
 - The repository is private.
 - `MYGO_UPDATER_PRIVATE_KEY` is missing.
@@ -50,10 +50,10 @@ Do not commit yet. The release commit comes after the maintainer's test is recor
 Run the acceptance gate:
 
 ```bash
-make check
+mingw32-make check
 ```
 
-If make is absent, run the four commands in `AGENTS.md`.
+If mingw32-make is absent, run the four commands in `AGENTS.md`.
 
 Build the release candidate:
 

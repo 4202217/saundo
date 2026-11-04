@@ -49,10 +49,10 @@ VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd
 Run the acceptance gate before the release commit:
 
 ```bash
-make check
+mingw32-make check
 ```
 
-If make is absent, run the commands in `AGENTS.md`.
+If mingw32-make is absent, run the commands in `AGENTS.md`.
 
 Build the app locally:
 
