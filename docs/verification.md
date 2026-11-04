@@ -659,6 +659,14 @@ development PC with a real HomePod stereo pair on the LAN.
 - **Not covered here.** The live update page states, a live update from the
   previous release, and a clean Windows install remain in `Currently
   pending`.
+- **Draft check.** The release workflow's check, draft, and build jobs
+  passed (run 41758834319). The draft carried the installer, the update
+  archive, the 0.4.1 delta, `install.ps1`, `SHA256SUMS`, and the manifest;
+  `sha256sum -c SHA256SUMS` passed every listed file. The manifest is
+  version 0.4.2 with a signature and the English notes. The installer is
+  unsigned, so SmartScreen warns.
+- **Public feed.** After publishing, the latest manifest returned 200 with
+  version 0.4.2 and a signature, and the installer download returned 200.
 
 ## Failure modes and meanings
 
