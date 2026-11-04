@@ -105,8 +105,12 @@ Teardown: stop only what you started, by PID (step 6).
 One read-only check that answers "is this instance worth driving?":
 
 ```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/scripts/doctor.ps1
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/doctor.ps1
 ```
+
+The repo's scripts are local and unsigned (no Mark-of-the-Web), so
+RemoteSigned runs them; do not use Bypass, which the agent's permission
+classifier refuses.
 
 Checks process up, binary path and version, data-dir files (names and sizes
 only — never prints `credentials.dat`), the last 12 log lines with a
@@ -146,7 +150,7 @@ go test -v ./internal/airplay/sender/
 - Observe: the doctor; `tail -f %APPDATA%\saundo\saundo.log`; capture the
   real window (the flyout is layered — PrintWindow, not a screen grab):
   ```bash
-  powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
+  powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
   # settings window: -Class MyGoWindow -ProcId <pid> — its title follows the
   # app locale (设置 · 声渡 under zh-CN, Settings · saundo under en)
   ```

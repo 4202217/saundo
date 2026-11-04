@@ -32,8 +32,8 @@ overflow (chevron ^ in the taskbar corner).
 Live app only — there is no headless harness for the tray:
 
 ```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/scripts/doctor.ps1   # process, windows
-powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/doctor.ps1   # process, windows
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
 ```
 
 Find the icon through UI Automation: the overflow flyout exposes a `saundo`

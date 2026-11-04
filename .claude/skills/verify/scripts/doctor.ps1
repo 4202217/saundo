@@ -1,6 +1,6 @@
 # Read-only health check for a running saundo instance. Changes nothing.
 # Usage from the repo root (Git Bash):
-#   powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/verify/scripts/doctor.ps1
+#   powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/doctor.ps1
 # Exit code 0 = instance is up and worth driving; 1 = nothing to drive.
 param(
     # Override the data dir (default: %APPDATA%\saundo). Use when the
