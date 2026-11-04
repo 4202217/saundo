@@ -50,6 +50,12 @@ curl -sL -o /dev/null -w '%{http_code}' \
 Open the 更新 page, click the check, and capture the state transition; the
 page and the log agree on available/downloading/ready/failed.
 
+A local `mingw32-make build` stamps `git describe`, such as
+`0.4.2-2-gab1c020-dirty`. A commit past a release sorts below it, so the
+public feed still offers that release and the notes dialog lists it with
+the history since the build. Installing an update replaces the binary with
+that release; rebuild to return to a development stamp.
+
 Proven end state: the page shows the manifest version from the feed, the
 notes dialog opens with the release history in the app's language, and a
 failed check renders the failed state instead of hanging.

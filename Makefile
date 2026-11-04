@@ -6,6 +6,9 @@
 # the manifest and the version. scripts/build.sh then stops the running app,
 # copies the exe to bin/saundo.exe, and starts it.
 
+# Local builds carry git describe, so a commit past a release sorts below it
+# and the updater still offers that release. Override with
+# `mingw32-make VERSION=0.4.1 build`.
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt

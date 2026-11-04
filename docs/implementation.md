@@ -137,6 +137,8 @@ All under `%APPDATA%\saundo\`:
 `mingw32-make build` runs `scripts/build.sh`: `mygo build -platform windows/amd64`
 with `MYGO_LDFLAGS` stamping `saundo/internal/app.Version` from
 `git describe`, the icon and manifest embedded from
-`cmd/saundo/mygo.json`. The script stops the running app, copies
+`cmd/saundo/mygo.json`. The app reports the stamp to the updater, so a local
+build past a release sorts below it and still offers that release; `VERSION`
+overrides the stamp. The script stops the running app, copies
 `saundo.exe` (GUI subsystem) and the NSIS `saundo-setup-*.exe` into
 `bin/`, and starts the new build.

@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"golang.org/x/mod/semver"
 
 	"saundo/cmd/saundo/locales"
 )
@@ -285,6 +287,17 @@ func (a *App) setAutoDownload(on bool) {
 	a.autoDownload = on
 	a.cfg.AutoDownload = on
 	a.saveSettings()
+}
+
+// buildVersion is the version this build reports, or "" when the build
+// carries no semantic stamp and the packaged version applies. A local build
+// carries git describe, and a commit past a release sorts below it.
+func buildVersion() string {
+	v := strings.TrimPrefix(Version, "v")
+	if !semver.IsValid(normalizeVersion(v)) {
+		return ""
+	}
+	return v
 }
 
 // currentVersion is the packaged version the updater compares with.

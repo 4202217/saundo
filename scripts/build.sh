@@ -8,6 +8,9 @@ set -u
 
 cd "$(dirname "$0")/.."
 
+# A local build carries git describe, so a commit past a release sorts below
+# that release and the updater still offers it. Set VERSION to stamp another
+# version; the release workflow stamps the real one.
 VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
 VERSION="${VERSION#v}"
 GO="${GO:-go}"

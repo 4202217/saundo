@@ -133,6 +133,11 @@ type App struct {
 
 // Run starts the application and blocks until it quits.
 func Run() error {
+	// The updater compares against the build stamp, not the version resource,
+	// so a local build past a release still sees that release offered.
+	if v := buildVersion(); v != "" {
+		mygo.App.SetVersion(v)
+	}
 	migrateLegacyData()
 	if !mygo.App.RequestSingleInstanceLock() {
 		// Another saundo is running; it shows itself instead.

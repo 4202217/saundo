@@ -209,3 +209,20 @@ func TestAcceptingAPrereleaseSetsTheEngine(t *testing.T) {
 		t.Fatal("the engine was not switched to prereleases")
 	}
 }
+
+func TestBuildVersionStamp(t *testing.T) {
+	old := Version
+	t.Cleanup(func() { Version = old })
+	cases := map[string]string{
+		"v0.4.2":                 "0.4.2",
+		"0.4.2-2-gab1c020-dirty": "0.4.2-2-gab1c020-dirty",
+		"dev":                    "",
+		"":                       "",
+	}
+	for stamp, want := range cases {
+		Version = stamp
+		if got := buildVersion(); got != want {
+			t.Errorf("buildVersion(%q) = %q, want %q", stamp, got, want)
+		}
+	}
+}
