@@ -5,6 +5,59 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.4.2 - 2026-11-04
+
+### Added
+
+- Receiver management on the settings Receivers page. Add a receiver by IP
+  or hostname when mDNS cannot find it, edit or remove rows, hide them from
+  the flyout, and set one auto-connect target. Each receiver keeps its own
+  DSP/DAC delay and a password stored with DPAPI. The new `receivers.json`
+  registry persists discovered receivers across a power-off.
+- Latency modes. Low 200 ms, standard 1.5 s, stable 2 s, or a custom value
+  from 20 to 2000 ms, chosen in the flyout or on the Audio page. The ALAC
+  line shows the resolved latency with the receiver's own delay, and a live
+  change restarts the stream with a spinner while the last streaming state
+  stays on screen.
+- Tray animation. The connect and stream faces animate at 12 frames per
+  100 ms. The General page has a Tray animation switch, on by default, and
+  Windows animation effects off holds the static face.
+- Updates in settings. The Updates page shows available, downloading, ready,
+  and failed states plus the release-notes history. The notes dialog follows
+  the app language, and a found update appears as a flyout chip and a tray
+  tooltip without taking focus.
+- Stereo groups prompt for a member's receiver password and reconnect the
+  pair after it is entered.
+
+### Changed
+
+- Settings are written once after a short delay instead of on every volume
+  tick or toggle, so a slow disk no longer stalls playback.
+- Diagnostics rotate by byte count, and the sender reports pacer lag,
+  dropped host events, and bounded teardown write failures.
+- Quitting no longer waits for an in-flight mDNS query, so the window closes
+  without a freeze of up to 1.5 seconds.
+- UDP sockets use a 256 KB receive buffer for timing and retransmit bursts.
+- Restarting capture stops the previous source on its own goroutine, so it
+  no longer blocks the playback loop.
+
+### Fixed
+
+- A stale PIN dialog is cleared when another device connects.
+- A reconnect retry no longer tears down an active session.
+- A stereo group whose member drops before launch now fails cleanly and
+  reconnects instead of staying half-dead.
+- Changing latency while a PIN dialog is open no longer cancels the pairing,
+  and an offline receiver is reported instead of silently keeping the old
+  session.
+- The tray and flyout show the resting face when a connected stream has been
+  silent for two seconds.
+- A receiver that rejects stored pairing credentials now pairs again on the
+  same connection instead of failing every retry.
+- The receiver page keeps its selected row, expanded state, and scroll
+  position across refreshes, and the hidden-group animation no longer
+  squeezes the enabled card.
+
 ## 0.4.1 - 2026-11-02
 
 ### Fixed

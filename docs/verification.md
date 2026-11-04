@@ -38,6 +38,8 @@ live state:
   changing Windows animation effects (Reduce Motion) while running.
 - The settings 更新 page and notes dialog: available, downloading, ready, and
   failed states; the release-history list; install from the page.
+- A live update from the previous release, and a clean Windows install of
+  the current installer.
 - The localized update history: the settings 更新 page reads
   `CHANGELOG.zh-CN.md` when the app language is Chinese.
 - Receiver management live paths: manual add/edit/remove, hide/show filtering,
@@ -647,6 +649,16 @@ development PC with a real HomePod stereo pair on the LAN.
   `internal/receivers`, `internal/engine`, and `internal/app` tests, and
   their states render in the `settings-receivers-*` and
   `dialog-receiver-*` previews.
+
+## Release 0.4.2 pre-release check (2026-11-04)
+
+- **Maintainer smoke test.** The maintainer tested the build from this tree
+  on their own PC before requesting the 0.4.2 release. The release request
+  is the confirmation for the release gate, so no second local install and
+  no clean-machine run were recorded.
+- **Not covered here.** The live update page states, a live update from the
+  previous release, and a clean Windows install remain in `Currently
+  pending`.
 
 ## Failure modes and meanings
 
