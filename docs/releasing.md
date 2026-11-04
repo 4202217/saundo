@@ -1,6 +1,8 @@
 # Releasing saundo
 
-The release workflow builds a signed update archive and a Windows installer, uploads them to a draft GitHub release, and leaves the release unpublished until a person checks it. Installed apps update from the published release.
+The release workflow builds a signed update archive and a Windows installer, uploads them to a draft GitHub release, and leaves the release unpublished until the draft checks pass and publishing is approved. Installed apps update from the published release.
+
+Two human inputs remain. The maintainer's pre-release test of the build on their own PC is the smoke test. The publish approval can come up front in the release request, otherwise it is asked once after the draft checks pass.
 
 The agent runbook is [.claude/skills/release/SKILL.md](../.claude/skills/release/SKILL.md). The mechanical preflight is [scripts/release-check.sh](../scripts/release-check.sh). Keep this page, the skill, and the script in step.
 
@@ -38,8 +40,8 @@ VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd
 
 1. Bump `version` in `cmd/saundo/mygo.json`.
 2. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
-3. Build and verify the local candidate, then record the result in `docs/verification.md`.
-4. Commit the version, both changelogs, the docs audit, and the local verification as `build: release <version>`.
+3. Build the candidate, check its update manifest, and record the maintainer's pre-release test in `docs/verification.md`.
+4. Commit the version, both changelogs, the docs audit, and the maintainer's test record as `build: release <version>`.
 5. Run the preflight, then tag that release commit. Do not add a commit between the release commit and the tag.
 
 ## Local gate
@@ -71,7 +73,7 @@ MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
   go tool mygo build -platform windows/amd64 -skip-installer
 ```
 
-Check `build/windows-amd64/update-windows-amd64.json`. It must carry the expected version, the English changelog notes, and a signature. Install the local candidate on the Windows test machine and verify it before the release commit.
+Check `build/windows-amd64/update-windows-amd64.json`. It must carry the expected version, the English changelog notes, and a signature. The maintainer's pre-release test on their own PC is the human smoke test; record it in `docs/verification.md`. The release does not ask for a second install or a clean-machine run.
 
 After the release commit, run the preflight:
 
@@ -89,14 +91,14 @@ Pushing a `v*` tag runs `.github/workflows/release.yml`. The tag points to the r
 2. `draft` checks the tag against `mygo.json` and creates a draft release.
 3. `build` stamps the app version, builds the installer and signed update files, and uploads them to the draft.
 
-Review the draft, then install it on a clean Windows 10 or 11 machine and check:
+Check the draft without installing it:
 
-- The installer runs, installs per user, and appears in Settings > Apps.
-- The app discovers a receiver, connects, and streams.
-- The settings Updates page and notes dialog render. The release history shows the localized changelog.
-- Settings, credentials, and the language choice survive the update.
-- Uninstalling leaves the expected data, or the docs say what it keeps.
-- The installer is unsigned unless signing is configured. SmartScreen warns. Check the installer SHA256 against the release `SHA256SUMS`.
+- The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS`.
+- `sha256sum -c SHA256SUMS` passes.
+- The manifest carries the expected version, the English changelog notes, and a signature.
+- The installer is unsigned unless signing is configured. SmartScreen warns.
+
+The maintainer's pre-release test covers install and run behavior. A clean Windows install is optional and runs only when the maintainer asks for it.
 
 The draft is invisible to the updater. The previous release updates to this one after publish. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
 
@@ -104,25 +106,26 @@ Set the draft body from the bilingual release notes before publishing. The workf
 
 ```bash
 VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd/saundo/mygo.json | head -n 1)"
+mkdir -p .audit
 bash scripts/release-notes.sh "$VERSION" > ".audit/release-notes-$VERSION.md"
 gh release edit "v$VERSION" --notes-file ".audit/release-notes-$VERSION.md"
 ```
 
 The release body carries the English section and the Chinese section below `<!-- lang:zh -->`. The app's update history reads the localized changelog. The signed manifest notes come from the English `CHANGELOG.md`.
 
-Publish the draft when the checks pass:
+Publish the draft when the checks pass and the release request authorized publishing; otherwise ask once:
 
 ```bash
 gh release edit "v$VERSION" --draft=false
 ```
 
-After publishing, verify the public feed and an update from the previous release:
+After publishing, verify the public feed:
 
 ```bash
 curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json"
 ```
 
-The manifest must be the new version and carry a signature. The installer download must return 200. A test machine with the previous release installed must find and install the new version. The new build's own check must say it is up to date. Installed apps see the release only after it is published. The update manifests are uploaded last, so an app never sees a manifest whose files are missing.
+The manifest must be the new version and carry a signature. The installer download must return 200. A live update from the previous release needs an installed build; record it in `docs/verification.md` when the maintainer next runs one, and do not block on it. Installed apps see the release only after it is published. The update manifests are uploaded last, so an app never sees a manifest whose files are missing.
 
 ## First release
 

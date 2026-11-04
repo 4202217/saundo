@@ -7,6 +7,10 @@ description: Cut and publish a saundo release. Use when the user asks to release
 
 Read `AGENTS.md` and `docs/releasing.md` before you start. `docs/releasing.md` is the human checklist. This skill adds the agent gates and the exact commands.
 
+## Human gates
+
+Two, and no more. Treat the release request as the maintainer's confirmation that they tested this build on their own PC; record that test and do not ask for another. Publish approval arrives in the release request when it says to publish once the checks pass; without it, ask once, after the draft checks pass. Run everything else without asking.
+
 ## Stop conditions
 
 Stop and report when any of these is true:
@@ -19,15 +23,14 @@ Stop and report when any of these is true:
 - The repository is private.
 - `MYGO_UPDATER_PRIVATE_KEY` is missing.
 - The release workflow fails.
-- The draft is missing an expected asset.
-- The clean Windows test fails.
+- A draft check fails.
 - The public update feed does not serve the new manifest after publish.
 
 Do not tag, push, or publish around a failed check. Do not rotate `MYGO_UPDATER_PRIVATE_KEY`. Do not make the repository private.
 
-## 1. Confirm the release
+## 1. Version and range
 
-Ask the user for the version and the commit range. Use `v<version>` as the tag. The version in `cmd/saundo/mygo.json` must match the tag. A beta uses `0.4.2-beta.1`. A stable release uses `0.4.2`.
+Use the version from the release request as `v<version>`. Without one, pick the next semver from the unreleased changelog (features minor, fixes patch), state it in your first line, and proceed. The range is every commit since the last release tag. The version in `cmd/saundo/mygo.json` must match the tag. A beta uses `0.4.2-beta.1`. A stable release uses `0.4.2`.
 
 ## 2. Docs audit and changelogs
 
@@ -40,9 +43,9 @@ Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release co
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
 
-Do not commit yet. The release commit comes after the local verification.
+Do not commit yet. The release commit comes after the maintainer's test is recorded.
 
-## 3. Gate, local build, and local verification
+## 3. Gate, local build, and the maintainer's test
 
 Run the acceptance gate:
 
@@ -62,11 +65,11 @@ MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
   go tool mygo build -platform windows/amd64
 ```
 
-Check `build/windows-amd64/update-windows-amd64.json`. It must carry the version, the English changelog notes, and a signature. Install the installer on the Windows test machine and smoke test it. The user verifies the local candidate on the test Windows PC and the MacBook. Record the result in `docs/verification.md`.
+Check `build/windows-amd64/update-windows-amd64.json`. It must carry the version, the English changelog notes, and a signature. The release request confirms the maintainer tested this build on their own PC. Record that pre-release test in `docs/verification.md`, with the date and version, from what the request says. Do not ask for a second install or a clean-machine run.
 
 ## 4. Release commit and preflight
 
-Commit the version, both changelogs, the docs audit, and the local verification under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
+Commit the version, both changelogs, the docs audit, and the maintainer's test record under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
 
 Then run:
 
@@ -78,7 +81,7 @@ The script checks the clean tree, the release commit subject, the version, the t
 
 ## 5. Tag the release commit
 
-The tag points to the release commit. Do not add a commit between the release commit and the tag. Ask the user to confirm the release commit and the docs audit, then:
+The tag points to the release commit. Do not add a commit between the release commit and the tag. The tag creates the draft only; publishing is the public step. Tag and push:
 
 ```bash
 VERSION=...
@@ -103,18 +106,14 @@ The workflow runs `check`, `draft`, and `build`. The build uploads the installer
 
 ```bash
 gh release view "v$VERSION" --json isDraft,assets
+mkdir -p ".audit/draft-$VERSION"
+gh release download "v$VERSION" --dir ".audit/draft-$VERSION"
+(cd ".audit/draft-$VERSION" && sha256sum -c SHA256SUMS)
 ```
 
-Install the draft installer on a clean Windows 10 or 11 machine. Check:
+Check the draft without installing it. The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS`. The checksums pass. The manifest carries the version, the English notes, and a signature. The installer is unsigned unless signing is configured. The maintainer's pre-release test covers install and run behavior; install the draft on a clean machine only when the user asks.
 
-- The installer runs, installs per user, and appears in Settings > Apps.
-- The app discovers a receiver, connects, and streams.
-- The settings Updates page and notes dialog render. The release history shows the localized changelog. The flyout update chip appears when a newer release exists.
-- Settings, credentials, and the language choice survive the update.
-- Uninstalling leaves the expected data, or the docs say what it keeps.
-- The installer is unsigned unless signing is configured. SmartScreen warns. Check the installer SHA256 against the release `SHA256SUMS`.
-
-The draft is invisible to the updater. The previous release updates to this one after publish, in step 9. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
+The draft is invisible to the updater. The previous release updates to this one after publish. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
 
 ## 8. Release notes and publish
 
@@ -122,25 +121,26 @@ The workflow's generated notes are sparse. Set the draft body from the bilingual
 
 ```bash
 VERSION=...
+mkdir -p .audit
 bash scripts/release-notes.sh "$VERSION" > ".audit/release-notes-$VERSION.md"
 gh release edit "v$VERSION" --notes-file ".audit/release-notes-$VERSION.md"
 ```
 
 The release body carries both languages. The app's update history reads the localized changelog. The signed manifest notes come from the English `CHANGELOG.md`.
 
-Publish after the user confirms the draft verification:
+Publish when the release request authorized it; otherwise ask once, with the draft checks in hand:
 
 ```bash
 gh release edit "v$VERSION" --draft=false
 ```
 
-## 9. Verify the public feed and the update
+## 9. Verify the public feed
 
 ```bash
 curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json"
 ```
 
-The manifest must be the new version and carry a signature. The installer download must return 200. On a test machine with the previous release installed, check for updates. It must find the new version and install it. The new build's own check must say it is up to date.
+The manifest must be the new version and carry a signature. The installer download must return 200. A live update from the previous release needs an installed build; record it in `docs/verification.md` when the maintainer next runs one, and do not block on it.
 
 The repository must stay public. A private repository returns 404 for the feed even after publish. If the repository is private, stop and use a public `updates.url` host instead.
 
