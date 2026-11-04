@@ -27,7 +27,7 @@ Audit the docs against the tree before the release commit. Fix drift in the same
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and the dated evidence. Keep every unverified feature in the list.
 - `CHANGELOG.md`: the English canonical. It must be ASCII and use English UI descriptions. Add the `## <version> - <date>` section.
-- `CHANGELOG.zh-CN.md`: the Chinese counterpart with the same version headings. The app's update history reads it when `App.Locale` starts with `zh`.
+- `CHANGELOG.zh-CN.md`: the Chinese counterpart with the same version headings. The app's update history reads it when the app language (`i18n.Locale`) starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
 
 ## Version and changelog
@@ -111,7 +111,7 @@ bash scripts/release-notes.sh "$VERSION" > ".audit/release-notes-$VERSION.md"
 gh release edit "v$VERSION" --notes-file ".audit/release-notes-$VERSION.md"
 ```
 
-The release body carries the English section and the Chinese section below `<!-- lang:zh -->`. The app's update history reads the localized changelog. The signed manifest notes come from the English `CHANGELOG.md`.
+The release body carries the English section and the Chinese section below `<!-- lang:zh -->`. The app's update history reads the localized changelog. The signed manifest notes come from the English `CHANGELOG.md`; the dialog replaces the offered version's notes with the localized changelog entry once it fetches one, and keeps the manifest notes when the fetch fails.
 
 Publish the draft when the checks pass and the release request authorized publishing; otherwise ask once:
 

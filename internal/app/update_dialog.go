@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 
@@ -89,13 +90,28 @@ func notesTheme(p palette) *markdown.Theme {
 	return t
 }
 
+// notesLoading reports whether the offered version's notes are still being
+// fetched in a language other than the manifest's English, so showing the
+// manifest first would flash the wrong language.
+func (a *App) notesLoading() bool {
+	return a.historyState == historyLoading && changelogURL(i18n.Locale()) != updateChangelog
+}
+
 // notesHistory renders the offered version in full, then one folded row per
 // older version, newest first.
 func (a *App) notesHistory(c *ui.Context, p palette) {
 	a.md.Theme = notesTheme(p)
 	entries := a.notesEntries()
+	pending := a.notesLoading()
 	a.notesHeading(c, p, entries[0])
 	ui.Column(c).Padding(0, 0, 4, 0).Children(func() {
+		if pending {
+			ui.Row(c).Gap(8).Padding(8, 0).Children(func() {
+				ui.Spinner(c).Size(12, 12)
+				ui.Text(c, locales.UpdateHistoryLoading()).FontSize(11.5).TextColor(p.muted)
+			})
+			return
+		}
 		markdown.View(c, entries[0].Notes, &a.md)
 	})
 	if !a.notesRange {
@@ -107,10 +123,12 @@ func (a *App) notesHistory(c *ui.Context, p palette) {
 	}
 	switch a.historyState {
 	case historyLoading:
-		ui.Row(c).Gap(8).Padding(8, 0).Children(func() {
-			ui.Spinner(c).Size(12, 12)
-			ui.Text(c, locales.UpdateHistoryLoading()).FontSize(11.5).TextColor(p.muted)
-		})
+		if !pending {
+			ui.Row(c).Gap(8).Padding(8, 0).Children(func() {
+				ui.Spinner(c).Size(12, 12)
+				ui.Text(c, locales.UpdateHistoryLoading()).FontSize(11.5).TextColor(p.muted)
+			})
+		}
 	case historyFailed:
 		ui.Row(c).Gap(8).Padding(8, 0).Children(func() {
 			ui.Text(c, locales.UpdateHistoryFailed()).FontSize(11.5).TextColor(p.muted).Grow(1).SingleLine().Ellipsis("…")

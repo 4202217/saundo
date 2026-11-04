@@ -58,6 +58,7 @@ type App struct {
 	notesExpanded map[string]bool
 	history       []releaseNote
 	historyKey    string
+	historyLocale string
 	historyState  updateHistoryState
 	// async runs a job off the UI thread: a goroutine, or a test's direct
 	// call that makes the update states observable at once.

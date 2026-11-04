@@ -163,6 +163,9 @@ func (a *App) finishCheck(manual bool, up *mygo.Update, err error) {
 	if err != nil || up == nil || a.upd.phase != updateAvailable {
 		return
 	}
+	// Fetch the localized changelog now, so the notes dialog opens in the
+	// app language instead of flashing the manifest's English notes.
+	a.loadReleaseHistory()
 	if a.cfg.AutoDownload && !a.updateSkipped() {
 		a.installUpdate()
 	}

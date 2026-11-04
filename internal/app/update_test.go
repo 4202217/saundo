@@ -51,6 +51,20 @@ func release() *mygo.Update {
 	return &mygo.Update{Version: "0.5.0", Notes: "Fixed things.", Date: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)}
 }
 
+// The fetch starts when the update is found, not when the dialog opens.
+func TestFoundUpdatePrefetchesTheLocalizedNotes(t *testing.T) {
+	f := &fakeUpdates{enabled: true, up: release()}
+	a := updateApp(f)
+	a.async = func(func()) {}
+	a.finishCheck(true, release(), nil)
+	if a.upd.phase != updateAvailable {
+		t.Fatalf("phase = %d, want available", a.upd.phase)
+	}
+	if a.historyState != historyLoading {
+		t.Fatalf("history state = %d, want loading", a.historyState)
+	}
+}
+
 func TestCheckFindsAnUpdate(t *testing.T) {
 	f := &fakeUpdates{enabled: true, up: release()}
 	a := updateApp(f)

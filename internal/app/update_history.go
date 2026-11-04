@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/i18n"
 
 	"saundo/cmd/saundo/locales"
 )
@@ -50,25 +50,26 @@ const (
 )
 
 // loadReleaseHistory asks for the versions between the running build and
-// the offered one, once per offered version. A failure keeps the dialog on
-// the manifest's notes and offers the GitHub page.
+// the offered one, once per offered version and app language. A failure
+// keeps the dialog on the manifest's notes and offers the GitHub page.
 func (a *App) loadReleaseHistory() {
 	if a.upd.version == "" || a.upd.up == nil {
 		return
 	}
-	if a.historyKey == a.upd.version &&
+	locale := i18n.Locale()
+	if a.historyKey == a.upd.version && a.historyLocale == locale &&
 		(a.historyState == historyLoading || a.historyState == historyReady) {
 		return
 	}
 	latest := a.upd.version
 	current := a.currentVersion()
-	a.historyKey = latest
+	a.historyKey, a.historyLocale = latest, locale
 	a.historyState = historyLoading
 	a.history = nil
 	a.runAsync(func() {
-		notes, err := fetchReleaseNotes(current, latest)
+		notes, err := fetchReleaseNotes(locale, current, latest)
 		a.updateUI(func() {
-			if a.historyKey != latest {
+			if a.historyKey != latest || a.historyLocale != locale {
 				return
 			}
 			if err != nil {
@@ -81,8 +82,8 @@ func (a *App) loadReleaseHistory() {
 	})
 }
 
-func fetchReleaseNotes(current, latest string) ([]releaseNote, error) {
-	url := changelogURL(mygo.App.Locale())
+func fetchReleaseNotes(locale, current, latest string) ([]releaseNote, error) {
+	url := changelogURL(locale)
 	text, err := fetchText(url)
 	if err != nil {
 		text, err = fetchText(strings.Replace(url, "/main/", "/master/", 1))
@@ -239,20 +240,27 @@ func noteCountLabel(kind string, n int) string {
 	return locales.UpdateCountUpdated(n)
 }
 
-// notesEntries is the dialog's list: the offered version from the signed
-// manifest, then the versions fetched from the release feed.
+// notesEntries is the dialog's list: the offered version, then the versions
+// fetched from the release feed. The manifest carries the English notes; a
+// fetched entry for the offered version is in the app language and replaces
+// them.
 func (a *App) notesEntries() []releaseNote {
+	offered := normalizeVersion(a.upd.version)
 	entries := []releaseNote{{Version: a.upd.version, Date: a.upd.date, Notes: a.upd.notes}}
-	if !a.notesRange {
-		return entries
-	}
-	seen := map[string]bool{a.upd.version: true}
+	seen := map[string]bool{offered: true}
 	for _, h := range a.history {
-		if seen[h.Version] {
+		key := normalizeVersion(h.Version)
+		if seen[key] {
+			if key == offered && strings.TrimSpace(h.Notes) != "" {
+				entries[0].Notes = h.Notes
+			}
 			continue
 		}
-		seen[h.Version] = true
+		seen[key] = true
 		entries = append(entries, h)
+	}
+	if !a.notesRange {
+		return entries[:1]
 	}
 	return entries
 }

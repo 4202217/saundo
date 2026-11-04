@@ -41,7 +41,11 @@ live state:
 - A live update from the previous release, and a clean Windows install of
   the current installer.
 - The localized update history: the settings 更新 page reads
-  `CHANGELOG.zh-CN.md` when the app language is Chinese.
+  `CHANGELOG.zh-CN.md` when the app language is Chinese, including the
+  offered version's notes. Pinned by `TestNotesEntriesUseTheLocalizedChangelog`,
+  `TestLanguageSwitchRefetchesHistory`, `TestNotesDialogRendersTheLocalizedEntry`,
+  `TestFoundUpdatePrefetchesTheLocalizedNotes`, and
+  `TestNotesDialogHidesTheEnglishNotesWhileLoading`.
 - Receiver management live paths: manual add/edit/remove, hide/show filtering,
   the per-receiver delay restart, receiver-password save and clear, and a
   manual receiver with no mDNS advertisement. Pinned by the receivers, engine,

@@ -13,7 +13,14 @@
 - Release-notes dialog: the offered version's notes plus, when fetchable,
   the history of every version since the running build — from `CHANGELOG.md`
   in English and `CHANGELOG.zh-CN.md` when the app language starts with
-  `zh` (`update_history.go`, pinned by `TestChangelogURLLocale`).
+  `zh` (`update_history.go`, pinned by `TestChangelogURLLocale`). The
+  fetched entry replaces the signed manifest's English notes for the offered
+  version (`TestNotesEntriesUseTheLocalizedChangelog`), and a language
+  switch refetches the history (`TestLanguageSwitchRefetchesHistory`). The
+  fetch starts when the update is found
+  (`TestFoundUpdatePrefetchesTheLocalizedNotes`), and a non-English dialog
+  shows the loading row rather than flashing English
+  (`TestNotesDialogHidesTheEnglishNotesWhileLoading`).
 - Install downloads, verifies the signature, and swaps the files in place
   (the running exe is renamed aside — no installer process runs, the app
   keeps running). A separate 立即重启 relaunches into the new version.
