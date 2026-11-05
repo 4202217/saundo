@@ -82,7 +82,7 @@ func (h *Host) Dropped() uint64 { return h.dropped.Load() }
 // TCPConnect starts a non-blocking connect. Completion arrives as
 // EventTCPConnected or EventTCPConnectFailed.
 func (h *Host) TCPConnect(ch TCPChannel, host string, port uint16) error {
-	if ch != TCPControl && ch != TCPEvent && ch != TCPArtwork {
+	if ch != TCPControl && ch != TCPEvent {
 		return fmt.Errorf("raopio: bad TCP channel %d", ch)
 	}
 	hostPort := net.JoinHostPort(host, fmt.Sprint(port))

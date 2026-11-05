@@ -32,17 +32,17 @@ func TestLampToggleAppliesAndPersists(t *testing.T) {
 		return []byte("jpeg:" + preset), nil
 	}
 
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "lagoon"})
 	snap := h.e.Snapshot()
-	if !snap.LampEnabled || snap.LampPreset != "tide" {
-		t.Fatalf("snapshot lamp = %v/%q, want on/tide", snap.LampEnabled, snap.LampPreset)
+	if !snap.LampEnabled || snap.LampPreset != "lagoon" {
+		t.Fatalf("snapshot lamp = %v/%q, want on/lagoon", snap.LampEnabled, snap.LampPreset)
 	}
 	data, mime := lastArtwork(h.fake)
-	if !bytes.Equal(data, []byte("jpeg:tide")) || mime != "image/jpeg" {
-		t.Fatalf("transport got %q %q, want jpeg:tide image/jpeg", data, mime)
+	if !bytes.Equal(data, []byte("jpeg:lagoon")) || mime != "image/jpeg" {
+		t.Fatalf("transport got %q %q, want jpeg:lagoon image/jpeg", data, mime)
 	}
 
-	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "lagoon"})
 	if h.e.Snapshot().LampEnabled {
 		t.Fatal("snapshot stayed on after the switch turned off")
 	}
@@ -53,8 +53,8 @@ func TestLampToggleAppliesAndPersists(t *testing.T) {
 
 	h.flushSettings()
 	got := h.e.sets.Load()
-	if got.Lamp.Enabled || got.Lamp.Preset != "tide" {
-		t.Fatalf("persisted lamp = %+v, want off + tide", got.Lamp)
+	if got.Lamp.Enabled || got.Lamp.Preset != "lagoon" {
+		t.Fatalf("persisted lamp = %+v, want off + lagoon", got.Lamp)
 	}
 }
 
@@ -65,18 +65,18 @@ func TestLampAppliedWhenStreamingStarts(t *testing.T) {
 	h.e.lampJPEG = func(preset string) ([]byte, error) {
 		return []byte("jpeg:" + preset), nil
 	}
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "moss"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "ember"})
 	h.fake.artwork = nil
 	h.fake.artworkMIME = nil
 
 	h.launch()
 	data, mime := lastArtwork(h.fake)
-	if !bytes.Equal(data, []byte("jpeg:moss")) || mime != "image/jpeg" {
-		t.Fatalf("launch artwork = %q %q, want jpeg:moss image/jpeg", data, mime)
+	if !bytes.Equal(data, []byte("jpeg:ember")) || mime != "image/jpeg" {
+		t.Fatalf("launch artwork = %q %q, want jpeg:ember image/jpeg", data, mime)
 	}
 }
 
-func TestLampUnknownPresetFallsBackToDune(t *testing.T) {
+func TestLampUnknownPresetFallsBackToSand(t *testing.T) {
 	h := newHarness(t)
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.connect()
@@ -84,13 +84,13 @@ func TestLampUnknownPresetFallsBackToDune(t *testing.T) {
 	h.e.lampJPEG = func(preset string) ([]byte, error) {
 		return []byte("jpeg:" + preset), nil
 	}
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "neon"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "bogus"})
 
-	if got := h.e.Snapshot().LampPreset; got != "dune" {
-		t.Fatalf("preset = %q, want dune", got)
+	if got := h.e.Snapshot().LampPreset; got != "sand" {
+		t.Fatalf("preset = %q, want sand", got)
 	}
-	if data, _ := lastArtwork(h.fake); !bytes.Equal(data, []byte("jpeg:dune")) {
-		t.Fatalf("artwork = %q, want jpeg:dune", data)
+	if data, _ := lastArtwork(h.fake); !bytes.Equal(data, []byte("jpeg:sand")) {
+		t.Fatalf("artwork = %q, want jpeg:sand", data)
 	}
 	if n := countLogLines(h, "unknown"); n != 1 {
 		t.Fatalf("unknown-preset log lines = %d, want 1", n)
@@ -121,10 +121,10 @@ func TestLampSkipsIncapableReceivers(t *testing.T) {
 			h.e.lampJPEG = func(preset string) ([]byte, error) {
 				return []byte("jpeg:" + preset), nil
 			}
-			h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
+			h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "lagoon"})
 
 			snap := h.e.Snapshot()
-			if !snap.LampEnabled || snap.LampPreset != "tide" {
+			if !snap.LampEnabled || snap.LampPreset != "lagoon" {
 				t.Fatalf("setting did not survive the skip: %v/%q", snap.LampEnabled, snap.LampPreset)
 			}
 			if len(h.fake.artwork) != 0 {
@@ -147,12 +147,12 @@ func TestLampTogglingTwiceLogsTheSkipOnce(t *testing.T) {
 	}})
 	h.connect()
 	h.launch()
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "moss"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "lagoon"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "ember"})
 	if n := countLogLines(h, "does not support"); n != 1 {
 		t.Fatalf("skip log lines = %d, want 1", n)
 	}
-	if !strings.Contains(h.e.Snapshot().LampPreset, "moss") {
-		t.Fatalf("preset = %q, want moss", h.e.Snapshot().LampPreset)
+	if !strings.Contains(h.e.Snapshot().LampPreset, "ember") {
+		t.Fatalf("preset = %q, want ember", h.e.Snapshot().LampPreset)
 	}
 }

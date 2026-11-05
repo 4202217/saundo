@@ -7,14 +7,20 @@
   "aboutVersion": "Version {version} · {channel}",
   "@aboutVersion": {
     "placeholders": {
-      "version": { "type": "String" },
-      "channel": { "type": "String" }
+      "version": {
+        "type": "String"
+      },
+      "channel": {
+        "type": "String"
+      }
     }
   },
   "aboutVersionLocal": "Version {version} · Local build",
   "@aboutVersionLocal": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "aboutVersionDev": "Development build",
@@ -35,7 +41,6 @@
   "trayDisconnect": "Disconnect",
   "trayQuit": "Quit saundo",
   "trayTooltip": "saundo",
-
   "statusReconnecting": "Reconnecting…",
   "statusConnecting": "Connecting…",
   "statusPairing": "Pairing…",
@@ -43,18 +48,23 @@
   "statusStreamingTo": "Streaming to {name}",
   "@statusStreamingTo": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "statusStreaming": "Streaming",
   "statusDisconnected": "Not connected",
   "statusConnectionFailed": "Connection failed",
-
   "deviceStereoGroup": "{model} · Stereo pair {n, number}/2",
   "@deviceStereoGroup": {
     "placeholders": {
-      "model": { "type": "String" },
-      "n": { "type": "int" }
+      "model": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
     }
   },
   "devicePinPairing": "{model} · PIN pairing",
@@ -65,19 +75,22 @@
   "deviceAirPlay1": "{model} · AirPlay 1",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "Device list",
-
   "flyoutRefreshDevices": "Refresh devices",
   "flyoutDevices": "Devices",
   "flyoutDeviceCount": "{n, plural, =0 {No devices} one {# device} other {# devices}}",
   "@flyoutDeviceCount": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "flyoutConnectFailed": "Connection failed: {error}",
   "@flyoutConnectFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "flyoutSearching": "Searching for AirPlay devices nearby…",
@@ -88,7 +101,9 @@
   "flyoutLatency": "Latency {value}",
   "@flyoutLatency": {
     "placeholders": {
-      "value": { "type": "String" }
+      "value": {
+        "type": "String"
+      }
     }
   },
   "flyoutSyncNTP": "NTP",
@@ -99,26 +114,34 @@
   "flyoutVolumeValue": "{v, number, integer}%",
   "@flyoutVolumeValue": {
     "placeholders": {
-      "v": { "type": "double" }
+      "v": {
+        "type": "double"
+      }
     }
   },
   "flyoutCaptureError": "Capture error: {error}",
   "@flyoutCaptureError": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "flyoutCaptureNotRunning": "Capture is not running",
   "flyoutCapture": "Capture {name}",
   "@flyoutCapture": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "flyoutDropped": "{n, plural, =0 {no drops} one {# dropped} other {# dropped}}",
   "@flyoutDropped": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "flyoutNowPlayingReadFailed": "Could not read",
@@ -128,52 +151,55 @@
   "flyoutNowPlayingAlbum": "Now playing · {album}",
   "@flyoutNowPlayingAlbum": {
     "placeholders": {
-      "album": { "type": "String" }
+      "album": {
+        "type": "String"
+      }
     }
   },
   "flyoutNowPlaying": "Now playing",
-
   "actionCancel": "Cancel",
   "actionRetry": "Retry",
   "actionDisconnect": "Disconnect",
   "actionOffline": "Offline",
   "actionConnect": "Connect",
   "commonSettings": "Settings",
-
   "logTitle": "Diagnostics",
   "logRecentLines": "{n, plural, one {Last # line} other {Last # lines}}",
   "@logRecentLines": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "logEmpty": "No log entries",
   "logCopy": "Copy",
   "logClose": "Close",
-
   "pinTitle": "Enter pairing code",
   "pinInstruction": "Look for the pairing code on {device}.",
   "@pinInstruction": {
     "placeholders": {
-      "device": { "type": "String" }
+      "device": {
+        "type": "String"
+      }
     }
   },
   "pinLabel": "Pairing code",
   "pinHint": "The code is used for this pairing only.",
   "pinSubmit": "Pair",
   "pinFallbackDevice": "the receiver",
-
   "passwordTitle": "Enter receiver password",
   "passwordInstruction": "Enter the AirPlay password for {device}.",
   "@passwordInstruction": {
     "placeholders": {
-      "device": { "type": "String" }
+      "device": {
+        "type": "String"
+      }
     }
   },
   "passwordLabel": "Password",
   "passwordHint": "The password is saved on this PC and used only for this device.",
   "passwordFallbackDevice": "this receiver",
-
   "settingsNavGeneral": "General",
   "settingsNavConnection": "Connection",
   "settingsNavReceivers": "Receivers",
@@ -210,7 +236,9 @@
   "settingsUpdateAvailable": "Version {version} is available",
   "@settingsUpdateAvailable": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "settingsUpdateUnavailable": "Automatic updates are not available in this build",
@@ -221,7 +249,6 @@
   "settingsReconnectDesc": "Backoff 1s / 2s / 5s / 10s / 15s, up to 5 attempts",
   "settingsStrictAuth": "Strict receiver verification",
   "settingsStrictAuthDesc": "Disconnect when pairing proof or signature fails",
-
   "receiverGroupEnabled": "Enabled",
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
@@ -240,7 +267,9 @@
   "receiverDelayUnit": "{ms} ms",
   "@receiverDelayUnit": {
     "placeholders": {
-      "ms": { "type": "int" }
+      "ms": {
+        "type": "int"
+      }
     }
   },
   "receiverPasswordTitle": "Receiver password",
@@ -255,8 +284,12 @@
   "receiverRemoveConfirmSub": "{name} · {model}",
   "@receiverRemoveConfirmSub": {
     "placeholders": {
-      "name": { "type": "String" },
-      "model": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
     }
   },
   "receiverRemoveHint1": "The receiver leaves settings and the device list; the receiver itself is not changed.",
@@ -293,7 +326,9 @@
   "receiverPasswordDialogSub": "{name} · AirPlay password authentication",
   "@receiverPasswordDialogSub": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "receiverPasswordDialogHint": "Stored on this PC only; used when connecting to this receiver, never written to the diagnostic log.",
@@ -325,17 +360,20 @@
   "settingsCaptureError": "Capture error",
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
-
   "summaryStereoGroup": "Stereo pair · {n, number}/2 · Current device",
   "@summaryStereoGroup": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "summaryModelCurrentDevice": "{model} · Current device",
   "@summaryModelCurrentDevice": {
     "placeholders": {
-      "model": { "type": "String" }
+      "model": {
+        "type": "String"
+      }
     }
   },
   "summaryCurrentDevice": "Current device",
@@ -343,11 +381,9 @@
   "summaryConnecting": "Connecting",
   "sidebarNoDevice": "No device selected",
   "sidebarConnectedStereo": "Connected · Stereo pair",
-
   "captureFollowSystem": "Follow system default",
   "captureAllSystem": "Entire system",
   "volumeLabel": "Volume",
-
   "settingsNavUpdates": "Updates",
   "pageUpdatesDesc": "Versions, automatic checks, and installation.",
   "pageAboutDesc": "Version, project links, and license.",
@@ -365,14 +401,20 @@
   "updateAvailableTitle": "Version {version} is available",
   "@updateAvailableTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateAvailableMeta": "Current version {current} · {date}",
   "@updateAvailableMeta": {
     "placeholders": {
-      "current": { "type": "String" },
-      "date": { "type": "String" }
+      "current": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
     }
   },
   "updateFullNotes": "What's New",
@@ -382,7 +424,9 @@
   "updateDownloadingTitle": "Downloading {version}",
   "@updateDownloadingTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateDownloadingMeta": "Restart after the download to finish installing.",
@@ -391,7 +435,9 @@
   "updateReadyTitle": "{version} is ready",
   "@updateReadyTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateReadyDesc": "Restart to finish installing.",
@@ -406,13 +452,17 @@
   "flyoutUpdateAvailable": "{version} available",
   "@flyoutUpdateAvailable": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "flyoutUpdateDownloading": "Downloading {percent}%",
   "@flyoutUpdateDownloading": {
     "placeholders": {
-      "percent": { "type": "int" }
+      "percent": {
+        "type": "int"
+      }
     }
   },
   "flyoutUpdateReady": "Restart to update",
@@ -420,7 +470,9 @@
   "updateUpToDateDesc": "Version {version} is the latest.",
   "@updateUpToDateDesc": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateCheckingShort": "Checking…",
@@ -428,14 +480,20 @@
   "updateNotesTitle": "{version} What's New",
   "@updateNotesTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateNotesMeta": "Released {date} · Current version {current}",
   "@updateNotesMeta": {
     "placeholders": {
-      "date": { "type": "String" },
-      "current": { "type": "String" }
+      "date": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
     }
   },
   "updateRangeSince": "Since your last update",
@@ -446,37 +504,52 @@
   "updateNotesRangeMeta": "{oldest} – {latest} · {n, plural, one {# version} other {# versions}} · Current version {current}",
   "@updateNotesRangeMeta": {
     "placeholders": {
-      "oldest": { "type": "String" },
-      "latest": { "type": "String" },
-      "n": { "type": "int" },
-      "current": { "type": "String" }
+      "oldest": {
+        "type": "String"
+      },
+      "latest": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "current": {
+        "type": "String"
+      }
     }
   },
   "updateCountAdded": "{n, plural, one {# addition} other {# additions}}",
   "@updateCountAdded": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "updateCountChanged": "{n, plural, one {# change} other {# changes}}",
   "@updateCountChanged": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "updateCountFixed": "{n, plural, one {# fix} other {# fixes}}",
   "@updateCountFixed": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "updateCountUpdated": "{n, plural, one {# update} other {# updates}}",
   "@updateCountUpdated": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
-
   "settingsNavLamp": "Ambient light",
   "pageLampDesc": "Every HomePod top display shows the same light.",
   "settingsLampEnable": "Enable ambient light",
@@ -486,15 +559,28 @@
   "settingsLampHintOff": "Off sends no light. Turn this on to show the chosen light on HomePod top displays.",
   "settingsLampSoundGlowHint": "Enable Sound Glow in the HomePod settings; without it the top display stays white.",
   "lampToggle": "Ambient light switch",
+  "lampPresetDim": "Dim",
+  "lampPresetDawn": "Dawn",
+  "lampPresetLagoon": "Lagoon",
+  "lampPresetNeon": "Neon",
+  "lampPresetCitrus": "Citrus",
+  "lampPresetEmber": "Ember",
+  "lampPresetCoral": "Coral",
+  "lampPresetGlacier": "Glacier",
+  "lampPresetMango": "Mango",
+  "lampPresetMint": "Mint",
+  "lampPresetCherry": "Cherry",
+  "lampPresetAbyss": "Abyss",
+  "lampPresetVolcano": "Volcano",
+  "lampPresetMelon": "Melon",
+  "lampPresetSand": "Sand",
+  "lampPresetStorm": "Storm",
+  "lampPresetPop": "Pop",
+  "lampPresetForest": "Forest",
+  "lampPresetAurora": "Aurora",
   "flyoutLampSection": "Ambient light",
   "flyoutLampHomePodOnly": "HomePod only",
   "flyoutLampColors": "Colors",
   "flyoutLampExpand": "Show colors",
-  "flyoutLampCollapse": "Hide colors",
-  "lampPresetEmber": "Ember",
-  "lampPresetDune": "Dune",
-  "lampPresetMoss": "Moss",
-  "lampPresetTide": "Tide",
-  "lampPresetOrchid": "Orchid",
-  "lampPresetMoon": "Moon"
+  "flyoutLampCollapse": "Hide colors"
 }

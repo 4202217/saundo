@@ -26,18 +26,46 @@ const (
 // lampPresetName is the localized name of a preset ID.
 func lampPresetName(id string) string {
 	switch lamp.Normalize(id) {
+	case "dim":
+		return locales.LampPresetDim()
+	case "dawn":
+		return locales.LampPresetDawn()
+	case "lagoon":
+		return locales.LampPresetLagoon()
+	case "neon":
+		return locales.LampPresetNeon()
+	case "citrus":
+		return locales.LampPresetCitrus()
 	case "ember":
 		return locales.LampPresetEmber()
-	case "moss":
-		return locales.LampPresetMoss()
-	case "tide":
-		return locales.LampPresetTide()
-	case "orchid":
-		return locales.LampPresetOrchid()
-	case "moon":
-		return locales.LampPresetMoon()
+	case "coral":
+		return locales.LampPresetCoral()
+	case "glacier":
+		return locales.LampPresetGlacier()
+	case "mango":
+		return locales.LampPresetMango()
+	case "mint":
+		return locales.LampPresetMint()
+	case "cherry":
+		return locales.LampPresetCherry()
+	case "abyss":
+		return locales.LampPresetAbyss()
+	case "volcano":
+		return locales.LampPresetVolcano()
+	case "melon":
+		return locales.LampPresetMelon()
+	case "sand":
+		return locales.LampPresetSand()
+	case "storm":
+		return locales.LampPresetStorm()
+	case "pop":
+		return locales.LampPresetPop()
+	case "forest":
+		return locales.LampPresetForest()
+	case "aurora":
+		return locales.LampPresetAurora()
 	default:
-		return locales.LampPresetDune()
+		return locales.LampPresetSand()
 	}
 }
 

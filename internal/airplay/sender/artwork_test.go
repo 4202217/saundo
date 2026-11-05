@@ -2,11 +2,9 @@ package sender
 
 import (
 	"bytes"
-	"encoding/base64"
 	"strings"
 	"testing"
 
-	"saundo/internal/airplay/crypto"
 	"saundo/internal/airplay/device"
 )
 
@@ -14,6 +12,8 @@ func imageRequests(r *rig) []string {
 	return r.rx.artworks
 }
 
+// SetArtwork must push the image as one RTSP POST on the encrypted control
+// channel, with a raw JPEG body, the way the reference sender does.
 func TestSetArtworkSendsArtworkCommand(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	r.start()
@@ -27,22 +27,15 @@ func TestSetArtworkSendsArtworkCommand(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("artwork requests = %d, want 1", len(got))
 	}
-	root, err := crypto.Decode([]byte(got[0]))
-	if err != nil {
-		t.Fatalf("artwork body is not a plist: %v", err)
+	ct, body, ok := strings.Cut(got[0], "\x00")
+	if !ok {
+		t.Fatalf("artwork capture missing content-type separator: %q", got[0][:min(40, len(got[0]))])
 	}
-	m, _ := root.(map[string]any)
-	dataURL, _ := m["jpeg"].(string)
-	const prefix = "data:image/jpeg;base64,"
-	if !strings.HasPrefix(dataURL, prefix) {
-		t.Fatalf("jpeg = %q, want a %s data URL", dataURL, prefix)
+	if ct != "image/jpeg" {
+		t.Fatalf("content type = %q, want image/jpeg", ct)
 	}
-	raw, err := base64.StdEncoding.DecodeString(dataURL[len(prefix):])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(raw, image) {
-		t.Fatalf("image = % x, want % x", raw, image)
+	if !bytes.Equal([]byte(body), image) {
+		t.Fatalf("image = % x, want % x", body, image)
 	}
 }
 

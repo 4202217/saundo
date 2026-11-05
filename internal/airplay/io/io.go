@@ -12,9 +12,6 @@ const (
 	TCPControl TCPChannel = iota
 	// TCPEvent carries the reverse AirPlay 2 event channel.
 	TCPEvent
-	// TCPArtwork carries the plaintext HTTP artwork channel to the receiver's
-	// HTTP server, separate from the encrypted RTSP control connection.
-	TCPArtwork
 )
 
 // UDPChannel identifies one of the session's three UDP sockets.
