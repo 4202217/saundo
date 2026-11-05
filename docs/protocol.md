@@ -224,28 +224,23 @@ A session starts at the live edge: capture runs from launch, so the ring holds s
 
 HomePod software 27.2 renders a full-screen artwork on its top display once the user enables Sound Glow in the HomePod settings. Without that setting the display stays white even though every request succeeds.
 
-The image does not travel on the RTSP control channel. It is a plaintext HTTP request on the receiver's port 7000, on a TCP connection separate from the encrypted RTSP control:
+The image travels as one RTSP request **inside the encrypted control channel** — the same TCP connection as every other RTSP request, sealed with the Control-Write key using the record framing of section 9:
 
 ```
-POST /artwork/command HTTP/1.1
-Host: <receiver>:7000
-Content-Type: application/x-apple-binary-plist
-Content-Length: <n>
-Session: <rtspSession>
-DACP-ID: <dacpID>
-Active-Remote: <activeRemote>
-Client-Instance: <dacpID>
-X-Apple-Client-Name: <sender name>
-X-Apple-ProtocolVersion: 1.1
+POST /artwork/command RTSP/1.0
+CSeq: <n>
 User-Agent: AirPlay/550.10
-Connection: keep-alive
+Content-Type: image/jpeg
+Content-Length: <n>
 
-<binary plist: {"jpeg": "data:image/jpeg;base64,<JPEG>"}>
+<raw JPEG bytes>
 ```
 
-- The body must be a binary plist whose `jpeg` key holds a base64 data URL. A raw JPEG body returns 400; an empty body returns 200 without changing the display.
-- One keep-alive connection carries the session's images. The receiver's HTTP server stops accepting new connections after a burst of short ones.
-- The image is a 600×600 sRGB JPEG at quality 0.88; the receiver downscales and softens it for the top display.
-- The plain HTTP connection does not need the RTSP encryption; the session headers identify it.
-- `SET_PARAMETER` images and RTSP `POST artwork/command` return success but are not rendered.
+- The body is the **raw JPEG**; there is no binary-plist wrapper and no data URL. The data URL exists only inside Unisson's front end, between its canvas and its Tauri command — it never reaches the wire.
+- The request rides the control connection, so no extra TCP connection is opened and the receiver's short-connection refusals do not apply. Replies arrive as normal RTSP `200 OK` responses matched by CSeq.
+- The image is a 600×600 sRGB JPEG at quality ~0.9; the receiver downscales and softens it for the top display.
+- The sender pushes on light change, on stream start, and when the user clears (an empty `SetArtwork` stores the clear without sending; the return to the native top display is still unverified).
+- A song's own cover competes for the same channel: Unisson asks the user whether to keep the light or show the cover ("Garder ce look").
 - The setting cannot be discovered over the protocol; the UI tells the user to enable Sound Glow, and `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
+
+Earlier revisions of this document described the plaintext HTTP shape above; that shape answers `200 OK` from the receiver's compatibility HTTP server but the top display does not render it. Live comparison against the reference sender (single ~16.9 KB encrypted burst per light change, no separate connection) settled the transport.

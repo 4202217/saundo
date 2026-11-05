@@ -52,16 +52,16 @@ func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	}
 	tt = ui.NewTester(a.view, flyoutWidth, flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, true))
 	tt.Frame()
-	for _, want := range []string{"暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"} {
+	for _, want := range []string{"暖烬", "沙丘", "微芒", "极光", "礁湖", "霓虹"} {
 		if _, ok := tt.Find(want); !ok {
 			t.Fatalf("expanded grid is missing %q", want)
 		}
 	}
-	if err := tt.Click("苔庭"); err != nil {
+	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
-	if a.lampPreset != "moss" || a.snap.LampPreset != "moss" {
-		t.Fatalf("preset = %q/%q, want moss", a.lampPreset, a.snap.LampPreset)
+	if a.lampPreset != "ember" || a.snap.LampPreset != "ember" {
+		t.Fatalf("preset = %q/%q, want ember", a.lampPreset, a.snap.LampPreset)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestFlyoutLampOffDisablesGrid(t *testing.T) {
 	a.lampExpanded = true
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, true))
 	tt.Frame()
-	if err := tt.Click("苔庭"); err != nil {
+	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
 	if a.lampPreset != "dune" {
@@ -90,7 +90,7 @@ func TestSettingsLampPageOffShowsHintAndDisablesPresets(t *testing.T) {
 		t.Fatalf("off hint is missing; texts: %q", tt.Texts())
 	}
 	tt.Frame()
-	if err := tt.Click("潮汐"); err != nil {
+	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
 	if a.lampPreset != "dune" {
@@ -103,11 +103,11 @@ func TestSettingsLampPageChoosesPreset(t *testing.T) {
 	a.page = pageLamp
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
-	if err := tt.Click("潮汐"); err != nil {
+	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
-	if a.lampPreset != "tide" || a.snap.LampPreset != "tide" {
-		t.Fatalf("preset = %q/%q, want tide", a.lampPreset, a.snap.LampPreset)
+	if a.lampPreset != "ember" || a.snap.LampPreset != "ember" {
+		t.Fatalf("preset = %q/%q, want ember", a.lampPreset, a.snap.LampPreset)
 	}
 }
 
@@ -115,14 +115,14 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
-	for _, want := range []string{"Ambient light", "HomePod only", "Dune"} {
+	for _, want := range []string{"Ambient light", "HomePod only", "Sand"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English flyout is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
 	a.page = pageLamp
 	tt = ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{"Ambient light", "Enable ambient light", "HomePod only", "HomePod top display", "Dune"} {
+	for _, want := range []string{"Ambient light", "Enable ambient light", "HomePod only", "HomePod top display", "Sand"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English lamp page is missing %q; texts: %q", want, tt.Texts())
 		}
@@ -135,11 +135,11 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 func TestAppSaveKeepsEngineLamp(t *testing.T) {
 	a := previewApp()
 	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
-	a.apply(engine.Snapshot{LampEnabled: true, LampPreset: "orchid"})
+	a.apply(engine.Snapshot{LampEnabled: true, LampPreset: "ember"})
 	a.cfg.LaunchAtStart = true
 	a.saveSettings()
 	got := a.sets.Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "orchid" {
-		t.Fatalf("app save wrote lamp %+v, want on + orchid", got.Lamp)
+	if !got.Lamp.Enabled || got.Lamp.Preset != "ember" {
+		t.Fatalf("app save wrote lamp %+v, want on + ember", got.Lamp)
 	}
 }

@@ -178,14 +178,14 @@ func TestLatencyText(t *testing.T) {
 	}
 }
 
-func TestLampDefaultsOffAndDune(t *testing.T) {
+func TestLampDefaultsOffAndSand(t *testing.T) {
 	s := NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
 	got := s.Load()
 	if got.Lamp.Enabled {
 		t.Fatal("lamp should default to off")
 	}
-	if got.Lamp.Preset != "dune" {
-		t.Fatalf("lamp preset = %q, want dune", got.Lamp.Preset)
+	if got.Lamp.Preset != "sand" {
+		t.Fatalf("lamp preset = %q, want sand", got.Lamp.Preset)
 	}
 }
 
@@ -195,19 +195,19 @@ func TestLampOldFileLoadsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if got.Lamp.Enabled || got.Lamp.Preset != "dune" {
-		t.Fatalf("legacy file lamp = %+v, want off + dune", got.Lamp)
+	if got.Lamp.Enabled || got.Lamp.Preset != "sand" {
+		t.Fatalf("legacy file lamp = %+v, want off + sand", got.Lamp)
 	}
 }
 
-func TestLampUnknownPresetNormalizesToDune(t *testing.T) {
+func TestLampUnknownPresetNormalizesToSand(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	if err := os.WriteFile(path, []byte(`{"lamp":{"enabled":true,"preset":"neon"}}`), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"lamp":{"enabled":true,"preset":"bogus"}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "dune" {
-		t.Fatalf("unknown preset = %+v, want on + dune", got.Lamp)
+	if !got.Lamp.Enabled || got.Lamp.Preset != "sand" {
+		t.Fatalf("unknown preset = %+v, want on + sand", got.Lamp)
 	}
 }
 
@@ -215,12 +215,12 @@ func TestLampRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	s := NewStoreAt(path)
 	cfg := s.Load()
-	cfg.Lamp = LampSettings{Enabled: true, Preset: "orchid"}
+	cfg.Lamp = LampSettings{Enabled: true, Preset: "ember"}
 	if err := s.Save(cfg); err != nil {
 		t.Fatal(err)
 	}
 	got := s.Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "orchid" {
+	if !got.Lamp.Enabled || got.Lamp.Preset != "ember" {
 		t.Fatalf("lamp round trip = %+v", got.Lamp)
 	}
 }

@@ -3,35 +3,43 @@ package lamp
 import (
 	"bytes"
 	"image/jpeg"
+	"slices"
 	"testing"
 )
 
-func TestPresetsAreSixStableIDs(t *testing.T) {
-	want := []string{"ember", "dune", "moss", "tide", "orchid", "moon"}
+func TestPresetsMatchCatalog(t *testing.T) {
+	want := []string{"dim", "dawn", "lagoon", "neon", "citrus", "ember", "coral",
+		"glacier", "mango", "mint", "cherry", "abyss", "volcano", "melon",
+		"sand", "storm", "pop", "forest", "aurora"}
 	all := All()
 	if len(all) != len(want) {
 		t.Fatalf("presets = %d, want %d", len(all), len(want))
 	}
-	seen := map[string]bool{}
 	for i, p := range all {
 		if p.ID != want[i] {
 			t.Errorf("preset %d = %q, want %q", i, p.ID, want[i])
 		}
+	}
+	seen := map[string]bool{}
+	for _, p := range all {
 		if seen[p.ID] {
 			t.Errorf("duplicate preset ID %q", p.ID)
 		}
 		seen[p.ID] = true
 	}
+	if !slices.Contains(want, DefaultID) {
+		t.Errorf("DefaultID %q is not a preset", DefaultID)
+	}
 }
 
 func TestNormalizeUnknownAndEmpty(t *testing.T) {
-	for _, id := range []string{"", "bogus", "Dune", " dune "} {
+	for _, id := range []string{"", "bogus", "Sand", " sand "} {
 		if got := Normalize(id); got != DefaultID {
 			t.Errorf("Normalize(%q) = %q, want %q", id, got, DefaultID)
 		}
 	}
-	if got := Normalize("tide"); got != "tide" {
-		t.Errorf("Normalize(tide) = %q, want tide", got)
+	if got := Normalize("aurora"); got != "aurora" {
+		t.Errorf("Normalize(aurora) = %q, want aurora", got)
 	}
 }
 
@@ -66,7 +74,7 @@ func TestPresetPixelsFollowTheBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, g, b, _ := img.At(108, 480).RGBA()
+	r, g, b, _ := img.At(96, 528).RGBA()
 	cr, cg, cb := r>>8, g>>8, b>>8
 	if cr < 190 || cg < 90 || int(cr) < int(cb)+100 {
 		t.Fatalf("blob center = #%02x%02x%02x, want a warm highlight", cr, cg, cb)
@@ -81,11 +89,11 @@ func TestPresetPixelsFollowTheBlobs(t *testing.T) {
 
 func TestGeneratorCachesPerPreset(t *testing.T) {
 	g := NewGenerator()
-	first, err := g.JPEG("tide")
+	first, err := g.JPEG("lagoon")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := g.JPEG("tide")
+	second, err := g.JPEG("lagoon")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,19 +103,19 @@ func TestGeneratorCachesPerPreset(t *testing.T) {
 	if &first[0] != &second[0] {
 		t.Fatal("cached image was copied instead of reused")
 	}
-	dune, err := g.JPEG("unknown")
+	unknown, err := g.JPEG("unknown")
 	if err != nil {
 		t.Fatal(err)
 	}
-	direct, err := g.JPEG("dune")
+	direct, err := g.JPEG(DefaultID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if g.builds != 2 {
 		t.Fatalf("builds = %d after unknown preset, want 2", g.builds)
 	}
-	if !bytes.Equal(dune, direct) {
-		t.Fatal("unknown preset did not resolve to dune")
+	if !bytes.Equal(unknown, direct) {
+		t.Fatal("unknown preset did not resolve to the default")
 	}
 }
 

@@ -149,37 +149,10 @@ func (f *fakeIO) TCPSend(ch raopio.TCPChannel, data []byte) error {
 	switch ch {
 	case raopio.TCPControl:
 		f.r.rx.handleControl(data)
-	case raopio.TCPArtwork:
-		f.r.rx.handleArtwork(data)
 	default:
 		f.r.rx.handleEventResponse(data)
 	}
 	return nil
-}
-
-// handleArtwork reads one HTTP artwork request at a time and answers 200.
-func (f *fakeReceiver) handleArtwork(data []byte) {
-	f.artworkRx = append(f.artworkRx, data...)
-	for {
-		i := bytes.Index(f.artworkRx, []byte("\r\n\r\n"))
-		if i < 0 {
-			return
-		}
-		head := string(f.artworkRx[:i])
-		n := 0
-		for _, line := range strings.Split(head, "\r\n") {
-			if strings.HasPrefix(strings.ToLower(line), "content-length:") {
-				n, _ = strconv.Atoi(strings.TrimSpace(line[len("content-length:"):]))
-			}
-		}
-		if len(f.artworkRx) < i+4+n {
-			return
-		}
-		body := string(f.artworkRx[i+4 : i+4+n])
-		f.artworkRx = f.artworkRx[i+4+n:]
-		f.artworks = append(f.artworks, body)
-		f.r.emit(raopio.Event{Kind: raopio.EventTCPData, TCP: raopio.TCPArtwork, Data: []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")})
-	}
 }
 
 func (f *fakeIO) TCPClose(raopio.TCPChannel, bool) {}
