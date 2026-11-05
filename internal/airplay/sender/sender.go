@@ -259,6 +259,7 @@ type Sender struct {
 	activeRemote uint32
 	rtspSession  string
 	host         string
+	port         uint16
 	name         string
 	state        State
 
@@ -320,6 +321,14 @@ type Sender struct {
 	npTitle, npArtist, npAlbum string
 	npCover                    []byte
 	npCoverMIME                string
+	// artwork is the top-display image, separate from the DMAP text and the
+	// Now Playing cover. It is resent whenever a session starts streaming.
+	artwork        []byte
+	artworkMIME    string
+	artworkOpen    bool
+	artworkGen     uint64
+	artworkPending []byte
+	artworkRx      []byte
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -524,6 +533,10 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.eventPlain = s.eventPlain[:0]
 	s.pending = s.pending[:0]
 	s.rtspSession = ""
+	s.port = port
+	s.artworkOpen = false
+	s.artworkPending = s.artworkPending[:0]
+	s.artworkRx = s.artworkRx[:0]
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
@@ -614,6 +627,8 @@ func (s *Sender) releaseSockets() {
 	}
 	s.localControl, s.localTiming = 0, 0
 	s.io.TCPClose(raopio.TCPEvent, false)
+	s.io.TCPClose(raopio.TCPArtwork, false)
+	s.artworkOpen = false
 }
 
 func (s *Sender) finishStartFailure(why string) {
@@ -675,9 +690,29 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 				return
 			}
 		}
+	case raopio.TCPArtwork:
+		switch ev.Kind {
+		case raopio.EventTCPConnected:
+			s.artworkGen = ev.Gen
+		case raopio.EventTCPData, raopio.EventTCPClosed:
+			if ev.Gen != s.artworkGen {
+				return
+			}
+		}
 	}
 	switch ev.Kind {
 	case raopio.EventTCPConnected:
+		if ev.TCP == raopio.TCPArtwork {
+			s.artworkOpen = true
+			s.info("artwork channel open to %s:%d", s.host, s.port)
+			if len(s.artworkPending) > 0 {
+				if err := s.io.TCPSend(raopio.TCPArtwork, s.artworkPending); err != nil {
+					s.warn("artwork send: %v", err)
+				}
+				s.artworkPending = s.artworkPending[:0]
+			}
+			return
+		}
 		if ev.TCP == raopio.TCPEvent {
 			if s.state != StateIdle {
 				s.info("event channel open (%s:%d)", ev.Peer.IP, ev.Peer.Port)
@@ -693,6 +728,12 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		s.info("RTSP connected to %s:%d", s.host, ev.Peer.Port)
 		s.beginAuthChain()
 	case raopio.EventTCPConnectFailed:
+		if ev.TCP == raopio.TCPArtwork {
+			s.artworkOpen = false
+			s.artworkPending = s.artworkPending[:0]
+			s.warn("artwork channel: %s", ev.Err)
+			return
+		}
 		if ev.TCP == raopio.TCPEvent {
 			if s.state == StateStreaming || s.state == StateHandshake {
 				s.warn("event channel error: %s", ev.Err)
@@ -707,12 +748,19 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 			s.fail(why)
 		}
 	case raopio.EventTCPData:
-		if ev.TCP == raopio.TCPControl {
+		switch ev.TCP {
+		case raopio.TCPControl:
 			s.onRTSPData(ev.Data)
-		} else {
+		case raopio.TCPArtwork:
+			s.onArtworkData(ev.Data)
+		default:
 			s.onEventData(ev.Data)
 		}
 	case raopio.EventTCPClosed:
+		if ev.TCP == raopio.TCPArtwork {
+			s.artworkOpen = false
+			return
+		}
 		if ev.TCP == raopio.TCPEvent {
 			if s.state == StateStreaming || s.state == StateHandshake {
 				if ev.Err != "" {

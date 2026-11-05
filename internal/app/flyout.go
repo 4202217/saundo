@@ -11,6 +11,7 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
+	"saundo/internal/lamp"
 )
 
 const (
@@ -38,11 +39,23 @@ func deviceCardHeight(n int) float32 {
 // flyoutHeightFor is the window height that keeps the spacing between the
 // device card and the playback card the same for any device count: the
 // design's height fits deviceRows rows, and each missing row, or the empty
-// state, shortens the window by as much as the card lost.
+// state, shortens the window by as much as the card lost. The always-present
+// ambient section adds its collapsed height.
 func flyoutHeightFor(n int, showLatencySwitch bool) int {
 	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n))
 	if showLatencySwitch {
 		h += latencySwitchHeight
+	}
+	return h + lampSectionHeight
+}
+
+// flyoutHeightForState adds the preset grid while the ambient card is
+// expanded. The window is anchored by its bottom edge, so this grows it
+// upward.
+func flyoutHeightForState(n int, showLatencySwitch, lampExpanded bool) int {
+	h := flyoutHeightFor(n, showLatencySwitch)
+	if lampExpanded {
+		h += lampGridHeight(len(lamp.All()))
 	}
 	return h
 }
@@ -58,6 +71,7 @@ func (a *App) view(c *ui.Context) {
 				a.deviceSection(c, p)
 				ui.Spacer(c)
 				a.playbackSection(c, p)
+				a.lampSection(c, p)
 			})
 			a.flyoutFooter(c, p)
 		})

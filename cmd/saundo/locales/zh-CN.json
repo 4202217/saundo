@@ -394,5 +394,26 @@
     "placeholders": {
       "n": { "type": "int" }
     }
-  }
+  },
+
+  "settingsNavLamp": "氛围灯",
+  "pageLampDesc": "所有 HomePod 顶屏显示同一盏灯。",
+  "settingsLampEnable": "开启氛围灯",
+  "settingsLampHomePodOnly": "HomePod 专属",
+  "settingsLampTop": "HomePod 顶屏",
+  "settingsLampHintOn": "只对 HomePod 生效。开启时顶屏显示灯色，关闭后不发送灯色。",
+  "settingsLampHintOff": "关闭后不发送灯色。开启后在 HomePod 顶屏显示所选灯色。",
+  "settingsLampSoundGlowHint": "需在 HomePod 设置中开启“声音光晕”，否则顶屏只显示白灯。",
+  "lampToggle": "氛围灯开关",
+  "flyoutLampSection": "氛围灯",
+  "flyoutLampHomePodOnly": "HomePod 专属",
+  "flyoutLampColors": "配色",
+  "flyoutLampExpand": "展开配色",
+  "flyoutLampCollapse": "收起配色",
+  "lampPresetEmber": "暖烬",
+  "lampPresetDune": "沙丘",
+  "lampPresetMoss": "苔庭",
+  "lampPresetTide": "潮汐",
+  "lampPresetOrchid": "兰夜",
+  "lampPresetMoon": "月白"
 }

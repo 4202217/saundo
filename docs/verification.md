@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-05 -->
 
 # Verification
 
@@ -50,6 +50,25 @@ live state:
   the per-receiver delay restart, receiver-password save and clear, and a
   manual receiver with no mDNS advertisement. Pinned by the receivers, engine,
   and app tests and the `settings-receivers-*` / `dialog-receiver-*` previews.
+- Ambient light, artwork channel: the 2026-11-05 `AudioAccessory5,1` run
+  displayed a lagoon blue once Sound Glow was enabled in the HomePod
+  settings. The working path is the HTTP `/artwork/command` binary plist
+  with a data URL over one keep-alive connection; the off/return-to-native
+  behavior is still owed.
+- Ambient light, off behavior: whether the receiver returns to its native top
+  display when the sender stops pushing, or keeps the last light. The sender
+  currently sends no clear image; the UI only promises that off sends no
+  light.
+- Ambient light, capability matrix: HomePod 2, HomePod 1, HomePod mini, and a
+  receiver below software 27.2. `TopDisplayCapable` holds every unknown and
+  the mini back (false) until these runs exist.
+- Ambient light, stereo pair: each capable member shows the light, and an
+  incapable member is skipped without breaking the pair.
+- Ambient light, reconnect and preset change: the top display survives a
+  reconnect, and a preset change replaces the light. `TestLampAppliedWhenStreamingStarts`
+  and the sender artwork tests pin the re-push path, not the receiver side.
+- Ambient light, takeover: another controller taking over the session, and
+  whether the light needs clearing.
 
 ## Automated checks
 
@@ -673,6 +692,48 @@ development PC with a real HomePod stereo pair on the LAN.
   unsigned, so SmartScreen warns.
 - **Public feed.** After publishing, the latest manifest returned 200 with
   version 0.4.2 and a signature, and the installer download returned 200.
+
+## Ambient light, phase 1 (2026-11-05)
+
+- **What landed.** `internal/lamp` renders the six presets (ember, dune, moss,
+  tide, orchid, moon) as deterministic 600×600 sRGB JPEGs at quality 0.88 and
+  caches each one lazily. `settings.Lamp` stores the global enabled flag and
+  preset; an old file loads off + dune and an unknown preset normalizes to
+  dune. Discovery parses `osvers`; `device.TopDisplayCapable` requires the
+  HomePod family at software 27.2 or later and fails closed on an unknown
+  model or version; the 5,1 runs returned 200 OK for both `SET_PARAMETER`
+  and `POST /artwork/command` but displayed nothing, so it stays excluded.
+  The engine's
+  `SetLamp` saves the choice, renders off the sender's tick path, and reapplies
+  it when a session starts streaming. The sender's `SetArtwork` sends the
+  image over the existing `SET_PARAMETER` artwork path without touching DMAP
+  text, waits for streaming, and deduplicates identical bytes. A stereo group
+  fans the image out per capable member. The 氛围灯 settings page and the
+  flyout's always-visible ambient card read one snapshot; neither gates on
+  connection, and the tray menu gained no item.
+- **Pinned by.** `TestPresetsAreSixStableIDs`, `TestGeneratedJPEGsAre600Square`,
+  `TestPresetPixelsFollowTheBlobs`, `TestGeneratorCachesPerPreset`,
+  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOffAndDune`,
+  `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToDune`,
+  `TestLampRoundTrips`, `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
+  `TestMergeKeepsOSVersion`, `TestSetArtworkSendsArtworkCommand`,
+  `TestSetArtworkWaitsForStreaming`, `TestSetArtworkDuplicateIsNoOp`,
+  `TestSetArtworkDoesNotTouchDMAPText`, `TestSetArtworkClearSendsNothing`,
+  `TestLampToggleAppliesAndPersists`, `TestLampAppliedWhenStreamingStarts`,
+  `TestLampUnknownPresetFallsBackToDune`, `TestLampSkipsIncapableReceivers`,
+  `TestLampTogglingTwiceLogsTheSkipOnce`,
+  `TestGroupArtworkFansOutToBothCapableMembers`,
+  `TestGroupArtworkSkipsIncapableMember`, and the app lamp tests named in
+  ui.md.
+- **Live on AudioAccessory5,1.** A temporary gate allowed the user's 5,1
+  stereo pair. After Sound Glow was enabled in the HomePod settings, the same
+  pair displayed the lagoon and dawn lights. The working request is the HTTP
+  `/artwork/command` binary plist with a data URL over one keep-alive
+  connection and the session headers; `SET_PARAMETER` and the RTSP artwork
+  POST rendered nothing. 5,1 joined `TopDisplayCapable`.
+- **Not verified live.** Still unverified: off/return-to-native, the 6,1
+  artwork channel, the stereo pair's simultaneous rendering, and
+  reconnect/takeover behavior.
 
 ## Failure modes and meanings
 

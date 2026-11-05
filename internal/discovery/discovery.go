@@ -214,6 +214,9 @@ func (s *Service) merge(d device.Device) {
 	if d.Model != "" {
 		merged.Model = d.Model
 	}
+	if d.OSVersion != "" {
+		merged.OSVersion = d.OSVersion
+	}
 	if d.Features != 0 {
 		merged.Features = d.Features
 	}
@@ -311,6 +314,7 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 		Host:             host,
 		Port:             uint16(e.Port),
 		Model:            model,
+		OSVersion:        strings.TrimSpace(txt["osvers"]),
 		Features:         parseFeatures(features),
 		SF:               sf,
 		AM:               txt["am"],

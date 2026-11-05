@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+
+	"saundo/internal/lamp"
 )
 
 // ThemeMode is the user's light or dark appearance choice. System follows
@@ -38,9 +40,17 @@ const (
 	DefaultLatencyCustomMS = 700
 )
 
+// LampSettings is the global ambient-light choice: whether the HomePod top
+// display shows a light, and which preset it shows.
+type LampSettings struct {
+	Enabled bool   `json:"enabled"`
+	Preset  string `json:"preset"`
+}
+
 // Settings is the user's configuration.
 type Settings struct {
 	Name                string             `json:"name"`
+	NameMigrated        bool               `json:"nameMigrated"`
 	DeviceID            string             `json:"deviceId"`
 	Volume              float64            `json:"volume"`
 	VolumeByDevice      map[string]float64 `json:"volumeByDevice"`
@@ -58,6 +68,7 @@ type Settings struct {
 	AutoConnect         bool               `json:"autoConnect"`
 	Reconnect           bool               `json:"reconnect"`
 	ShowNowPlaying      bool               `json:"showNowPlaying"`
+	Lamp                LampSettings       `json:"lamp"`
 	TrayAnimation       bool               `json:"trayAnimation"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
@@ -85,6 +96,7 @@ func Default() Settings {
 		Reconnect:         true,
 		TrayAnimation:     true,
 		Theme:             ThemeSystem,
+		Lamp:              LampSettings{Preset: lamp.DefaultID},
 	}
 }
 
@@ -159,6 +171,9 @@ func (s *Store) Load() Settings {
 	default:
 		out.Theme = ThemeSystem
 	}
+	// An old file has no lamp object at all, which decodes as off + the
+	// default preset. An unknown preset never survives a load.
+	out.Lamp.Preset = lamp.Normalize(out.Lamp.Preset)
 	return out
 }
 
