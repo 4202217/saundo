@@ -2,7 +2,9 @@ package sender
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
+	"strconv"
 	"strings"
 	"time"
 
@@ -609,6 +611,7 @@ func (s *Sender) beginPlayback(epoch time.Time) {
 	}
 	s.feedback.arm(now)
 	s.sendMetadata()
+	s.sendArtwork()
 	s.info("streaming to %q, RTP %d frames/packet at %d Hz%s", s.name, framesPerPacket, raopRate,
 		map[bool]string{true: " (encrypted)", false: ""}[s.ap2 != nil && s.ap2.encryptAudio])
 	if s.events.Launched != nil {
@@ -668,6 +671,101 @@ func (s *Sender) SetNowPlaying(title, artist, album string, cover []byte, coverM
 	s.npCover, s.npCoverMIME = cover, coverMIME
 	if s.state == StateStreaming && changed {
 		s.sendMetadata()
+	}
+}
+
+// SetArtwork stores the top-display image and sends it over the artwork
+// SET_PARAMETER path while streaming. It is independent of the DMAP text: a
+// new image never resends the title, artist, or album. Empty data clears the
+// stored image without sending anything, because the receiver's return to its
+// native top display is still unverified.
+func (s *Sender) SetArtwork(data []byte, mime string) {
+	if bytes.Equal(data, s.artwork) && mime == s.artworkMIME {
+		s.info("artwork set: unchanged (%d bytes)", len(data))
+		return
+	}
+	s.artwork = append(s.artwork[:0], data...)
+	s.artworkMIME = mime
+	s.info("artwork set: %d bytes, state=%s", len(data), s.state)
+	if s.state == StateStreaming && len(s.artwork) > 0 {
+		s.sendArtwork()
+	}
+}
+
+func (s *Sender) sendArtwork() {
+	if s.state != StateStreaming || len(s.artwork) == 0 || len(s.artwork) > 8*1024*1024 {
+		return
+	}
+	mime := s.artworkMIME
+	if mime == "" {
+		mime = "image/jpeg"
+	}
+	dataURL := "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(s.artwork)
+	body, err := crypto.Encode(map[string]any{"jpeg": dataURL})
+	if err != nil {
+		s.warn("artwork plist: %v", err)
+		return
+	}
+	var b strings.Builder
+	b.WriteString("POST /artwork/command HTTP/1.1\r\n")
+	b.WriteString("Host: " + s.host + ":" + utoa(uint64(s.port)) + "\r\n")
+	b.WriteString("Content-Type: application/x-apple-binary-plist\r\n")
+	b.WriteString("Content-Length: " + utoa(uint64(len(body))) + "\r\n")
+	if s.rtspSession != "" {
+		b.WriteString("Session: " + s.rtspSession + "\r\n")
+	}
+	b.WriteString("DACP-ID: " + s.dacpID + "\r\n")
+	b.WriteString("Active-Remote: " + utoa(uint64(s.activeRemote)) + "\r\n")
+	b.WriteString("Client-Instance: " + s.dacpID + "\r\n")
+	b.WriteString("X-Apple-Client-Name: " + s.identity.Name + "\r\n")
+	b.WriteString("X-Apple-ProtocolVersion: 1.1\r\n")
+	b.WriteString("User-Agent: AirPlay/550.10\r\n")
+	b.WriteString("Connection: keep-alive\r\n\r\n")
+	b.Write(body)
+	req := []byte(b.String())
+	s.info("artwork POST %s:%d (%d bytes, %d px image)", s.host, s.port, len(req), len(s.artwork))
+	if !s.artworkOpen {
+		s.artworkPending = append(s.artworkPending[:0], req...)
+		if err := s.io.TCPConnect(raopio.TCPArtwork, s.host, s.port); err != nil {
+			s.artworkPending = s.artworkPending[:0]
+			s.warn("artwork channel: %v", err)
+		}
+		return
+	}
+	if err := s.io.TCPSend(raopio.TCPArtwork, req); err != nil {
+		s.artworkOpen = false
+		s.warn("artwork send: %v", err)
+	}
+}
+
+// onArtworkData drains the keep-alive HTTP responses from the artwork server.
+func (s *Sender) onArtworkData(data []byte) {
+	s.artworkRx = append(s.artworkRx, data...)
+	for {
+		i := bytes.Index(s.artworkRx, []byte("\r\n\r\n"))
+		if i < 0 {
+			break
+		}
+		head := string(s.artworkRx[:i])
+		n := 0
+		for _, line := range strings.Split(head, "\r\n") {
+			if strings.HasPrefix(strings.ToLower(line), "content-length:") {
+				n, _ = strconv.Atoi(strings.TrimSpace(line[len("content-length:"):]))
+			}
+		}
+		if len(s.artworkRx) < i+4+n {
+			break
+		}
+		status := strings.SplitN(head, "\r\n", 2)[0]
+		if !strings.Contains(status, " 200") {
+			s.warn("artwork response: %s", status)
+		} else {
+			s.info("artwork response: %s", status)
+		}
+		s.artworkRx = s.artworkRx[i+4+n:]
+	}
+	if len(s.artworkRx) > 64*1024 {
+		s.artworkRx = s.artworkRx[:0]
 	}
 }
 

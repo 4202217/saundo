@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-05 -->
 
 # Receiver profiles
 
@@ -14,6 +14,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 - `SETRATEANCHORTIME` returns plist `status: -12782` and is ignored on realtime streams.
 - Event-channel keys derive from the SRP shared secret; feedback every 2 s.
 - Verified on software 27.2 (2026-10-31): pairing, PTP, a 35-second muted session, a six-minute app run, a 30-minute soak at exactly 44100 × 1800 frames with zero drops, an audible tone with volume restore — and a cold start that needed more than 10 s to re-establish PTP after a long session (the handshake deadline is now 30 s).
+- Ambient light / Sound Glow (2026-11-05): the top display renders artwork only after Sound Glow is enabled in the HomePod settings; without it the top stays white. The working path is a plaintext HTTP `POST /artwork/command` to port 7000 with `Session`, `DACP-ID`, `Active-Remote`, `Client-Instance`, `X-Apple-Client-Name`, and `X-Apple-ProtocolVersion: 1.1`, a binary-plist body `{jpeg: "data:image/jpeg;base64,..."}`, and one keep-alive connection per session. `SET_PARAMETER` images and RTSP artwork POSTs are not rendered. Verified on `AudioAccessory5,1` at 27.2 with 600×600 JPEGs (lagoon, dawn); `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
 ## HomePod stereo pair
 

@@ -20,6 +20,7 @@ import (
 	"saundo/internal/capture"
 	"saundo/internal/diagnostics"
 	"saundo/internal/engine"
+	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
 	"saundo/internal/receivers"
 	"saundo/internal/settings"
@@ -121,6 +122,9 @@ type App struct {
 	reconnect      bool
 	launchAtStart  bool
 	showNowPlaying bool
+	lampEnabled    bool
+	lampPreset     string
+	lampExpanded   bool
 	trayAnimation  bool
 	autoUpdate     bool
 	beta           bool
@@ -162,9 +166,11 @@ func Run() error {
 	a.log.Printf("saundo %s", Version)
 
 	cfg := a.sets.Load()
-	if cfg.Name == legacyName {
-		// The rename owns the sender name; receivers should show 声渡.
+	if cfg.Name == legacyName && !cfg.NameMigrated {
+		// The rename owns the sender name; receivers should show 声渡. Run it
+		// once so a later deliberate rename back to the legacy word sticks.
 		cfg.Name = "声渡"
+		cfg.NameMigrated = true
 		_ = a.sets.Save(cfg)
 	}
 	a.cfg = cfg
@@ -197,6 +203,8 @@ func Run() error {
 		a.latencyCustom = float64(settings.DefaultLatencyCustomMS)
 	}
 	a.showLatencySwitch = cfg.ShowLatencySwitch
+	a.lampEnabled = cfg.Lamp.Enabled
+	a.lampPreset = lamp.Normalize(cfg.Lamp.Preset)
 	a.appNames = []string{locales.CaptureAllSystem()}
 	a.appIDs = []string{"0"}
 	a.appChoice = locales.CaptureAllSystem()
@@ -270,7 +278,7 @@ func (a *App) ready() {
 		})
 		// Discovery has not reported yet, so the flyout opens at the empty
 		// state's height and grows as devices arrive.
-		a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch)
+		a.flyoutH = flyoutHeightForState(0, a.showLatencySwitch, false)
 		a.win = mygo.NewFlyout(mygo.FlyoutOptions{
 			Tray:      a.tray,
 			Placement: mygo.PlacementBottom,
@@ -494,6 +502,12 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.strict = snap.StrictAuth
 	a.reconnect = snap.Reconnect
 	a.showNowPlaying = snap.ShowNowPlaying
+	a.lampEnabled = snap.LampEnabled
+	a.lampPreset = lamp.Normalize(snap.LampPreset)
+	// The engine owns the lamp fields. Mirror them here so an app-only save
+	// (theme, update preferences, launch at login) cannot write a stale lamp
+	// choice back over the engine's.
+	a.cfg.Lamp = settings.LampSettings{Enabled: a.lampEnabled, Preset: a.lampPreset}
 	if a.trayAnimation != snap.TrayAnimation {
 		a.trayAnimation = snap.TrayAnimation
 		a.syncTrayAnimator()
@@ -543,7 +557,7 @@ func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch)
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.lampExpanded)
 	if h == a.flyoutH {
 		return
 	}
@@ -845,6 +859,7 @@ func (a *App) setLanguage(label string) {
 	a.cfg.Language = tag
 	cfg := a.sets.Load()
 	cfg.Language = tag
+	a.cfg = cfg
 	_ = a.sets.Save(cfg)
 	mygo.App.SetLocale(tag)
 }

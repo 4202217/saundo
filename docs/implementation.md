@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-05 -->
 
 # Implementation overview
 
@@ -20,7 +20,8 @@ through bounded channels:
   callbacks (`internal/app`).
 - **The engine goroutine** (`internal/engine`, `Engine.run`) is the only
   caller of sender methods. It drains the command channel, runs the timers
-  (reconnect backoff, silence suspend, capture restart), and publishes a
+  (reconnect backoff, silence suspend, capture restart), renders the
+  ambient-light JPEG off the sender's tick path, and publishes a
   `Snapshot` on every state change. A stereo group whose member dies
   signals the loop through the transport's `Dead` channel, and the loop
   runs `closeSession` itself, so the group teardown also happens on this
@@ -44,7 +45,7 @@ The app also polls the Windows SMTC session every two seconds
 | Package | Responsibility |
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
-| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height), settings window (`settings_window.go`, seven pages behind a 190 sidebar, with the 关于 page in `about.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
+| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, plus the always-present ambient-light card in `lamp.go`), settings window (`settings_window.go`, eight pages behind a 190 sidebar, with the 关于 page in `about.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
 | `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), snapshots |
 | `internal/discovery` | mDNS browse, TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`) |
@@ -56,7 +57,8 @@ The app also polls the Windows SMTC session every two seconds
 | `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), live-edge start (`start_gate.go`) |
 | `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON (`dpapi_windows.go`) |
-| `internal/airplay/device` | Receiver description and auth enum shared by discovery, engine, and UI |
+| `internal/airplay/device` | Receiver description, auth enum, and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
+| `internal/lamp` | Ambient-light preset registry, the deterministic base-plus-three-blobs renderer, and a lazy per-preset 600×600 JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader for the Now Playing row (Windows/other build split) |
 | `internal/settings` | JSON configuration store |
@@ -67,14 +69,17 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetShowNowPlaying`, `SetNowPlaying`, and the receiver-management commands
+`SetShowNowPlaying`, `SetNowPlaying`, `SetLamp`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
-app-only latency mode fields in the engine settings copy. The snapshot
-carries both lists: `Devices` (the flyout, with hidden receivers filtered
-out while the active session's row stays) and `Receivers` (every row with
-its settings, no secrets — only whether a password exists).
+app-only latency mode fields in the engine settings copy. `SetLamp` saves the
+global `lamp.enabled`/`lamp.preset` choice, applies it to a live session, and
+is reapplied when a session starts streaming. The snapshot carries both
+lists: `Devices` (the flyout, with hidden receivers filtered out while the
+active session's row stays) and `Receivers` (every row with its settings, no
+secrets — only whether a password exists); it also carries `LampEnabled` and
+`LampPreset`, which both lamp surfaces read.
 
 The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
@@ -114,13 +119,18 @@ mode.
 5. While streaming: feedback every 2 s, receiver-volume polling, sync
    packets, and event-channel replies run on the sender's timers; after 2 s
    of digital silence the engine suspends the pacer until the next audible
-   block.
+   block. The engine reapplies the ambient light once the session streams,
+   and the sender also resends stored artwork at every stream start, so a
+   reconnect does not lose the top display. The artwork leaves on a plaintext
+   HTTP `/artwork/command` connection of its own (`raopio.TCPArtwork`), a
+   binary plist carrying the JPEG as a data URL over one keep-alive socket;
+   the encrypted RTSP control channel never carries it.
 
 ## On-disk state
 
 All under `%APPDATA%\saundo\`:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, and the language and appearance choices. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, and the global ambient-light choice (`lamp.enabled`, `lamp.preset`; an unknown preset is normalized to `dune` on load). The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, and delay settings. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.

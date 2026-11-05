@@ -475,5 +475,26 @@
     "placeholders": {
       "n": { "type": "int" }
     }
-  }
+  },
+
+  "settingsNavLamp": "Ambient light",
+  "pageLampDesc": "Every HomePod top display shows the same light.",
+  "settingsLampEnable": "Enable ambient light",
+  "settingsLampHomePodOnly": "HomePod only",
+  "settingsLampTop": "HomePod top display",
+  "settingsLampHintOn": "HomePod only. On shows the light; off sends no light.",
+  "settingsLampHintOff": "Off sends no light. Turn this on to show the chosen light on HomePod top displays.",
+  "settingsLampSoundGlowHint": "Enable Sound Glow in the HomePod settings; without it the top display stays white.",
+  "lampToggle": "Ambient light switch",
+  "flyoutLampSection": "Ambient light",
+  "flyoutLampHomePodOnly": "HomePod only",
+  "flyoutLampColors": "Colors",
+  "flyoutLampExpand": "Show colors",
+  "flyoutLampCollapse": "Hide colors",
+  "lampPresetEmber": "Ember",
+  "lampPresetDune": "Dune",
+  "lampPresetMoss": "Moss",
+  "lampPresetTide": "Tide",
+  "lampPresetOrchid": "Orchid",
+  "lampPresetMoon": "Moon"
 }

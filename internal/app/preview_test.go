@@ -192,10 +192,11 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		pageConnection: "settings-connection",
 		pageReceivers:  "settings-receivers",
 		pageAudio:      "settings-audio",
+		pageLamp:       "settings-lamp",
 		pageCapture:    "settings-capture",
 		pageAbout:      "settings-about",
 	}
-	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture, pageAbout}
+	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageLamp, pageCapture, pageAbout}
 	for _, page := range pages {
 		a := fixture()
 		a.page = page
@@ -271,6 +272,24 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-audio-compact-dark", customSettings.settingsView, 720, 420, true)
 	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false)
 	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true)
+
+	lampOff := fixture()
+	lampOff.page = pageLamp
+	lampOff.lampEnabled = false
+	lampOff.snap.LampEnabled = false
+	save("settings-lamp-off-light", lampOff.settingsView, 720, 500, false)
+	save("settings-lamp-off-dark", lampOff.settingsView, 720, 500, true)
+
+	lampFly := fixture()
+	lampFly.lampExpanded = true
+	save("flyout-lamp-expanded-light", lampFly.view, flyoutWidth,
+		flyoutHeightForState(deviceRows, true, true), false)
+	save("flyout-lamp-expanded-dark", lampFly.view, flyoutWidth,
+		flyoutHeightForState(deviceRows, true, true), true)
+	lampFly.lampEnabled = false
+	lampFly.snap.LampEnabled = false
+	save("flyout-lamp-off-light", lampFly.view, flyoutWidth,
+		flyoutHeightForState(deviceRows, true, true), false)
 
 	pin := fixture()
 	pin.snap.PinRequired = true

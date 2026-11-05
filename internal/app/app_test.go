@@ -53,6 +53,8 @@ func previewApp() *App {
 		latencyMode:       "low",
 		latencyCustom:     700,
 		showLatencySwitch: true,
+		lampEnabled:       true,
+		lampPreset:        "dune",
 	}
 	a.selID = "AA:BB:CC:DD:EE:01"
 	a.snap = engine.Snapshot{
@@ -73,6 +75,8 @@ func previewApp() *App {
 		PTPActive:      true,
 		PTPReady:       true,
 		Reconnect:      true,
+		LampEnabled:    true,
+		LampPreset:     "dune",
 	}
 	a.reconnect = true
 	return a
@@ -85,6 +89,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "推送", "未检测到媒体", "诊断日志",
+		"氛围灯", "HomePod 专属", "沙丘",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
@@ -194,6 +199,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
+		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "开启氛围灯", "HomePod 专属", "HomePod 顶屏", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "关闭后不发送灯色"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "把 Windows 上正在播放的声音，渡到 AirPlay 2。", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
@@ -341,7 +347,7 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	cases := map[int]int{0: 470, 1: 388, 2: 444, 3: 500, 5: 500}
+	cases := map[int]int{0: 545, 1: 463, 2: 519, 3: 575, 5: 575}
 	for devices, want := range cases {
 		if got := flyoutHeightFor(devices, false); got != want {
 			t.Errorf("flyoutHeightFor(%d, false) = %d, want %d", devices, got, want)

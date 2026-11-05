@@ -18,28 +18,30 @@ import (
 const testDeviceID = "AA:BB:CC:DD:EE:01"
 
 type fakeTransport struct {
-	evs        chan raopio.Event
-	ev         sender.Events
-	started    bool
-	stopped    bool
-	state      sender.State
-	identity   sender.Identity
-	authDev    string
-	authAP2    bool
-	strict     bool
-	ptpSet     bool
-	inputRates []int
-	latencies  []int
-	volumes    []float64
-	authPW     string
-	nowPlaying []string
-	pins       []string
-	waitingPin bool
-	pauses     []bool
-	pauseOK    bool
-	initialPct float64
-	hasInitial bool
-	rings      []*ring.Buffer
+	evs         chan raopio.Event
+	ev          sender.Events
+	started     bool
+	stopped     bool
+	state       sender.State
+	identity    sender.Identity
+	authDev     string
+	authAP2     bool
+	strict      bool
+	ptpSet      bool
+	inputRates  []int
+	latencies   []int
+	volumes     []float64
+	authPW      string
+	nowPlaying  []string
+	artwork     [][]byte
+	artworkMIME []string
+	pins        []string
+	waitingPin  bool
+	pauses      []bool
+	pauseOK     bool
+	initialPct  float64
+	hasInitial  bool
+	rings       []*ring.Buffer
 }
 
 func newFakeTransport(ev sender.Events) *fakeTransport {
@@ -88,6 +90,10 @@ func (f *fakeTransport) InitialVolumePercent() (float64, bool) {
 }
 func (f *fakeTransport) SetNowPlaying(title, artist, album string) {
 	f.nowPlaying = append(f.nowPlaying, title+"\x00"+artist+"\x00"+album)
+}
+func (f *fakeTransport) SetArtwork(data []byte, mime string) {
+	f.artwork = append(f.artwork, append([]byte(nil), data...))
+	f.artworkMIME = append(f.artworkMIME, mime)
 }
 func (f *fakeTransport) PTP() (bool, bool, float64) { return false, false, 0 }
 

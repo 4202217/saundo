@@ -219,3 +219,33 @@ A session starts at the live edge: capture runs from launch, so the ring holds s
 - The first `Begin` from the engine's Tick performs the one trim that keeps the newest 50 ms cushion (`DefaultStartCushion`) — the session ring for a single receiver, or every member ring through the fanout in one call under its push lock for a pair. The trim is policy, not capture overflow, so it does not increment the dropped-sample counter.
 - Every member begins from the same epoch in that Tick, so a pair's rings keep the same content window and the members arm their pacers in lockstep.
 - Sync timestamps are anchored to that shared epoch: the published RTP value is `latency + frames since epoch`, not the number of packets actually sent, so a late pacer tick does not become a pair offset. Audio packet timestamps remain `latency + framesSent`.
+
+## 10. Top-display artwork (Sound Glow)
+
+HomePod software 27.2 renders a full-screen artwork on its top display once the user enables Sound Glow in the HomePod settings. Without that setting the display stays white even though every request succeeds.
+
+The image does not travel on the RTSP control channel. It is a plaintext HTTP request on the receiver's port 7000, on a TCP connection separate from the encrypted RTSP control:
+
+```
+POST /artwork/command HTTP/1.1
+Host: <receiver>:7000
+Content-Type: application/x-apple-binary-plist
+Content-Length: <n>
+Session: <rtspSession>
+DACP-ID: <dacpID>
+Active-Remote: <activeRemote>
+Client-Instance: <dacpID>
+X-Apple-Client-Name: <sender name>
+X-Apple-ProtocolVersion: 1.1
+User-Agent: AirPlay/550.10
+Connection: keep-alive
+
+<binary plist: {"jpeg": "data:image/jpeg;base64,<JPEG>"}>
+```
+
+- The body must be a binary plist whose `jpeg` key holds a base64 data URL. A raw JPEG body returns 400; an empty body returns 200 without changing the display.
+- One keep-alive connection carries the session's images. The receiver's HTTP server stops accepting new connections after a burst of short ones.
+- The image is a 600×600 sRGB JPEG at quality 0.88; the receiver downscales and softens it for the top display.
+- The plain HTTP connection does not need the RTSP encryption; the session headers identify it.
+- `SET_PARAMETER` images and RTSP `POST artwork/command` return success but are not rendered.
+- The setting cannot be discovered over the protocol; the UI tells the user to enable Sound Glow, and `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
