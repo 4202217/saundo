@@ -831,6 +831,27 @@ muted the endpoint between two measurements.
   toggle clicked in a real session; the engine guard and the UI wiring are
   covered separately.
 
+## Stereo group name decoding (2026-11-06)
+
+A HomePod mini stereo pair (`AudioAccessory5,1`, software 27) advertises the
+Home app group name in the TXT `gpn` field. `hashicorp/mdns` reports TXT
+strings in RFC 1035 presentation form, so a UTF-8 name arrives as `\DDD` byte
+escapes: the pair named 卧室 advertised `gpn=\229\141\167\229\174\164`.
+Discovery decoded those escapes for the instance name but not for `gpn`, so
+the collapsed pair row and `receivers.json` stored the escaped text.
+
+- **Finding.** A live browse printed the group as
+  `name="\\229\\141\\167\\229\\174\\164"`, and `receivers.json` held the same
+  escaped name under `stereo:7A6CE980-7265-5ABD-B3E9-B90563D5932F`.
+- **Fix.** `parseEntry` runs `gpn` through `unescapeDNS`, the same path as
+  the instance name; devices.md and protocol.md record the rule.
+- **Pin.** `TestStereoGroupNameDecodesDNSEscapes` fails before the fix with
+  `group name = "\\229\\141\\167\\229\\174\\164"` and passes after it.
+- **Live app (2026-11-06).** The rebuilt 0.4.2 app discovered the pair as
+  `卧室 · AudioAccessory5,1 · 立体声组 2/2`, showed `正在播放到 卧室`, and
+  rewrote the stored name to `卧室`. Flyout capture:
+  `/tmp/saundo-verify/20261106-gpn-fix/flyout-after.png`.
+
 ## Failure modes and meanings
 
 | Symptom | Likely cause |

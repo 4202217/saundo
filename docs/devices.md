@@ -17,7 +17,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 
 ## HomePod stereo pair
 
-- Both members advertise the same `tsid`; `gpn` carries the group name (`HomePods`); `igl=1` appears only on the leader (a real pair marks HomePod R). `gcgl` alone does not mark a leader.
+- Both members advertise the same `tsid`; `gpn` carries the group name (`HomePods`). A UTF-8 group name arrives in RFC 1035 `\DDD` byte escapes, the same presentation form as the instance name, and must be decoded before display. `igl=1` appears only on the leader (a real pair marks HomePod R). `gcgl` alone does not mark a leader.
 - Discovery collapses the pair into one target `stereo:<tsid>`, hides the member rows, and reports online only when both members are online.
 - One AP2 session per member with `groupUUID = tsid`; SETPEERS carries both members plus the sender; **the sender is the PTP grandmaster** (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
 - Capture fans out to one ring per member; both sessions must reach streaming before the group launches.

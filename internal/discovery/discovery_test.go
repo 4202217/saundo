@@ -319,6 +319,46 @@ func TestSnapshotCollapsesStereoPair(t *testing.T) {
 	}
 }
 
+// TestStereoGroupNameDecodesDNSEscapes mirrors a HomePod pair whose Home app
+// group name is 卧室: the TXT `gpn` carries each UTF-8 byte as an RFC 1035
+// \DDD escape, the same presentation form hashicorp/mdns reports for instance
+// names. The collapsed group must show the decoded name.
+func TestStereoGroupNameDecodesDNSEscapes(t *testing.T) {
+	fields := func(id, leader string) []string {
+		return []string{
+			"deviceid=" + id, "model=AudioAccessory5,1",
+			"features=0x4a7fca00,0x3c354b00",
+			`gpn=\229\141\167\229\174\164`,
+			leader, "tsid=00000000-0000-4000-8000-000000000000",
+		}
+	}
+	right, ok := parseEntry(&mdns.ServiceEntry{
+		Name: "HomePod R._airplay._tcp.local.", AddrV4: net.IPv4(10, 0, 0, 3), Port: 7000,
+		InfoFields: fields("02:00:00:00:00:0A", "igl=1"),
+	}, airplayService)
+	if !ok {
+		t.Fatal("leader rejected")
+	}
+	if right.GroupName != "卧室" {
+		t.Fatalf("group name = %q, want the decoded UTF-8 name", right.GroupName)
+	}
+	left, ok := parseEntry(&mdns.ServiceEntry{
+		Name: "HomePod L._airplay._tcp.local.", AddrV4: net.IPv4(10, 0, 0, 2), Port: 7000,
+		InfoFields: fields("02:00:00:00:00:0B", "gcgl=1"),
+	}, airplayService)
+	if !ok {
+		t.Fatal("member rejected")
+	}
+	s := New(0, 0)
+	s.now = func() time.Time { return time.Now() }
+	s.merge(right)
+	s.merge(left)
+	got := s.Snapshot()
+	if len(got) != 1 || got[0].Name != "卧室" {
+		t.Fatalf("snapshot = %+v, want one group named 卧室", got)
+	}
+}
+
 func TestIncompleteStereoGroupIsOffline(t *testing.T) {
 	s := New(0, 0)
 	base := time.Now()

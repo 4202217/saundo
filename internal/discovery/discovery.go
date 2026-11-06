@@ -316,7 +316,7 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 		AM:               txt["am"],
 		PasswordRequired: strings.EqualFold(txt["pw"], "true") || strings.EqualFold(txt["pw"], "1") || sf&0x80 != 0,
 		AirPlay2:         service == airplayService,
-		GroupName:        txt["gpn"],
+		GroupName:        unescapeDNS(txt["gpn"]),
 		GroupLeader:      leader,
 		StereoID:         strings.TrimSpace(txt["tsid"]),
 	}
@@ -324,9 +324,11 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 	return d, true
 }
 
-// unescapeDNS decodes the RFC 1035 escapes hashicorp/mdns reports. `\DDD`
-// is one decimal byte and `\X` is the literal character X, so a UTF-8 name
-// arrives as a run of three-digit escapes (HomePod\ R becomes HomePod R).
+// unescapeDNS decodes the RFC 1035 escapes hashicorp/mdns reports in instance
+// names and TXT strings. `\DDD` is one decimal byte and `\X` is the literal
+// character X, so a UTF-8 name arrives as a run of three-digit escapes
+// (HomePod\ R becomes HomePod R, and a `gpn` of 卧室 stays escaped until it
+// passes through here).
 func unescapeDNS(s string) string {
 	if !strings.ContainsRune(s, '\\') {
 		return s
