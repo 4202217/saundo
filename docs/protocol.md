@@ -239,7 +239,7 @@ Content-Length: <n>
 - When the sender has no track metadata, it first sends a minimal DMAP item (`mlit` containing `minm` = `saundo`) so the cover has a Now Playing item to attach to.
 - The image is a 600×600 sRGB JPEG at quality ~0.9; the receiver downscales and softens it for the top display.
 - The sender pushes on light change and on stream start. The first preset `origin` is a solid black 600×600 JPEG; the HomePod's color-stop normalization lifts black to a full channel, so it lands on the default white rather than an LED-off. The off switch sends the same image. A true LED-off has no AirPlay command; only the on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) drives the LEDs directly, and it is entitlement-gated.
-- A song's own cover competes for the same cover slot: the light wins while it is set; the future media-follow mode will pass the media cover instead.
+- A song's own cover competes for the same slot. The ambient light wins while it is on; while it is off, the receiver track-info cover wins when that setting is on, and the origin image is the fallback. Media-follow needs no separate mode: the device colors from whatever cover arrives.
 - The setting cannot be discovered over the protocol; `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
 Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the receiver muted, raw JPEG `/artwork/command` POSTs returned `400 Bad Request`; a binary-plist POST returned `200 OK` but did not replace the cover. On 2026-11-07, three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon, orchid) each repainted the top display with no `/artwork/command`; the POST trigger and the separate `TCPArtwork` channel were removed.

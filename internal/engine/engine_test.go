@@ -38,6 +38,7 @@ type fakeTransport struct {
 	nowCoverMIME string
 	artwork      [][]byte
 	artworkMIME  []string
+	artworkOn    []bool
 	pins         []string
 	waitingPin   bool
 	pauses       []bool
@@ -96,9 +97,10 @@ func (f *fakeTransport) SetNowPlaying(title, artist, album string, cover []byte,
 	f.nowCover = append([]byte(nil), cover...)
 	f.nowCoverMIME = coverMIME
 }
-func (f *fakeTransport) SetArtwork(data []byte, mime string) {
+func (f *fakeTransport) SetLampArtwork(data []byte, mime string, on bool) {
 	f.artwork = append(f.artwork, append([]byte(nil), data...))
 	f.artworkMIME = append(f.artworkMIME, mime)
+	f.artworkOn = append(f.artworkOn, on)
 }
 func (f *fakeTransport) PTP() (bool, bool, float64) { return false, false, 0 }
 

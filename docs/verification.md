@@ -66,9 +66,10 @@ live state:
   SoundBoardServices XPC (`setLEDContents:`, `disable_leds`) drives the
   LEDs, and it is entitlement-gated.
 - Ambient light, off behavior: whether the receiver returns to its native top
-  display when the sender stops pushing, or keeps the last light. The sender
-  currently sends no clear image; the UI only promises that off sends no
-  light.
+  display when the sender stops pushing, or keeps the last light. Off now
+  sends the origin image as the fallback; when the receiver track-info push
+  is on, its cover keeps the slot instead. The receiver side of that
+  precedence is unverified.
 - Ambient light, capability matrix: HomePod 2, HomePod 1, HomePod mini, and a
   receiver below software 27.2. `TopDisplayCapable` holds every unknown and
   the mini back (false) until these runs exist.
@@ -880,7 +881,7 @@ development PC with a real HomePod stereo pair on the LAN.
   and `POST /artwork/command` but displayed nothing, so it stays excluded.
   The engine's
   `SetLamp` saves the choice, renders off the sender's tick path, and reapplies
-  it when a session starts streaming. The sender's `SetArtwork` sends the
+  it when a session starts streaming. The sender's `SetLampArtwork` sends the
   image over the existing `SET_PARAMETER` artwork path without touching DMAP
   text, waits for streaming, and deduplicates identical bytes. A stereo group
   fans the image out per capable member. The 氛围灯 settings page and the
@@ -891,9 +892,9 @@ development PC with a real HomePod stereo pair on the LAN.
   `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOffAndOrigin`,
   `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToOrigin`,
   `TestLampRoundTrips`, `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
-  `TestMergeKeepsOSVersion`, `TestSetArtworkSendsCover`,
-  `TestSetArtworkWaitsForStreaming`, `TestSetArtworkDuplicateIsNoOp`,
-  `TestSetArtworkDoesNotTouchDMAPText`, `TestSetArtworkClearSendsNothing`,
+  `TestMergeKeepsOSVersion`, `TestSetLampArtworkSendsCover`,
+  `TestSetLampArtworkWaitsForStreaming`, `TestSetLampArtworkDuplicateIsNoOp`,
+  `TestSetLampArtworkDoesNotTouchDMAPText`, `TestSetLampArtworkClearSendsNothing`,
   `TestLampToggleAppliesAndPersists`, `TestLampAppliedWhenStreamingStarts`,
   `TestLampUnknownPresetFallsBackToOrigin`, `TestLampSkipsIncapableReceivers`,
   `TestLampTogglingTwiceLogsTheSkipOnce`,
@@ -924,13 +925,13 @@ muted to volume 0 so no test made sound.
 - **The cover plus the POST works.** Blue `SET_PARAMETER image/jpeg`, then the
   binary-plist POST one second later, made the top display blue. The same
   sequence without the cover showed nothing.
-- **Production path (superseded 2026-11-07).** `SetArtwork` sent a minimal
+- **Production path (superseded 2026-11-07).** `SetLampArtwork` sent a minimal
   DMAP item when the app had no track metadata, set the cover by
   `SET_PARAMETER image/jpeg`, then fired `POST /artwork/command` one second
   later. The cover-only run removed the POST; the current path is pinned by
-  `TestSetArtworkSendsCover`, `TestSetArtworkWaitsForStreaming`,
-  `TestSetArtworkDuplicateIsNoOp`, `TestSetArtworkDoesNotTouchDMAPText`, and
-  `TestSetArtworkClearSendsNothing`.
+  `TestSetLampArtworkSendsCover`, `TestSetLampArtworkWaitsForStreaming`,
+  `TestSetLampArtworkDuplicateIsNoOp`, `TestSetLampArtworkDoesNotTouchDMAPText`, and
+  `TestSetLampArtworkClearSendsNothing`.
 - **Default reset, no LED-off.** The first preset `origin` is a solid black
   JPEG. On HomePod 27.2 the firmware lifts black to a full channel for its
   color stops, so the top display lands on the default white, not an
@@ -1067,14 +1068,23 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
 - **Cover-only repaint works.** Three consecutive `SET_PARAMETER image/jpeg`
   covers (tide, moon, orchid) each repainted the top display; no
   `/artwork/command` was sent. The startup ember cover was not the only one.
-- **Removed.** `sendArtwork` now only sets the Now Playing cover. The
+- **Removed.** `sendCover` now only sets the Now Playing cover. The
   `TCPArtwork` channel, `artworkTrigger` timer, binary-plist data URL body,
   keep-alive response parser, and 1 s delay are gone. Pinned by
-  `TestSetArtworkSendsCover`, `TestSetArtworkWaitsForStreaming`,
-  `TestSetArtworkDuplicateIsNoOp`, `TestSetArtworkDoesNotTouchDMAPText`, and
-  `TestSetArtworkClearSendsNothing`.
-- **Still unverified.** The media-follow mode, the 6,1 and first-generation
-  HomePod, and a stereo pair's simultaneous repaint.
+  `TestSetLampArtworkSendsCover`, `TestSetLampArtworkWaitsForStreaming`,
+  `TestSetLampArtworkDuplicateIsNoOp`, `TestSetLampArtworkDoesNotTouchDMAPText`, and
+  `TestSetLampArtworkClearSendsNothing`.
+- **One cover slot (2026-11-07).** The sender now stores the media cover and
+  the ambient image separately and elects one: the light while on, otherwise
+  the receiver track-info cover, with the origin image as the fallback. A new
+  media cover updates the Now Playing text without displacing the light, and
+  turning the light off hands the slot back to the media cover when one
+  exists. Pinned by `TestMediaCoverWinsWhenLampIsOff` and
+  `TestLampCoverWinsWhileOn`; the receiver-side result of the precedence is
+  still pending.
+- **Still unverified.** The receiver-side precedence between the light and
+  the receiver track-info cover, the 6,1 and first-generation HomePod, and a
+  stereo pair's simultaneous repaint.
 
 ## Failure modes and meanings
 

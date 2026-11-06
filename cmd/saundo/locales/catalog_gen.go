@@ -720,6 +720,16 @@ func (msgs Messages) FlyoutNext() string {
 	return Catalog.Format(msgs.locale, "flyoutNext", nil)
 }
 
+// FlyoutNowPlaying says "Now playing"
+// in the language the app shows.
+func FlyoutNowPlaying() string { return In(i18n.Locale()).FlyoutNowPlaying() }
+
+// FlyoutNowPlaying says "Now playing"
+// in the language of msgs.
+func (msgs Messages) FlyoutNowPlaying() string {
+	return Catalog.Format(msgs.locale, "flyoutNowPlaying", nil)
+}
+
 // ActionCancel says "Cancel"
 // in the language the app shows.
 func ActionCancel() string { return In(i18n.Locale()).ActionCancel() }
@@ -3194,21 +3204,21 @@ func (msgs Messages) SettingsLampTop() string {
 	return Catalog.Format(msgs.locale, "settingsLampTop", nil)
 }
 
-// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns to the default."
+// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover."
 // in the language the app shows.
 func SettingsLampHintOn() string { return In(i18n.Locale()).SettingsLampHintOn() }
 
-// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns to the default."
+// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOn() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
 }
 
-// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default. Turn on to show them."
+// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to sho…"
 // in the language the app shows.
 func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
 
-// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default. Turn on to show them."
+// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to sho…"
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOff() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)

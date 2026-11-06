@@ -609,7 +609,7 @@ func (s *Sender) beginPlayback(epoch time.Time) {
 	}
 	s.feedback.arm(now)
 	s.sendMetadata()
-	s.sendArtwork()
+	s.sendCover()
 	s.info("streaming to %q, RTP %d frames/packet at %d Hz%s", s.name, framesPerPacket, raopRate,
 		map[bool]string{true: " (encrypted)", false: ""}[s.ap2 != nil && s.ap2.encryptAudio])
 	if s.events.Launched != nil {
@@ -660,45 +660,66 @@ func (s *Sender) SetVolume(pct float64) {
 	}
 }
 
-// SetNowPlaying pushes track metadata and optional cover art over
+// SetNowPlaying pushes track metadata and the optional receiver cover over
 // SET_PARAMETER. Empty fields are omitted.
 func (s *Sender) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
 	changed := title != s.npTitle || artist != s.npArtist || album != s.npAlbum ||
-		!bytes.Equal(cover, s.npCover) || coverMIME != s.npCoverMIME
+		!bytes.Equal(cover, s.mediaCover) || coverMIME != s.mediaCoverMIME
 	s.npTitle, s.npArtist, s.npAlbum = title, artist, album
-	s.npCover, s.npCoverMIME = cover, coverMIME
+	s.mediaCover, s.mediaCoverMIME = cover, coverMIME
 	if s.state == StateStreaming && changed {
 		s.sendMetadata()
+		s.sendCover()
 	}
 }
 
-// SetArtwork stores the top-display image. The receiver renders the current
-// Now Playing cover on its top display, so the image is sent twice: once as
-// the cover over SET_PARAMETER, then a POST /artwork/command as the repaint
-// trigger. Empty data clears the stored image without sending anything.
-func (s *Sender) SetArtwork(data []byte, mime string) {
-	if bytes.Equal(data, s.artwork) && mime == s.artworkMIME && s.artworkSent {
-		s.info("artwork set: unchanged (%d bytes)", len(data))
+// SetLampArtwork stores the ambient-light image and whether it owns the cover
+// slot. While on, the light wins over the receiver track-info cover; while
+// off, the media cover wins when present and this image (the origin reset) is
+// the fallback. An unchanged choice is a no-op; a reconnect resends the
+// effective cover.
+func (s *Sender) SetLampArtwork(data []byte, mime string, on bool) {
+	if bytes.Equal(data, s.lampCover) && mime == s.lampCoverMIME && on == s.lampOn {
+		s.info("ambient light: unchanged (%d bytes, on=%v)", len(data), on)
 		return
 	}
-	s.artwork = append(s.artwork[:0], data...)
-	s.artworkMIME = mime
-	s.artworkSent = false
-	s.info("artwork set: %d bytes, state=%s", len(data), s.state)
-	if s.state == StateStreaming && len(s.artwork) > 0 {
-		s.sendArtwork()
+	s.lampCover = append(s.lampCover[:0], data...)
+	s.lampCoverMIME = mime
+	s.lampOn = on
+	s.info("ambient light: %d bytes, on=%v, state=%s", len(data), on, s.state)
+	if s.state == StateStreaming {
+		s.sendCover()
 	}
 }
 
-// sendArtwork sets the image as the Now Playing cover. The receiver renders
-// the cover on its top display; no separate artwork POST is needed.
-func (s *Sender) sendArtwork() {
-	if s.state != StateStreaming || len(s.artwork) == 0 || len(s.artwork) > 8*1024*1024 {
+// coverImage is the image that owns the Now Playing cover slot. The ambient
+// light wins while it is on; otherwise the receiver track-info cover wins,
+// with the origin image as the fallback.
+func (s *Sender) coverImage() ([]byte, string) {
+	if s.lampOn && len(s.lampCover) > 0 {
+		return s.lampCover, s.lampCoverMIME
+	}
+	if len(s.mediaCover) > 0 {
+		return s.mediaCover, s.mediaCoverMIME
+	}
+	return s.lampCover, s.lampCoverMIME
+}
+
+// sendCover pushes the effective cover as a Now Playing image. The receiver
+// renders that cover on its top display; there is no separate artwork POST.
+func (s *Sender) sendCover() {
+	if s.state != StateStreaming {
 		return
 	}
-	mime := s.artworkMIME
+	img, mime := s.coverImage()
+	if len(img) == 0 || len(img) > 8*1024*1024 {
+		return
+	}
 	if mime == "" {
 		mime = "image/jpeg"
+	}
+	if bytes.Equal(img, s.sentCover) && mime == s.sentCoverMIME {
+		return
 	}
 	// The top display needs a Now Playing item to attach the artwork to.
 	// When the app has no track metadata, send a minimal one.
@@ -706,8 +727,10 @@ func (s *Sender) sendArtwork() {
 		s.sendRequest("SET_PARAMETER", s.rtspURI(), "application/x-dmap-tagged",
 			dmapTag("mlit", dmapTag("minm", "saundo")), s.metadataHeaders())
 	}
-	s.sendRequest("SET_PARAMETER", s.rtspURI(), mime, string(s.artwork), s.metadataHeaders())
-	s.artworkSent = true
+	s.sendRequest("SET_PARAMETER", s.rtspURI(), mime, string(img), s.metadataHeaders())
+	s.sentCover = append(s.sentCover[:0], img...)
+	s.sentCoverMIME = mime
+	s.info("cover: %d bytes, lamp=%v", len(img), s.lampOn)
 }
 
 // metadataHeaders is the Session and RTP-Info pair that track metadata,
@@ -726,7 +749,7 @@ func (s *Sender) sendMetadata() {
 	if s.state != StateStreaming {
 		return
 	}
-	if s.npTitle == "" && s.npArtist == "" && s.npAlbum == "" && len(s.npCover) == 0 {
+	if s.npTitle == "" && s.npArtist == "" && s.npAlbum == "" {
 		return
 	}
 	hdr := s.metadataHeaders()
@@ -743,12 +766,5 @@ func (s *Sender) sendMetadata() {
 	if inner.Len() > 0 {
 		s.sendRequest("SET_PARAMETER", s.rtspURI(), "application/x-dmap-tagged",
 			dmapTag("mlit", inner.String()), hdr)
-	}
-	if len(s.npCover) > 0 && len(s.npCover) <= 8*1024*1024 {
-		mime := s.npCoverMIME
-		if mime == "" {
-			mime = "image/jpeg"
-		}
-		s.sendRequest("SET_PARAMETER", s.rtspURI(), mime, string(s.npCover), hdr)
 	}
 }

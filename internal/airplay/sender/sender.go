@@ -319,15 +319,18 @@ type Sender struct {
 	backlogSeq []int32
 
 	npTitle, npArtist, npAlbum string
-	npCover                    []byte
-	npCoverMIME                string
-	// artwork is the top-display image, separate from the DMAP text and the
-	// Now Playing cover. It is resent whenever a session starts streaming.
-	artwork     []byte
-	artworkMIME string
-	// artworkSent marks the current image as delivered to this session, so a
-	// duplicate SetArtwork is a no-op but a reconnect resends the light.
-	artworkSent bool
+	// mediaCover is the cover the receiver track-info push supplies. lampCover
+	// is the ambient-light image; lampOn says it owns the cover slot. With the
+	// lamp off, a media cover wins and lampCover is the origin fallback.
+	mediaCover     []byte
+	mediaCoverMIME string
+	lampCover      []byte
+	lampCoverMIME  string
+	lampOn         bool
+	// sentCover is the last image delivered to this session, so an unchanged
+	// cover is a no-op while a reconnect resends it.
+	sentCover     []byte
+	sentCoverMIME string
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -533,7 +536,8 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.pending = s.pending[:0]
 	s.rtspSession = ""
 	s.port = port
-	s.artworkSent = false
+	s.sentCover = s.sentCover[:0]
+	s.sentCoverMIME = ""
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
