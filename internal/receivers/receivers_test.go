@@ -69,6 +69,31 @@ func TestMergeKeepsRememberedRowOffline(t *testing.T) {
 	}
 }
 
+// TestManageableDropsOfflineRememberedRows pins the display rule: a
+// remembered receiver with no live advertisement is not shown, while a
+// manual receiver and an online receiver are, and the active session's row
+// stays reachable even when it just went offline.
+func TestManageableDropsOfflineRememberedRows(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "在线"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "离线"},
+		{Key: "m:01", Kind: KindManual, Type: TypeAirPlay2, Name: "手动", Host: "192.0.2.9", Port: 7000},
+	}}
+	devs := []device.Device{discovered("AA:00", "在线", "192.0.2.1", 7000)}
+	targets := Manageable(Merge(reg, devs, nil), "")
+	if len(targets) != 2 {
+		t.Fatalf("targets = %+v, want the online and the manual row", targets)
+	}
+	for _, target := range targets {
+		if target.Entry.Key == "AA:01" {
+			t.Fatalf("offline remembered row survived: %+v", target)
+		}
+	}
+	if got := Manageable(Merge(reg, devs, nil), "AA:01"); len(got) != 3 {
+		t.Fatalf("active row dropped: %+v", got)
+	}
+}
+
 func TestMergeManualAuthFollowsTypeAndPassword(t *testing.T) {
 	reg := Registry{Entries: []Entry{
 		{Key: "m:ap2", Kind: KindManual, Type: TypeAirPlay2, Host: "h", Port: 7000},

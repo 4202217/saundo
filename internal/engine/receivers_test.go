@@ -78,7 +78,7 @@ func (h *harness) addDeviceOnline() {
 
 func TestSetDevicesRemembersFirstSightings(t *testing.T) {
 	h := newHarnessWithRegistry(t)
-	h.addDevice()
+	h.addDeviceOnline()
 	stored, err := h.e.recvStore.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -93,21 +93,42 @@ func TestSetDevicesRemembersFirstSightings(t *testing.T) {
 	_ = ring.New(1) // keep the ring import anchored to the harness fields
 }
 
-func TestRememberedDeviceStaysOfflineRow(t *testing.T) {
+// TestRememberedDeviceLeavesTheListsWhenOffline pins the display rule: a
+// remembered receiver without a live advertisement is hidden from both the
+// flyout and the settings page, but stays in the registry for when it
+// returns.
+func TestRememberedDeviceLeavesTheListsWhenOffline(t *testing.T) {
 	h := newHarnessWithRegistry(t)
 	h.addDevice()
 	h.e.setDevices(nil) // the receiver left the network
 	snap := h.e.Snapshot()
-	if len(snap.Devices) != 1 || snap.Devices[0].Online {
-		t.Fatalf("remembered row lost from the flyout: %+v", snap.Devices)
+	if len(snap.Devices) != 0 {
+		t.Fatalf("offline remembered row still in the flyout: %+v", snap.Devices)
 	}
-	if len(snap.Receivers) != 1 || snap.Receivers[0].Online {
-		t.Fatalf("remembered row lost from settings list: %+v", snap.Receivers)
+	if len(snap.Receivers) != 0 {
+		t.Fatalf("offline remembered row still in the settings list: %+v", snap.Receivers)
+	}
+	if len(h.e.reg.Entries) != 1 {
+		t.Fatalf("registry dropped the remembered row: %+v", h.e.reg.Entries)
 	}
 	// Coming back restores the live advertisement.
 	h.addDeviceOnline()
-	if got := h.e.Snapshot().Devices; len(got) != 1 || !got[0].Online || got[0].Host != "192.0.2.10" {
-		t.Fatalf("receiver did not come back: %+v", got)
+	snap = h.e.Snapshot()
+	if len(snap.Devices) != 1 || !snap.Devices[0].Online || snap.Devices[0].Host != "192.0.2.10" {
+		t.Fatalf("receiver did not come back: %+v", snap.Devices)
+	}
+	if len(snap.Receivers) != 1 || !snap.Receivers[0].Online {
+		t.Fatalf("settings list did not restore the receiver: %+v", snap.Receivers)
+	}
+}
+
+// TestOpenSessionRefusesAddresslessReceiver pins the dial guard: an offline
+// remembered group has no host or port, and opening its session must fail
+// closed instead of dialing :0.
+func TestOpenSessionRefusesAddresslessReceiver(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	if _, _, err := h.e.openSession(device.Device{ID: "stereo:gone", Name: "HomePods"}); err == nil {
+		t.Fatal("opened a session for an addressless receiver")
 	}
 }
 
@@ -273,7 +294,7 @@ func TestRemoveReceiverDeletesManualRowOnly(t *testing.T) {
 		Name: "书房", Type: receivers.TypeAirPlay1, Host: "192.0.2.7", Password: "pw",
 	}})
 	key := manualKey(h)
-	h.addDevice() // a discovered receiver
+	h.addDeviceOnline() // a discovered receiver
 	h.e.handleCommand(command{kind: cmdRemoveReceiver, deviceID: testDeviceID})
 	if _, ok := h.e.reg.Get(testDeviceID); !ok {
 		t.Fatal("a discovered row was removed")
@@ -292,7 +313,7 @@ func TestRemoveReceiverDeletesManualRowOnly(t *testing.T) {
 
 func TestSetReceiverHiddenFiltersFlyoutKeepsActive(t *testing.T) {
 	h := newHarnessWithRegistry(t)
-	h.addDevice()
+	h.addDeviceOnline()
 	h.connect()
 	h.launch()
 	// The active session's receiver can be hidden and stays reachable.
@@ -528,6 +549,15 @@ func TestGroupSettingsPersistOffline(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: key,
 		patch: receivers.Patch{DelayMS: &delay, Hidden: &hidden, AutoConnect: &on}})
 	h.e.setDevices(nil) // the pair goes offline
+	if got := h.e.Snapshot().Receivers; len(got) != 0 {
+		t.Fatalf("offline group stayed in the settings list: %+v", got)
+	}
+	entry, ok := h.e.reg.Get(key)
+	if !ok || !entry.Hidden || entry.DelayMS != 120 || !entry.AutoConnect {
+		t.Fatalf("group settings lost offline: %+v ok=%v", entry, ok)
+	}
+	// The settings return with the pair.
+	h.e.setDevices([]device.Device{group})
 	var view receivers.View
 	found := false
 	for _, v := range h.e.Snapshot().Receivers {
@@ -535,11 +565,8 @@ func TestGroupSettingsPersistOffline(t *testing.T) {
 			view, found = v, true
 		}
 	}
-	if !found {
-		t.Fatalf("group row disappeared: %+v", h.e.Snapshot().Receivers)
-	}
-	if !view.Stereo || !view.Hidden || view.DelayMS != 120 || !view.AutoConnect {
-		t.Fatalf("group settings lost offline: %+v", view)
+	if !found || !view.Stereo || !view.Hidden || view.DelayMS != 120 || !view.AutoConnect {
+		t.Fatalf("group settings lost on return: %+v found=%v", view, found)
 	}
 	if len(h.e.Snapshot().Devices) != 0 {
 		t.Fatalf("hidden group stayed in the flyout: %+v", h.e.Snapshot().Devices)

@@ -22,10 +22,13 @@ Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); per-receiver password
   row (masked, saved/cleared through the DPAPI store); add/edit/password/
-  remove dialogs (`receivers_dialogs.go`). The 已启用 head renders only when
-  the list has rows. An empty page is plain prose: one discovery line when
-  nothing is found, or an all-hidden title plus the recovery hint when every
-  row is hidden; the add row is the only plus.
+  remove dialogs (`receivers_dialogs.go`). The flyout and this list show
+  manual receivers and online discovered receivers; an offline discovered
+  receiver is hidden and returns with its saved settings. The active
+  session's row stays reachable even when it just went offline. The 已启用
+  head renders only when the list has rows. An empty page is plain prose:
+  one discovery line when nothing is found, or an all-hidden title plus the
+  recovery hint when every row is hidden; the add row is the only plus.
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 面板快捷切换
   header switch that shows or hides the flyout's latency segment row, and

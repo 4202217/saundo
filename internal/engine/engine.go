@@ -390,6 +390,9 @@ func startCaptureDefault(cfg capture.Config) (captureSource, error) {
 
 // openSession builds the production transport for one receiver.
 func (e *Engine) openSession(d device.Device) (transport, func(), error) {
+	if d.Host == "" || d.Port == 0 {
+		return nil, nil, fmt.Errorf("receiver %q has no address", d.Name)
+	}
 	if d.IsStereoGroup() {
 		return e.openGroupSession(d)
 	}
@@ -795,9 +798,9 @@ func (e *Engine) handleCommand(cmd command) {
 	switch cmd.kind {
 	case cmdConnect:
 		e.autoTried = true
-		if d, ok := e.find(cmd.deviceID); ok {
+		if t, ok := e.target(cmd.deviceID); ok {
 			e.userDisconnect = false
-			e.connect(d)
+			e.connect(t.Device)
 		} else {
 			e.lastError = "未找到设备，请刷新后重试"
 			e.publish()
@@ -1331,6 +1334,7 @@ func (e *Engine) rebuildTargets() {
 	if e.tr != nil || e.reconnectWanted {
 		active = e.selectedID
 	}
+	targets = receivers.Manageable(targets, active)
 	e.devices = receivers.Visible(targets, active)
 	e.receiversViews = make([]receivers.View, len(targets))
 	for i, t := range targets {
