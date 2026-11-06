@@ -421,6 +421,16 @@ software stereo groups built from independent receivers.
   (606 DIP). Live HomePod audio, the meter against a real receiver, and a
   live press of the transport commands were not exercised in this unit.
 
+- **The media card kept the first thumbnail.** `internal/nowplaying` cached
+  each session's artwork by AUMID/title/album, and the app's decode key used
+  the same fields. Chrome first exposed its logo as the thumbnail and the real
+  video thumbnail arrived a poll later; both caches kept the logo while
+  Windows' own media overlay showed the video. The package cache is gone (the
+  thumbnail is read on every poll) and the app key now includes an FNV-1a
+  hash of the bytes; `TestNowPlayingArtworkRefreshes` changes the artwork under
+  the same title and fails without it. A fresh live read of the Chrome session
+  returned the 14,243-byte video thumbnail.
+
 ## Now Playing settings (2026-11-06)
 
 - **The 正在播放 page.** The settings window gains an eighth page between 采集

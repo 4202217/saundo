@@ -61,7 +61,7 @@ Open the flyout from the tray icon. All controls are on the playback card.
 Headless UI drives the real view functions:
 
 ```bash
-go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderBlendsWithTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
+go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderBlendsWithTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingArtworkRefreshes|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
 go test -run 'TestMeterLevelBandsAndDelay' -v ./internal/audio/analyze/
 go test -run 'TestSilenceMeterFeedsTheLevelMeter' -v ./internal/engine/
 SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/
@@ -102,6 +102,9 @@ that is actually rendering.
   card is absent and the flyout shrinks — do not look for a no-media card.
 - The note tile on the first play is the artwork placeholder, not a broken
   image; it shares the card's fill and should show no edge.
+- A player can expose a placeholder thumbnail first (Chrome's logo) and the
+  real cover a poll later; the card must refresh when the thumbnail bytes
+  change under the same session title.
 - The meter reads the captured desktop, not the media session, so another
   app's sound moves it. It is delayed by the selected presentation latency
   (`Engine.LevelFrame`); a bar that trails the beat by the latency is the

@@ -1084,3 +1084,35 @@ func TestNowPlayingControlsSetting(t *testing.T) {
 		t.Fatalf("card missing; texts: %q", tt.Texts())
 	}
 }
+
+func TestNowPlayingArtworkRefreshes(t *testing.T) {
+	a := previewApp()
+	encode := func(r, g, b uint8) []byte {
+		img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+		for y := 0; y < 2; y++ {
+			for x := 0; x < 2; x++ {
+				img.SetRGBA(x, y, color.RGBA{R: r, G: g, B: b, A: 255})
+			}
+		}
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+	a.nowSnap = nowplaying.Snapshot{Sessions: []nowplaying.Session{{
+		AUMID: "test.session", AppName: "Test", Title: "夜曲", Artist: "周杰伦",
+		Status: nowplaying.StatusPlaying, Playing: true,
+		Artwork: encode(255, 0, 0),
+	}}, Current: 0}
+	a.refreshNowArtwork()
+	first := a.nowArt
+	if first == nil {
+		t.Fatal("the first artwork did not decode")
+	}
+	a.nowSnap.Sessions[0].Artwork = encode(0, 0, 255)
+	a.refreshNowArtwork()
+	if a.nowArt == nil || a.nowArt == first {
+		t.Fatal("the artwork did not refresh under the same title")
+	}
+}

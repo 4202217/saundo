@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"hash/fnv"
 	"image"
 	"os"
 	"strings"
@@ -525,7 +526,7 @@ func (a *App) refreshNowArtwork() {
 	s, ok := a.nowSession()
 	key := ""
 	if ok {
-		key = s.AUMID + "\x00" + s.Title + "\x00" + s.Album
+		key = nowArtworkKey(s)
 	}
 	if key == a.nowArtKey {
 		return
@@ -547,6 +548,18 @@ func (a *App) refreshNowArtwork() {
 	a.nowFieldLight = coverField(img, false)
 	a.nowFieldDark = coverField(img, true)
 	a.nowArt = ui.NewBitmap(img)
+}
+
+// nowArtworkKey includes the thumbnail bytes so a cover that arrives late —
+// a placeholder logo first, the real artwork a poll later — refreshes under
+// the same session title.
+func nowArtworkKey(s nowplaying.Session) string {
+	if len(s.Artwork) == 0 {
+		return s.AUMID + "\x00" + s.Title + "\x00" + s.Album
+	}
+	h := fnv.New64a()
+	_, _ = h.Write(s.Artwork)
+	return fmt.Sprintf("%s\x00%s\x00%s\x00%x", s.AUMID, s.Title, s.Album, h.Sum64())
 }
 
 // switchNowMedia cycles the card between the available SMTC sessions.

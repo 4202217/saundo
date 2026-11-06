@@ -180,14 +180,7 @@ func readSession(session uintptr) Session {
 			out.AlbumArtist = callStringProperty(props, mediaPropsAlbumArtist)
 			out.Artist = callStringProperty(props, mediaPropsArtist)
 			out.Album = callStringProperty(props, mediaPropsAlbumTitle)
-			if data, mime, ok := cachedArtwork(out.AUMID, out.Title, out.Album); ok {
-				out.Artwork, out.ArtworkMIME = data, mime
-			} else {
-				out.Artwork, out.ArtworkMIME = readArtwork(props)
-				if out.Artwork != nil {
-					rememberArtwork(out.AUMID, out.Title, out.Album, out.Artwork, out.ArtworkMIME)
-				}
-			}
+			out.Artwork, out.ArtworkMIME = readArtwork(props)
 			release(props)
 		}
 		release(op)
@@ -334,40 +327,6 @@ func ensureBufferFactory() (uintptr, error) {
 		bufferFactory = factory
 	})
 	return bufferFactory, bufferFactoryErr
-}
-
-type artworkEntry struct {
-	title string
-	album string
-	data  []byte
-	mime  string
-}
-
-var artworkCache = struct {
-	mu      sync.Mutex
-	entries map[string]artworkEntry
-}{entries: make(map[string]artworkEntry)}
-
-func cachedArtwork(aumid, title, album string) ([]byte, string, bool) {
-	artworkCache.mu.Lock()
-	defer artworkCache.mu.Unlock()
-	entry, ok := artworkCache.entries[aumid]
-	if !ok || entry.title != title || entry.album != album || entry.data == nil {
-		return nil, "", false
-	}
-	return entry.data, entry.mime, true
-}
-
-func rememberArtwork(aumid, title, album string, data []byte, mime string) {
-	artworkCache.mu.Lock()
-	defer artworkCache.mu.Unlock()
-	if len(artworkCache.entries) >= 8 {
-		for key := range artworkCache.entries {
-			delete(artworkCache.entries, key)
-			break
-		}
-	}
-	artworkCache.entries[aumid] = artworkEntry{title: title, album: album, data: data, mime: mime}
 }
 
 func ticksToDuration(ticks int64) time.Duration {
