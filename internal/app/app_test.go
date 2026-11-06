@@ -49,6 +49,7 @@ func withLocale(t *testing.T, tag string) {
 
 func previewApp() *App {
 	a := &App{
+		cfg:               settings.Default(),
 		volume:            65,
 		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureIDs:        []string{"", "{endpoint}"},
@@ -203,6 +204,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
+		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "播放控制", "接收器显示曲目信息", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "把 Windows 上正在播放的声音，渡到 AirPlay 2。", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
@@ -987,5 +989,98 @@ func TestSettingsAudioPageScrollsAtMinimumHeight(t *testing.T) {
 	}
 	if after.Y >= before.Y {
 		t.Fatalf("the audio page did not scroll: sync row %.1f -> %.1f", before.Y, after.Y)
+	}
+}
+
+func TestNowPlayingSettingsPersist(t *testing.T) {
+	a := previewApp()
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	a.page = pageNowPlaying
+	a.nowSnap = nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{{
+			AUMID: "test.session", AppName: "Test", Title: "夜曲", Artist: "周杰伦",
+			Status: nowplaying.StatusPlaying, Playing: true,
+			CanPlay: true, CanPause: true,
+		}},
+		Current: 0,
+	}
+	a.nowMediaAUMID = "test.session"
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	badge, ok := tt.Find(locales.SettingsSystemMediaBadge())
+	if !ok {
+		t.Fatalf("badge missing; texts: %q", tt.Texts())
+	}
+	// The master switch sits after the badge, 8 DIP gap, 32 wide.
+	switchX := badge.X + badge.W + 8 + 16
+	tt.ClickAt(switchX, badge.Y+badge.H/2)
+	tt.Frame()
+	if a.cfg.ShowNowPlayingPanel {
+		t.Fatal("master switch did not turn off")
+	}
+	if a.showNowPlayingPanel.Load() {
+		t.Fatal("master gate still on")
+	}
+	cfg := a.sets.Load()
+	if cfg.ShowNowPlayingPanel {
+		t.Fatal("master setting not saved")
+	}
+	if !cfg.PlaybackControls || !cfg.CoverColors || !cfg.AudioLevel {
+		t.Fatalf("sibling defaults changed: %+v", cfg)
+	}
+	// A dependent row is disabled while the master is off.
+	row, ok := tt.Find(locales.SettingsPlaybackControls())
+	if !ok {
+		t.Fatalf("playback row missing; texts: %q", tt.Texts())
+	}
+	tt.ClickAt(switchX, row.Y+row.H/2)
+	tt.Frame()
+	if !a.cfg.PlaybackControls {
+		t.Fatal("disabled playback row changed")
+	}
+}
+
+func TestNowPlayingPanelHiddenWhenOff(t *testing.T) {
+	a := previewApp()
+	a.cfg.ShowNowPlayingPanel = false
+	a.nowSnap = nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{{
+			AUMID: "test.session", AppName: "Apple Music", Title: "夜曲", Artist: "周杰伦",
+			Status: nowplaying.StatusPlaying, Playing: true,
+			CanPlay: true, CanPause: true,
+		}},
+		Current: 0,
+	}
+	a.nowMediaAUMID = "test.session"
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	for _, gone := range []string{"Apple Music", "夜曲"} {
+		if tt.HasText(gone) {
+			t.Fatalf("panel still shows %q with the master off", gone)
+		}
+	}
+	if got, want := visibleFlyoutHeight(a), flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false); got != want {
+		t.Fatalf("flyout height = %d, want the no-card height %d", got, want)
+	}
+}
+
+func TestNowPlayingControlsSetting(t *testing.T) {
+	a := previewApp()
+	a.cfg.PlaybackControls = false
+	a.nowSnap = nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{{
+			AUMID: "test.session", AppName: "Test", Title: "夜曲", Artist: "周杰伦",
+			Status: nowplaying.StatusPlaying, Playing: true,
+			CanPlay: true, CanPause: true,
+		}},
+		Current: 0,
+	}
+	a.nowMediaAUMID = "test.session"
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	if _, ok := tt.Find(locales.FlyoutPause()); ok {
+		t.Fatal("transport shown while the playback controls are off")
+	}
+	if !tt.HasText("夜曲") {
+		t.Fatalf("card missing; texts: %q", tt.Texts())
 	}
 }

@@ -58,6 +58,10 @@ type Settings struct {
 	AutoConnect         bool               `json:"autoConnect"`
 	Reconnect           bool               `json:"reconnect"`
 	ShowNowPlaying      bool               `json:"showNowPlaying"`
+	ShowNowPlayingPanel bool               `json:"showNowPlayingPanel"`
+	PlaybackControls    bool               `json:"playbackControls"`
+	CoverColors         bool               `json:"coverColors"`
+	AudioLevel          bool               `json:"audioLevel"`
 	TrayAnimation       bool               `json:"trayAnimation"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
@@ -72,19 +76,23 @@ type Settings struct {
 // Default returns the first-run configuration.
 func Default() Settings {
 	return Settings{
-		Name:              "声渡",
-		DeviceID:          newDeviceID(),
-		Volume:            80,
-		AutoUpdate:        true,
-		VolumeByDevice:    make(map[string]float64),
-		Passwords:         make(map[string]string),
-		LatencyMS:         LatencyLowMS,
-		LatencyMode:       LatencyLow,
-		LatencyCustomMS:   DefaultLatencyCustomMS,
-		ShowLatencySwitch: true,
-		Reconnect:         true,
-		TrayAnimation:     true,
-		Theme:             ThemeSystem,
+		Name:                "声渡",
+		DeviceID:            newDeviceID(),
+		Volume:              80,
+		AutoUpdate:          true,
+		VolumeByDevice:      make(map[string]float64),
+		Passwords:           make(map[string]string),
+		LatencyMS:           LatencyLowMS,
+		LatencyMode:         LatencyLow,
+		LatencyCustomMS:     DefaultLatencyCustomMS,
+		ShowLatencySwitch:   true,
+		ShowNowPlayingPanel: true,
+		PlaybackControls:    true,
+		CoverColors:         true,
+		AudioLevel:          true,
+		Reconnect:           true,
+		TrayAnimation:       true,
+		Theme:               ThemeSystem,
 	}
 }
 

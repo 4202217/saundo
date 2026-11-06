@@ -35,7 +35,11 @@ card, capture status, and the diagnostics log card.
   light edge.
   With no session at all the card is not drawn: the playback card keeps the
   volume, latency, and capture lines, and `fitFlyout` shrinks the flyout by
-  the card's 150 DIP. The 推送 switch is gone; changed tracks still forward
+  the card's 150 DIP. The 正在播放 settings page gates the card: the display
+  master, the playback controls, the receiver track info, the cover colors,
+  and the audio level; master off hides the card and shrinks the flyout, and
+  the receiver track info is effective only while the master is on. The
+  settings preview shows the live card, or a sample when nothing plays. The 推送 switch is gone; changed tracks still forward
   as DMAP when the engine's `showNowPlaying` setting is on.
 - Capture line: `采集 {endpoint}` with the rate formatted as kHz
   (`48 kHz`); 采集设备 follows the Windows default or pins a specific
@@ -57,7 +61,7 @@ Open the flyout from the tray icon. All controls are on the playback card.
 Headless UI drives the real view functions:
 
 ```bash
-go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderBlendsWithTheCard|TestNowPlayingCardControlsSendActions|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
+go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderBlendsWithTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
 go test -run 'TestMeterLevelBandsAndDelay' -v ./internal/audio/analyze/
 go test -run 'TestSilenceMeterFeedsTheLevelMeter' -v ./internal/engine/
 SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/
@@ -77,7 +81,10 @@ acceptable. While audio plays, confirm the five bars move with the beat and
 settle to five dots when the session pauses. Switch between a square cover
 and a 16:9 Chrome thumbnail and confirm the poster gets wider while the card
 height stays fixed. A session with no timeline (some browser video tabs)
-must show an empty progress track, not a status line or a fake fill. Close
+must show an empty progress track, not a status line or a fake fill. In the
+设置 → 正在播放 page, turn the master off: the preview greys, the rows disable,
+and the flyout card disappears and shortens; turn it on again and the card
+returns. Close
 every player and confirm the media card disappears entirely and the flyout
 shrinks; the volume, latency, and capture lines remain, with no empty card,
 status line, or reserved blank under the device card.

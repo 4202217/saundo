@@ -9,6 +9,7 @@ import (
 	"image"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -127,16 +128,17 @@ type App struct {
 	nowSent        string
 	lastStreaming  bool
 
-	nameDraft      string
-	strict         bool
-	reconnect      bool
-	launchAtStart  bool
-	showNowPlaying bool
-	trayAnimation  bool
-	autoUpdate     bool
-	beta           bool
-	showLog        bool
-	page           settingsPage
+	nameDraft           string
+	strict              bool
+	reconnect           bool
+	launchAtStart       bool
+	showNowPlaying      bool
+	showNowPlayingPanel atomic.Bool
+	trayAnimation       bool
+	autoUpdate          bool
+	beta                bool
+	showLog             bool
+	page                settingsPage
 
 	flyoutEntered   bool
 	settingsEntered bool
@@ -226,6 +228,7 @@ func Run() error {
 			res.MovedPasswords, res.KeptPasswords, res.SeededAuto)
 	}
 	a.cfg = a.sets.Load()
+	a.showNowPlayingPanel.Store(a.cfg.ShowNowPlayingPanel)
 
 	a.eng = engine.NewWithReceivers(a.sets, credsStore, recvStore, a.log, a.onEngineChange)
 
@@ -383,7 +386,7 @@ func (a *App) ready() {
 	}
 	a.nowPlayingSetting = func() (show, streaming bool) {
 		snap := a.eng.Snapshot()
-		return snap.ShowNowPlaying, snap.State == sender.StateStreaming
+		return snap.ShowNowPlaying && a.showNowPlayingPanel.Load(), snap.State == sender.StateStreaming
 	}
 	a.eng.Start()
 	if !silent {
@@ -665,6 +668,9 @@ func (a *App) fitFlyout() {
 
 // hasNowMedia reports whether the media card has a session to draw.
 func (a *App) hasNowMedia() bool {
+	if !a.cfg.ShowNowPlayingPanel {
+		return false
+	}
 	_, ok := a.nowSession()
 	return ok
 }

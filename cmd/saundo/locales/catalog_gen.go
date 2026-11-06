@@ -578,26 +578,6 @@ func (msgs Messages) FlyoutSyncPTPPending() string {
 	return Catalog.Format(msgs.locale, "flyoutSyncPTPPending", nil)
 }
 
-// FlyoutPush says "Push"
-// in the language the app shows.
-func FlyoutPush() string { return In(i18n.Locale()).FlyoutPush() }
-
-// FlyoutPush says "Push"
-// in the language of msgs.
-func (msgs Messages) FlyoutPush() string {
-	return Catalog.Format(msgs.locale, "flyoutPush", nil)
-}
-
-// FlyoutPushLabel says "Push Now Playing"
-// in the language the app shows.
-func FlyoutPushLabel() string { return In(i18n.Locale()).FlyoutPushLabel() }
-
-// FlyoutPushLabel says "Push Now Playing"
-// in the language of msgs.
-func (msgs Messages) FlyoutPushLabel() string {
-	return Catalog.Format(msgs.locale, "flyoutPushLabel", nil)
-}
-
 // FlyoutVolumeValue says "{v, number, integer}%"
 // in the language the app shows.
 func FlyoutVolumeValue(v float64) string { return In(i18n.Locale()).FlyoutVolumeValue(v) }
@@ -1020,6 +1000,16 @@ func (msgs Messages) SettingsNavCapture() string {
 	return Catalog.Format(msgs.locale, "settingsNavCapture", nil)
 }
 
+// SettingsNavNowPlaying says "Now Playing"
+// in the language the app shows.
+func SettingsNavNowPlaying() string { return In(i18n.Locale()).SettingsNavNowPlaying() }
+
+// SettingsNavNowPlaying says "Now Playing"
+// in the language of msgs.
+func (msgs Messages) SettingsNavNowPlaying() string {
+	return Catalog.Format(msgs.locale, "settingsNavNowPlaying", nil)
+}
+
 // PageGeneralDesc says "Sender identity, startup, and appearance."
 // in the language the app shows.
 func PageGeneralDesc() string { return In(i18n.Locale()).PageGeneralDesc() }
@@ -1070,6 +1060,38 @@ func (msgs Messages) PageCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "pageCaptureDesc", nil)
 }
 
+// PageNowPlayingDesc says "The panel's Now Playing, cover colors, and audio level."
+// in the language the app shows.
+func PageNowPlayingDesc() string { return In(i18n.Locale()).PageNowPlayingDesc() }
+
+// PageNowPlayingDesc says "The panel's Now Playing, cover colors, and audio level."
+// in the language of msgs.
+func (msgs Messages) PageNowPlayingDesc() string {
+	return Catalog.Format(msgs.locale, "pageNowPlayingDesc", nil)
+}
+
+// SettingsNowPlayingSampleTitle says "Night Ferry"
+// in the language the app shows.
+func SettingsNowPlayingSampleTitle() string { return In(i18n.Locale()).SettingsNowPlayingSampleTitle() }
+
+// SettingsNowPlayingSampleTitle says "Night Ferry"
+// in the language of msgs.
+func (msgs Messages) SettingsNowPlayingSampleTitle() string {
+	return Catalog.Format(msgs.locale, "settingsNowPlayingSampleTitle", nil)
+}
+
+// SettingsNowPlayingSampleArtist says "Signal Coast"
+// in the language the app shows.
+func SettingsNowPlayingSampleArtist() string {
+	return In(i18n.Locale()).SettingsNowPlayingSampleArtist()
+}
+
+// SettingsNowPlayingSampleArtist says "Signal Coast"
+// in the language of msgs.
+func (msgs Messages) SettingsNowPlayingSampleArtist() string {
+	return Catalog.Format(msgs.locale, "settingsNowPlayingSampleArtist", nil)
+}
+
 // SettingsSenderName says "Sender name"
 // in the language the app shows.
 func SettingsSenderName() string { return In(i18n.Locale()).SettingsSenderName() }
@@ -1088,6 +1110,108 @@ func SettingsSenderNameDesc() string { return In(i18n.Locale()).SettingsSenderNa
 // in the language of msgs.
 func (msgs Messages) SettingsSenderNameDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSenderNameDesc", nil)
+}
+
+// SettingsShowNowPlaying says "Show Now Playing"
+// in the language the app shows.
+func SettingsShowNowPlaying() string { return In(i18n.Locale()).SettingsShowNowPlaying() }
+
+// SettingsShowNowPlaying says "Show Now Playing"
+// in the language of msgs.
+func (msgs Messages) SettingsShowNowPlaying() string {
+	return Catalog.Format(msgs.locale, "settingsShowNowPlaying", nil)
+}
+
+// SettingsSystemMediaBadge says "System media"
+// in the language the app shows.
+func SettingsSystemMediaBadge() string { return In(i18n.Locale()).SettingsSystemMediaBadge() }
+
+// SettingsSystemMediaBadge says "System media"
+// in the language of msgs.
+func (msgs Messages) SettingsSystemMediaBadge() string {
+	return Catalog.Format(msgs.locale, "settingsSystemMediaBadge", nil)
+}
+
+// SettingsPlaybackControls says "Playback controls"
+// in the language the app shows.
+func SettingsPlaybackControls() string { return In(i18n.Locale()).SettingsPlaybackControls() }
+
+// SettingsPlaybackControls says "Playback controls"
+// in the language of msgs.
+func (msgs Messages) SettingsPlaybackControls() string {
+	return Catalog.Format(msgs.locale, "settingsPlaybackControls", nil)
+}
+
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next; only the buttons the player supports appear."
+// in the language the app shows.
+func SettingsPlaybackControlsDesc() string { return In(i18n.Locale()).SettingsPlaybackControlsDesc() }
+
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next; only the buttons the player supports appear."
+// in the language of msgs.
+func (msgs Messages) SettingsPlaybackControlsDesc() string {
+	return Catalog.Format(msgs.locale, "settingsPlaybackControlsDesc", nil)
+}
+
+// SettingsTrackInfoOnReceiver says "Show track info on receiver"
+// in the language the app shows.
+func SettingsTrackInfoOnReceiver() string { return In(i18n.Locale()).SettingsTrackInfoOnReceiver() }
+
+// SettingsTrackInfoOnReceiver says "Show track info on receiver"
+// in the language of msgs.
+func (msgs Messages) SettingsTrackInfoOnReceiver() string {
+	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiver", nil)
+}
+
+// SettingsTrackInfoOnReceiverDesc says "Send the title and artist to the receiver; this only changes the receiver's display, not the panel."
+// in the language the app shows.
+func SettingsTrackInfoOnReceiverDesc() string {
+	return In(i18n.Locale()).SettingsTrackInfoOnReceiverDesc()
+}
+
+// SettingsTrackInfoOnReceiverDesc says "Send the title and artist to the receiver; this only changes the receiver's display, not the panel."
+// in the language of msgs.
+func (msgs Messages) SettingsTrackInfoOnReceiverDesc() string {
+	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiverDesc", nil)
+}
+
+// SettingsCoverColors says "Cover colors"
+// in the language the app shows.
+func SettingsCoverColors() string { return In(i18n.Locale()).SettingsCoverColors() }
+
+// SettingsCoverColors says "Cover colors"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverColors() string {
+	return Catalog.Format(msgs.locale, "settingsCoverColors", nil)
+}
+
+// SettingsCoverColorsDesc says "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors."
+// in the language the app shows.
+func SettingsCoverColorsDesc() string { return In(i18n.Locale()).SettingsCoverColorsDesc() }
+
+// SettingsCoverColorsDesc says "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors."
+// in the language of msgs.
+func (msgs Messages) SettingsCoverColorsDesc() string {
+	return Catalog.Format(msgs.locale, "settingsCoverColorsDesc", nil)
+}
+
+// SettingsAudioLevel says "Audio level"
+// in the language the app shows.
+func SettingsAudioLevel() string { return In(i18n.Locale()).SettingsAudioLevel() }
+
+// SettingsAudioLevel says "Audio level"
+// in the language of msgs.
+func (msgs Messages) SettingsAudioLevel() string {
+	return Catalog.Format(msgs.locale, "settingsAudioLevel", nil)
+}
+
+// SettingsAudioLevelDesc says "The five-band level at the title row, following playback; it stays still when Windows animation effects are off."
+// in the language the app shows.
+func SettingsAudioLevelDesc() string { return In(i18n.Locale()).SettingsAudioLevelDesc() }
+
+// SettingsAudioLevelDesc says "The five-band level at the title row, following playback; it stays still when Windows animation effects are off."
+// in the language of msgs.
+func (msgs Messages) SettingsAudioLevelDesc() string {
+	return Catalog.Format(msgs.locale, "settingsAudioLevelDesc", nil)
 }
 
 // SettingsSave says "Save"

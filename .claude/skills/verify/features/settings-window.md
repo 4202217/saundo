@@ -5,8 +5,8 @@ A separate `mygo.NewWindow` (`settings_window.go:82-108`): 720 DIP wide
 engine starts. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · saundo` under en — match windows by class `MyGoWindow` + pid,
 or `-TitleLike` the active locale's brand string, never a hardcoded title.
-Seven pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
-采集, 更新, 关于; each page body scrolls in the gutter at the window edge.
+Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
+采集, 正在播放, 更新, 关于; each page body scrolls in the gutter at the window edge.
 
 ## Sub-features
 
@@ -30,6 +30,16 @@ Seven pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
   read-only format/sync rows.
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and per-app
   capture (application list built from window titles + audio sessions).
+- 正在播放 page: one card. The header is the display master 显示正在播放
+  (`showNowPlayingPanel`, on) with the 系统媒体 badge; below it a preview of the
+  real Now Playing card (the live session, or a sample card when nothing
+  plays), then the rows 播放控制 (`playbackControls`),
+  接收器显示曲目信息 (`showNowPlaying`, the existing engine setting, off),
+  封面配色 (`coverColors`), and 音频电平 (`audioLevel`). Master off greys the
+  preview at 45% and disables every row; the dependent values stay. The
+  receiver row is effective only while the master is on. New `settings.json`
+  keys default on; missing keys read their defaults; changes save immediately
+  and resize the flyout.
 - 更新 page: update states, channel (stable/beta), release-history list —
   see [updates.md](updates.md).
 - 关于 page: the identity card shows the app's smile mark, the product
@@ -48,13 +58,15 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Live app: open via the flyout's gear (and once via the tray menu — the
 设置… entry is a separate path), confirm the window class is `MyGoWindow`,
-the sidebar order is 通用/连接/接收器/音频/采集/更新, and the window is
-~720 DIP wide. Flip one 接收器 toggle, close via the title-bar button
+the sidebar order is 通用/连接/接收器/音频/采集/正在播放/更新/关于, and the
+window is ~720 DIP wide. Open 正在播放, flip the master off: the preview greys,
+the rows disable, and the flyout (reopened) has no media card and is shorter;
+the value persists in settings.json after a restart. Flip one 接收器 toggle, close via the title-bar button
 (process must stay alive, window reopens), restart the app and read the
 value back from `receivers.json` on disk — never trust the UI echo.
 
@@ -74,5 +86,10 @@ change in the flyout).
   en locale — prefer `-Class MyGoWindow` plus `-ProcId`.
 - The audio page's custom slider debounces; a screenshot taken mid-debounce
   shows the old value with the new selection.
+- The 正在播放 master off is not the same as no media: the media card is
+  hidden either way and the flyout shrinks the same amount, but the settings
+  page still shows the greyed preview and the retained option values.
+- The receiver track info only reaches the receiver while both the master and
+  the receiver row are on.
 - Passwords never render back — dots only (`receivers_page.go:528-531`). A
   page showing a stored password verbatim is a bug.

@@ -22,6 +22,7 @@ const (
 	pageReceivers
 	pageAudio
 	pageCapture
+	pageNowPlaying
 	pageUpdate
 	pageAbout
 )
@@ -35,6 +36,7 @@ var settingsNav = []struct {
 	{pageReceivers, iconSpeaker},
 	{pageAudio, iconWave},
 	{pageCapture, iconScreen},
+	{pageNowPlaying, iconNote},
 	{pageUpdate, iconRefresh},
 	{pageAbout, iconInfo},
 }
@@ -49,6 +51,8 @@ func pageTitle(page settingsPage) string {
 		return locales.SettingsNavAudio()
 	case pageCapture:
 		return locales.SettingsNavCapture()
+	case pageNowPlaying:
+		return locales.SettingsNavNowPlaying()
 	case pageUpdate:
 		return locales.SettingsNavUpdates()
 	case pageAbout:
@@ -225,6 +229,8 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 					a.audioPage(c, p)
 				case pageCapture:
 					a.capturePage(c, p)
+				case pageNowPlaying:
+					a.nowPlayingPage(c, p)
 				case pageUpdate:
 					a.updatePage(c, p)
 				case pageAbout:
@@ -245,6 +251,8 @@ func pageCopy(page settingsPage) (title, desc string) {
 		return pageTitle(page), locales.PageAudioDesc()
 	case pageCapture:
 		return pageTitle(page), locales.PageCaptureDesc()
+	case pageNowPlaying:
+		return pageTitle(page), locales.PageNowPlayingDesc()
 	case pageUpdate:
 		return pageTitle(page), locales.PageUpdatesDesc()
 	case pageAbout:
@@ -293,6 +301,70 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			}
 		})
 	})
+}
+
+// nowPlayingPage is the settings page for the panel's Now Playing card. The
+// display switch is the card's master; the options below it are subordinate.
+func (a *App) nowPlayingPage(c *ui.Context, p palette) {
+	master := a.cfg.ShowNowPlayingPanel
+	pageCard(c, p, func() {
+		ui.Row(c).Padding(12, 14).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, locales.SettingsShowNowPlaying()).FontSize(15).FontWeight(600).Grow(1)
+			a.nowPlayingBadge(c, p)
+			toggle(c, p, &a.cfg.ShowNowPlayingPanel, locales.SettingsShowNowPlaying(), func(v bool) {
+				a.showNowPlayingPanel.Store(v)
+				a.persistNowPlaying()
+			})
+		})
+		a.nowPlayingPreview(c, p)
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsPlaybackControls(), locales.SettingsPlaybackControlsDesc(),
+			&a.cfg.PlaybackControls, master, func(bool) { a.persistNowPlaying() })
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsTrackInfoOnReceiver(), locales.SettingsTrackInfoOnReceiverDesc(),
+			&a.showNowPlaying, master, func(v bool) {
+				if a.eng != nil {
+					a.eng.SetShowNowPlaying(v)
+				}
+			})
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsCoverColors(), locales.SettingsCoverColorsDesc(),
+			&a.cfg.CoverColors, master, func(bool) { a.persistNowPlaying() })
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsAudioLevel(), locales.SettingsAudioLevelDesc(),
+			&a.cfg.AudioLevel, master, func(bool) { a.persistNowPlaying() })
+	})
+}
+
+func (a *App) nowPlayingBadge(c *ui.Context, p palette) {
+	ui.Row(c).Height(22).Radius(11).Padding(0, 9).Border(1, p.line).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, locales.SettingsSystemMediaBadge()).FontSize(11.5).TextColor(p.muted).SingleLine()
+	})
+}
+
+func (a *App) nowPlayingOptionRow(c *ui.Context, p palette, title, sub string, on *bool, enabled bool, changed func(bool)) {
+	titleColor, subColor := p.fg, p.muted
+	if !enabled {
+		titleColor, subColor = p.muted, p.faint
+	}
+	settingRowColors(c, p, title, sub, titleColor, subColor, func() {
+		toggle(c, p, on, title, changed).Disabled(!enabled)
+	})
+}
+
+// persistNowPlaying stores the panel display options and resizes the flyout.
+func (a *App) persistNowPlaying() {
+	a.showNowPlayingPanel.Store(a.cfg.ShowNowPlayingPanel)
+	if a.sets != nil {
+		cfg := a.sets.Load()
+		cfg.ShowNowPlayingPanel = a.cfg.ShowNowPlayingPanel
+		cfg.PlaybackControls = a.cfg.PlaybackControls
+		cfg.CoverColors = a.cfg.CoverColors
+		cfg.AudioLevel = a.cfg.AudioLevel
+		_ = a.sets.Save(cfg)
+	}
+	a.fitFlyout()
+	a.updateUI(func() {})
 }
 
 // updatePage is the settings page for versions and automatic checks.

@@ -421,6 +421,38 @@ software stereo groups built from independent receivers.
   (606 DIP). Live HomePod audio, the meter against a real receiver, and a
   live press of the transport commands were not exercised in this unit.
 
+## Now Playing settings (2026-11-06)
+
+- **The 正在播放 page.** The settings window gains an eighth page between 采集
+  and 更新. It has one card: the display master (`showNowPlayingPanel`, on)
+  with the 系统媒体 badge, a preview of the real Now Playing card (the live session, or a sample Apple Music / 夜航 / 白鲸电台 card when nothing plays), and
+  the rows 播放控制 (`playbackControls`), 接收器显示曲目信息
+  (`showNowPlaying`, the existing engine setting, off), 封面配色
+  (`coverColors`), and 音频电平 (`audioLevel`). Master off greys the preview
+  and disables every row; there is no closed placeholder. New keys in
+  `settings.json` default on; a missing key reads its default.
+- **The flyout follows the page.** `nowPlayingCard` returns nothing while the
+  master is off, and `hasNowMedia` drops the card's 150 DIP from the flyout;
+  the flyout shrinks exactly like the no-media state. The playback controls
+  setting removes the transport; cover colors off draws the progress fill and
+  meter in the default ink; audio level off removes the five bands. The
+  receiver push is effective only as `showNowPlaying && showNowPlayingPanel`.
+  The settings preview uses the same card body in preview mode, dimmed at 45%
+  opacity and read-only; it falls back to a fixed sample so no-media users still
+  see the card. The sample strings are `settingsNowPlayingSampleTitle` /
+  `settingsNowPlayingSampleArtist`.
+- **Previews and tests.** `.audit/previews/nowplaying-settings/` (uncommitted)
+  holds the live settings page, the master-off page, and the compact flyout
+  without the card, zh-CN and English, light and dark. The page is covered by
+  `TestSettingsPagesRender`; the master switch, persistence, disabled rows,
+  and the flyout shrink by `TestNowPlayingSettingsPersist` and
+  `TestNowPlayingPanelHiddenWhenOff`; the transport gate by
+  `TestNowPlayingControlsSetting`.
+- **Checks.** `mingw32-make check` passed (gofmt, go vet, `go tool mygo vet`,
+  catalog validation, every package's tests, verify map `map ok`);
+  `SAUNDO_PREVIEW_DIR=… TestRenderPreviews` passed; the previews above were
+  inspected. Live app driving of the new page was not run in this unit.
+
 ## Tray flyout (2026-10-31)
 
 - **Form change.** The ordinary 480x720 main window is gone. The full control

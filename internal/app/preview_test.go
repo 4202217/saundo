@@ -268,9 +268,10 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		pageReceivers:  "settings-receivers",
 		pageAudio:      "settings-audio",
 		pageCapture:    "settings-capture",
+		pageNowPlaying: "settings-nowplaying",
 		pageAbout:      "settings-about",
 	}
-	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture, pageAbout}
+	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture, pageNowPlaying, pageAbout}
 	for _, page := range pages {
 		a := fixture()
 		a.page = page
@@ -279,6 +280,28 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		}
 		save(pageNames[page]+"-light", a.settingsView, 720, 500, false)
 	}
+	// The Now Playing settings page with a live card, master on and off.
+	nowSettings := fixture()
+	nowSettings.page = pageNowPlaying
+	nowSettings.nowSnap = sampleSnapshot(locale)
+	nowSettings.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	nowCover := sampleCoverImage()
+	nowSettings.nowArt = ui.NewBitmap(nowCover)
+	nowSettings.nowFieldLight = coverField(nowCover, false)
+	nowSettings.nowFieldDark = coverField(nowCover, true)
+	nowSettings.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
+	save("settings-nowplaying-live-light", nowSettings.settingsView, 720, 500, false)
+	save("settings-nowplaying-live-dark", nowSettings.settingsView, 720, 500, true)
+	nowSettings.cfg.ShowNowPlayingPanel = false
+	save("settings-nowplaying-off-light", nowSettings.settingsView, 720, 500, false)
+
+	// The flyout with the media panel switched off: no card, compact panel.
+	mediaOff := fixture()
+	mediaOff.cfg.ShowNowPlayingPanel = false
+	mediaOff.nowSnap = sampleSnapshot(locale)
+	mediaOff.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	save("flyout-media-off-light", mediaOff.view, flyoutWidth, visibleFlyoutHeight(mediaOff), false)
+
 	darkSettings := fixture()
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)

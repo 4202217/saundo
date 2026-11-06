@@ -7,14 +7,20 @@
   "aboutVersion": "版本 {version} · {channel}",
   "@aboutVersion": {
     "placeholders": {
-      "version": { "type": "String" },
-      "channel": { "type": "String" }
+      "version": {
+        "type": "String"
+      },
+      "channel": {
+        "type": "String"
+      }
     }
   },
   "aboutVersionLocal": "版本 {version} · 本地构建",
   "@aboutVersionLocal": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "aboutVersionDev": "开发版",
@@ -35,7 +41,6 @@
   "trayDisconnect": "断开连接",
   "trayQuit": "退出声渡",
   "trayTooltip": "声渡",
-
   "statusReconnecting": "重连中…",
   "statusConnecting": "正在连接…",
   "statusPairing": "正在配对…",
@@ -44,7 +49,6 @@
   "statusStreaming": "正在播放",
   "statusDisconnected": "未连接",
   "statusConnectionFailed": "连接失败",
-
   "deviceStereoGroup": "{model} · 立体声组 {n, number}/2",
   "devicePinPairing": "{model} · PIN 配对",
   "deviceNeedsPassword": "{model} · 需要密码",
@@ -54,7 +58,6 @@
   "deviceAirPlay1": "{model} · AirPlay 1",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "设备列表",
-
   "flyoutRefreshDevices": "刷新设备",
   "flyoutDevices": "设备",
   "flyoutDeviceCount": "{n, plural, other {# 台}}",
@@ -68,8 +71,6 @@
   "flyoutSyncNTP": "NTP",
   "flyoutSyncPTPReady": "PTP · 已同步",
   "flyoutSyncPTPPending": "PTP · 同步中",
-  "flyoutPush": "推送",
-  "flyoutPushLabel": "推送正在播放",
   "flyoutVolumeValue": "{v, number, integer}%",
   "flyoutCaptureError": "采集错误：{error}",
   "flyoutCaptureNotRunning": "采集未运行",
@@ -85,45 +86,54 @@
   "flyoutPlay": "播放",
   "flyoutPause": "暂停",
   "flyoutNext": "下一首",
-
   "actionCancel": "取消",
   "actionRetry": "重试",
   "actionDisconnect": "断开",
   "actionOffline": "离线",
   "actionConnect": "连接",
   "commonSettings": "设置",
-
   "logTitle": "诊断日志",
   "logRecentLines": "{n, plural, other {最近 # 行}}",
   "logEmpty": "暂无日志",
   "logCopy": "复制",
   "logClose": "关闭",
-
   "pinTitle": "输入配对码",
   "pinInstruction": "在 {device} 的屏幕上查看配对码。",
   "pinLabel": "配对码",
   "pinHint": "配对码只用于本次配对。",
   "pinSubmit": "配对",
   "pinFallbackDevice": "接收设备",
-
   "passwordTitle": "输入接收端密码",
   "passwordInstruction": "输入 {device} 的 AirPlay 接收密码。",
   "passwordLabel": "密码",
   "passwordHint": "密码保存在本机，只用于这台设备。",
   "passwordFallbackDevice": "这台接收设备",
-
   "settingsNavGeneral": "通用",
   "settingsNavConnection": "连接",
   "settingsNavReceivers": "接收器",
   "settingsNavAudio": "音频",
   "settingsNavCapture": "采集",
+  "settingsNavNowPlaying": "正在播放",
   "pageGeneralDesc": "发送端身份、启动与外观。",
   "pageConnectionDesc": "重连与验证策略",
   "pageReceiversDesc": "管理接收器、自动连接、可见性与每台接收器的音画同步。",
   "pageAudioDesc": "在音画同步与连接稳定之间取舍；连接中切换会自动重连。",
   "pageCaptureDesc": "系统声音或单个应用。",
+  "pageNowPlayingDesc": "面板中的正在播放、封面配色与音频电平。",
+  "settingsNowPlayingSampleTitle": "夜航",
+  "settingsNowPlayingSampleArtist": "白鲸电台",
   "settingsSenderName": "发送端名称",
   "settingsSenderNameDesc": "接收设备上显示的名字",
+  "settingsShowNowPlaying": "显示正在播放",
+  "settingsSystemMediaBadge": "系统媒体",
+  "settingsPlaybackControls": "播放控制",
+  "settingsPlaybackControlsDesc": "显示上一首、播放/暂停、下一首；只显示播放器支持的按钮。",
+  "settingsTrackInfoOnReceiver": "接收器显示曲目信息",
+  "settingsTrackInfoOnReceiverDesc": "把标题和艺术家发送到接收器；只改变接收器的显示，不影响面板。",
+  "settingsCoverColors": "封面配色",
+  "settingsCoverColorsDesc": "从封面提取配色，用于进度条和音频电平；关闭后使用默认配色。",
+  "settingsAudioLevel": "音频电平",
+  "settingsAudioLevelDesc": "标题行右侧的五段电平，随播放变化；系统关闭动画效果时保持静止。",
   "settingsSave": "保存",
   "settingsLaunchAtStart": "开机自动启动",
   "settingsLaunchAtStartDesc": "登录 Windows 后静默驻留托盘",
@@ -154,7 +164,6 @@
   "settingsReconnectDesc": "1s / 2s / 5s / 10s / 15s 退避，最多 5 次",
   "settingsStrictAuth": "严格验证接收器",
   "settingsStrictAuthDesc": "配对证明或签名不通过时立即断开",
-
   "receiverGroupEnabled": "已启用",
   "receiverGroupHidden": "已隐藏",
   "receiverAddTitle": "添加接收器",
@@ -173,7 +182,9 @@
   "receiverDelayUnit": "{ms} ms",
   "@receiverDelayUnit": {
     "placeholders": {
-      "ms": { "type": "int" }
+      "ms": {
+        "type": "int"
+      }
     }
   },
   "receiverPasswordTitle": "接收器密码",
@@ -188,8 +199,12 @@
   "receiverRemoveConfirmSub": "{name} · {model}",
   "@receiverRemoveConfirmSub": {
     "placeholders": {
-      "name": { "type": "String" },
-      "model": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
     }
   },
   "receiverRemoveHint1": "会从设置和设备列表中移除这台接收器；接收器本身不会被更改。",
@@ -226,7 +241,9 @@
   "receiverPasswordDialogSub": "{name} · AirPlay 密码认证",
   "@receiverPasswordDialogSub": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "receiverPasswordDialogHint": "仅保存在本机；连接这台接收器时使用，不会写入诊断日志。",
@@ -258,7 +275,6 @@
   "settingsCaptureError": "采集错误",
   "settingsCaptureNotRunning": "未运行",
   "captureSystemDefault": "系统默认输出",
-
   "summaryStereoGroup": "立体声组 · {n, number}/2 · 当前设备",
   "summaryModelCurrentDevice": "{model} · 当前设备",
   "summaryCurrentDevice": "当前设备",
@@ -266,11 +282,9 @@
   "summaryConnecting": "连接中",
   "sidebarNoDevice": "未选择设备",
   "sidebarConnectedStereo": "已连接 · 立体声组",
-
   "captureFollowSystem": "跟随系统默认",
   "captureAllSystem": "整个系统",
   "volumeLabel": "音量",
-
   "settingsNavUpdates": "更新",
   "pageUpdatesDesc": "版本、自动检查与安装。",
   "pageAboutDesc": "版本、项目链接与许可。",
@@ -288,14 +302,20 @@
   "updateAvailableTitle": "{version} 可用",
   "@updateAvailableTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateAvailableMeta": "当前版本 {current} · 发布于 {date}",
   "@updateAvailableMeta": {
     "placeholders": {
-      "current": { "type": "String" },
-      "date": { "type": "String" }
+      "current": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
     }
   },
   "updateFullNotes": "更新内容",
@@ -305,7 +325,9 @@
   "updateDownloadingTitle": "正在下载 {version}",
   "@updateDownloadingTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateDownloadingMeta": "下载完成后重启即可完成安装。",
@@ -314,7 +336,9 @@
   "updateReadyTitle": "{version} 已下载",
   "@updateReadyTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateReadyDesc": "重启后生效。",
@@ -329,13 +353,17 @@
   "flyoutUpdateAvailable": "{version} 可用",
   "@flyoutUpdateAvailable": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "flyoutUpdateDownloading": "正在下载 {percent}%",
   "@flyoutUpdateDownloading": {
     "placeholders": {
-      "percent": { "type": "int" }
+      "percent": {
+        "type": "int"
+      }
     }
   },
   "flyoutUpdateReady": "重启以完成更新",
@@ -343,7 +371,9 @@
   "updateUpToDateDesc": "当前版本 {version} 已是最新。",
   "@updateUpToDateDesc": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateCheckingShort": "检查中…",
@@ -351,14 +381,20 @@
   "updateNotesTitle": "{version} 更新内容",
   "@updateNotesTitle": {
     "placeholders": {
-      "version": { "type": "String" }
+      "version": {
+        "type": "String"
+      }
     }
   },
   "updateNotesMeta": "发布于 {date} · 当前版本 {current}",
   "@updateNotesMeta": {
     "placeholders": {
-      "date": { "type": "String" },
-      "current": { "type": "String" }
+      "date": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
     }
   },
   "updateRangeSince": "上次更新以来",
@@ -369,34 +405,50 @@
   "updateNotesRangeMeta": "{oldest} – {latest} · {n, plural, other {# 个版本}} · 当前版本 {current}",
   "@updateNotesRangeMeta": {
     "placeholders": {
-      "oldest": { "type": "String" },
-      "latest": { "type": "String" },
-      "n": { "type": "int" },
-      "current": { "type": "String" }
+      "oldest": {
+        "type": "String"
+      },
+      "latest": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "current": {
+        "type": "String"
+      }
     }
   },
   "updateCountAdded": "{n, plural, other {# 项新增}}",
   "@updateCountAdded": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "updateCountChanged": "{n, plural, other {# 项变更}}",
   "@updateCountChanged": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "updateCountFixed": "{n, plural, other {# 项修复}}",
   "@updateCountFixed": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   },
   "updateCountUpdated": "{n, plural, other {# 项更新}}",
   "@updateCountUpdated": {
     "placeholders": {
-      "n": { "type": "int" }
+      "n": {
+        "type": "int"
+      }
     }
   }
 }
