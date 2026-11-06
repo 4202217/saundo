@@ -24,6 +24,13 @@ func lastArtwork(f *fakeTransport) ([]byte, string) {
 	return f.artwork[len(f.artwork)-1], f.artworkMIME[len(f.artworkMIME)-1]
 }
 
+func lastArtworkOn(f *fakeTransport) bool {
+	if len(f.artworkOn) == 0 {
+		return false
+	}
+	return f.artworkOn[len(f.artworkOn)-1]
+}
+
 func TestLampToggleAppliesAndPersists(t *testing.T) {
 	h := newHarness(t)
 	h.e.setDevices([]device.Device{capableLampDevice()})
@@ -39,8 +46,8 @@ func TestLampToggleAppliesAndPersists(t *testing.T) {
 		t.Fatalf("snapshot lamp = %v/%q, want on/tide", snap.LampEnabled, snap.LampPreset)
 	}
 	data, mime := lastArtwork(h.fake)
-	if !bytes.Equal(data, []byte("jpeg:tide")) || mime != "image/jpeg" {
-		t.Fatalf("transport got %q %q, want jpeg:tide image/jpeg", data, mime)
+	if !bytes.Equal(data, []byte("jpeg:tide")) || mime != "image/jpeg" || !lastArtworkOn(h.fake) {
+		t.Fatalf("transport got %q %q on=%v, want jpeg:tide image/jpeg on", data, mime, lastArtworkOn(h.fake))
 	}
 
 	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
@@ -48,8 +55,8 @@ func TestLampToggleAppliesAndPersists(t *testing.T) {
 		t.Fatal("snapshot stayed on after the switch turned off")
 	}
 	data, mime = lastArtwork(h.fake)
-	if !bytes.Equal(data, lamp.Off()) || mime != "image/jpeg" {
-		t.Fatalf("off artwork = %d bytes %q, want the black off image/jpeg", len(data), mime)
+	if !bytes.Equal(data, lamp.Off()) || mime != "image/jpeg" || lastArtworkOn(h.fake) {
+		t.Fatalf("off artwork = %d bytes %q on=%v, want the black off image/jpeg", len(data), mime, lastArtworkOn(h.fake))
 	}
 
 	h.flushSettings()
@@ -69,11 +76,12 @@ func TestLampAppliedWhenStreamingStarts(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "ember"})
 	h.fake.artwork = nil
 	h.fake.artworkMIME = nil
+	h.fake.artworkOn = nil
 
 	h.launch()
 	data, mime := lastArtwork(h.fake)
-	if !bytes.Equal(data, []byte("jpeg:ember")) || mime != "image/jpeg" {
-		t.Fatalf("launch artwork = %q %q, want jpeg:ember image/jpeg", data, mime)
+	if !bytes.Equal(data, []byte("jpeg:ember")) || mime != "image/jpeg" || !lastArtworkOn(h.fake) {
+		t.Fatalf("launch artwork = %q %q on=%v, want jpeg:ember image/jpeg on", data, mime, lastArtworkOn(h.fake))
 	}
 }
 

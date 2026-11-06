@@ -47,9 +47,9 @@ type groupMember struct {
 	host   *raopio.Host
 	sender *sender.Sender
 	ring   *ring.Buffer
-	// setArtwork is the member's artwork entry point. The open path points it
-	// at the sender; tests substitute a recorder.
-	setArtwork func(data []byte, mime string)
+	// setLampArtwork is the member's ambient-light entry point. The open path
+	// points it at the sender; tests substitute a recorder.
+	setLampArtwork func(data []byte, mime string, on bool)
 }
 
 // openGroupSession builds both member sessions and the shared PTP master. The
@@ -132,7 +132,7 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 			s.SetPTPClock(master.ClockFor(m.Host))
 		}
 		member.sender = s
-		member.setArtwork = s.SetArtwork
+		member.setLampArtwork = s.SetLampArtwork
 		g.members = append(g.members, member)
 		g.rings = append(g.rings, memberRing)
 		go g.forward(member)
@@ -345,16 +345,16 @@ func (g *groupTransport) SetNowPlaying(title, artist, album string, cover []byte
 	}
 }
 
-// SetArtwork sends the light to each member that can show top-display
+// SetLampArtwork sends the light to each member that can show top-display
 // artwork. A member whose model or software version is unknown is skipped,
 // never guessed.
-func (g *groupTransport) SetArtwork(data []byte, mime string) {
+func (g *groupTransport) SetLampArtwork(data []byte, mime string, on bool) {
 	for _, m := range g.members {
 		if !device.TopDisplayCapable(m.device) {
 			g.logf("ambient light: %s in %q does not support top-display artwork; skipped", m.device.Name, g.group.Name)
 			continue
 		}
-		m.setArtwork(data, mime)
+		m.setLampArtwork(data, mime, on)
 	}
 }
 

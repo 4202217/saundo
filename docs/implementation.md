@@ -141,10 +141,12 @@ mode.
 5. While streaming: feedback every 2 s, receiver-volume polling, sync
    packets, and event-channel replies run on the sender's timers; after 2 s
    of digital silence the engine suspends the pacer until the next audible
-   block. The engine reapplies the ambient light once the session streams,
-   and the sender also resends stored artwork at every stream start, so a
-   reconnect does not lose the top display. The artwork leaves as the Now
-   Playing cover on the encrypted control channel (`SET_PARAMETER
+   block. The engine reapplies the ambient light once the session streams.
+   The sender keeps one cover slot: the ambient image while the light is on,
+   otherwise the receiver track-info cover, with the origin image as the
+   fallback, and it resends the effective cover at every stream start, so a
+   reconnect does not lose the top display. The cover leaves as a Now
+   Playing image on the encrypted control channel (`SET_PARAMETER
    image/jpeg`); there is no separate artwork HTTP connection.
 
 ## On-disk state

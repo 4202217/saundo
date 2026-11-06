@@ -164,7 +164,7 @@ type transport interface {
 	WaitingForPin() bool
 	InitialVolumePercent() (float64, bool)
 	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)
-	SetArtwork(data []byte, mime string)
+	SetLampArtwork(data []byte, mime string, on bool)
 	PTP() (active, ready bool, offsetMS float64)
 }
 
@@ -209,7 +209,9 @@ func (s *session) InitialVolumePercent() (float64, bool) {
 func (s *session) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
 	s.sender.SetNowPlaying(title, artist, album, cover, coverMIME)
 }
-func (s *session) SetArtwork(data []byte, mime string) { s.sender.SetArtwork(data, mime) }
+func (s *session) SetLampArtwork(data []byte, mime string, on bool) {
+	s.sender.SetLampArtwork(data, mime, on)
+}
 func (s *session) PTP() (active, ready bool, offsetMS float64) {
 	if s.ptp == nil {
 		return false, false, 0
@@ -1188,9 +1190,11 @@ func (e *Engine) prepareLampImage() {
 	e.lampImage, e.lampImagePreset = data, preset
 }
 
-// applyLamp sends the current light, or the near-white reset when the light
-// is off. A receiver that cannot show top-display artwork is skipped with one
-// diagnostic line per session.
+// applyLamp sends the current light, or the origin reset when the light is
+// off. The lamp image owns the cover slot while on; while off, a receiver
+// track-info cover wins and the origin is the fallback. A receiver that
+// cannot show top-display artwork is skipped with one diagnostic line per
+// session.
 func (e *Engine) applyLamp() {
 	if e.tr == nil {
 		return
@@ -1198,9 +1202,9 @@ func (e *Engine) applyLamp() {
 	if !e.setsValue.Lamp.Enabled {
 		if e.lampTargetCapable() {
 			e.logf("ambient light: off, default restore on %s", e.connectedName)
-			e.tr.SetArtwork(lamp.Off(), "image/jpeg")
+			e.tr.SetLampArtwork(lamp.Off(), "image/jpeg", false)
 		} else {
-			e.tr.SetArtwork(nil, "")
+			e.tr.SetLampArtwork(nil, "", false)
 		}
 		return
 	}
@@ -1215,7 +1219,7 @@ func (e *Engine) applyLamp() {
 		return
 	}
 	e.logf("ambient light: apply %s (%d bytes) to %s", e.lampImagePreset, len(e.lampImage), e.connectedName)
-	e.tr.SetArtwork(e.lampImage, "image/jpeg")
+	e.tr.SetLampArtwork(e.lampImage, "image/jpeg", true)
 }
 
 // lampTargetCapable fails closed: a missing target, an unknown model, or an
