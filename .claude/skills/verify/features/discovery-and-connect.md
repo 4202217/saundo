@@ -4,6 +4,13 @@
 
 - mDNS browse on the LAN; `_raop`/`_airplay` advertisements merge into one
   device row; the subtitle shows model and pairing path.
+- Directed fallback every fifth cycle (15 s at the 3 s interval): a unicast
+  DNS-SD query on UDP 5353 to the Windows ARP neighbors and the remembered
+  receiver hosts, for both `_airplay._tcp` and `_raop._tcp`, feeding the same
+  parse and merge path. It finds HomePods that miss multicast.
+- A discovered row stores its last host, port, and `lastSeen`; a
+  `stereo:<tsid>` unseen for 24 h is pruned with its auto-connect flag, while
+  a group without `lastSeen` gets the full grace.
 - Offline marking after about three missed query cycles
   (`staleAfter = 3×interval + timeout`) and pruning after 90 s; a row shows
   离线.
@@ -36,6 +43,8 @@ Live, with hardware on the LAN (mutes the receiver, streams silence):
 
 ```bash
 SAUNDO_MDNS_TEST=1   go test -run TestBrowseIntegration -v ./internal/discovery/
+SAUNDO_UNICAST_TEST=<homepod-ip> go test -run TestLiveUnicastQuery -v ./internal/discovery/
+SAUNDO_UNICAST_BROWSE=1 go test -run TestLiveUnicastBrowse -v ./internal/discovery/
 SAUNDO_DEVICE_TEST=1 go test -run TestLiveHomePodHandshake -v ./internal/airplay/sender/
 ```
 
@@ -60,6 +69,9 @@ every 2 s.
   not failure.
 - Pairing 470 means the receiver wants a PIN it did not show; the app falls
   back from transient to on-screen PIN once.
+- Multicast is intermittent on some LANs; one successful browse does not
+  prove the next cycle. A receiver that is online but missing from the flyout
+  should be checked with the directed pass before calling it offline.
 - A failed launch must not become the auto-connect target: `lastDeviceId`
   is persisted only after streaming is first reached.
 - Windows Firewall must allow inbound UDP on the private network, or PTP

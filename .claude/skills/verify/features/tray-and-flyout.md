@@ -12,12 +12,22 @@
 - Right click opens the menu: 显示控制面板, 设置…, 检查更新…, 断开连接 or
   连接上次设备, 退出声渡. The menu is installed only for the duration of the
   popup.
-- Adaptive height: `flyoutHeightFor` derives the height from the device
-  card's own geometry — base 500 DIP with a full three-row card, shrinking
-  by one row height per missing device, growing by the latency-switch
-  height when 面板快捷切换 is on; the resize grows the flyout upward from
-  the tray anchor (`flyout.go:42-48`, pinned by
-  `TestFlyoutHeightForDeviceRows`).
+- Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
+  height from the device rows (56 each, 141 empty state), the latency row
+  (44), the Now Playing card (150 while a session exists), and the ambient
+  section (83 while on, plus 53 when its preset grid expands); base 474
+  with no flexible spacer, so the playback card follows the device card.
+  The resize grows the flyout upward from the tray anchor (`flyout.go`),
+  pinned by `TestFlyoutHeightForDeviceRows`, `TestFlyoutKeepsPlaybackGap`,
+  and `TestFlyoutTargetHeightFitsPlayback`.
+- Ambient light card: a 44-DIP row under the playback card while 氛围灯 is
+  on, with a 32-DIP preview, the preset name, and a rotating chevron.
+  Expanding shows a 10-per-row grid of 30-DIP swatches, up to four rows,
+  scrolling past that. The card has no switch; the settings page owns the
+  choice. See [ambient-light.md](ambient-light.md).
+- Faces: idle-open while disconnected, smile while connected but silent,
+  stream while streaming, connect while connecting, error on failure; the
+  flyout footer shares them (`faceOf`).
 - Silent start: login launch and `--tray` hide the panel; the tooltip
   carries the status (`saundo · 正在播放到 <name>`).
 - Single instance: a second launch hands its command line over and exits 0.

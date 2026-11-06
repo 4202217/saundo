@@ -5,8 +5,8 @@ A separate `mygo.NewWindow` (`settings_window.go:82-108`): 720 DIP wide
 engine starts. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · saundo` under en — match windows by class `MyGoWindow` + pid,
 or `-TitleLike` the active locale's brand string, never a hardcoded title.
-Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
-采集, 正在播放, 更新, 关于; each page body scrolls in the gutter at the window edge.
+Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
+氛围灯, 采集, 正在播放, 更新, 关于; each page body scrolls in the gutter at the window edge.
 
 ## Sub-features
 
@@ -33,6 +33,12 @@ Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
   (20–2000 ms, applies 500 ms after the last change), the 面板快捷切换
   header switch that shows or hides the flyout's latency segment row, and
   read-only format/sync rows.
+- 氛围灯 page: the 开启氛围灯 switch with the HomePod 专属 tag, a 72-DIP
+  preview of the current preset with its localized name, seven preset tiles
+  (默认, 暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白), the on/off hint, and the Sound
+  Glow reminder. Off dims the preview to 35% and disables the grid. The page
+  and the flyout's ambient card read the same global choice; see
+  [ambient-light.md](ambient-light.md).
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and per-app
   capture (application list built from window titles + audio sessions).
 - 正在播放 page: one card. The header is the display master 显示正在播放
@@ -79,7 +85,7 @@ SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
 
 Live app: open via the flyout's gear (and once via the tray menu — the
 设置… entry is a separate path), confirm the window class is `MyGoWindow`,
-the sidebar order is 通用/连接/接收器/音频/采集/正在播放/更新/关于, and the
+the sidebar order is 通用/连接/接收器/音频/氛围灯/采集/正在播放/更新/关于, and the
 window is ~720 DIP wide. Open 正在播放, flip the master off: the preview greys,
 the rows disable, and the flyout (reopened) has no media card and is shorter;
 the value persists in settings.json after a restart. Flip one 接收器 toggle, close via the title-bar button

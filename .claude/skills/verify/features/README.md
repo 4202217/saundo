@@ -14,7 +14,8 @@ page's Gotchas; never weaken the journey to make it pass.
 | [Discovery and connect](discovery-and-connect.md) | Flyout device card | Live app + protocol tests |
 | [Session controls](session-controls.md) | Flyout playback card | Headless UI + live app |
 | [Tray and flyout](tray-and-flyout.md) | Tray icon, panel behavior | Live app |
-| [Settings window](settings-window.md) | `设置 · saundo`, six pages | Headless UI + live app |
+| [Settings window](settings-window.md) | `设置 · saundo`, nine pages | Headless UI + live app |
+| [Ambient light](ambient-light.md) | Settings 氛围灯 page, flyout ambient card | Headless UI + live app |
 | [Updates](updates.md) | Settings 更新 page, notes dialog | Headless UI + live app |
 
 Cross-cutting states that touch several features: silence suspend (the pacer
