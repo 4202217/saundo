@@ -575,7 +575,48 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
 			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
 		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsMuteLocal(), a.muteLocalSub(), func() {
+			toggle(c, p, &a.cfg.MuteLocalOnConnect, locales.SettingsMuteLocal(), a.setMuteLocal)
+		})
 	})
+	if a.cfg.MuteLocalOnConnect {
+		ui.Row(c).Margin(8, 0, 0, 2).Gap(6).AlignItems(ui.Start).Children(func() {
+			ui.Icon(c, iconInfo).Size(13, 13).TextColor(p.muted)
+			ui.Text(c, locales.SettingsMuteLocalNote()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		})
+	}
+}
+
+// muteLocalSub follows the engine's effective state, not just the switch: on
+// means muted now, waiting means it applies on the next connection, failed
+// means the endpoint refused the call.
+func (a *App) muteLocalSub() string {
+	switch a.snap.MuteLocal {
+	case engine.MuteLocalActive:
+		return locales.SettingsMuteLocalDescOn()
+	case engine.MuteLocalWaiting:
+		return locales.SettingsMuteLocalDescWaiting()
+	case engine.MuteLocalFailed:
+		return locales.SettingsMuteLocalDescFailed()
+	default:
+		return locales.SettingsMuteLocalDesc()
+	}
+}
+
+// setMuteLocal saves the preference and forwards it to the engine. The write
+// is field-targeted, like the other options that share settings.json with the
+// engine's debounced save.
+func (a *App) setMuteLocal(on bool) {
+	a.cfg.MuteLocalOnConnect = on
+	if a.eng != nil {
+		a.eng.SetMuteLocal(on)
+	}
+	if a.sets != nil {
+		cfg := a.sets.Load()
+		cfg.MuteLocalOnConnect = on
+		_ = a.sets.Save(cfg)
+	}
 }
 
 func (a *App) audioPage(c *ui.Context, p palette) {

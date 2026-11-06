@@ -13,9 +13,11 @@ Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
 - 通用 page: 发送端名称 (the name receivers show on their next connection),
   开机自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language, and
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at once).
-- 连接 page: a status card for the current device, 断开后自动重连, and
-  严格验证接收器. Launch auto-connect is not here — it is per receiver on
-  the 接收器 page.
+- 连接 page: a status card for the current device, 断开后自动重连,
+  严格验证接收器, and 连接后静音本机输出. The mute row's subtitle follows
+  the engine state (`MuteLocal`): off, waiting for a connection, muted now,
+  or failed; the driver caveat under the card shows only while the switch is
+  on. Launch auto-connect is not here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); per-receiver password
@@ -57,7 +59,14 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+```
+
+Live engine path for the mute (mutes the receiver first, drives the engine
+directly, restores the local endpoint and the receiver's remembered volume):
+
+```bash
+SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
 ```
 
 Live app: open via the flyout's gear (and once via the tray menu — the
@@ -67,7 +76,12 @@ window is ~720 DIP wide. Open 正在播放, flip the master off: the preview gre
 the rows disable, and the flyout (reopened) has no media card and is shorter;
 the value persists in settings.json after a restart. Flip one 接收器 toggle, close via the title-bar button
 (process must stay alive, window reopens), restart the app and read the
-value back from `receivers.json` on disk — never trust the UI echo.
+value back from `receivers.json` on disk — never trust the UI echo. On 连接,
+turn on 连接后静音本机输出 while streaming: the PC speakers mute, the
+HomePod keeps playing, and the subtitle reads 本机已静音; disconnecting or
+quitting restores the speakers. A forced kill while muted leaves
+`mute-guard.json` under `%APPDATA%\saundo\`, and the next launch restores the
+endpoint and removes the file.
 
 Proven end state: the change survives a settings-window close/reopen and an
 app restart, and the corresponding engine command fired (log line or state

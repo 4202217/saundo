@@ -23,6 +23,9 @@ live state:
 
 - Apple TV on-screen PIN pairing and stored-credential reconnect — the
   remaining definition-of-done gap.
+- Local output mute in the live app: the engine session path passed
+  (`TestLiveMuteLocal`); the settings-window switch itself has only headless
+  coverage.
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
@@ -789,6 +792,44 @@ development PC with a real HomePod stereo pair on the LAN.
   unsigned, so SmartScreen warns.
 - **Public feed.** After publishing, the latest manifest returned 200 with
   version 0.4.2 and a signature, and the installer download returned 200.
+
+## Local output mute (2026-11-06)
+
+The connection mute calls `IAudioEndpointVolume.SetMute` on the render
+endpoint. On some drivers that also silences WASAPI loopback capture, which
+would silence the stream itself. A manual probe
+(`go test -tags muteprobe ./internal/capture -run TestLoopbackSurvivesEndpointMute -v`)
+played a 440 Hz tone through the default endpoint, captured the loopback, and
+muted the endpoint between two measurements.
+
+- **Probe result.** RMS stayed at about 0.17: 0.1679 before the mute, 0.1768
+  while muted, and 0.1768 after the restore in the latest run. The endpoint
+  was already muted before the probe (`previousMute=true`), and the probe
+  restored that state. On this machine, Realtek Digital Output at 48 kHz, the
+  loopback tap is upstream of the endpoint mute.
+- **Driver dependence.** The tap point is driver-dependent; the settings note
+  warns that muting can also silence capture. The probe is manual because it
+  touches the user's audio device, not a CI test.
+- **Crash guard.** The engine writes `mute-guard.json` before muting and
+  removes it after restoring. `TestMuteGuardRecoversAfterCrash` covers the
+  next-launch restore; `TestMuteGuardCorruptIsLeftAlone` keeps an unreadable
+  guard instead of guessing which endpoint to unmute.
+- **Pins.** `TestMuteLocalFollowsTheSession`,
+  `TestMuteLocalOffRestoresAtOnce`, `TestMuteLocalOnWhileStreaming`,
+  `TestMuteLocalFailureIsVisible`, `TestMuteLocalTargetsSelectedEndpoint`,
+  `TestMuteLocalProcessCaptureUsesDefaultEndpoint`,
+  `TestMuteLocalSettingPersists`, `TestConnectionPageMuteLocalStates`.
+- **Live session (2026-11-06).** `SAUNDO_MUTE_TEST=1 go test ./internal/engine -run TestLiveMuteLocal -v`
+  discovered HomePod L at 192.168.31.46, reached streaming, observed the local
+  endpoint muted and `mute-guard.json` present, then disconnected and observed
+  the endpoint restored and the guard gone. The test mutes the receiver before
+  audio can flow, drives the engine directly with temporary settings and
+  credentials, and restores the receiver's remembered volume before
+  disconnecting; it does not click the settings-window switch. That switch is
+  pinned by the headless UI tests and the native previews.
+- **Still owed.** A forced kill in the live app, and the settings-window
+  toggle clicked in a real session; the engine guard and the UI wiring are
+  covered separately.
 
 ## Failure modes and meanings
 

@@ -62,6 +62,7 @@ type Settings struct {
 	PlaybackControls    bool               `json:"playbackControls"`
 	CoverColors         bool               `json:"coverColors"`
 	AudioLevel          bool               `json:"audioLevel"`
+	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
 	TrayAnimation       bool               `json:"trayAnimation"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
@@ -113,6 +114,10 @@ func NewStore() *Store {
 
 // NewStoreAt is the testable form of NewStore.
 func NewStoreAt(path string) *Store { return &Store{path: path} }
+
+// Dir returns the directory holding settings.json and the engine's guard
+// files. A test store points it at the test's temporary directory.
+func (s *Store) Dir() string { return filepath.Dir(s.path) }
 
 // Load returns the stored settings, filling defaults for missing fields. A
 // missing or corrupt file yields the defaults.

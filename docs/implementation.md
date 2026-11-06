@@ -48,9 +48,9 @@ the card's meter follows the audio being heard.
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height), settings window (`settings_window.go`, eight pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), capture level tap and delayed frames (`LevelFrame`), snapshots |
+| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`), snapshots |
 | `internal/discovery` | mDNS browse, TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
-| `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`) |
+| `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`), and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/audio/ring` | Bounded overwrite-oldest SPSC `Buffer` and multi-sink `Fanout` (`KeepNewest` trim, drop counters) |
 | `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a delayed frame ring for the Now Playing card |
 | `internal/audio/resample` | Linear 48 kHz → 44.1 kHz conversion for interleaved stereo int16 |
@@ -71,7 +71,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetShowNowPlaying`, `SetNowPlaying`, `LevelFrame`, and the receiver-management commands
+`SetShowNowPlaying`, `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
@@ -128,6 +128,9 @@ All under `%APPDATA%\saundo\`:
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, and delay settings. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.
+- `mute-guard.json` — written before the engine mutes the local render
+  endpoint and removed after it restores it. A crash or forced kill leaves it
+  for the next launch to undo (`internal/engine/mute.go`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.
 - The first run after the airgoplay rename copies `settings.json` and
   `credentials.dat` from `%APPDATA%\airgoplay` (`internal/app/migrate.go`).

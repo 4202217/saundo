@@ -2298,6 +2298,66 @@ func (msgs Messages) SettingsAuto() string {
 	return Catalog.Format(msgs.locale, "settingsAuto", nil)
 }
 
+// SettingsMuteLocal says "Mute this PC while connected"
+// in the language the app shows.
+func SettingsMuteLocal() string { return In(i18n.Locale()).SettingsMuteLocal() }
+
+// SettingsMuteLocal says "Mute this PC while connected"
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocal() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocal", nil)
+}
+
+// SettingsMuteLocalDesc says "Mute local speakers while connected; restore on disconnect."
+// in the language the app shows.
+func SettingsMuteLocalDesc() string { return In(i18n.Locale()).SettingsMuteLocalDesc() }
+
+// SettingsMuteLocalDesc says "Mute local speakers while connected; restore on disconnect."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDesc() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDesc", nil)
+}
+
+// SettingsMuteLocalDescOn says "Local speakers are muted; restore on disconnect."
+// in the language the app shows.
+func SettingsMuteLocalDescOn() string { return In(i18n.Locale()).SettingsMuteLocalDescOn() }
+
+// SettingsMuteLocalDescOn says "Local speakers are muted; restore on disconnect."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescOn() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescOn", nil)
+}
+
+// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now."
+// in the language the app shows.
+func SettingsMuteLocalDescWaiting() string { return In(i18n.Locale()).SettingsMuteLocalDescWaiting() }
+
+// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescWaiting() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescWaiting", nil)
+}
+
+// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device."
+// in the language the app shows.
+func SettingsMuteLocalDescFailed() string { return In(i18n.Locale()).SettingsMuteLocalDescFailed() }
+
+// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescFailed() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescFailed", nil)
+}
+
+// SettingsMuteLocalNote says "Some drivers mute capture too; turn this off if audio stops."
+// in the language the app shows.
+func SettingsMuteLocalNote() string { return In(i18n.Locale()).SettingsMuteLocalNote() }
+
+// SettingsMuteLocalNote says "Some drivers mute capture too; turn this off if audio stops."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalNote() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalNote", nil)
+}
+
 // SettingsSystemOutput says "System output"
 // in the language the app shows.
 func SettingsSystemOutput() string { return In(i18n.Locale()).SettingsSystemOutput() }

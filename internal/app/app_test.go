@@ -200,7 +200,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器"}},
+		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "连接时静音本机扬声器，断开或退出时恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
@@ -220,6 +220,55 @@ func TestSettingsPagesRender(t *testing.T) {
 		if path := os.Getenv("SAUNDO_PREVIEW_SETTINGS"); path != "" {
 			writePreview(t, tt, path)
 		}
+	}
+}
+
+func TestConnectionPageMuteLocalStates(t *testing.T) {
+	a := previewApp()
+	a.page = pageConnection
+	a.cfg.MuteLocalOnConnect = true
+	a.snap.MuteLocal = engine.MuteLocalWaiting
+
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsMuteLocal(),
+		locales.SettingsMuteLocalDescWaiting(),
+		locales.SettingsMuteLocalNote(),
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("waiting mute state is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+
+	a.snap.MuteLocal = engine.MuteLocalActive
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText(locales.SettingsMuteLocalDescOn()) {
+		t.Fatalf("active mute state is missing its subtitle; texts: %q", tt.Texts())
+	}
+
+	a.cfg.MuteLocalOnConnect = false
+	a.snap.MuteLocal = engine.MuteLocalOff
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if tt.HasText(locales.SettingsMuteLocalNote()) {
+		t.Fatalf("the driver note stayed visible with the mute off; texts: %q", tt.Texts())
+	}
+}
+
+func TestMuteLocalSettingPersists(t *testing.T) {
+	sets := settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	cfg := settings.Default()
+	if err := sets.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{sets: sets, cfg: cfg}
+
+	a.setMuteLocal(true)
+	if !sets.Load().MuteLocalOnConnect {
+		t.Fatal("turning the mute on did not persist")
+	}
+	a.setMuteLocal(false)
+	if sets.Load().MuteLocalOnConnect {
+		t.Fatal("turning the mute off did not persist")
 	}
 }
 

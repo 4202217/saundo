@@ -16,6 +16,7 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
+	"saundo/internal/engine"
 	"saundo/internal/nowplaying"
 	"saundo/internal/settings"
 )
@@ -280,6 +281,23 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		}
 		save(pageNames[page]+"-light", a.settingsView, 720, 500, false)
 	}
+	// The connection page with the local-output mute on: the target state the
+	// mockup settled, plus the waiting state a disconnected user sees.
+	muteSettings := fixture()
+	muteSettings.page = pageConnection
+	muteSettings.cfg.MuteLocalOnConnect = true
+	muteSettings.snap.MuteLocal = engine.MuteLocalActive
+	save("settings-connection-mute-light", muteSettings.settingsView, 720, 500, false)
+	save("settings-connection-mute-dark", muteSettings.settingsView, 720, 500, true)
+
+	muteWaiting := fixture()
+	muteWaiting.page = pageConnection
+	muteWaiting.cfg.MuteLocalOnConnect = true
+	muteWaiting.snap.MuteLocal = engine.MuteLocalWaiting
+	muteWaiting.snap.State = sender.StateIdle
+	muteWaiting.snap.ConnectedName = ""
+	save("settings-connection-mute-waiting-light", muteWaiting.settingsView, 720, 500, false)
+
 	// The Now Playing settings page with a live card, master on and off.
 	nowSettings := fixture()
 	nowSettings.page = pageNowPlaying

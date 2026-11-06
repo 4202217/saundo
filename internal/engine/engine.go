@@ -48,6 +48,8 @@ type Snapshot struct {
 	// AudioIdle is true while the engine has suspended RTP after sustained
 	// digital silence. The session stays connected.
 	AudioIdle          bool
+	MuteLocal          MuteLocalState
+	MuteLocalError     string
 	ShowNowPlaying     bool
 	TrayAnimation      bool
 	LatencyMS          int
@@ -81,6 +83,7 @@ const (
 	cmdReconnect
 	cmdShowNowPlaying
 	cmdTrayAnimation
+	cmdMuteLocal
 	cmdNowPlaying
 	cmdLatency
 	cmdLatencySettings
@@ -258,6 +261,7 @@ type Engine struct {
 	capture       captureSource
 	captureInfo   chan captureInfo
 	captureResult chan captureStart
+	mute          localMute
 
 	commands       chan command
 	quit           chan struct{}
@@ -269,6 +273,12 @@ type Engine struct {
 	now            func() time.Time
 	newSession     func(d device.Device) (transport, func(), error)
 	captureStartFn func(capture.Config) (captureSource, error)
+
+	// The endpoint mute is injected so tests never touch the machine's audio.
+	endpointMuted    func(string) (bool, error)
+	setEndpointMuted func(string, bool) error
+	defaultEndpoint  func() (capture.Endpoint, error)
+	endpoints        func() ([]capture.Endpoint, error)
 
 	mu   sync.Mutex
 	snap Snapshot
@@ -359,6 +369,12 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.captureSink = ring.NewFanout(e.ring)
 	e.level = analyze.New(0)
 	e.silence = newSilenceMeter(e.captureSink, e.level)
+	e.endpointMuted = capture.EndpointMuted
+	e.setEndpointMuted = capture.SetEndpointMuted
+	e.defaultEndpoint = capture.DefaultEndpoint
+	e.endpoints = capture.Endpoints
+	e.mute.state = e.idleMuteState()
+	e.recoverMuteGuard()
 	e.rebuildTargets()
 	e.snap = e.buildSnapshot()
 	return e
@@ -565,6 +581,13 @@ func (e *Engine) SetTrayAnimation(on bool) {
 	e.send(command{kind: cmdTrayAnimation, value: v})
 }
 
+// SetMuteLocal turns the local-output mute on or off for this and later
+// sessions. Turning it on while streaming mutes at once; turning it off
+// restores the endpoint.
+func (e *Engine) SetMuteLocal(on bool) {
+	e.send(command{kind: cmdMuteLocal, show: on})
+}
+
 // SetNowPlaying pushes track metadata to the receiver.
 func (e *Engine) SetNowPlaying(title, artist, album string) {
 	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album})
@@ -726,6 +749,7 @@ func (e *Engine) shutdown() {
 }
 
 func (e *Engine) closeSession() {
+	e.restoreLocalMute()
 	e.detachMemberRings()
 	e.audioPaused = false
 	e.pauseUnsupported = false
@@ -823,6 +847,9 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.CaptureProcessPID = 0
 		e.setsValue.CaptureProcessName = ""
 		e.markSettingsDirty()
+		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
+			e.refreshLocalMute()
+		}
 		e.restartCapture()
 		e.publish()
 	case cmdCaptureProcess:
@@ -831,6 +858,9 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.CaptureProcessPID = e.captureProcess
 		e.setsValue.CaptureProcessName = cmd.name
 		e.markSettingsDirty()
+		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
+			e.refreshLocalMute()
+		}
 		e.restartCapture()
 		e.publish()
 	case cmdLatency:
@@ -905,6 +935,15 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdTrayAnimation:
 		e.setsValue.TrayAnimation = cmd.value != 0
 		e.markSettingsDirty()
+		e.publish()
+	case cmdMuteLocal:
+		e.setsValue.MuteLocalOnConnect = cmd.show
+		e.markSettingsDirty()
+		if cmd.show {
+			e.applyLocalMute()
+		} else {
+			e.restoreLocalMute()
+		}
 		e.publish()
 	case cmdNowPlaying:
 		if e.setsValue.ShowNowPlaying && e.tr != nil {
@@ -1100,8 +1139,10 @@ func (e *Engine) onLaunched(ok bool, err string) {
 				e.markSettingsDirty()
 			}
 		}
+		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
 	} else {
+		e.restoreLocalMute()
 		e.connectedName = ""
 		e.lastError = err
 		e.logf("session failed: %s", err)
@@ -1460,6 +1501,13 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 		e.tr.SetInputFormat(stats.Rate)
 	}
 	e.captureSink.Reset()
+	if e.mute.state == MuteLocalActive && e.captureProcess == 0 && e.captureEndpoint == "" {
+		// Capture follows the default device. If Windows moved the default,
+		// move the mute with it.
+		if ep, err := e.defaultEndpoint(); err == nil && ep.ID != e.mute.endpointID {
+			e.refreshLocalMute()
+		}
+	}
 	e.logf("capture open: %s (%d Hz)", e.captureName, stats.Rate)
 	e.publish()
 }
@@ -1549,6 +1597,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 		Reconnect:          e.setsValue.Reconnect,
 		Reconnecting:       e.reconnectWanted && !e.reconnectAt.IsZero(),
 		AudioIdle:          e.audioPaused,
+		MuteLocal:          e.mute.state,
+		MuteLocalError:     e.mute.err,
 		LatencyMS:          e.setsValue.LatencyMS,
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,
