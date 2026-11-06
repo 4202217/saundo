@@ -102,6 +102,8 @@ type command struct {
 	text      string
 	name      string
 	album     string
+	cover     []byte
+	coverMIME string
 	reconnect bool
 	show      bool
 	spec      receivers.Spec
@@ -157,7 +159,7 @@ type transport interface {
 	SubmitPin(code string)
 	WaitingForPin() bool
 	InitialVolumePercent() (float64, bool)
-	SetNowPlaying(title, artist, album string)
+	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)
 	PTP() (active, ready bool, offsetMS float64)
 }
 
@@ -199,8 +201,8 @@ func (s *session) WaitingForPin() bool           { return s.sender.WaitingForPin
 func (s *session) InitialVolumePercent() (float64, bool) {
 	return s.sender.InitialVolumePercent()
 }
-func (s *session) SetNowPlaying(title, artist, album string) {
-	s.sender.SetNowPlaying(title, artist, album, nil, "")
+func (s *session) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
+	s.sender.SetNowPlaying(title, artist, album, cover, coverMIME)
 }
 func (s *session) PTP() (active, ready bool, offsetMS float64) {
 	if s.ptp == nil {
@@ -597,9 +599,9 @@ func (e *Engine) SetMuteLocal(on bool) {
 	e.send(command{kind: cmdMuteLocal, show: on})
 }
 
-// SetNowPlaying pushes track metadata to the receiver.
-func (e *Engine) SetNowPlaying(title, artist, album string) {
-	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album})
+// SetNowPlaying pushes track metadata and cover art to the receiver.
+func (e *Engine) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
+	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album, cover: cover, coverMIME: coverMIME})
 }
 
 func (e *Engine) send(cmd command) {
@@ -956,7 +958,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.publish()
 	case cmdNowPlaying:
 		if e.setsValue.ShowNowPlaying && e.tr != nil {
-			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album)
+			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album, cmd.cover, cmd.coverMIME)
 			e.publish()
 		}
 	case cmdAddReceiver:

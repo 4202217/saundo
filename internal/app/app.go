@@ -110,7 +110,7 @@ type App struct {
 	receiverDelayPend  map[string]int
 
 	readNowPlaying    func() (nowplaying.Snapshot, error)
-	pushNowPlaying    func(title, artist, album string)
+	pushNowPlaying    func(title, artist, album string, cover []byte, coverMIME string)
 	nowPlayingSetting func() (show, streaming bool)
 	// setThemeSource applies the appearance; a test replaces it, because
 	// mygo.Theme.SetSource needs the running application's main thread.
@@ -435,7 +435,7 @@ func (a *App) refreshNowPlaying() {
 		a.nowSent = ""
 	}
 	a.lastStreaming = streaming
-	if !ok {
+	if !ok || !show {
 		a.nowSent = ""
 	}
 	a.updateUI(func() {
@@ -444,12 +444,13 @@ func (a *App) refreshNowPlaying() {
 	if !show || !ok || !streaming || a.pushNowPlaying == nil {
 		return
 	}
-	key := track.Title + "\x00" + track.Artist + "\x00" + track.Album
+	s := snap.Sessions[snapIndex(snap)]
+	key := nowPlayingPushKey(track, s)
 	if key == a.nowSent {
 		return
 	}
 	a.nowSent = key
-	a.pushNowPlaying(track.Title, track.Artist, track.Album)
+	a.pushNowPlaying(track.Title, track.Artist, track.Album, s.Artwork, s.ArtworkMIME)
 	if a.log != nil {
 		a.log.Printf("now playing: %s - %s", track.Title, track.Artist)
 	}
@@ -557,9 +558,24 @@ func nowArtworkKey(s nowplaying.Session) string {
 	if len(s.Artwork) == 0 {
 		return s.AUMID + "\x00" + s.Title + "\x00" + s.Album
 	}
+	return fmt.Sprintf("%s\x00%s\x00%s\x00%x", s.AUMID, s.Title, s.Album, fnv64(s.Artwork))
+}
+
+// nowPlayingPushKey changes when the receiver should see new metadata: the
+// text fields or the cover bytes. SMTC can supply the thumbnail a poll after
+// the text, so the bytes belong in the key.
+func nowPlayingPushKey(track nowplaying.Track, s nowplaying.Session) string {
+	key := track.Title + "\x00" + track.Artist + "\x00" + track.Album + "\x00" + s.ArtworkMIME
+	if len(s.Artwork) == 0 {
+		return key
+	}
+	return fmt.Sprintf("%s\x00%x", key, fnv64(s.Artwork))
+}
+
+func fnv64(b []byte) uint64 {
 	h := fnv.New64a()
-	_, _ = h.Write(s.Artwork)
-	return fmt.Sprintf("%s\x00%s\x00%s\x00%x", s.AUMID, s.Title, s.Album, h.Sum64())
+	_, _ = h.Write(b)
+	return h.Sum64()
 }
 
 // switchNowMedia cycles the card between the available SMTC sessions.

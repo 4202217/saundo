@@ -470,6 +470,25 @@ func TestNowPlayingRidesAsDMAP(t *testing.T) {
 	}
 }
 
+func TestNowPlayingCoverRidesAsImage(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	rb, _ := fillRing(4410)
+	r.sender.AttachRing(rb)
+	cover := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
+	r.sender.SetNowPlaying("夜曲", "周杰伦", "十一月的萧邦", cover, "image/png")
+	r.start()
+	requireLaunched(t, r)
+	var image string
+	for _, p := range r.rx.setParams {
+		if strings.HasPrefix(p, "image/png\x00") {
+			image = p
+		}
+	}
+	if image != "image/png\x00"+string(cover) {
+		t.Fatalf("image SET_PARAMETER = %q, want the cover bytes", image)
+	}
+}
+
 func TestHandshakeTimeoutFails(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	r.rx.failAll = true

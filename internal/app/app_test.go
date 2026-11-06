@@ -631,7 +631,7 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 			}
 			return nowplaying.Snapshot{Sessions: []nowplaying.Session{track}, Current: 0}, nil
 		},
-		pushNowPlaying: func(title, artist, album string) {
+		pushNowPlaying: func(title, artist, album string, cover []byte, coverMIME string) {
 			pushes = append(pushes, title+"\x00"+artist)
 		},
 		nowPlayingSetting: func() (bool, bool) { return enabled, streaming },
@@ -682,6 +682,16 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 		t.Fatalf("pushes after reconnect = %d, want 3", len(pushes))
 	}
 
+	// Re-enabling mid-track resends, so the receiver shows the current
+	// track and cover without waiting for the next one.
+	enabled = false
+	a.refreshNowPlaying()
+	enabled = true
+	a.refreshNowPlaying()
+	if len(pushes) != 4 {
+		t.Fatalf("pushes after re-enabling = %d, want 4", len(pushes))
+	}
+
 	// No media clears both the state and the sent marker.
 	ok = false
 	a.refreshNowPlaying()
@@ -690,6 +700,48 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 	}
 	if a.nowSent != "" {
 		t.Fatalf("sent marker kept without media: %q", a.nowSent)
+	}
+}
+
+func TestRefreshNowPlayingPushesArtworkChanges(t *testing.T) {
+	session := nowplaying.Session{
+		Title: "夜曲", Artist: "周杰伦", Album: "十一月的萧邦",
+		Artwork: []byte{0x89, 'P', 'N', 'G', 1}, ArtworkMIME: "image/png",
+	}
+	var covers [][]byte
+	var mimes []string
+	a := &App{
+		readNowPlaying: func() (nowplaying.Snapshot, error) {
+			return nowplaying.Snapshot{Sessions: []nowplaying.Session{session}, Current: 0}, nil
+		},
+		pushNowPlaying: func(title, artist, album string, cover []byte, coverMIME string) {
+			covers = append(covers, append([]byte(nil), cover...))
+			mimes = append(mimes, coverMIME)
+		},
+		nowPlayingSetting: func() (bool, bool) { return true, true },
+	}
+	a.refreshNowPlaying()
+	if len(covers) != 1 || !bytes.Equal(covers[0], session.Artwork) || mimes[0] != "image/png" {
+		t.Fatalf("covers = %v mimes = %v", covers, mimes)
+	}
+
+	// The same bytes in a rebuilt session do not resend.
+	a.readNowPlaying = func() (nowplaying.Snapshot, error) {
+		s := session
+		s.Artwork = append([]byte(nil), session.Artwork...)
+		return nowplaying.Snapshot{Sessions: []nowplaying.Session{s}, Current: 0}, nil
+	}
+	a.refreshNowPlaying()
+	if len(covers) != 1 {
+		t.Fatalf("unchanged artwork pushed again: %d", len(covers))
+	}
+
+	// SMTC can replace the thumbnail under the same text; the receiver gets
+	// the new bytes.
+	session.Artwork = []byte{0x89, 'P', 'N', 'G', 2}
+	a.refreshNowPlaying()
+	if len(covers) != 2 || !bytes.Equal(covers[1], session.Artwork) {
+		t.Fatalf("covers after artwork change = %v", covers)
 	}
 }
 

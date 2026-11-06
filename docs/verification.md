@@ -494,6 +494,19 @@ software stereo groups built from independent receivers.
   Motion through a func because `mygo.Theme.Preferences()` blocks without a
   running app; the eager read hung the table test. The smoothness itself is
   user-observed: no automated check counts a real window's frames.
+- **The receiver push carries the cover.** The sender already emitted the
+  thumbnail as an image `SET_PARAMETER`, but `Engine.SetNowPlaying` passed
+  nil and the app's change key held only the text. The cover now rides
+  through the engine command and both transports; the key includes an FNV-1a
+  hash of the bytes, so a thumbnail that lands or changes after the text is
+  sent again in the same session, and turning the switch back on resends the
+  current track instead of waiting for the next.
+  `TestNowPlayingCoverRidesAsImage`,
+  `TestNowPlayingCommandForwardsWhenEnabled`, and
+  `TestRefreshNowPlayingPushesArtworkChanges` pin the path. The receiver's
+  display of the image was not exercised live: a push needs a streaming
+  session and would play the user's audio to the receivers; whether a given
+  receiver renders the image is unconfirmed.
 - **Previews and tests.** `.audit/previews/nowplaying-settings/` (uncommitted)
   holds the live settings page, the master-off page, and the compact flyout
   without the card, zh-CN and English, light and dark. The page is covered by

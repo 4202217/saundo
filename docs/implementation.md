@@ -46,6 +46,12 @@ envelopes ignore changes under 0.02 of the bar's range, so dither and room
 tone leave the bars steady and quiet passages compress instead of filling
 them.
 
+The receiver push carries the same track's title, artist, album, and SMTC
+thumbnail as a DMAP `SET_PARAMETER` followed by an image `SET_PARAMETER`;
+the app keys each push on the text plus an FNV-1a hash of the cover bytes,
+so a thumbnail that arrives or changes after the text is sent again in the
+same session.
+
 ## Package map
 
 | Package | Responsibility |

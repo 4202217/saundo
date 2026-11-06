@@ -40,7 +40,7 @@ card, capture status, and the diagnostics log card.
   and the audio level; master off hides the card and shrinks the flyout, and
   the receiver track info is effective only while the master is on. The
   settings preview shows the live card, or a sample when nothing plays. The 推送 switch is gone; changed tracks still forward
-  as DMAP when the engine's `showNowPlaying` setting is on.
+  as DMAP plus the cover image when the engine's `showNowPlaying` setting is on.
 - Capture line: `采集 {endpoint}` with the rate formatted as kHz
   (`48 kHz`); 采集设备 follows the Windows default or pins a specific
   endpoint (a queued async restart supersedes the in-flight one); 丢帧
