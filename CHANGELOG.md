@@ -5,6 +5,71 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.5.0 - 2026-11-07
+
+### Added
+
+- The Now Playing card in the flyout. It reads the Windows media session
+  and shows the app, cover, title, artist, a live five-band meter, elapsed
+  and remaining time, and the transport controls the session reports. The
+  session-switch arrow moves between open media sessions.
+- The Now Playing settings page. It controls the card's display master,
+  the cover mode (none, default, or the media artwork), cover colors, the
+  audio level, playback controls, and the receiver track-info push.
+- Ambient light. Six palettes plus a default reset paint the top display
+  of a HomePod on software 27.2 through the Now Playing cover. Choose the
+  preset in the Ambient light settings page or the flyout's ambient card.
+  With the light off the receiver keeps its default or the media cover.
+- Receiver cover art. The media thumbnail now reaches the receiver as an
+  image on the encrypted control channel. The ambient image and the
+  track-info cover share one slot; the light takes it while it is on.
+- Mute the PC output. A connection switch mutes the local render endpoint
+  while a session streams and restores its earlier state on disconnect,
+  quit, or when the switch is turned off. A guard file undoes the mute
+  after a crash. The settings note warns when the driver lets WASAPI
+  loopback capture survive the mute.
+- Appearance. The General page follows Windows, light, or dark, and both
+  windows repaint when the choice changes.
+- The About page. It shows the version, the project links, the GPL
+  license, and the third-party notices.
+- Directed discovery. A unicast pass over the ARP neighbors and the
+  remembered hosts finds receivers that miss the multicast browse, so a
+  HomePod that never answers multicast is still found and can be reached
+  after a restart.
+
+### Changed
+
+- The flyout and the Receivers page list only receivers that can be used:
+  manual entries, online discovered receivers, and the active session's
+  row. An offline discovered receiver's saved settings return with the
+  device.
+- The Receivers page renders an empty list as plain prose, with the add
+  row as the only plus, and collapses hidden rows when their group closes.
+- The meter gates band energy below -50 dBFS and floors each band's gain,
+  so dither and room tone no longer fill the bars during quiet passages.
+- The update notes dialog reads the offered version's entry from the
+  localized changelog, so a Chinese dialog no longer shows English notes.
+- A local build reports its git describe stamp, and the updater still
+  offers the release that the build sits past.
+
+### Fixed
+
+- The cover art now reaches the receiver. The sender emitted the image,
+  but the engine passed an empty thumbnail and the app's change key held
+  only the text.
+- A song change no longer replaces the ambient light, and turning the
+  light off hands the cover slot back to the media artwork or the origin
+  image.
+- A stereo group name arrives as RFC 1035 byte escapes in the TXT `gpn`
+  field and is now decoded, so a UTF-8 name such as the Chinese for
+  "bedroom" no longer appears as escapes.
+- A stale media thumbnail, such as Chrome's placeholder logo, is replaced
+  when the artwork changes under the same title.
+- The disconnected idle tray face is an open-eyed line face, distinct from
+  the silent-session smile.
+- Connecting to a remembered receiver without a host or port fails closed
+  instead of dialing an empty address.
+
 ## 0.4.2 - 2026-11-04
 
 ### Added

@@ -1086,6 +1086,13 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   the receiver track-info cover, the 6,1 and first-generation HomePod, and a
   stereo pair's simultaneous repaint.
 
+## Release 0.5.0 pre-release check (2026-11-07)
+
+- **Draft for real-device testing.** The maintainer requested a 0.5.0 draft
+  and tests it on real devices before publishing. The release request is the
+  local smoke-test confirmation; the draft's real-device test is the publish
+  gate.
+
 ## Failure modes and meanings
 
 | Symptom | Likely cause |
