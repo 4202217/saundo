@@ -18,6 +18,18 @@ const (
 
 	// window is the Goertzel window; about 42 ms at 48 kHz.
 	window = 2048
+
+	// bandFloor is the Goertzel magnitude of a bin-centered sine at -50 dBFS.
+	// Bands below it are dither or room tone; amplifying them to full bars
+	// makes the meter twitch whenever quiet content plays.
+	bandFloor = 0.0015811
+	// bandPeakFloor is the lowest gain the per-band AGC falls to: 18 dB above
+	// the gate. A quiet passage compresses into the bar range instead of
+	// pumping up to full height as its running peak decays into the noise.
+	bandPeakFloor = bandFloor * 8
+	// meterDeadband is the smallest normalized change the envelopes follow;
+	// less than a third of a DIP of the 16-DIP bar range.
+	meterDeadband = 0.02
 )
 
 var bandFreqs = [BandCount]float64{100, 250, 600, 1500, 4000}
@@ -95,10 +107,13 @@ func (m *Meter) Push(samples []int16, at time.Time) {
 			} else {
 				peak *= 0.995
 			}
+			if peak < bandPeakFloor {
+				peak = bandPeakFloor
+			}
 			m.bandPeak[b] = peak
 			v := float32(0)
-			if peak > 1e-9 {
-				v = float32(mag / peak)
+			if mag > bandFloor {
+				v = float32((mag - bandFloor) / (peak - bandFloor))
 			}
 			if v > 1 {
 				v = 1
@@ -157,12 +172,20 @@ func normalizeDB(db float64) float32 {
 	return float32(v)
 }
 
-// follow is a one-pole envelope: fast attack, slow release.
+// follow is a one-pole envelope: fast attack, slow release, and a deadband so
+// a change smaller than a fraction of a bar leaves the bars where they are.
 func follow(env, x, attack, release float32) float32 {
-	if x > env {
-		return env + (x-env)*attack
+	d := x - env
+	switch {
+	case d > meterDeadband:
+		return env + (d-meterDeadband)*attack
+	case d < -meterDeadband:
+		return env + (d+meterDeadband)*release
 	}
-	return env + (x-env)*release
+	if env <= meterDeadband && x < meterDeadband {
+		return 0
+	}
+	return env
 }
 
 func goertzel(samples []float32, rate int, freq float64) float64 {

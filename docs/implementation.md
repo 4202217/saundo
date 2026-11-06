@@ -40,7 +40,11 @@ The app also polls Windows SMTC every two seconds (`internal/nowplaying`) for
 the Now Playing card and its transport buttons. Capture blocks are measured
 into level and five-band frames (`internal/audio/analyze`) on the capture
 goroutine; `Engine.LevelFrame` reads them back with the presentation delay so
-the card's meter follows the audio being heard.
+the card's meter follows the audio being heard. The bands gate energy below
+-50 dBFS and stop the per-band AGC at a floor 18 dB above the gate, and the
+envelopes ignore changes under 0.02 of the bar's range, so dither and room
+tone leave the bars steady and quiet passages compress instead of filling
+them.
 
 ## Package map
 
@@ -52,7 +56,7 @@ the card's meter follows the audio being heard.
 | `internal/discovery` | mDNS browse plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`), and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/audio/ring` | Bounded overwrite-oldest SPSC `Buffer` and multi-sink `Fanout` (`KeepNewest` trim, drop counters) |
-| `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a delayed frame ring for the Now Playing card |
+| `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a -50 dBFS noise gate, a floored per-band AGC, deadband smoothing, and a delayed frame ring for the Now Playing card |
 | `internal/audio/resample` | Linear 48 kHz → 44.1 kHz conversion for interleaved stereo int16 |
 | `internal/airplay/crypto` | Wire primitives: SHA-512/HMAC/HKDF, ChaCha20-Poly1305, X25519/Ed25519, SRP-6a, TLV8, bplist, Digest |
 | `internal/airplay/alac` | Uncompressed ALAC frame encoder (`EncodeUncompressed`) |

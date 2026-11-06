@@ -411,6 +411,18 @@ software stereo groups built from independent receivers.
   and decay; `TestSilenceMeterFeedsTheLevelMeter` pins the engine tap. The
   card asks for 30 fps only with a real window and Reduce Motion off, so
   headless previews settle.
+- **The meter twitched at low level.** Each band normalized its magnitude by
+  its own running peak, and that peak decayed into the noise floor during
+  quiet passages; every block then read `mag/peak` near 1, so dither and room
+  tone filled the bars and moved them on tiny changes (reported against
+  quiet playback). The meter now ignores band energy below -50 dBFS, floors
+  the per-band gain 18 dB above the gate (a quiet passage compresses instead
+  of pumping), and the envelope follower ignores changes under 0.02 of the
+  bar range. `TestMeterGatesNoiseBelowTheFloor` and
+  `TestMeterQuietToneKeepsBarsLow` read about 1.0 on the old meter and pass
+  now; `TestFollowIgnoresSubBarChanges` pins the deadband. The change was
+  judged with synthetic tones and noise, not with a listener's track; the
+  live meter was not captured.
 - **The cover field.** `coverField` center-crops the artwork, samples a
   23×24 grid, blurs it, blends toward its average, compresses HSL
   lightness, and lifts brightness/saturation per theme.
