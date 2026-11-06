@@ -1092,6 +1092,14 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   and tests it on real devices before publishing. The release request is the
   local smoke-test confirmation; the draft's real-device test is the publish
   gate.
+- **Draft assets (2026-11-07).** The release workflow's check, draft, and
+  build jobs passed (run 42264388577). The draft carried the installer, the
+  0.5.0 archive, the 0.4.2 and 0.4.1 deltas, `install.ps1`, `SHA256SUMS`, and
+  the manifest; `sha256sum -c SHA256SUMS` passed every listed file. The
+  manifest is version 0.5.0 with a signature and the English notes. The
+  installer is unsigned, so SmartScreen warns.
+- **Publish gate.** The maintainer's real-device test of the draft is still
+  pending; publishing is not authorized yet.
 
 ## Failure modes and meanings
 
