@@ -1,13 +1,20 @@
-<p align="center">
-  <img src="resources/icon.png" width="120" alt="The saundo icon: a smiling face on a rounded dark tile">
-</p>
+<div align="center">
+
+<a href="https://github.com/4202217/saundo"><img src="resources/icon.png" width="120" alt="The saundo icon: a smiling face on a rounded dark tile"></a>
 
 # saundo · 声渡
-声渡 (Shēngdù) — "ferry the sound": 声, sound; 渡, to ferry across. **saundo** is サウンド, the Japanese katakana rendering of "sound".
-
-English · [简体中文](README.zh-CN.md)
 
 ### Stream all Windows audio to AirPlay 2 receivers — from the tray, in pure Go.
+
+**声渡 (Shēngdù) — "ferry the sound": 声, sound; 渡, to ferry across.**<br>
+**saundo** is サウンド, the Japanese katakana rendering of "sound".<br>
+HomePod, HomePod mini, Mac, and Apple TV: everything the PC plays, one tray click away.
+
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/saundo) 
+
+**[Download](https://github.com/4202217/saundo/releases/latest)** &nbsp;·&nbsp; **[Issues](https://github.com/4202217/saundo/issues)** &nbsp;·&nbsp; **[Docs](docs/verification.md)** &nbsp;·&nbsp; **English** · [简体中文](README.zh-CN.md)
+
+<br>
 
 <p align="center">
   <img src="docs/screenshots/flyout-stream-light-en.png" width="290" alt="The saundo tray flyout: receiver list, volume, Now Playing">
@@ -15,9 +22,13 @@ English · [简体中文](README.zh-CN.md)
   <img src="docs/screenshots/settings-connection-light-en.png" width="470" alt="The settings window: connection page">
 </p>
 
-saundo captures whatever Windows is playing — WASAPI loopback, no per-app setup — and streams it as uncompressed ALAC over AirPlay 2 to HomePod, HomePod mini, Mac receivers, and Apple TV. One tray icon, one binary, no WebView. Free software under GPL-3.0-only.
+</div>
+
+<br>
 
 ## Is saundo for you?
+
+saundo captures whatever Windows is playing — WASAPI loopback, no per-app setup — and streams it as uncompressed ALAC over AirPlay 2 to HomePod, HomePod mini, Mac receivers, and Apple TV. One tray icon, one binary, no WebView:
 
 - You play audio on Windows and want it on a HomePod or a Mac on the same network.
 - You want **all** system audio — a browser, a game, a player — not one app's stream.
@@ -25,13 +36,24 @@ saundo captures whatever Windows is playing — WASAPI loopback, no per-app setu
 
 Not for you if you need video or screen mirroring (this is audio only), or if your receiver requires Apple FairPlay — some TVs do. saundo detects that class of receiver and fails fast instead of connecting silently.
 
+Runs on Windows 10 and 11; the interface ships in English and Simplified Chinese and follows the system language by default.
+
 ## Quick start
 
-1. Build it (below) and start `saundo.exe`. The app lives in the tray: a left click opens the panel, a right click opens the menu.
-2. Pick a receiver and connect. A receiver that requires a password asks once and remembers it.
-3. Play anything on the PC. The sound follows, and the volume slider drives the receiver's own volume.
+**1 · Install**. Grab the installer from **[Releases](https://github.com/4202217/saundo/releases/latest)**, or build from source:
 
-Windows Firewall prompts on first launch — allow it on private networks: discovery (mDNS) and PTP timing both need inbound UDP.
+```bash
+mingw32-make check  # gofmt gate, go vet, mygo UI vet, go test — the acceptance gate
+mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-setup-*.exe) through mygo, then restarts the running app
+```
+
+<sub>The installer is not code-signed yet, so SmartScreen warns. Building from source needs Go 1.27+ (the toolchain [mygo](https://github.com/egoist/mygo) requires) and `mingw32-make` from MinGW-w64; then run `bin/saundo-setup-*.exe`.</sub>
+
+**2 · Connect**. The app lives in the tray: a left click opens the panel, a right click opens the menu. Pick a receiver and connect; one that requires a password asks once and remembers it.
+
+**3 · Play**. Play anything on the PC. The sound follows, and the volume slider drives the receiver's own volume.
+
+<sub>Windows Firewall prompts on first launch — allow it on private networks: discovery (mDNS) and PTP timing both need inbound UDP.</sub>
 
 ## What it does
 
@@ -40,23 +62,12 @@ Windows Firewall prompts on first launch — allow it on private networks: disco
 - **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
 - **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own DPAPI-stored password.
 - **Now Playing** — reads the Windows media session (SMTC) and pushes title · artist · album to the receiver, toggleable.
-- **Latency modes.** Low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the flyout or the audio page. A live change restarts the stream with a spinner.
-- **A tray that shows the state.** The smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
-- **Updates in the app.** The settings 更新 page shows available releases, their notes, and the release history. It installs the signed update. The flyout chip and the tray tooltip point to it.
-- **English and Simplified Chinese.** The interface follows the Windows language by default, with a language setting and a localized update page and notes dialog.
+- **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the flyout or the audio page. A live change restarts the stream with a spinner.
+- **A tray that shows the state** — the smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
+- **Updates in the app** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The flyout chip and the tray tooltip point to it.
+- **English and Simplified Chinese** — the interface follows the Windows language by default, with a language setting and a localized update page and notes dialog.
 - **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are DPAPI-encrypted.
 - **Stays out of the way** — suspends the stream after 2 s of digital silence and resumes cleanly, auto-reconnects with backoff, and follows volume changes made on the receiver.
-
-## Install
-
-Requirements: Windows 10 or 11. The latest installer is on [Releases](https://github.com/4202217/saundo/releases/latest); it is not code-signed yet, so SmartScreen warns. To build from source, you need Go 1.27+ (the toolchain [mygo](https://github.com/egoist/mygo) needs) and `mingw32-make` from MinGW-w64:
-
-```bash
-mingw32-make check  # gofmt gate, go vet, mygo UI vet, go test — the acceptance gate
-mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-setup-*.exe) through mygo, then restarts the running app
-```
-
-If you build from source, run the installer `bin/saundo-setup-*.exe` after `mingw32-make build`.
 
 ## Receiver support
 
