@@ -1098,9 +1098,13 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   the manifest; `sha256sum -c SHA256SUMS` passed every listed file. The
   manifest is version 0.5.0 with a signature and the English notes. The
   installer is unsigned, so SmartScreen warns.
-- **Rebuild (2026-11-07).** The candidate was rebuilt on mygo 0.8.0 after
-  the first draft. Run 42264388577 and its assets are superseded; the
-  rebuilt draft is the one to test.
+- **Rebuilt draft assets (2026-11-07).** The mygo 0.8.0 rebuild's check,
+  draft, and build jobs passed (run 42314253794). The draft carried the
+  installer, the 0.5.0 archive, the 0.4.2 and 0.4.1 deltas, `install.ps1`,
+  `SHA256SUMS`, and the manifest; `sha256sum -c SHA256SUMS` passed every
+  listed file. The manifest is version 0.5.0 with a signature, the English
+  notes, and the mygo 0.8.0 line. The installer is unsigned, so SmartScreen
+  warns. This supersedes run 42264388577 and its assets.
 - **Publish gate.** The maintainer's real-device test of the draft is still
   pending; publishing is not authorized yet.
 
