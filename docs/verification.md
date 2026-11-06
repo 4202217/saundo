@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-06 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # Verification
 
@@ -503,10 +503,10 @@ software stereo groups built from independent receivers.
   current track instead of waiting for the next.
   `TestNowPlayingCoverRidesAsImage`,
   `TestNowPlayingCommandForwardsWhenEnabled`, and
-  `TestRefreshNowPlayingPushesArtworkChanges` pin the path. The receiver's
-  display of the image was not exercised live: a push needs a streaming
-  session and would play the user's audio to the receivers; whether a given
-  receiver renders the image is unconfirmed.
+  `TestRefreshNowPlayingPushesArtworkChanges` pin the path. Live check
+  2026-11-07: the MacBook Air (`Mac14,2`) AirPlay receiver showed the pushed
+  SMTC cover in its Now Playing UI (user-confirmed). The HomePod pair has no
+  display; its rows still receive the same metadata push.
 - **Previews and tests.** `.audit/previews/nowplaying-settings/` (uncommitted)
   holds the live settings page, the master-off page, and the compact flyout
   without the card, zh-CN and English, light and dark. The page is covered by

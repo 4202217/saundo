@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-06 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # UI design language
 

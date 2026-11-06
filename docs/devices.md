@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-06 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # Receiver profiles
 
@@ -53,6 +53,7 @@ Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
 - `shk` is the Events-Write key (protocol.md §2.5).
 - **PTP required** (feature bit 41); the same follower serves it, its clock likewise boot-relative.
 - Latency: `latencyMin 11025`, `latencyMax 88200`, plus a 66150-sample scheduling latency.
+- **Now Playing metadata.** While streaming, the sender's DMAP `mlit` and the follow-up image `SET_PARAMETER` reach its Now Playing UI. The pushed SMTC cover was confirmed on screen on 2026-11-07 (MacBook Air, `Mac14,2`).
 
 ## Apple TV (on-screen PIN)
 
