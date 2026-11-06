@@ -230,7 +230,9 @@ func startLiveSession(t *testing.T, target device.Device) *liveSession {
 		Closed:       func() { ls.closed = true },
 		PinRequired:  func(string) {},
 		StateChanged: func(State) {},
-	}, func(Level, string, ...any) {})
+	}, func(level Level, format string, args ...any) {
+		t.Logf("[%v] "+format, append([]any{level}, args...)...)
+	})
 	ls.s.SetIdentity(Identity{Name: "saundo-test", DeviceID: "02:00:00:00:00:03", Model: "iPhone14,3"})
 	ls.s.SetAuth(target.Auth, true, target.ID, "", "")
 	ls.s.SetPTPClock(clock)

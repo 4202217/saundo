@@ -15,6 +15,7 @@ import (
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
+	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
 	"saundo/internal/settings"
 )
@@ -49,17 +50,41 @@ func deviceCardHeight(n int) float32 {
 	return float32(min(n, deviceRows))*deviceRowHeight + 2
 }
 
-// flyoutHeightFor is the window height for the visible device count and the
-// current media state. The device card and the playback card touch through
-// the body's gap; there is no flexible spacer. A shown media card adds its
-// height, and the no-media panel is shorter by the same amount.
-func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool) int {
+// flyoutHeightFor is the window height for the visible device count, the
+// current media state, and the ambient section. The device card and the
+// playback card touch through the body's gap; there is no flexible spacer.
+// A shown media card adds its height, and the no-media panel is shorter by
+// the same amount. The ambient section adds its collapsed height only while
+// the setting is on.
+func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool, lampOn ...bool) int {
+	on := true
+	if len(lampOn) > 0 {
+		on = lampOn[0]
+	}
 	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n)) - nowPlayingRowHeight
 	if hasMedia {
 		h += nowPlayingCardHeight
 	}
 	if showLatencySwitch {
 		h += latencySwitchHeight
+	}
+	if on {
+		h += lampSectionHeight
+	}
+	return h
+}
+
+// flyoutHeightForState adds the preset grid while the ambient card is on and
+// expanded. The window is anchored by its bottom edge, so this grows it
+// upward.
+func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampExpanded bool, lampOn ...bool) int {
+	on := true
+	if len(lampOn) > 0 {
+		on = lampOn[0]
+	}
+	h := flyoutHeightFor(n, showLatencySwitch, hasMedia, on)
+	if on && lampExpanded {
+		h += lampGridHeight(len(lamp.All()))
 	}
 	return h
 }
@@ -74,6 +99,7 @@ func (a *App) view(c *ui.Context) {
 			ui.Column(c).Grow(1).Padding(2, 12, 8, 12).Gap(8).Children(func() {
 				a.deviceSection(c, p)
 				a.playbackSection(c, p)
+				a.lampSection(c, p)
 			})
 			a.flyoutFooter(c, p)
 		})

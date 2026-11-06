@@ -158,6 +158,7 @@
   "flyoutPlay": "Play",
   "flyoutPause": "Pause",
   "flyoutNext": "Next",
+  "flyoutNowPlaying": "Now playing",
   "actionCancel": "Cancel",
   "actionRetry": "Retry",
   "actionDisconnect": "Disconnect",
@@ -575,5 +576,26 @@
         "type": "int"
       }
     }
-  }
+  },
+  "settingsNavLamp": "Ambient light",
+  "pageLampDesc": "Every HomePod top display shows the same light.",
+  "settingsLampEnable": "Enable ambient light",
+  "settingsLampHomePodOnly": "HomePod only",
+  "settingsLampTop": "HomePod top display",
+  "settingsLampHintOn": "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover.",
+  "settingsLampHintOff": "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to show them.",
+  "settingsLampSoundGlowHint": "Enable Sound Glow in the HomePod settings; without it the top display stays white.",
+  "lampToggle": "Ambient light switch",
+  "lampPresetOrigin": "Default",
+  "lampPresetEmber": "Ember",
+  "lampPresetDune": "Dune",
+  "lampPresetMoss": "Moss",
+  "lampPresetTide": "Tide",
+  "lampPresetOrchid": "Orchid",
+  "lampPresetMoon": "Moon",
+  "flyoutLampSection": "Ambient light",
+  "flyoutLampHomePodOnly": "HomePod only",
+  "flyoutLampColors": "Colors",
+  "flyoutLampExpand": "Show colors",
+  "flyoutLampCollapse": "Hide colors"
 }

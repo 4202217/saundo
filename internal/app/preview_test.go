@@ -268,11 +268,12 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		pageConnection: "settings-connection",
 		pageReceivers:  "settings-receivers",
 		pageAudio:      "settings-audio",
+		pageLamp:       "settings-lamp",
 		pageCapture:    "settings-capture",
 		pageNowPlaying: "settings-nowplaying",
 		pageAbout:      "settings-about",
 	}
-	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageCapture, pageNowPlaying, pageAbout}
+	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageLamp, pageCapture, pageNowPlaying, pageAbout}
 	for _, page := range pages {
 		a := fixture()
 		a.page = page
@@ -410,6 +411,39 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-audio-compact-dark", customSettings.settingsView, 720, 420, true)
 	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false, 80)
 	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true, 80)
+
+	lampOff := fixture()
+	lampOff.page = pageLamp
+	lampOff.lampEnabled = false
+	lampOff.snap.LampEnabled = false
+	save("settings-lamp-off-light", lampOff.settingsView, 720, 500, false)
+	save("settings-lamp-off-dark", lampOff.settingsView, 720, 500, true)
+
+	lampFly := fixture()
+	lampFly.lampExpanded = true
+	save("flyout-lamp-expanded-light", lampFly.view, flyoutWidth,
+		visibleFlyoutHeight(lampFly), false)
+	save("flyout-lamp-expanded-dark", lampFly.view, flyoutWidth,
+		visibleFlyoutHeight(lampFly), true)
+	lampFly.lampEnabled = false
+	lampFly.snap.LampEnabled = false
+	save("flyout-lamp-off-light", lampFly.view, flyoutWidth,
+		visibleFlyoutHeight(lampFly), false)
+
+	origin := fixture()
+	origin.page = pageLamp
+	origin.lampPreset = "origin"
+	origin.snap.LampPreset = "origin"
+	save("settings-lamp-origin-light", origin.settingsView, 720, 500, false)
+	save("settings-lamp-origin-dark", origin.settingsView, 720, 500, true)
+	originFly := fixture()
+	originFly.lampPreset = "origin"
+	originFly.snap.LampPreset = "origin"
+	originFly.lampExpanded = true
+	save("flyout-lamp-origin-light", originFly.view, flyoutWidth,
+		visibleFlyoutHeight(lampFly), false)
+	save("flyout-lamp-origin-dark", originFly.view, flyoutWidth,
+		visibleFlyoutHeight(lampFly), true)
 
 	pin := fixture()
 	pin.snap.PinRequired = true

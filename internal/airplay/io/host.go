@@ -21,7 +21,7 @@ type Host struct {
 	dropped atomic.Uint64
 
 	mu      sync.Mutex
-	tcp     [2]*tcpSlot
+	tcp     [3]*tcpSlot
 	udp     [3]*udpSlot
 	closed  bool
 	nextGen atomic.Uint64
@@ -45,7 +45,7 @@ func (h *Host) Close() {
 	h.closed = true
 	tcp := h.tcp
 	udp := h.udp
-	h.tcp = [2]*tcpSlot{}
+	h.tcp = [3]*tcpSlot{}
 	h.udp = [3]*udpSlot{}
 	h.mu.Unlock()
 

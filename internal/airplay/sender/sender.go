@@ -259,6 +259,7 @@ type Sender struct {
 	activeRemote uint32
 	rtspSession  string
 	host         string
+	port         uint16
 	name         string
 	state        State
 
@@ -318,8 +319,18 @@ type Sender struct {
 	backlogSeq []int32
 
 	npTitle, npArtist, npAlbum string
-	npCover                    []byte
-	npCoverMIME                string
+	// mediaCover is the cover the receiver track-info push supplies. lampCover
+	// is the ambient-light image; lampOn says it owns the cover slot. With the
+	// lamp off, a media cover wins and lampCover is the origin fallback.
+	mediaCover     []byte
+	mediaCoverMIME string
+	lampCover      []byte
+	lampCoverMIME  string
+	lampOn         bool
+	// sentCover is the last image delivered to this session, so an unchanged
+	// cover is a no-op while a reconnect resends it.
+	sentCover     []byte
+	sentCoverMIME string
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -524,6 +535,9 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.eventPlain = s.eventPlain[:0]
 	s.pending = s.pending[:0]
 	s.rtspSession = ""
+	s.port = port
+	s.sentCover = s.sentCover[:0]
+	s.sentCoverMIME = ""
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
@@ -707,9 +721,10 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 			s.fail(why)
 		}
 	case raopio.EventTCPData:
-		if ev.TCP == raopio.TCPControl {
+		switch ev.TCP {
+		case raopio.TCPControl:
 			s.onRTSPData(ev.Data)
-		} else {
+		default:
 			s.onEventData(ev.Data)
 		}
 	case raopio.EventTCPClosed:

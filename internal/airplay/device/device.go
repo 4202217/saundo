@@ -2,6 +2,11 @@
 // sender, and the UI.
 package device
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Auth is how a receiver wants its sender authenticated. The values follow the
 // airplay2-sender-cpp recipe.
 type Auth uint8
@@ -57,6 +62,8 @@ type Device struct {
 	Port uint16
 	// Model is the `model` TXT value, for example AppleTV6,2 or AudioAccessory5,1.
 	Model string
+	// OSVersion is the `osvers` TXT value, for example 27.2.
+	OSVersion string
 	// Features and SF are the parsed `features` and `sf` bit fields.
 	Features uint64
 	SF       uint64
@@ -94,3 +101,36 @@ func (d Device) IsStereoGroup() bool { return d.StereoID != "" && len(d.Members)
 
 // StereoGroupID is the stable ID of the stereo pair that carries tsid.
 func StereoGroupID(tsid string) string { return "stereo:" + tsid }
+
+// TopDisplayCapable reports whether the receiver can show the ambient-light
+// artwork on its top display. The HomePod family at software 27.2 or later
+// qualifies once Sound Glow is enabled on the HomePod; an unknown model or
+// version, and every other family, fails closed.
+func TopDisplayCapable(d Device) bool {
+	if !strings.HasPrefix(d.Model, "AudioAccessory") {
+		return false
+	}
+	major, minor, ok := parseOSVersion(d.OSVersion)
+	if !ok {
+		return false
+	}
+	return major > 27 || major == 27 && minor >= 2
+}
+
+// parseOSVersion reads the dotted major.minor an `osvers` TXT value carries.
+// A missing minor or a non-numeric component is unknown, not zero.
+func parseOSVersion(v string) (major, minor int, ok bool) {
+	parts := strings.Split(strings.TrimSpace(v), ".")
+	if len(parts) < 2 {
+		return 0, 0, false
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil || major < 0 {
+		return 0, 0, false
+	}
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil || minor < 0 {
+		return 0, 0, false
+	}
+	return major, minor, true
+}

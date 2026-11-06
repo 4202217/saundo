@@ -47,6 +47,7 @@ func buildGroup() *groupTransport {
 		}, nopLog)
 		g.members = append(g.members, &groupMember{
 			device: m, host: raopio.NewHost(), sender: s, ring: ring.New(48000),
+			setLampArtwork: func([]byte, string, bool) {},
 		})
 	}
 	return g
@@ -134,5 +135,58 @@ func TestGroupMemberCloseBeforeLaunchSignalsEngine(t *testing.T) {
 	}
 	if closed != 1 {
 		t.Fatalf("closed reports = %d, want 1", closed)
+	}
+}
+
+func TestGroupArtworkFansOutToBothCapableMembers(t *testing.T) {
+	g := buildGroup()
+	for _, m := range g.members {
+		m.device.Model = "AudioAccessory6,1"
+		m.device.OSVersion = "27.2"
+	}
+	var got []string
+	for i, m := range g.members {
+		idx := i
+		m.setLampArtwork = func(data []byte, mime string, on bool) {
+			got = append(got, string(data)+"\x00"+mime+"\x00"+g.members[idx].device.Name)
+		}
+	}
+
+	g.SetLampArtwork([]byte("light"), "image/jpeg", true)
+
+	if len(got) != 2 {
+		t.Fatalf("members sent = %d, want 2: %q", len(got), got)
+	}
+	for _, want := range []string{"light\x00image/jpeg\x00AA:BB:CC:DD:EE:01", "light\x00image/jpeg\x00AA:BB:CC:DD:EE:02"} {
+		found := false
+		for _, s := range got {
+			if s == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("missing %q in %q", want, got)
+		}
+	}
+}
+
+func TestGroupArtworkSkipsIncapableMember(t *testing.T) {
+	g := buildGroup()
+	g.members[0].device.Model = "AudioAccessory6,1"
+	g.members[0].device.OSVersion = "27.2"
+	g.members[1].device.Model = "AudioAccessory6,1"
+	g.members[1].device.OSVersion = "27.1"
+	var got []string
+	for _, m := range g.members {
+		member := m
+		m.setLampArtwork = func(data []byte, mime string, on bool) {
+			got = append(got, member.device.Name)
+		}
+	}
+
+	g.SetLampArtwork([]byte("light"), "image/jpeg", true)
+
+	if len(got) != 1 || got[0] != "AA:BB:CC:DD:EE:01" {
+		t.Fatalf("members sent = %q, want only the capable member", got)
 	}
 }

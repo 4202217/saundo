@@ -20,6 +20,7 @@ import (
 	"saundo/internal/capture"
 	"saundo/internal/diagnostics"
 	"saundo/internal/discovery"
+	"saundo/internal/lamp"
 	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
@@ -51,6 +52,8 @@ type Snapshot struct {
 	MuteLocal          MuteLocalState
 	MuteLocalError     string
 	ShowNowPlaying     bool
+	LampEnabled        bool
+	LampPreset         string
 	TrayAnimation      bool
 	LatencyMS          int
 	CaptureEndpoint    string
@@ -82,6 +85,7 @@ const (
 	cmdName
 	cmdReconnect
 	cmdShowNowPlaying
+	cmdLamp
 	cmdTrayAnimation
 	cmdMuteLocal
 	cmdNowPlaying
@@ -160,6 +164,7 @@ type transport interface {
 	WaitingForPin() bool
 	InitialVolumePercent() (float64, bool)
 	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)
+	SetLampArtwork(data []byte, mime string, on bool)
 	PTP() (active, ready bool, offsetMS float64)
 }
 
@@ -203,6 +208,9 @@ func (s *session) InitialVolumePercent() (float64, bool) {
 }
 func (s *session) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
 	s.sender.SetNowPlaying(title, artist, album, cover, coverMIME)
+}
+func (s *session) SetLampArtwork(data []byte, mime string, on bool) {
+	s.sender.SetLampArtwork(data, mime, on)
 }
 func (s *session) PTP() (active, ready bool, offsetMS float64) {
 	if s.ptp == nil {
@@ -321,6 +329,13 @@ type Engine struct {
 	pauseUnsupported bool
 	autoTried        bool
 
+	// lampJPEG renders a preset; tests replace it. lampImage is the encoded
+	// image for lampImagePreset, kept off the sender's tick path.
+	lampJPEG          func(preset string) ([]byte, error)
+	lampImage         []byte
+	lampImagePreset   string
+	lampSkipLoggedFor string
+
 	// receivers owns per-receiver configuration. reg is the authoritative
 	// in-memory copy; only this goroutine mutates it or saves the store.
 	recvStore      *receivers.Store
@@ -356,6 +371,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		now:             time.Now,
 		stopping:        false,
 		passwords:       map[string]bool{},
+		lampJPEG:        lamp.JPEG,
 	}
 	// A registry that cannot be read leaves the engine with no remembered
 	// receivers but does not stop it; manual and discovered receivers still
@@ -382,6 +398,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.endpoints = capture.Endpoints
 	e.mute.state = e.idleMuteState()
 	e.recoverMuteGuard()
+	e.prepareLampImage()
 	e.rebuildTargets()
 	e.snap = e.buildSnapshot()
 	return e
@@ -602,6 +619,16 @@ func (e *Engine) SetMuteLocal(on bool) {
 // SetNowPlaying pushes track metadata and cover art to the receiver.
 func (e *Engine) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
 	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album, cover: cover, coverMIME: coverMIME})
+}
+
+// SetLamp turns the ambient light on or off and chooses its preset. The
+// setting applies to the live session at once and persists for the next one.
+func (e *Engine) SetLamp(enabled bool, preset string) {
+	v := 0.0
+	if enabled {
+		v = 1
+	}
+	e.send(command{kind: cmdLamp, value: v, text: preset})
 }
 
 func (e *Engine) send(cmd command) {
@@ -943,6 +970,16 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.ShowNowPlaying = cmd.value != 0
 		e.markSettingsDirty()
 		e.publish()
+	case cmdLamp:
+		preset := lamp.Normalize(cmd.text)
+		if preset != cmd.text {
+			e.logf("ambient light: preset %q is unknown, using %q", cmd.text, preset)
+		}
+		e.setsValue.Lamp = settings.LampSettings{Enabled: cmd.value != 0, Preset: preset}
+		e.prepareLampImage()
+		e.applyLamp()
+		e.markSettingsDirty()
+		e.publish()
 	case cmdTrayAnimation:
 		e.setsValue.TrayAnimation = cmd.value != 0
 		e.markSettingsDirty()
@@ -1031,6 +1068,8 @@ func (e *Engine) connect(d device.Device) {
 	}
 	e.clearPasswordPrompt()
 	e.closeSession()
+	e.lampSkipLoggedFor = ""
+	e.prepareLampImage()
 	// The device being connected becomes the selection, so snapshots,
 	// per-device volume, and reconnect all follow the live session.
 	e.selectedID = d.ID
@@ -1130,6 +1169,78 @@ func (e *Engine) reconnectShouldRetry() bool {
 	return !e.userDisconnect && !e.stopping && e.setsValue.Reconnect && e.selectedID != ""
 }
 
+// prepareLampImage renders the enabled preset on the engine goroutine, so
+// the sender's callback path only copies bytes. A render failure keeps the
+// setting and retries on the next change or connect.
+func (e *Engine) prepareLampImage() {
+	if !e.setsValue.Lamp.Enabled {
+		e.lampImage, e.lampImagePreset = nil, ""
+		return
+	}
+	preset := lamp.Normalize(e.setsValue.Lamp.Preset)
+	if e.lampImagePreset == preset && len(e.lampImage) > 0 {
+		return
+	}
+	data, err := e.lampJPEG(preset)
+	if err != nil {
+		e.logf("ambient light: render %s: %v", preset, err)
+		e.lampImage, e.lampImagePreset = nil, ""
+		return
+	}
+	e.lampImage, e.lampImagePreset = data, preset
+}
+
+// applyLamp sends the current light, or the origin reset when the light is
+// off. The lamp image owns the cover slot while on; while off, a receiver
+// track-info cover wins and the origin is the fallback. A receiver that
+// cannot show top-display artwork is skipped with one diagnostic line per
+// session.
+func (e *Engine) applyLamp() {
+	if e.tr == nil {
+		return
+	}
+	if !e.setsValue.Lamp.Enabled {
+		if e.lampTargetCapable() {
+			e.logf("ambient light: off, default restore on %s", e.connectedName)
+			e.tr.SetLampArtwork(lamp.Off(), "image/jpeg", false)
+		} else {
+			e.tr.SetLampArtwork(nil, "", false)
+		}
+		return
+	}
+	if !e.lampTargetCapable() {
+		if e.lampSkipLoggedFor != e.selectedID {
+			e.lampSkipLoggedFor = e.selectedID
+			e.logf("ambient light: %s does not support top-display artwork; not sent", e.nameFor(e.selectedID))
+		}
+		return
+	}
+	if len(e.lampImage) == 0 {
+		return
+	}
+	e.logf("ambient light: apply %s (%d bytes) to %s", e.lampImagePreset, len(e.lampImage), e.connectedName)
+	e.tr.SetLampArtwork(e.lampImage, "image/jpeg", true)
+}
+
+// lampTargetCapable fails closed: a missing target, an unknown model, or an
+// unknown software version is not capable. A stereo pair is capable when any
+// member is; the group transport filters the rest per member.
+func (e *Engine) lampTargetCapable() bool {
+	d, ok := e.find(e.selectedID)
+	if !ok {
+		return false
+	}
+	if d.IsStereoGroup() {
+		for _, m := range d.Members {
+			if device.TopDisplayCapable(m) {
+				return true
+			}
+		}
+		return false
+	}
+	return device.TopDisplayCapable(d)
+}
+
 func (e *Engine) onLaunched(ok bool, err string) {
 	if ok {
 		e.connectedName = e.nameFor(e.selectedID)
@@ -1152,6 +1263,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		}
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
+		e.applyLamp()
 	} else {
 		e.restoreLocalMute()
 		e.connectedName = ""
@@ -1674,6 +1786,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,
 		ShowNowPlaying:     e.setsValue.ShowNowPlaying,
+		LampEnabled:        e.setsValue.Lamp.Enabled,
+		LampPreset:         lamp.Normalize(e.setsValue.Lamp.Preset),
 		TrayAnimation:      e.setsValue.TrayAnimation,
 		CaptureEndpoint:    e.captureEndpoint,
 		CaptureName:        e.captureName,
