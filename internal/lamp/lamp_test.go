@@ -8,9 +8,7 @@ import (
 )
 
 func TestPresetsMatchCatalog(t *testing.T) {
-	want := []string{"dim", "dawn", "lagoon", "neon", "citrus", "ember", "coral",
-		"glacier", "mango", "mint", "cherry", "abyss", "volcano", "melon",
-		"sand", "storm", "pop", "forest", "aurora"}
+	want := []string{"origin", "ember", "dune", "moss", "tide", "orchid", "moon"}
 	all := All()
 	if len(all) != len(want) {
 		t.Fatalf("presets = %d, want %d", len(all), len(want))
@@ -38,8 +36,8 @@ func TestNormalizeUnknownAndEmpty(t *testing.T) {
 			t.Errorf("Normalize(%q) = %q, want %q", id, got, DefaultID)
 		}
 	}
-	if got := Normalize("aurora"); got != "aurora" {
-		t.Errorf("Normalize(aurora) = %q, want aurora", got)
+	if got := Normalize("tide"); got != "tide" {
+		t.Errorf("Normalize(tide) = %q, want tide", got)
 	}
 }
 
@@ -63,9 +61,17 @@ func TestGeneratedJPEGsAre600Square(t *testing.T) {
 	}
 }
 
-// TestPresetPixelsFollowTheBlobs samples ember's first blob center, where the
-// warm highlight lands, and a corner no blob reaches, which keeps the base.
+// TestPresetPixelsFollowTheBlobs samples the first seeded blob's center. The
+// composition is deterministic per preset, and the center must leave the base.
 func TestPresetPixelsFollowTheBlobs(t *testing.T) {
+	p, ok := ByID("ember")
+	if !ok {
+		t.Fatal("ember is missing")
+	}
+	blobs := p.Blobs()
+	if len(blobs) == 0 {
+		t.Fatal("ember has no blobs")
+	}
 	data, err := JPEG("ember")
 	if err != nil {
 		t.Fatal(err)
@@ -74,26 +80,70 @@ func TestPresetPixelsFollowTheBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, g, b, _ := img.At(96, 528).RGBA()
-	cr, cg, cb := r>>8, g>>8, b>>8
-	if cr < 190 || cg < 90 || int(cr) < int(cb)+100 {
-		t.Fatalf("blob center = #%02x%02x%02x, want a warm highlight", cr, cg, cb)
+	b := blobs[0]
+	x, y := int(b.X/100*Size), int(b.Y/100*Size)
+	r, g, bl, _ := img.At(x, y).RGBA()
+	cr, cg, cb := r>>8, g>>8, bl>>8
+	if abs(int(cr)-int(p.Base.R)) < 12 && abs(int(cg)-int(p.Base.G)) < 12 && abs(int(cb)-int(p.Base.B)) < 12 {
+		t.Fatalf("blob center = #%02x%02x%02x, still the base", cr, cg, cb)
 	}
-	r, g, b, _ = img.At(595, 595).RGBA()
-	br, bg, bb := r>>8, g>>8, b>>8
-	// JPEG is lossy, so the base is matched within a few levels.
-	if abs(int(br)-0xe0) > 3 || abs(int(bg)-0x10) > 3 || abs(int(bb)-0x2f) > 3 {
-		t.Fatalf("corner = #%02x%02x%02x, want the ember base #e0102f", br, bg, bb)
+}
+
+// TestPresetCompositionCovers pins the whole-tile coverage: most of a 10x10
+// sample grid must differ from the base, not just one centered circle.
+func TestPresetCompositionCovers(t *testing.T) {
+	for _, p := range All() {
+		if len(p.Palette) == 0 {
+			continue
+		}
+		data, err := JPEG(p.ID)
+		if err != nil {
+			t.Fatalf("%s: %v", p.ID, err)
+		}
+		img, err := jpeg.Decode(bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("%s: %v", p.ID, err)
+		}
+		changed := 0
+		for y := 0; y < Size; y += 60 {
+			for x := 0; x < Size; x += 60 {
+				r, g, b, _ := img.At(x, y).RGBA()
+				if abs(int(r>>8)-int(p.Base.R)) > 10 ||
+					abs(int(g>>8)-int(p.Base.G)) > 10 ||
+					abs(int(b>>8)-int(p.Base.B)) > 10 {
+					changed++
+				}
+			}
+		}
+		if changed < 50 {
+			t.Fatalf("%s: %d/100 samples differ from the base, want at least 50", p.ID, changed)
+		}
+	}
+}
+
+// TestOffIsDark pins the black image the engine sends when the light is off.
+func TestOffIsDark(t *testing.T) {
+	data := Off()
+	if len(data) == 0 {
+		t.Fatal("Off returned no image")
+	}
+	img, err := jpeg.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, g, b, _ := img.At(Size/2, Size/2).RGBA()
+	if r>>8 > 0x10 || g>>8 > 0x10 || b>>8 > 0x10 {
+		t.Fatalf("off center = #%02x%02x%02x, want black", r>>8, g>>8, b>>8)
 	}
 }
 
 func TestGeneratorCachesPerPreset(t *testing.T) {
 	g := NewGenerator()
-	first, err := g.JPEG("lagoon")
+	first, err := g.JPEG("tide")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := g.JPEG("lagoon")
+	second, err := g.JPEG("tide")
 	if err != nil {
 		t.Fatal(err)
 	}

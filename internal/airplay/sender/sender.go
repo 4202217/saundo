@@ -323,8 +323,11 @@ type Sender struct {
 	npCoverMIME                string
 	// artwork is the top-display image, separate from the DMAP text and the
 	// Now Playing cover. It is resent whenever a session starts streaming.
-	artwork        []byte
-	artworkMIME    string
+	artwork     []byte
+	artworkMIME string
+	// artworkSent marks the current image as delivered to this session, so a
+	// duplicate SetArtwork is a no-op but a reconnect resends the light.
+	artworkSent bool
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -530,6 +533,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.pending = s.pending[:0]
 	s.rtspSession = ""
 	s.port = port
+	s.artworkSent = false
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true

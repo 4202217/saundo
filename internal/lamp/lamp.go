@@ -56,23 +56,24 @@ func (g *Generator) JPEG(preset string) ([]byte, error) {
 	return data, nil
 }
 
-// render paints the base color, then blends each blob with the linear alpha
-// falloff the live probe verified on hardware: a blob is fully its color at
-// the center and fades to the base at its radius.
+// render paints the base color, then blends each seeded blob with the linear
+// alpha falloff the live probe verified on hardware. The blob's Alpha scales
+// the blend so the composition covers the tile without flattening the base.
 func render(p Preset) ([]byte, error) {
 	img := image.NewRGBA(image.Rect(0, 0, Size, Size))
 	draw.Draw(img, img.Bounds(), &image.Uniform{C: p.Base}, image.Point{}, draw.Src)
+	blobs := p.Blobs()
 	for y := 0; y < Size; y++ {
 		for x := 0; x < Size; x++ {
 			c := p.Base
-			for _, b := range p.Blobs {
+			for _, b := range blobs {
 				dx := float64(x)/Size - b.X/100
 				dy := float64(y)/Size - b.Y/100
 				d := math.Hypot(dx, dy) / (b.Radius / 100)
 				if d >= 1 {
 					continue
 				}
-				a := 1 - d
+				a := (1 - d) * b.Alpha
 				c.R = uint8(float64(b.Color.R)*a + float64(c.R)*(1-a) + 0.5)
 				c.G = uint8(float64(b.Color.G)*a + float64(c.G)*(1-a) + 0.5)
 				c.B = uint8(float64(b.Color.B)*a + float64(c.B)*(1-a) + 0.5)
@@ -85,4 +86,14 @@ func render(p Preset) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// Off returns the solid black JPEG of the origin preset. The HomePod
+// normalizes black to white, so this is the default restore, not an LED-off.
+func Off() []byte {
+	data, err := JPEG("origin")
+	if err != nil {
+		return nil
+	}
+	return data
 }

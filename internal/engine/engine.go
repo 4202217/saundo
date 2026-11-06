@@ -1124,14 +1124,20 @@ func (e *Engine) prepareLampImage() {
 	e.lampImage, e.lampImagePreset = data, preset
 }
 
-// applyLamp sends the current light or clears it. A receiver that cannot
-// show top-display artwork is skipped with one diagnostic line per session.
+// applyLamp sends the current light, or the near-white reset when the light
+// is off. A receiver that cannot show top-display artwork is skipped with one
+// diagnostic line per session.
 func (e *Engine) applyLamp() {
 	if e.tr == nil {
 		return
 	}
 	if !e.setsValue.Lamp.Enabled {
-		e.tr.SetArtwork(nil, "")
+		if e.lampTargetCapable() {
+			e.logf("ambient light: off, default restore on %s", e.connectedName)
+			e.tr.SetArtwork(lamp.Off(), "image/jpeg")
+		} else {
+			e.tr.SetArtwork(nil, "")
+		}
 		return
 	}
 	if !e.lampTargetCapable() {

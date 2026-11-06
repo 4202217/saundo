@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # AirPlay 2 wire protocol
 
@@ -222,25 +222,24 @@ A session starts at the live edge: capture runs from launch, so the ring holds s
 
 ## 10. Top-display artwork (Sound Glow)
 
-HomePod software 27.2 renders a full-screen artwork on its top display once the user enables Sound Glow in the HomePod settings. Without that setting the display stays white even though every request succeeds.
+HomePod software 27.2 renders the current Now Playing cover on its top display once the user enables Sound Glow in the HomePod settings. Without that setting the display stays blank even though every request succeeds.
 
-The image travels as one RTSP request **inside the encrypted control channel** — the same TCP connection as every other RTSP request, sealed with the Control-Write key using the record framing of section 9:
+The top display renders the artwork already attached to the Now Playing item. One `SET_PARAMETER` with `Content-Type: image/jpeg` and the raw JPEG body on the encrypted control channel, with the same `Session` and `RTP-Info` headers as track metadata, makes the image the Now Playing cover and repaints the top display:
 
 ```
-POST /artwork/command RTSP/1.0
-CSeq: <n>
-User-Agent: AirPlay/550.10
+SET_PARAMETER rtsp://<receiver>/<session> RTSP/1.0
+Session: <session>
+RTP-Info: seq=<n>;rtptime=<ts>
 Content-Type: image/jpeg
 Content-Length: <n>
 
 <raw JPEG bytes>
 ```
 
-- The body is the **raw JPEG**; there is no binary-plist wrapper and no data URL. The data URL exists only inside Unisson's front end, between its canvas and its Tauri command — it never reaches the wire.
-- The request rides the control connection, so no extra TCP connection is opened and the receiver's short-connection refusals do not apply. Replies arrive as normal RTSP `200 OK` responses matched by CSeq.
+- When the sender has no track metadata, it first sends a minimal DMAP item (`mlit` containing `minm` = `saundo`) so the cover has a Now Playing item to attach to.
 - The image is a 600×600 sRGB JPEG at quality ~0.9; the receiver downscales and softens it for the top display.
-- The sender pushes on light change, on stream start, and when the user clears (an empty `SetArtwork` stores the clear without sending; the return to the native top display is still unverified).
-- A song's own cover competes for the same channel: Unisson asks the user whether to keep the light or show the cover ("Garder ce look").
-- The setting cannot be discovered over the protocol; the UI tells the user to enable Sound Glow, and `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
+- The sender pushes on light change and on stream start. The first preset `origin` is a solid black 600×600 JPEG; the HomePod's color-stop normalization lifts black to a full channel, so it lands on the default white rather than an LED-off. The off switch sends the same image. A true LED-off has no AirPlay command; only the on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) drives the LEDs directly, and it is entitlement-gated.
+- A song's own cover competes for the same cover slot: the light wins while it is set; the future media-follow mode will pass the media cover instead.
+- The setting cannot be discovered over the protocol; `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
-Earlier revisions of this document described the plaintext HTTP shape above; that shape answers `200 OK` from the receiver's compatibility HTTP server but the top display does not render it. Live comparison against the reference sender (single ~16.9 KB encrypted burst per light change, no separate connection) settled the transport.
+Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the receiver muted, raw JPEG `/artwork/command` POSTs returned `400 Bad Request`; a binary-plist POST returned `200 OK` but did not replace the cover. On 2026-11-07, three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon, orchid) each repainted the top display with no `/artwork/command`; the POST trigger and the separate `TCPArtwork` channel were removed.

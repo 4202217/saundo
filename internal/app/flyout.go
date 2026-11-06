@@ -39,22 +39,33 @@ func deviceCardHeight(n int) float32 {
 // flyoutHeightFor is the window height that keeps the spacing between the
 // device card and the playback card the same for any device count: the
 // design's height fits deviceRows rows, and each missing row, or the empty
-// state, shortens the window by as much as the card lost. The always-present
-// ambient section adds its collapsed height.
-func flyoutHeightFor(n int, showLatencySwitch bool) int {
+// state, shortens the window by as much as the card lost. The ambient section
+// adds its collapsed height only while the setting is on.
+func flyoutHeightFor(n int, showLatencySwitch bool, lampOn ...bool) int {
+	on := true
+	if len(lampOn) > 0 {
+		on = lampOn[0]
+	}
 	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n))
 	if showLatencySwitch {
 		h += latencySwitchHeight
 	}
-	return h + lampSectionHeight
+	if on {
+		h += lampSectionHeight
+	}
+	return h
 }
 
-// flyoutHeightForState adds the preset grid while the ambient card is
+// flyoutHeightForState adds the preset grid while the ambient card is on and
 // expanded. The window is anchored by its bottom edge, so this grows it
 // upward.
-func flyoutHeightForState(n int, showLatencySwitch, lampExpanded bool) int {
-	h := flyoutHeightFor(n, showLatencySwitch)
-	if lampExpanded {
+func flyoutHeightForState(n int, showLatencySwitch, lampExpanded bool, lampOn ...bool) int {
+	on := true
+	if len(lampOn) > 0 {
+		on = lampOn[0]
+	}
+	h := flyoutHeightFor(n, showLatencySwitch, on)
+	if on && lampExpanded {
 		h += lampGridHeight(len(lamp.All()))
 	}
 	return h

@@ -1,204 +1,130 @@
 // Package lamp renders the ambient-light images a HomePod shows on its top
-// display: nineteen named presets, each a base color under three soft radial
-// blobs and a white wave mark.
+// display: the default reset plus six named palettes scattered into a seeded
+// composition.
 package lamp
 
 import "image/color"
 
 // DefaultID is the preset the settings fall back to, and the one an unknown
-// or empty ID normalizes to. Sand matches the old dune default.
-const DefaultID = "sand"
+// or empty ID normalizes to. The origin preset is the black default reset.
+const DefaultID = "origin"
 
 // Blob is one radial highlight. X and Y are percentages of the image's width
-// and height from its top-left corner; Radius is a percentage of the width.
+// and height from its top-left corner; Radius is a percentage of the width;
+// Alpha scales the blend over the base.
 type Blob struct {
 	Color  color.RGBA
 	X, Y   float64
 	Radius float64
+	Alpha  float64
 }
 
-// Preset is one ambient-light color. The ID is the persisted value and never
-// changes with the interface language.
+// Preset is one ambient-light palette. The ID is the persisted value and
+// never changes with the interface language. The seed makes the scatter
+// stable for the preset without turning the six compositions into a template.
 type Preset struct {
-	ID    string
-	Base  color.RGBA
-	Blobs [3]Blob
+	ID      string
+	Base    color.RGBA
+	Palette []color.RGBA
+	Seed    uint32
 }
 
-// presets mirrors Unisson's nineteen-light catalog. X, Y, and Radius are
-// stored in percent; the catalog's normalized values are multiplied by 100.
+const blobCount = 6
+
 var presets = []Preset{
 	{
-		ID:   "dim",
-		Base: rgb(0xd2, 0xce, 0xf4),
-		Blobs: [3]Blob{
-			{rgb(0xb4, 0xae, 0xf0), 50, 50, 62},
-			{rgb(0x5a, 0x5c, 0xf6), 50, 50, 42},
-			{rgb(0x31, 0x34, 0xee), 50, 50, 26},
-		},
-	},
-	{
-		ID:   "dawn",
-		Base: rgb(0xff, 0x4d, 0x6d),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0xb0, 0x00), 18, 12, 72},
-			{rgb(0xff, 0x2e, 0x93), 92, 86, 70},
-			{rgb(0xff, 0xe1, 0x4d), 10, 95, 48},
-		},
-	},
-	{
-		ID:   "lagoon",
-		Base: rgb(0x00, 0xb4, 0xd8),
-		Blobs: [3]Blob{
-			{rgb(0x00, 0xf5, 0xa0), 8, 88, 72},
-			{rgb(0x1e, 0x5b, 0xff), 92, 10, 72},
-			{rgb(0x7d, 0xf9, 0xff), 55, 50, 36},
-		},
-	},
-	{
-		ID:   "neon",
-		Base: rgb(0xff, 0x1f, 0x8e),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x7a, 0x00), 8, 10, 66},
-			{rgb(0x2b, 0x5b, 0xff), 96, 96, 72},
-			{rgb(0xff, 0x5c, 0xf0), 82, 18, 42},
-		},
-	},
-	{
-		ID:   "citrus",
-		Base: rgb(0xb8, 0xf0, 0x1f),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0xe5, 0x00), 14, 16, 72},
-			{rgb(0x00, 0xc4, 0x6a), 88, 90, 72},
-			{rgb(0x00, 0xe5, 0xc3), 92, 12, 40},
-		},
+		ID:   "origin",
+		Base: rgb(0x00, 0x00, 0x00),
+		// No palette: the solid black reset the HomePod shows as its
+		// default white state.
 	},
 	{
 		ID:   "ember",
-		Base: rgb(0xe0, 0x10, 0x2f),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x7a, 0x00), 16, 88, 76},
-			{rgb(0xff, 0x2e, 0x63), 88, 16, 62},
-			{rgb(0xff, 0xc3, 0x00), 40, 62, 34},
+		Base: rgb(0x14, 0x08, 0x06),
+		Palette: []color.RGBA{
+			rgb(0xff, 0x6a, 0x00), rgb(0xff, 0xc2, 0x47),
+			rgb(0xb2, 0x3a, 0x5e), rgb(0xff, 0x3d, 0x1f),
 		},
+		Seed: 11,
 	},
 	{
-		ID:   "coral",
-		Base: rgb(0xff, 0x6b, 0x5b),
-		Blobs: [3]Blob{
-			{rgb(0x00, 0xd4, 0xc0), 88, 90, 76},
-			{rgb(0xff, 0xc2, 0xa8), 12, 12, 62},
-			{rgb(0xff, 0x3b, 0x7f), 94, 8, 44},
+		ID:   "dune",
+		Base: rgb(0x1e, 0x17, 0x10),
+		Palette: []color.RGBA{
+			rgb(0xe7, 0xb3, 0x6a), rgb(0x6f, 0x86, 0xb8),
+			rgb(0xff, 0x9a, 0x62), rgb(0xf2, 0xdf, 0xb8),
 		},
+		Seed: 23,
 	},
 	{
-		ID:   "glacier",
-		Base: rgb(0x2f, 0x6b, 0xff),
-		Blobs: [3]Blob{
-			{rgb(0xa8, 0xf0, 0xff), 14, 14, 70},
-			{rgb(0x00, 0xd9, 0xff), 90, 88, 70},
-			{rgb(0xe6, 0xfb, 0xff), 85, 15, 38},
+		ID:   "moss",
+		Base: rgb(0x0a, 0x17, 0x10),
+		Palette: []color.RGBA{
+			rgb(0x78, 0xb8, 0x6a), rgb(0xd8, 0xd9, 0x6a),
+			rgb(0x2f, 0x7f, 0x86), rgb(0xb8, 0xe6, 0xc8),
 		},
+		Seed: 37,
 	},
 	{
-		ID:   "mango",
-		Base: rgb(0xff, 0x9f, 0x1c),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x4e, 0x00), 12, 86, 74},
-			{rgb(0xff, 0xe0, 0x66), 88, 12, 68},
-			{rgb(0xff, 0x2d, 0x6f), 92, 92, 40},
+		ID:   "tide",
+		Base: rgb(0x05, 0x17, 0x24),
+		Palette: []color.RGBA{
+			rgb(0x1f, 0x7f, 0xd4), rgb(0x62, 0xe0, 0xd8),
+			rgb(0xff, 0x7e, 0x8a), rgb(0x8f, 0xd8, 0xff),
 		},
+		Seed: 41,
 	},
 	{
-		ID:   "mint",
-		Base: rgb(0x00, 0xd6, 0x8f),
-		Blobs: [3]Blob{
-			{rgb(0xc6, 0xff, 0x4d), 12, 12, 70},
-			{rgb(0x00, 0xa3, 0xff), 90, 90, 70},
-			{rgb(0x7d, 0xff, 0xd6), 50, 55, 36},
+		ID:   "orchid",
+		Base: rgb(0x14, 0x0a, 0x20),
+		Palette: []color.RGBA{
+			rgb(0xb4, 0x4d, 0xe0), rgb(0xf0, 0xb8, 0xff),
+			rgb(0x4a, 0x6b, 0xff), rgb(0x9b, 0x5c, 0xd6),
 		},
+		Seed: 53,
 	},
 	{
-		ID:   "cherry",
-		Base: rgb(0xd9, 0x04, 0x52),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x5c, 0x8a), 16, 14, 72},
-			{rgb(0xff, 0x9e, 0x00), 88, 90, 64},
-			{rgb(0x8a, 0x00, 0x30), 90, 12, 42},
+		ID:   "moon",
+		Base: rgb(0x0e, 0x16, 0x20),
+		Palette: []color.RGBA{
+			rgb(0xe8, 0xee, 0xf8), rgb(0x8f, 0xa6, 0xc8),
+			rgb(0xf0, 0xd9, 0xa8), rgb(0xff, 0xff, 0xff),
 		},
+		Seed: 67,
 	},
-	{
-		ID:   "abyss",
-		Base: rgb(0x05, 0x30, 0x6b),
-		Blobs: [3]Blob{
-			{rgb(0x00, 0xc2, 0xff), 14, 88, 74},
-			{rgb(0x1e, 0xff, 0xc4), 90, 14, 62},
-			{rgb(0x00, 0x52, 0xff), 60, 50, 40},
-		},
-	},
-	{
-		ID:   "volcano",
-		Base: rgb(0x2b, 0x0a, 0x00),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x3d, 0x00), 14, 86, 76},
-			{rgb(0xff, 0xb3, 0x00), 86, 16, 60},
-			{rgb(0xff, 0x00, 0x6a), 90, 90, 42},
-		},
-	},
-	{
-		ID:   "melon",
-		Base: rgb(0xff, 0x3f, 0x5e),
-		Blobs: [3]Blob{
-			{rgb(0x22, 0xd3, 0x6b), 10, 90, 66},
-			{rgb(0xff, 0xd1, 0xdc), 88, 12, 62},
-			{rgb(0xff, 0x7a, 0x8a), 60, 60, 36},
-		},
-	},
-	{
-		ID:   "sand",
-		Base: rgb(0xf2, 0xb8, 0x80),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x8a, 0x5c), 86, 86, 70},
-			{rgb(0xff, 0xe8, 0xb0), 14, 14, 70},
-			{rgb(0x2e, 0xc4, 0xb6), 10, 92, 42},
-		},
-	},
-	{
-		ID:   "storm",
-		Base: rgb(0x1b, 0x2a, 0x4a),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0xd4, 0x00), 86, 14, 56},
-			{rgb(0x4d, 0x7c, 0xff), 12, 88, 76},
-			{rgb(0x9a, 0xd0, 0xff), 50, 50, 34},
-		},
-	},
-	{
-		ID:   "pop",
-		Base: rgb(0x1f, 0xd1, 0xff),
-		Blobs: [3]Blob{
-			{rgb(0xff, 0x2b, 0xd6), 14, 14, 68},
-			{rgb(0xff, 0xf2, 0x00), 88, 88, 70},
-			{rgb(0xff, 0x5a, 0x1f), 90, 12, 40},
-		},
-	},
-	{
-		ID:   "forest",
-		Base: rgb(0x0b, 0x6e, 0x4f),
-		Blobs: [3]Blob{
-			{rgb(0xa7, 0xf4, 0x32), 86, 14, 66},
-			{rgb(0x00, 0xb3, 0xa4), 12, 88, 72},
-			{rgb(0xff, 0xd2, 0x3f), 50, 55, 34},
-		},
-	},
-	{
-		ID:   "aurora",
-		Base: rgb(0x06, 0x2a, 0x3a),
-		Blobs: [3]Blob{
-			{rgb(0x2b, 0xff, 0x88), 12, 20, 72},
-			{rgb(0x00, 0xe5, 0xff), 90, 86, 68},
-			{rgb(0xff, 0x4f, 0xd8), 88, 12, 40},
-		},
-	},
+}
+
+// Blobs returns the preset's six seeded highlights. The same preset always
+// produces the same composition; different presets scatter differently.
+func (p Preset) Blobs() []Blob {
+	if len(p.Palette) == 0 {
+		return nil
+	}
+	rand := mulberry32(p.Seed)
+	out := make([]Blob, blobCount)
+	for i := range out {
+		out[i] = Blob{
+			Color:  p.Palette[i%len(p.Palette)],
+			X:      4 + rand()*92,
+			Y:      4 + rand()*92,
+			Radius: 58 + rand()*55,
+			Alpha:  0.42 + rand()*0.48,
+		}
+	}
+	return out
+}
+
+// mulberry32 matches the JS generator in the approved mockup, so the native
+// preview and the mockup scatter the same blobs.
+func mulberry32(seed uint32) func() float64 {
+	a := seed
+	return func() float64 {
+		a += 0x6D2B79F5
+		t := a
+		t = (t ^ (t >> 15)) * (t | 1)
+		t ^= t + (t^(t>>7))*(t|61)
+		return float64(t^(t>>14)) / 4294967296
+	}
 }
 
 func rgb(r, g, b uint8) color.RGBA { return color.RGBA{R: r, G: g, B: b, A: 0xff} }

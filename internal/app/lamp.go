@@ -26,53 +26,40 @@ const (
 // lampPresetName is the localized name of a preset ID.
 func lampPresetName(id string) string {
 	switch lamp.Normalize(id) {
-	case "dim":
-		return locales.LampPresetDim()
-	case "dawn":
-		return locales.LampPresetDawn()
-	case "lagoon":
-		return locales.LampPresetLagoon()
-	case "neon":
-		return locales.LampPresetNeon()
-	case "citrus":
-		return locales.LampPresetCitrus()
+	case "origin":
+		return locales.LampPresetOrigin()
 	case "ember":
 		return locales.LampPresetEmber()
-	case "coral":
-		return locales.LampPresetCoral()
-	case "glacier":
-		return locales.LampPresetGlacier()
-	case "mango":
-		return locales.LampPresetMango()
-	case "mint":
-		return locales.LampPresetMint()
-	case "cherry":
-		return locales.LampPresetCherry()
-	case "abyss":
-		return locales.LampPresetAbyss()
-	case "volcano":
-		return locales.LampPresetVolcano()
-	case "melon":
-		return locales.LampPresetMelon()
-	case "sand":
-		return locales.LampPresetSand()
-	case "storm":
-		return locales.LampPresetStorm()
-	case "pop":
-		return locales.LampPresetPop()
-	case "forest":
-		return locales.LampPresetForest()
-	case "aurora":
-		return locales.LampPresetAurora()
+	case "dune":
+		return locales.LampPresetDune()
+	case "moss":
+		return locales.LampPresetMoss()
+	case "tide":
+		return locales.LampPresetTide()
+	case "orchid":
+		return locales.LampPresetOrchid()
+	case "moon":
+		return locales.LampPresetMoon()
 	default:
-		return locales.LampPresetSand()
+		return locales.LampPresetOrigin()
 	}
 }
 
-// lampPreview paints a preset the way the receiver's JPEG does: the base
-// color under three soft radial blobs.
-func lampPreview(c *ui.Context, preset string, radius float32) ui.Element {
+// lampPreview paints a palette preset the way the receiver's JPEG does. The
+// origin preset is a neutral tile, not the black image the sender puts on the
+// wire. glyph adds the faint reset arrow for the preset grid; the large and
+// collapsed previews keep the plain neutral tile.
+func lampPreview(c *ui.Context, pal palette, preset string, radius float32, glyph bool) ui.Element {
 	p, _ := lamp.ByID(lamp.Normalize(preset))
+	if p.ID == "origin" {
+		box := ui.Box(c).Radius(radius).Clip().Background(pal.pill)
+		if glyph {
+			box.Center().Children(func() {
+				ui.Icon(c, iconReset).Size(radius*2.3, radius*2.3).TextColor(pal.faint)
+			})
+		}
+		return box
+	}
 	return ui.Box(c).Radius(radius).Clip().Draw(func(pt *ui.Painter, r ui.Rect) {
 		drawLamp(pt, r, p, radius)
 	})
@@ -94,14 +81,20 @@ func lampGridScrollHeight(count int) int {
 // lampGridHeight adds the divider above the grid to its scrolling part.
 func lampGridHeight(count int) int { return lampGridScrollHeight(count) + 1 }
 
-// setLampEnabled applies the switch on either surface.
+// setLampEnabled applies the switch on either surface. The switch controls
+// whether the flyout shows the ambient card; the renderer falls back to the
+// origin preset while it is off.
 func (a *App) setLampEnabled(on bool) {
 	a.lampEnabled = on
 	a.snap.LampEnabled = on
+	if !on {
+		a.lampExpanded = false
+	}
 	a.cfg.Lamp = settings.LampSettings{Enabled: on, Preset: a.lampPreset}
 	if a.eng != nil {
 		a.eng.SetLamp(on, a.lampPreset)
 	}
+	a.fitFlyout()
 }
 
 func (a *App) chooseLampPreset(id string) {
@@ -124,7 +117,7 @@ func (a *App) toggleLampExpanded() {
 // lampHead is the flyout's section head: the label and the receiver-family
 // tag, which stays visible whatever device is selected.
 func lampHead(c *ui.Context, p palette) {
-	ui.Row(c).Padding(6, 2, 2, 2).Children(func() {
+	ui.Row(c).WidthPercent(100).Padding(6, 2, 2, 2).Children(func() {
 		ui.Text(c, locales.FlyoutLampSection()).FontSize(11).FontWeight(600).
 			LetterSpacing(0.55).TextColor(p.muted)
 		ui.Spacer(c)
@@ -135,11 +128,13 @@ func lampHead(c *ui.Context, p palette) {
 	})
 }
 
-// lampSection is the ambient-light card under the playback card. It stays
-// visible with no session and with no capable receiver; the switch is the
-// only control.
+// lampSection is the ambient-light card under the playback card. It is drawn
+// while the setting is on, with no session and with no capable receiver. The
+// settings page switch hides it; the card itself has no switch.
 func (a *App) lampSection(c *ui.Context, p palette) {
-	on := a.lampEnabled
+	if !a.lampEnabled {
+		return
+	}
 	ui.Column(c).Children(func() {
 		lampHead(c, p)
 		card := ui.Column(c).Margin(2, 0, 0, 0).Radius(10).Background(p.card).Border(1, p.line).Clip()
@@ -149,17 +144,9 @@ func (a *App) lampSection(c *ui.Context, p palette) {
 					Cursor(ui.CursorPointer).Label(locales.FlyoutLampSection())
 				pick.OnClick(a.toggleLampExpanded)
 				pick.Children(func() {
-					preview := lampPreview(c, a.lampPreset, 9).Size(32, 32).Shrink(0)
-					if !on {
-						preview.Opacity(0.35)
-					}
-					name := ui.Text(c, lampPresetName(a.lampPreset)).FontSize(13).FontWeight(500).SingleLine()
-					if !on {
-						name.TextColor(p.faint)
-					}
+					lampPreview(c, p, a.lampPreset, 9, false).Size(32, 32).Shrink(0)
+					ui.Text(c, lampPresetName(a.lampPreset)).FontSize(13).FontWeight(500).SingleLine()
 				})
-
-				toggle(c, p, &a.lampEnabled, locales.LampToggle(), func(v bool) { a.setLampEnabled(v) })
 
 				arrow := ui.ButtonBase(c).Size(26, 26).Radius(7).Center().Shrink(0).
 					Cursor(ui.CursorPointer).Label(a.lampArrowLabel())
@@ -196,10 +183,6 @@ func (a *App) lampGrid(c *ui.Context, p palette) {
 		}
 		g := ui.Grid(c).ColumnTracks(tracks...).GapX(lampSwatchGap).GapY(lampSwatchGapY).
 			JustifyItems(ui.Start).Label(locales.FlyoutLampColors())
-		g.Disabled(!a.lampEnabled)
-		if !a.lampEnabled {
-			g.Opacity(0.35)
-		}
 		g.Children(func() {
 			for _, preset := range lamp.All() {
 				a.lampSwatch(c, p, preset)
@@ -213,9 +196,15 @@ func (a *App) lampSwatch(c *ui.Context, p palette, preset lamp.Preset) {
 	swatch := ui.ButtonBase(c).Size(lampSwatchSize, lampSwatchSize).Radius(lampSwatchSize / 2).
 		Clip().Cursor(ui.CursorPointer).Label(lampPresetName(preset.ID))
 	swatch.OnClick(func() { a.chooseLampPreset(preset.ID) })
-	swatch.Draw(func(pt *ui.Painter, r ui.Rect) {
-		drawLamp(pt, r, preset, lampSwatchSize/2)
-	})
+	if preset.ID == "origin" {
+		swatch.Background(p.pill).Center().Children(func() {
+			ui.Icon(c, iconReset).Size(12, 12).TextColor(p.faint)
+		})
+	} else {
+		swatch.Draw(func(pt *ui.Painter, r ui.Rect) {
+			drawLamp(pt, r, preset, lampSwatchSize/2)
+		})
+	}
 	if selected {
 		swatch.DrawOver(func(pt *ui.Painter, r ui.Rect) {
 			pt.Stroke(r, p.accent, lampSwatchSize/2, 2)
@@ -227,14 +216,15 @@ func (a *App) lampSwatch(c *ui.Context, p palette, preset lamp.Preset) {
 // the flyout swatches.
 func drawLamp(pt *ui.Painter, r ui.Rect, preset lamp.Preset, radius float32) {
 	pt.Fill(r, ui.RGB(preset.Base.R, preset.Base.G, preset.Base.B), radius)
-	for _, b := range preset.Blobs {
+	for _, b := range preset.Blobs() {
 		color := ui.RGB(b.Color.R, b.Color.G, b.Color.B)
+		alpha := float32(b.Alpha)
 		pt.FillRadialGradient(r, ui.RadialGradient{
 			Center: ui.Point{X: float32(b.X) / 100, Y: float32(b.Y) / 100},
 			Radius: float32(b.Radius) / 100 * r.W,
 			Stops: []ui.GradientStop{
-				{Color: color.Alpha(0.8), At: 0},
-				{Color: color.Alpha(0.33), At: 0.38},
+				{Color: color.Alpha(0.8 * alpha), At: 0},
+				{Color: color.Alpha(0.33 * alpha), At: 0.38},
 				{Color: ui.Transparent, At: 1},
 			},
 		}, radius)
@@ -249,13 +239,13 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 		ui.Column(c).Padding(13, 14, 12, 14).Children(func() {
 			ui.Row(c).Gap(8).Children(func() {
 				ui.Text(c, locales.SettingsLampEnable()).FontSize(13).FontWeight(500)
-				chip(c, p, locales.SettingsLampHomePodOnly(), chipNeutral)
 				ui.Spacer(c)
+				chip(c, p, locales.SettingsLampHomePodOnly(), chipNeutral)
 				toggle(c, p, &a.lampEnabled, locales.LampToggle(), func(v bool) { a.setLampEnabled(v) })
 			})
 
 			ui.Row(c).Gap(14).Margin(12, 0, 0, 0).Children(func() {
-				preview := lampPreview(c, a.lampPreset, 16).Size(72, 72).Shrink(0)
+				preview := lampPreview(c, p, a.lampPreset, 16, false).Size(72, 72).Shrink(0)
 				if !on {
 					preview.Opacity(0.35)
 				}
@@ -300,7 +290,7 @@ func (a *App) lampTile(c *ui.Context, p palette, preset lamp.Preset) {
 	}
 	tile.OnClick(func() { a.chooseLampPreset(preset.ID) })
 	tile.Children(func() {
-		lampPreview(c, preset.ID, 6).Height(lampSwatchSize).WidthPercent(100)
+		lampPreview(c, p, preset.ID, 6, true).Height(lampSwatchSize).WidthPercent(100)
 		ui.Text(c, name).FontSize(10.5).TextColor(p.fg2).SingleLine()
 	})
 }

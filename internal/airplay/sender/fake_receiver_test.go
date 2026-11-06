@@ -281,8 +281,6 @@ type fakeReceiver struct {
 	receiverVolume    int64
 	requests          map[string]int
 	setParams         []string
-	artworks          []string
-	artworkRx         []byte
 	sessionSetup      map[string]any
 	streamSetup       map[string]any
 	setPeersBody      []byte
@@ -428,9 +426,6 @@ func (f *fakeReceiver) dispatch(req request) {
 		f.reply(req, 200, "", nil)
 	case req.method == "SET_PARAMETER":
 		f.setParams = append(f.setParams, req.headers["content-type"]+"\x00"+string(req.body))
-		f.reply(req, 200, "", nil)
-	case req.method == "POST" && (req.uri == "artwork/command" || req.uri == "/artwork/command"):
-		f.artworks = append(f.artworks, req.headers["content-type"]+"\x00"+string(req.body))
 		f.reply(req, 200, "", nil)
 	case req.method == "POST" && req.uri == "/feedback":
 		f.feedbacks++

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"saundo/internal/airplay/device"
+	"saundo/internal/lamp"
 )
 
 func capableLampDevice() device.Device {
@@ -32,29 +33,29 @@ func TestLampToggleAppliesAndPersists(t *testing.T) {
 		return []byte("jpeg:" + preset), nil
 	}
 
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "lagoon"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
 	snap := h.e.Snapshot()
-	if !snap.LampEnabled || snap.LampPreset != "lagoon" {
-		t.Fatalf("snapshot lamp = %v/%q, want on/lagoon", snap.LampEnabled, snap.LampPreset)
+	if !snap.LampEnabled || snap.LampPreset != "tide" {
+		t.Fatalf("snapshot lamp = %v/%q, want on/tide", snap.LampEnabled, snap.LampPreset)
 	}
 	data, mime := lastArtwork(h.fake)
-	if !bytes.Equal(data, []byte("jpeg:lagoon")) || mime != "image/jpeg" {
-		t.Fatalf("transport got %q %q, want jpeg:lagoon image/jpeg", data, mime)
+	if !bytes.Equal(data, []byte("jpeg:tide")) || mime != "image/jpeg" {
+		t.Fatalf("transport got %q %q, want jpeg:tide image/jpeg", data, mime)
 	}
 
-	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "lagoon"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
 	if h.e.Snapshot().LampEnabled {
 		t.Fatal("snapshot stayed on after the switch turned off")
 	}
 	data, mime = lastArtwork(h.fake)
-	if len(data) != 0 || mime != "" {
-		t.Fatalf("clear call = %q %q, want empty", data, mime)
+	if !bytes.Equal(data, lamp.Off()) || mime != "image/jpeg" {
+		t.Fatalf("off artwork = %d bytes %q, want the black off image/jpeg", len(data), mime)
 	}
 
 	h.flushSettings()
 	got := h.e.sets.Load()
-	if got.Lamp.Enabled || got.Lamp.Preset != "lagoon" {
-		t.Fatalf("persisted lamp = %+v, want off + lagoon", got.Lamp)
+	if got.Lamp.Enabled || got.Lamp.Preset != "tide" {
+		t.Fatalf("persisted lamp = %+v, want off + tide", got.Lamp)
 	}
 }
 
@@ -76,7 +77,7 @@ func TestLampAppliedWhenStreamingStarts(t *testing.T) {
 	}
 }
 
-func TestLampUnknownPresetFallsBackToSand(t *testing.T) {
+func TestLampUnknownPresetFallsBackToOrigin(t *testing.T) {
 	h := newHarness(t)
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.connect()
@@ -86,11 +87,11 @@ func TestLampUnknownPresetFallsBackToSand(t *testing.T) {
 	}
 	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "bogus"})
 
-	if got := h.e.Snapshot().LampPreset; got != "sand" {
-		t.Fatalf("preset = %q, want sand", got)
+	if got := h.e.Snapshot().LampPreset; got != "origin" {
+		t.Fatalf("preset = %q, want origin", got)
 	}
-	if data, _ := lastArtwork(h.fake); !bytes.Equal(data, []byte("jpeg:sand")) {
-		t.Fatalf("artwork = %q, want jpeg:sand", data)
+	if data, _ := lastArtwork(h.fake); !bytes.Equal(data, []byte("jpeg:origin")) {
+		t.Fatalf("artwork = %q, want jpeg:origin", data)
 	}
 	if n := countLogLines(h, "unknown"); n != 1 {
 		t.Fatalf("unknown-preset log lines = %d, want 1", n)
@@ -121,10 +122,10 @@ func TestLampSkipsIncapableReceivers(t *testing.T) {
 			h.e.lampJPEG = func(preset string) ([]byte, error) {
 				return []byte("jpeg:" + preset), nil
 			}
-			h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "lagoon"})
+			h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
 
 			snap := h.e.Snapshot()
-			if !snap.LampEnabled || snap.LampPreset != "lagoon" {
+			if !snap.LampEnabled || snap.LampPreset != "tide" {
 				t.Fatalf("setting did not survive the skip: %v/%q", snap.LampEnabled, snap.LampPreset)
 			}
 			if len(h.fake.artwork) != 0 {
@@ -147,7 +148,7 @@ func TestLampTogglingTwiceLogsTheSkipOnce(t *testing.T) {
 	}})
 	h.connect()
 	h.launch()
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "lagoon"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
 	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "ember"})
 	if n := countLogLines(h, "does not support"); n != 1 {
 		t.Fatalf("skip log lines = %d, want 1", n)

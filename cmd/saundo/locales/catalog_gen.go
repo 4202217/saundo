@@ -2930,21 +2930,21 @@ func (msgs Messages) SettingsLampTop() string {
 	return Catalog.Format(msgs.locale, "settingsLampTop", nil)
 }
 
-// SettingsLampHintOn says "HomePod only. On shows the light; off sends no light."
+// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns to the default."
 // in the language the app shows.
 func SettingsLampHintOn() string { return In(i18n.Locale()).SettingsLampHintOn() }
 
-// SettingsLampHintOn says "HomePod only. On shows the light; off sends no light."
+// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns to the default."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOn() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
 }
 
-// SettingsLampHintOff says "Off sends no light. Turn this on to show the chosen light on HomePod top displays."
+// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default. Turn on to show them."
 // in the language the app shows.
 func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
 
-// SettingsLampHintOff says "Off sends no light. Turn this on to show the chosen light on HomePod top displays."
+// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default. Turn on to show them."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOff() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
@@ -2970,54 +2970,14 @@ func (msgs Messages) LampToggle() string {
 	return Catalog.Format(msgs.locale, "lampToggle", nil)
 }
 
-// LampPresetDim says "Dim"
+// LampPresetOrigin says "Default"
 // in the language the app shows.
-func LampPresetDim() string { return In(i18n.Locale()).LampPresetDim() }
+func LampPresetOrigin() string { return In(i18n.Locale()).LampPresetOrigin() }
 
-// LampPresetDim says "Dim"
+// LampPresetOrigin says "Default"
 // in the language of msgs.
-func (msgs Messages) LampPresetDim() string {
-	return Catalog.Format(msgs.locale, "lampPresetDim", nil)
-}
-
-// LampPresetDawn says "Dawn"
-// in the language the app shows.
-func LampPresetDawn() string { return In(i18n.Locale()).LampPresetDawn() }
-
-// LampPresetDawn says "Dawn"
-// in the language of msgs.
-func (msgs Messages) LampPresetDawn() string {
-	return Catalog.Format(msgs.locale, "lampPresetDawn", nil)
-}
-
-// LampPresetLagoon says "Lagoon"
-// in the language the app shows.
-func LampPresetLagoon() string { return In(i18n.Locale()).LampPresetLagoon() }
-
-// LampPresetLagoon says "Lagoon"
-// in the language of msgs.
-func (msgs Messages) LampPresetLagoon() string {
-	return Catalog.Format(msgs.locale, "lampPresetLagoon", nil)
-}
-
-// LampPresetNeon says "Neon"
-// in the language the app shows.
-func LampPresetNeon() string { return In(i18n.Locale()).LampPresetNeon() }
-
-// LampPresetNeon says "Neon"
-// in the language of msgs.
-func (msgs Messages) LampPresetNeon() string {
-	return Catalog.Format(msgs.locale, "lampPresetNeon", nil)
-}
-
-// LampPresetCitrus says "Citrus"
-// in the language the app shows.
-func LampPresetCitrus() string { return In(i18n.Locale()).LampPresetCitrus() }
-
-// LampPresetCitrus says "Citrus"
-// in the language of msgs.
-func (msgs Messages) LampPresetCitrus() string {
-	return Catalog.Format(msgs.locale, "lampPresetCitrus", nil)
+func (msgs Messages) LampPresetOrigin() string {
+	return Catalog.Format(msgs.locale, "lampPresetOrigin", nil)
 }
 
 // LampPresetEmber says "Ember"
@@ -3030,134 +2990,54 @@ func (msgs Messages) LampPresetEmber() string {
 	return Catalog.Format(msgs.locale, "lampPresetEmber", nil)
 }
 
-// LampPresetCoral says "Coral"
+// LampPresetDune says "Dune"
 // in the language the app shows.
-func LampPresetCoral() string { return In(i18n.Locale()).LampPresetCoral() }
+func LampPresetDune() string { return In(i18n.Locale()).LampPresetDune() }
 
-// LampPresetCoral says "Coral"
+// LampPresetDune says "Dune"
 // in the language of msgs.
-func (msgs Messages) LampPresetCoral() string {
-	return Catalog.Format(msgs.locale, "lampPresetCoral", nil)
+func (msgs Messages) LampPresetDune() string {
+	return Catalog.Format(msgs.locale, "lampPresetDune", nil)
 }
 
-// LampPresetGlacier says "Glacier"
+// LampPresetMoss says "Moss"
 // in the language the app shows.
-func LampPresetGlacier() string { return In(i18n.Locale()).LampPresetGlacier() }
+func LampPresetMoss() string { return In(i18n.Locale()).LampPresetMoss() }
 
-// LampPresetGlacier says "Glacier"
+// LampPresetMoss says "Moss"
 // in the language of msgs.
-func (msgs Messages) LampPresetGlacier() string {
-	return Catalog.Format(msgs.locale, "lampPresetGlacier", nil)
+func (msgs Messages) LampPresetMoss() string {
+	return Catalog.Format(msgs.locale, "lampPresetMoss", nil)
 }
 
-// LampPresetMango says "Mango"
+// LampPresetTide says "Tide"
 // in the language the app shows.
-func LampPresetMango() string { return In(i18n.Locale()).LampPresetMango() }
+func LampPresetTide() string { return In(i18n.Locale()).LampPresetTide() }
 
-// LampPresetMango says "Mango"
+// LampPresetTide says "Tide"
 // in the language of msgs.
-func (msgs Messages) LampPresetMango() string {
-	return Catalog.Format(msgs.locale, "lampPresetMango", nil)
+func (msgs Messages) LampPresetTide() string {
+	return Catalog.Format(msgs.locale, "lampPresetTide", nil)
 }
 
-// LampPresetMint says "Mint"
+// LampPresetOrchid says "Orchid"
 // in the language the app shows.
-func LampPresetMint() string { return In(i18n.Locale()).LampPresetMint() }
+func LampPresetOrchid() string { return In(i18n.Locale()).LampPresetOrchid() }
 
-// LampPresetMint says "Mint"
+// LampPresetOrchid says "Orchid"
 // in the language of msgs.
-func (msgs Messages) LampPresetMint() string {
-	return Catalog.Format(msgs.locale, "lampPresetMint", nil)
+func (msgs Messages) LampPresetOrchid() string {
+	return Catalog.Format(msgs.locale, "lampPresetOrchid", nil)
 }
 
-// LampPresetCherry says "Cherry"
+// LampPresetMoon says "Moon"
 // in the language the app shows.
-func LampPresetCherry() string { return In(i18n.Locale()).LampPresetCherry() }
+func LampPresetMoon() string { return In(i18n.Locale()).LampPresetMoon() }
 
-// LampPresetCherry says "Cherry"
+// LampPresetMoon says "Moon"
 // in the language of msgs.
-func (msgs Messages) LampPresetCherry() string {
-	return Catalog.Format(msgs.locale, "lampPresetCherry", nil)
-}
-
-// LampPresetAbyss says "Abyss"
-// in the language the app shows.
-func LampPresetAbyss() string { return In(i18n.Locale()).LampPresetAbyss() }
-
-// LampPresetAbyss says "Abyss"
-// in the language of msgs.
-func (msgs Messages) LampPresetAbyss() string {
-	return Catalog.Format(msgs.locale, "lampPresetAbyss", nil)
-}
-
-// LampPresetVolcano says "Volcano"
-// in the language the app shows.
-func LampPresetVolcano() string { return In(i18n.Locale()).LampPresetVolcano() }
-
-// LampPresetVolcano says "Volcano"
-// in the language of msgs.
-func (msgs Messages) LampPresetVolcano() string {
-	return Catalog.Format(msgs.locale, "lampPresetVolcano", nil)
-}
-
-// LampPresetMelon says "Melon"
-// in the language the app shows.
-func LampPresetMelon() string { return In(i18n.Locale()).LampPresetMelon() }
-
-// LampPresetMelon says "Melon"
-// in the language of msgs.
-func (msgs Messages) LampPresetMelon() string {
-	return Catalog.Format(msgs.locale, "lampPresetMelon", nil)
-}
-
-// LampPresetSand says "Sand"
-// in the language the app shows.
-func LampPresetSand() string { return In(i18n.Locale()).LampPresetSand() }
-
-// LampPresetSand says "Sand"
-// in the language of msgs.
-func (msgs Messages) LampPresetSand() string {
-	return Catalog.Format(msgs.locale, "lampPresetSand", nil)
-}
-
-// LampPresetStorm says "Storm"
-// in the language the app shows.
-func LampPresetStorm() string { return In(i18n.Locale()).LampPresetStorm() }
-
-// LampPresetStorm says "Storm"
-// in the language of msgs.
-func (msgs Messages) LampPresetStorm() string {
-	return Catalog.Format(msgs.locale, "lampPresetStorm", nil)
-}
-
-// LampPresetPop says "Pop"
-// in the language the app shows.
-func LampPresetPop() string { return In(i18n.Locale()).LampPresetPop() }
-
-// LampPresetPop says "Pop"
-// in the language of msgs.
-func (msgs Messages) LampPresetPop() string {
-	return Catalog.Format(msgs.locale, "lampPresetPop", nil)
-}
-
-// LampPresetForest says "Forest"
-// in the language the app shows.
-func LampPresetForest() string { return In(i18n.Locale()).LampPresetForest() }
-
-// LampPresetForest says "Forest"
-// in the language of msgs.
-func (msgs Messages) LampPresetForest() string {
-	return Catalog.Format(msgs.locale, "lampPresetForest", nil)
-}
-
-// LampPresetAurora says "Aurora"
-// in the language the app shows.
-func LampPresetAurora() string { return In(i18n.Locale()).LampPresetAurora() }
-
-// LampPresetAurora says "Aurora"
-// in the language of msgs.
-func (msgs Messages) LampPresetAurora() string {
-	return Catalog.Format(msgs.locale, "lampPresetAurora", nil)
+func (msgs Messages) LampPresetMoon() string {
+	return Catalog.Format(msgs.locale, "lampPresetMoon", nil)
 }
 
 // FlyoutLampSection says "Ambient light"
