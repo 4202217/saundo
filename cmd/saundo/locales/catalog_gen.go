@@ -648,16 +648,6 @@ func (msgs Messages) FlyoutDropped(n int) string {
 	return Catalog.Format(msgs.locale, "flyoutDropped", map[string]any{"n": n})
 }
 
-// FlyoutNowPlayingReadFailed says "Could not read"
-// in the language the app shows.
-func FlyoutNowPlayingReadFailed() string { return In(i18n.Locale()).FlyoutNowPlayingReadFailed() }
-
-// FlyoutNowPlayingReadFailed says "Could not read"
-// in the language of msgs.
-func (msgs Messages) FlyoutNowPlayingReadFailed() string {
-	return Catalog.Format(msgs.locale, "flyoutNowPlayingReadFailed", nil)
-}
-
 // FlyoutNowPlayingNoMedia says "No media detected"
 // in the language the app shows.
 func FlyoutNowPlayingNoMedia() string { return In(i18n.Locale()).FlyoutNowPlayingNoMedia() }
@@ -700,14 +690,64 @@ func (msgs Messages) FlyoutNowPlayingAlbum(album string) string {
 	return Catalog.Format(msgs.locale, "flyoutNowPlayingAlbum", map[string]any{"album": album})
 }
 
-// FlyoutNowPlaying says "Now playing"
+// FlyoutSwitchMedia says "Switch media"
 // in the language the app shows.
-func FlyoutNowPlaying() string { return In(i18n.Locale()).FlyoutNowPlaying() }
+func FlyoutSwitchMedia() string { return In(i18n.Locale()).FlyoutSwitchMedia() }
 
-// FlyoutNowPlaying says "Now playing"
+// FlyoutSwitchMedia says "Switch media"
 // in the language of msgs.
-func (msgs Messages) FlyoutNowPlaying() string {
-	return Catalog.Format(msgs.locale, "flyoutNowPlaying", nil)
+func (msgs Messages) FlyoutSwitchMedia() string {
+	return Catalog.Format(msgs.locale, "flyoutSwitchMedia", nil)
+}
+
+// FlyoutUnknownApp says "Unknown app"
+// in the language the app shows.
+func FlyoutUnknownApp() string { return In(i18n.Locale()).FlyoutUnknownApp() }
+
+// FlyoutUnknownApp says "Unknown app"
+// in the language of msgs.
+func (msgs Messages) FlyoutUnknownApp() string {
+	return Catalog.Format(msgs.locale, "flyoutUnknownApp", nil)
+}
+
+// FlyoutPrevious says "Previous"
+// in the language the app shows.
+func FlyoutPrevious() string { return In(i18n.Locale()).FlyoutPrevious() }
+
+// FlyoutPrevious says "Previous"
+// in the language of msgs.
+func (msgs Messages) FlyoutPrevious() string {
+	return Catalog.Format(msgs.locale, "flyoutPrevious", nil)
+}
+
+// FlyoutPlay says "Play"
+// in the language the app shows.
+func FlyoutPlay() string { return In(i18n.Locale()).FlyoutPlay() }
+
+// FlyoutPlay says "Play"
+// in the language of msgs.
+func (msgs Messages) FlyoutPlay() string {
+	return Catalog.Format(msgs.locale, "flyoutPlay", nil)
+}
+
+// FlyoutPause says "Pause"
+// in the language the app shows.
+func FlyoutPause() string { return In(i18n.Locale()).FlyoutPause() }
+
+// FlyoutPause says "Pause"
+// in the language of msgs.
+func (msgs Messages) FlyoutPause() string {
+	return Catalog.Format(msgs.locale, "flyoutPause", nil)
+}
+
+// FlyoutNext says "Next"
+// in the language the app shows.
+func FlyoutNext() string { return In(i18n.Locale()).FlyoutNext() }
+
+// FlyoutNext says "Next"
+// in the language of msgs.
+func (msgs Messages) FlyoutNext() string {
+	return Catalog.Format(msgs.locale, "flyoutNext", nil)
 }
 
 // ActionCancel says "Cancel"

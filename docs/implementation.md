@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-06 -->
 
 # Implementation overview
 
@@ -36,8 +36,11 @@ through bounded channels:
   resamples, and writes the ring buffer or the stereo fanout. It never
   touches the network.
 
-The app also polls the Windows SMTC session every two seconds
-(`internal/nowplaying`) for the Now Playing row.
+The app also polls Windows SMTC every two seconds (`internal/nowplaying`) for
+the Now Playing card and its transport buttons. Capture blocks are measured
+into level and five-band frames (`internal/audio/analyze`) on the capture
+goroutine; `Engine.LevelFrame` reads them back with the presentation delay so
+the card's meter follows the audio being heard.
 
 ## Package map
 
@@ -45,10 +48,11 @@ The app also polls the Windows SMTC session every two seconds
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height), settings window (`settings_window.go`, seven pages behind a 190 sidebar, with the 关于 page in `about.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), snapshots |
+| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), capture level tap and delayed frames (`LevelFrame`), snapshots |
 | `internal/discovery` | mDNS browse, TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`) |
 | `internal/audio/ring` | Bounded overwrite-oldest SPSC `Buffer` and multi-sink `Fanout` (`KeepNewest` trim, drop counters) |
+| `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a delayed frame ring for the Now Playing card |
 | `internal/audio/resample` | Linear 48 kHz → 44.1 kHz conversion for interleaved stereo int16 |
 | `internal/airplay/crypto` | Wire primitives: SHA-512/HMAC/HKDF, ChaCha20-Poly1305, X25519/Ed25519, SRP-6a, TLV8, bplist, Digest |
 | `internal/airplay/alac` | Uncompressed ALAC frame encoder (`EncodeUncompressed`) |
@@ -58,7 +62,7 @@ The app also polls the Windows SMTC session every two seconds
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON (`dpapi_windows.go`) |
 | `internal/airplay/device` | Receiver description and auth enum shared by discovery, engine, and UI |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
-| `internal/nowplaying` | Windows SMTC reader for the Now Playing row (Windows/other build split) |
+| `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) and transport commands (Windows/other build split) |
 | `internal/settings` | JSON configuration store |
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
@@ -67,7 +71,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetShowNowPlaying`, `SetNowPlaying`, and the receiver-management commands
+`SetShowNowPlaying`, `SetNowPlaying`, `LevelFrame`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the

@@ -121,7 +121,6 @@
       "n": { "type": "int" }
     }
   },
-  "flyoutNowPlayingReadFailed": "Could not read",
   "flyoutNowPlayingNoMedia": "No media detected",
   "flyoutNowPlayingSessionFailed": "Could not read the system media session",
   "flyoutNowPlayingSession": "System media session",
@@ -131,7 +130,12 @@
       "album": { "type": "String" }
     }
   },
-  "flyoutNowPlaying": "Now playing",
+  "flyoutSwitchMedia": "Switch media",
+  "flyoutUnknownApp": "Unknown app",
+  "flyoutPrevious": "Previous",
+  "flyoutPlay": "Play",
+  "flyoutPause": "Pause",
+  "flyoutNext": "Next",
 
   "actionCancel": "Cancel",
   "actionRetry": "Retry",

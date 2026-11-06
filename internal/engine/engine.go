@@ -15,6 +15,7 @@ import (
 	raopio "saundo/internal/airplay/io"
 	"saundo/internal/airplay/ptp"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
 	"saundo/internal/audio/ring"
 	"saundo/internal/capture"
 	"saundo/internal/diagnostics"
@@ -248,6 +249,7 @@ type Engine struct {
 
 	ring          *ring.Buffer
 	captureSink   *ring.Fanout
+	level         *analyze.Meter
 	silence       *silenceMeter
 	memberRings   []*ring.Buffer
 	discovery     *discovery.Service
@@ -355,7 +357,8 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.newSession = e.openSession
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
-	e.silence = newSilenceMeter(e.captureSink)
+	e.level = analyze.New(0)
+	e.silence = newSilenceMeter(e.captureSink, e.level)
 	e.rebuildTargets()
 	e.snap = e.buildSnapshot()
 	return e
@@ -444,6 +447,17 @@ func (e *Engine) Snapshot() Snapshot {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.snap
+}
+
+// LevelFrame returns the capture level and bands as they were delay ago. The
+// Now Playing card passes the receiver latency so the meter follows the audio
+// being heard, not the audio just captured.
+func (e *Engine) LevelFrame(delay time.Duration) analyze.Frame {
+	if e.level == nil {
+		return analyze.Frame{}
+	}
+	frame, _ := e.level.At(time.Now(), delay)
+	return frame
 }
 
 // Refresh asks discovery to browse now.
@@ -1436,6 +1450,9 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	e.captureError = ""
 	stats := res.src.Stats()
 	e.captureRate = stats.Rate
+	if e.level != nil {
+		e.level.SetRate(stats.Rate)
+	}
 	if stats.Device != "" {
 		e.captureName = stats.Device
 	}
@@ -1455,6 +1472,9 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 	}
 	if info.rate > 0 && info.rate != e.captureRate {
 		e.captureRate = info.rate
+		if e.level != nil {
+			e.level.SetRate(info.rate)
+		}
 		if e.tr != nil {
 			e.tr.SetInputFormat(info.rate)
 		}

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-06 -->
 
 # Verification
 
@@ -331,7 +331,7 @@ software stereo groups built from independent receivers.
   It updates every two seconds even with pushing off, shows
   `title · artist`, falls back to 未检测到媒体, and has the 推送 switch beside
   it. The duplicate switch in the settings card was removed. Pinned by
-  `TestNowPlayingRowShowsTrack`.
+  `TestNowPlayingCardShowsTrack`.
 - **Push behavior.** A changed track is sent only while the toggle is on and a
   session is streaming; a new stream resets the sent marker and resends the
   current track after reconnect. Pinned by
@@ -346,6 +346,80 @@ software stereo groups built from independent receivers.
   tests.
 - `gofmt -l .` and `go vet ./...` printed nothing; `go test -count=1 ./...`
   passed every package after the change.
+
+## Now Playing media card (2026-11-06)
+
+- **SMTC supplies the whole card.** `internal/nowplaying.Read` enumerates
+  `GetSessions`, reads each session's source AUMID, media properties,
+  playback status and control flags, timeline, and thumbnail, and keeps the
+  manager's current session. Artwork comes through `IRandomAccessStream` →
+  `IInputStream` → `IBuffer`/`IBufferByteAccess`; PowerShell cannot unwrap
+  the same thumbnail (`Cannot convert System.__ComObject to
+  IRandomAccessStreamWithContentType`). Live on Windows 11 26300: Chrome
+  "Late Night Afrobeats Mix …" (paused, play only, seek available,
+  53:41 / 58:39, 22,171-byte PNG) and Apple Music
+  "Daimeiwakusei." (paused, play + next, 0:16 / 4:12, 210,734-byte
+  JPEG). A later re-run at 2026-11-06 02:04 read Apple Music
+  "Cinderella (feat. Ty Dolla $ign)" (paused, play/next/previous, 3:29 /
+  8:00, 99,852-byte JPEG) cleanly. Re-run with
+  `SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/`.
+- **The card** shows the app name, the session-switch arrow, a
+  fixed-52-DIP-tall poster whose width follows the cover's ratio (a 16:9
+  thumbnail gets a wider poster, never a taller card), title/artist, a
+  five-band meter, and the progress row. The transport controls sit at the
+  row's left as 24-DIP circles in the session arrow's card style — card
+  fill, muted 12-DIP glyph, hover, 4 DIP apart, no filled primary — and
+  only enabled commands are drawn. Each calls `nowplaying.Control`
+  (TryPlay/TryPause/TrySkipNext/TrySkipPrevious, plus
+  TryChangePlaybackPosition for a later seek affordance); the tester pins
+  the pause click and the AUMID in
+  `TestNowPlayingCardControlsSendActions`. An unrecognized AUMID reads
+  未知应用 / Unknown app. A session with no timeline keeps the same progress
+  row as an empty track — no fill, thumb, times, or copy — so the card
+  height does not change. With no session at all the card is not drawn: the
+  playback card keeps the volume, latency, and capture lines, `fitFlyout`
+  drops the card's 150 DIP, and the 62-DIP spacer that used to separate the
+  device card from the playback card is gone. The tester pins the hidden card
+  in `TestNowPlayingCardHidesWithoutMedia`, and the height cases in
+  `TestFlyoutHeightForDeviceRows`. The commands were not sent to a live media
+  app in this unit, because that would change the user's playback; the
+  session lookup they use is the one the live SMTC test covers.
+- **The first-artwork placeholder drew a light ring.** Before SMTC supplied
+  the first thumbnail, the poster showed the note tile filled with the card
+  color while the media card uses the pill; the tile's edge read as a white
+  border (reported from the first Apple Music play on Windows 11 26300).
+  Later plays used the cached artwork, which covers the tile. The placeholder
+  and the artwork's corners now use the pill;
+  `TestNowPlayingPlaceholderBlendsWithTheCard` samples the tile's edge in
+  both themes.
+- **The meter.** Capture blocks feed `internal/audio/analyze.Meter` on the
+  capture goroutine: stereo-energy level over 60 dB and five Goertzel bands,
+  fast attack/slow release, a 20 s frame ring. The card reads the frame
+  delayed by the selected latency, so the bars follow what the receiver is
+  playing. `TestMeterLevelBandsAndDelay` pins level, bands, delayed read,
+  and decay; `TestSilenceMeterFeedsTheLevelMeter` pins the engine tap. The
+  card asks for 30 fps only with a real window and Reduce Motion off, so
+  headless previews settle.
+- **The cover field.** `coverField` center-crops the artwork, samples a
+  23×24 grid, blurs it, blends toward its average, compresses HSL
+  lightness, and lifts brightness/saturation per theme.
+  `TestCoverFieldCompressesLightness` pins the size and compressed range.
+  The native previews (`.audit/previews/nowplaying-card-v6/`, uncommitted)
+  show the stream, compact no-media, and unknown/no-timeline states in both
+  locales and themes; their artwork is a generated gradient, not a
+  listener's cover.
+- **Checks.** `mingw32-make check` passed: gofmt, go vet, `go tool mygo
+  vet`, the catalog validation, every package's tests, and the verify map
+  (`map ok`). `SAUNDO_PREVIEW_DIR=… go test ./internal/app -run
+  TestRenderPreviews` passed in 20 s, and `mingw32-make build` rebuilt and
+  relaunched `bin/saundo.exe`. With no media session the rebuilt flyout
+  measured 420×456 live (the media card hidden and the old spacer gone) and
+  was captured at `/tmp/saundo-verify/20261106-110235/flyout-compact.png`;
+  the capture is DPI-clipped to the window's top-left, so the compact
+  visual is `.audit/previews/nowplaying-card-v6/flyout-idle-zh.png` and the
+  media state is `.audit/previews/nowplaying-card-v6/flyout-stream-light-zh.png`
+  (606 DIP). Live HomePod audio, the meter against a real receiver, and a
+  live press of the transport commands were not exercised in this unit.
 
 ## Tray flyout (2026-10-31)
 

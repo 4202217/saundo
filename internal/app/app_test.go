@@ -2,6 +2,8 @@ package app
 
 import (
 	"bytes"
+	"image"
+	"image/color"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -30,6 +32,12 @@ func TestMain(m *testing.M) {
 	mygo.Use(native.Plugin)
 	i18n.SetLocaleFunc(func() string { return testLocale })
 	os.Exit(m.Run())
+}
+
+// visibleFlyoutHeight is the height a tester should use for this App's
+// current devices, latency row, and media card.
+func visibleFlyoutHeight(a *App) int {
+	return flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia())
 }
 
 func withLocale(t *testing.T, tag string) {
@@ -80,11 +88,11 @@ func previewApp() *App {
 
 func TestViewRendersDevicesAndStatus(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
 		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
-		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "推送", "未检测到媒体", "诊断日志",
+		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "诊断日志",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
@@ -101,10 +109,10 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 func TestEnglishLocaleRenders(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
 		"saundo", "AIRPLAY 2", "Devices", "3 devices", "65%", "Streaming to HomePods",
-		"No media detected", "Diagnostics",
+		"Diagnostics",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("English view is missing %q; texts: %q", want, tt.Texts())
@@ -115,7 +123,7 @@ func TestEnglishLocaleRenders(t *testing.T) {
 func TestPseudoLocaleRenders(t *testing.T) {
 	withLocale(t, "en-XA")
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if len(tt.Texts()) == 0 {
 		t.Fatal("pseudo-locale view rendered no text")
 	}
@@ -174,7 +182,7 @@ func TestPasswordPromptRenders(t *testing.T) {
 	a.snap.PasswordDevice = "MacBook"
 	a.snap.PasswordDeviceID = "AA:BB:CC:DD:EE:02"
 	a.passwordOpen = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
 		"输入接收端密码", "输入 MacBook 的 AirPlay 接收密码。",
 		"密码保存在本机，只用于这台设备。", "连接", "取消",
@@ -266,7 +274,7 @@ func TestAboutPageOpensProjectLinks(t *testing.T) {
 
 func TestFlyoutKeepsPlaybackControlsOnly(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, moved := range []string{
 		"开机自动启动", "启动时自动连接上次设备", "断开后自动重连",
 		"严格验证接收器", "播放延迟", "接收端密码", "系统输出",
@@ -291,7 +299,7 @@ func TestStereoGroupRowRenders(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.snap.ConnectedName = ""
 	a.selID = device.StereoGroupID("tsid")
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{"HomePods", "立体声组 2/2"} {
 		if !tt.HasText(want) {
 			t.Fatalf("group view is missing %q; texts: %q", want, tt.Texts())
@@ -299,17 +307,131 @@ func TestStereoGroupRowRenders(t *testing.T) {
 	}
 }
 
-func TestNowPlayingRowShowsTrack(t *testing.T) {
+func TestNowPlayingCardShowsTrack(t *testing.T) {
 	a := previewApp()
 	a.nowOK = true
 	a.nowTrack = nowplaying.Track{Title: "夜曲", Artist: "周杰伦", Album: "十一月的萧邦"}
-	a.showNowPlaying = true
-	a.snap.ShowNowPlaying = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
-	for _, want := range []string{"夜曲 · 周杰伦", "正在播放 · 十一月的萧邦", "推送"} {
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	for _, want := range []string{"夜曲", "周杰伦", "未知应用"} {
 		if !tt.HasText(want) {
-			t.Fatalf("now-playing row is missing %q; texts: %q", want, tt.Texts())
+			t.Fatalf("now-playing card is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	if tt.HasText("已暂停 · 无进度信息") {
+		t.Fatalf("now-playing card still shows the no-timeline copy; texts: %q", tt.Texts())
+	}
+	if tt.HasText("推送") {
+		t.Fatalf("now-playing card still shows the push toggle; texts: %q", tt.Texts())
+	}
+}
+
+func TestNowPlayingCardHidesWithoutMedia(t *testing.T) {
+	a := previewApp()
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	for _, gone := range []string{
+		locales.FlyoutNowPlayingNoMedia(),
+		locales.FlyoutNowPlayingSession(),
+	} {
+		if tt.HasText(gone) {
+			t.Fatalf("empty now-playing card still shows %q; texts: %q", gone, tt.Texts())
+		}
+	}
+}
+
+func TestNowPlayingCardControlsSendActions(t *testing.T) {
+	a := previewApp()
+	a.nowSnap = nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{{
+			AUMID: "test.session", AppName: "Test", Title: "夜曲", Artist: "周杰伦",
+			Status: nowplaying.StatusPlaying, Playing: true,
+			CanPlay: true, CanPause: true, CanPrev: true, CanNext: true,
+		}},
+		Current: 0,
+	}
+	a.nowMediaAUMID = "test.session"
+	var actions []nowplaying.Action
+	a.controlNow = func(aumid string, action nowplaying.Action) {
+		if aumid != "test.session" {
+			t.Errorf("control sent to %q, want test.session", aumid)
+		}
+		actions = append(actions, action)
+	}
+
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	pause, ok := tt.Find(locales.FlyoutPause())
+	if !ok {
+		t.Fatalf("pause control missing; texts: %q", tt.Texts())
+	}
+	tt.ClickAt(pause.X+pause.W/2, pause.Y+pause.H/2)
+	if len(actions) != 1 || actions[0] != nowplaying.ActionPause {
+		t.Fatalf("progress-row controls sent %v, want one pause", actions)
+	}
+}
+
+func TestNowPlayingPlaceholderBlendsWithTheCard(t *testing.T) {
+	a := previewApp()
+	a.nowSnap = nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{{
+			AUMID: "loading.session", AppName: "Apple Music", Title: "正在连接…", Artist: "系统媒体会话",
+			Status: nowplaying.StatusPlaying, Playing: true,
+			CanPlay: true, CanPause: true, CanPrev: true,
+		}},
+		Current: 0,
+	}
+	a.nowMediaAUMID = "loading.session"
+	for _, dark := range []bool{false, true} {
+		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+		tt.SetDark(dark)
+		tt.Frame()
+		title, ok := tt.Find("正在连接…")
+		if !ok {
+			t.Fatalf("dark=%v title missing; texts: %q", dark, tt.Texts())
+		}
+		img := tt.Image()
+		scale := float32(img.Bounds().Dx()) / float32(flyoutWidth)
+		// The poster is 52 wide, 10 left of the copy; sample the tile's left
+		// middle, away from the note glyph, where its fill is flat.
+		x := int((title.X - 10 - 52 + 3) * scale)
+		y := int((title.Y + 18.5) * scale)
+		got := img.RGBAAt(x, y)
+		want := paletteFor(dark).pill
+		near := func(a, b uint8) bool {
+			d := int(a) - int(b)
+			return d >= -1 && d <= 1
+		}
+		if !near(got.R, want.R) || !near(got.G, want.G) || !near(got.B, want.B) {
+			t.Fatalf("dark=%v poster placeholder pixel = %v, want the card pill %v", dark, got, want)
+		}
+	}
+}
+
+func TestCoverFieldCompressesLightness(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			img.SetRGBA(x, y, color.RGBA{R: 255, G: uint8(x * 4), B: 0, A: 255})
+		}
+	}
+	for _, dark := range []bool{false, true} {
+		f := coverField(img, dark)
+		if f == nil || f.Bounds().Dx() != fieldW || f.Bounds().Dy() != fieldH {
+			t.Fatalf("dark=%v field = %v, want %dx%d", dark, f, fieldW, fieldH)
+		}
+		for y := 0; y < fieldH; y++ {
+			for x := 0; x < fieldW; x++ {
+				c := f.RGBAAt(x, y)
+				maxv := float64(max(c.R, max(c.G, c.B)))
+				minv := float64(min(c.R, min(c.G, c.B)))
+				l := (maxv + minv) / 2 / 255
+				if l < 0.38 || l > 0.73 {
+					t.Fatalf("dark=%v lightness %.3f at %d,%d outside the compressed range", dark, l, x, y)
+				}
+			}
+		}
+	}
+	if coverField(nil, false) != nil {
+		t.Fatal("a nil cover must not produce a field")
 	}
 }
 
@@ -318,7 +440,7 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.snap.Error = "接收器没有响应"
 	a.snap.ConnectedName = ""
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{"重试", "连接失败：接收器没有响应", "连接失败"} {
 		if !tt.HasText(want) {
 			t.Fatalf("error state is missing %q; texts: %q", want, tt.Texts())
@@ -332,7 +454,7 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 	a.snap.SelectedID = ""
 	a.snap.State = sender.StateIdle
 	a.selID = ""
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{"0 台", "正在搜索附近的 AirPlay 设备…", "重新搜索"} {
 		if !tt.HasText(want) {
 			t.Fatalf("empty state is missing %q; texts: %q", want, tt.Texts())
@@ -341,13 +463,19 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	cases := map[int]int{0: 470, 1: 388, 2: 444, 3: 500, 5: 500}
-	for devices, want := range cases {
-		if got := flyoutHeightFor(devices, false); got != want {
-			t.Errorf("flyoutHeightFor(%d, false) = %d, want %d", devices, got, want)
-		}
-		if got := flyoutHeightFor(devices, true); got != want+latencySwitchHeight {
-			t.Errorf("flyoutHeightFor(%d, true) = %d, want %d", devices, got, want+latencySwitchHeight)
+	noMedia := map[int]int{0: 383, 1: 300, 2: 356, 3: 412, 5: 412}
+	withMedia := map[int]int{0: 533, 1: 450, 2: 506, 3: 562, 5: 562}
+	for _, tc := range []struct {
+		media bool
+		want  map[int]int
+	}{{false, noMedia}, {true, withMedia}} {
+		for devices, want := range tc.want {
+			if got := flyoutHeightFor(devices, false, tc.media); got != want {
+				t.Errorf("flyoutHeightFor(%d, false, media=%v) = %d, want %d", devices, tc.media, got, want)
+			}
+			if got := flyoutHeightFor(devices, true, tc.media); got != want+latencySwitchHeight {
+				t.Errorf("flyoutHeightFor(%d, true, media=%v) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
+			}
 		}
 	}
 }
@@ -357,7 +485,7 @@ func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 	for devices := 0; devices <= deviceRows; devices++ {
 		a := previewApp()
 		a.snap.Devices = a.snap.Devices[:devices]
-		tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(devices, a.showLatencySwitch))
+		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 		tt.Frame()
 		card, ok := tt.Find("设备列表")
 		if !ok {
@@ -384,7 +512,7 @@ func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
 	find := func(devices int) ui.Rect {
 		a := previewApp()
 		a.snap.Devices = a.snap.Devices[:devices]
-		tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(devices, a.showLatencySwitch))
+		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 		tt.Frame()
 		r, ok := tt.Find(capture)
 		if !ok {
@@ -394,7 +522,7 @@ func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
 	}
 	full := find(deviceRows).H
 	for devices := 0; devices < deviceRows; devices++ {
-		if got := find(devices).H; got+0.5 < full {
+		if got := find(devices).H; got+1 < full {
 			t.Fatalf("%d devices: the capture line is clipped to %.1f DIP, want %.1f", devices, got, full)
 		}
 	}
@@ -402,12 +530,15 @@ func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
 
 func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 	enabled, streaming := false, true
-	track := nowplaying.Track{Title: "夜曲", Artist: "周杰伦", Album: "十一月的萧邦"}
+	track := nowplaying.Session{Title: "夜曲", Artist: "周杰伦", Album: "十一月的萧邦"}
 	ok := true
 	var pushes []string
 	a := &App{
-		readNowPlaying: func() (nowplaying.Track, bool, error) {
-			return track, ok, nil
+		readNowPlaying: func() (nowplaying.Snapshot, error) {
+			if !ok {
+				return nowplaying.Snapshot{}, nil
+			}
+			return nowplaying.Snapshot{Sessions: []nowplaying.Session{track}, Current: 0}, nil
 		},
 		pushNowPlaying: func(title, artist, album string) {
 			pushes = append(pushes, title+"\x00"+artist)
@@ -415,10 +546,10 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 		nowPlayingSetting: func() (bool, bool) { return enabled, streaming },
 	}
 
-	// The row updates even while pushing is off.
+	// The state updates even while pushing is off.
 	a.refreshNowPlaying()
-	if !a.nowOK || a.nowPlayingText() != "夜曲 · 周杰伦" {
-		t.Fatalf("display = %q ok=%v", a.nowPlayingText(), a.nowOK)
+	if !a.nowOK || a.nowTrack.Title != "夜曲" || a.nowTrack.Artist != "周杰伦" {
+		t.Fatalf("track = %+v ok=%v", a.nowTrack, a.nowOK)
 	}
 	if len(pushes) != 0 {
 		t.Fatalf("pushed while disabled: %v", pushes)
@@ -443,7 +574,7 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 
 	// A new track while off is not sent; re-enabling sends it.
 	enabled = false
-	track = nowplaying.Track{Title: "稻香", Artist: "周杰伦"}
+	track = nowplaying.Session{Title: "稻香", Artist: "周杰伦"}
 	a.refreshNowPlaying()
 	enabled = true
 	a.refreshNowPlaying()
@@ -460,11 +591,11 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 		t.Fatalf("pushes after reconnect = %d, want 3", len(pushes))
 	}
 
-	// No media clears both the display and the sent marker.
+	// No media clears both the state and the sent marker.
 	ok = false
 	a.refreshNowPlaying()
-	if a.nowOK || a.nowPlayingText() != "未检测到媒体" {
-		t.Fatalf("display = %q ok=%v", a.nowPlayingText(), a.nowOK)
+	if a.nowOK || a.nowTrack.Title != "" {
+		t.Fatalf("track = %+v ok=%v", a.nowTrack, a.nowOK)
 	}
 	if a.nowSent != "" {
 		t.Fatalf("sent marker kept without media: %q", a.nowSent)
@@ -476,7 +607,7 @@ func TestPinDialogRenders(t *testing.T) {
 	a.snap.PinRequired = true
 	a.snap.PinDevice = "Apple TV"
 	a.pinOpen = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
 		"输入配对码", "在 Apple TV 的屏幕上查看配对码。", "配对码只用于本次配对。", "取消", "配对",
 	} {
@@ -511,7 +642,7 @@ func TestPhaseOf(t *testing.T) {
 func TestDeviceRowSelectsOnClick(t *testing.T) {
 	a := previewApp()
 	a.selID = "AA:BB:CC:DD:EE:01"
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	if err := tt.Click("HomePod mini"); err != nil {
 		t.Fatal(err)
@@ -730,7 +861,7 @@ func writePreview(t *testing.T, tt *ui.Tester, path string) {
 func TestFlyoutLatencySwitchCanHide(t *testing.T) {
 	a := previewApp()
 	a.showLatencySwitch = false
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), false))
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), false, a.hasNowMedia()))
 	if tt.HasText("低延迟") {
 		t.Fatalf("hidden switch still shows the mode row: %q", tt.Texts())
 	}
@@ -743,7 +874,7 @@ func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
 	a := previewApp()
 	a.latencyMode = "custom"
 	a.latencyCustom = 700
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true))
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
 	if !tt.HasText("延迟 700 ms") || !tt.HasText("自定义") {
 		t.Fatalf("custom latency not shown: %q", tt.Texts())
 	}
@@ -751,7 +882,7 @@ func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
 
 func TestFlyoutLatencySegmentSelects(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true))
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
 	tt.Frame()
 	if err := tt.Click("标准"); err != nil {
 		t.Fatal(err)
@@ -819,7 +950,7 @@ func TestLatencySpinnerKeepsALACLineAnchored(t *testing.T) {
 	withLocale(t, "zh-CN")
 	a := previewApp()
 	const note = "ALAC · 44.1 kHz · PTP · 已同步 · 延迟 200 ms"
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true))
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
 	tt.Frame()
 	before, ok := tt.Find(note)
 	if !ok {

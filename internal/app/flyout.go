@@ -2,26 +2,38 @@ package app
 
 import (
 	"fmt"
+	"image"
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
+	"saundo/internal/nowplaying"
 )
 
 const (
+	// flyoutHeight is the height with three device rows, no latency row, and
+	// no media card; the no-media panel is compact and the media card adds
+	// its own height when a session exists.
 	flyoutWidth  = 420
-	flyoutHeight = 500
+	flyoutHeight = 474
+
+	// The media card fills the space the old 62-DIP Now Playing row used, and
+	// adds its own height when shown.
+	nowPlayingRowHeight  = 62
+	nowPlayingCardHeight = 150
 
 	// The device card shows one row per device, up to deviceRows, and the
 	// empty state's box when there is none.
 	deviceRows        = 3
 	deviceRowHeight   = 56
-	deviceEmptyHeight = 140
+	deviceEmptyHeight = 141
 
 	// latencySwitchHeight is the four-segment row and its divider.
 	latencySwitchHeight = 44
@@ -35,12 +47,15 @@ func deviceCardHeight(n int) float32 {
 	return float32(min(n, deviceRows))*deviceRowHeight + 2
 }
 
-// flyoutHeightFor is the window height that keeps the spacing between the
-// device card and the playback card the same for any device count: the
-// design's height fits deviceRows rows, and each missing row, or the empty
-// state, shortens the window by as much as the card lost.
-func flyoutHeightFor(n int, showLatencySwitch bool) int {
-	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n))
+// flyoutHeightFor is the window height for the visible device count and the
+// current media state. The device card and the playback card touch through
+// the body's gap; there is no flexible spacer. A shown media card adds its
+// height, and the no-media panel is shorter by the same amount.
+func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool) int {
+	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n)) - nowPlayingRowHeight
+	if hasMedia {
+		h += nowPlayingCardHeight
+	}
 	if showLatencySwitch {
 		h += latencySwitchHeight
 	}
@@ -56,7 +71,6 @@ func (a *App) view(c *ui.Context) {
 			a.flyoutHeader(c, p)
 			ui.Column(c).Grow(1).Padding(2, 12, 8, 12).Gap(8).Children(func() {
 				a.deviceSection(c, p)
-				ui.Spacer(c)
 				a.playbackSection(c, p)
 			})
 			a.flyoutFooter(c, p)
@@ -247,7 +261,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 			ui.Column(c).Padding(6, 12, 7, 12).Children(func() { a.latencySwitch(c, p) })
 			rowLine(c, p)
 		}
-		a.nowPlayingRow(c, p)
+		a.nowPlayingCard(c, p)
 		// The error bar already cost the room the capture line took.
 		if phaseOf(a.snap) != phaseError {
 			rowLine(c, p)
@@ -300,33 +314,244 @@ func (a *App) latencySwitch(c *ui.Context, p palette) {
 	}
 }
 
-func (a *App) nowPlayingRow(c *ui.Context, p palette) {
-	ui.Row(c).Height(62).Padding(9, 12).Gap(10).Children(func() {
-		ui.Box(c).Size(34, 34).Radius(9).Center().Shrink(0).Background(p.accentSoft).Children(func() {
-			ui.Icon(c, iconNote).Size(16, 16).TextColor(p.accent)
+func (a *App) nowPlayingCard(c *ui.Context, p palette) {
+	s, ok := a.nowSession()
+	if !ok {
+		return
+	}
+	ui.Column(c).Margin(8, 12, 8, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
+		ui.Row(c).Height(28).Gap(7).AlignItems(ui.Center).Children(func() {
+			name := s.AppName
+			if name == "" {
+				name = locales.FlyoutUnknownApp()
+			}
+			ui.Text(c, name).FontSize(13).FontWeight(600).SingleLine().Ellipsis("…").Grow(1)
+			if len(a.nowSnap.Sessions) > 1 {
+				btn := ui.ButtonBase(c).Size(24, 24).Radius(7).Center().Background(p.card).
+					Cursor(ui.CursorPointer).Label(locales.FlyoutSwitchMedia())
+				if btn.Hovered() {
+					btn.Background(p.cardHover)
+				}
+				btn.OnClick(a.switchNowMedia)
+				btn.Children(func() {
+					col := p.muted
+					if btn.Hovered() {
+						col = p.fg
+					}
+					ui.Icon(c, iconChevronRight).Size(12, 12).TextColor(col)
+				})
+			}
 		})
-		ui.Column(c).Grow(1).Gap(1).Children(func() {
-			ui.Text(c, a.nowPlayingText()).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-			ui.Text(c, a.nowPlayingSub()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Padding(6, 0, 4, 0).Children(func() {
+			a.nowPlayingPoster(c, p)
+			ui.Column(c).Grow(1).Gap(2).Children(func() {
+				title := s.Title
+				if title == "" {
+					title = s.AppName
+				}
+				if title == "" {
+					title = locales.FlyoutNowPlayingNoMedia()
+				}
+				ui.Text(c, title).FontSize(15).FontWeight(500).SingleLine().Ellipsis("…")
+				ui.Text(c, a.nowPlayingSubFor(s)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+			})
+			a.nowPlayingMeter(c, p, s)
 		})
-		ui.Row(c).Gap(7).Children(func() {
-			ui.Text(c, locales.FlyoutPush()).FontSize(11.5).TextColor(p.muted).SingleLine()
-			toggle(c, p, &a.showNowPlaying, locales.FlyoutPushLabel(), func(v bool) { a.eng.SetShowNowPlaying(v) })
-		})
+		a.nowPlayingProgress(c, p, s)
 	})
 }
 
-// nowPlayingSub is the line under the track in the playback card.
-func (a *App) nowPlayingSub() string {
+// nowPlayingPoster keeps the cover's own aspect ratio around a fixed height,
+// so switching sessions never changes the card's height: a 16:9 cover gets a
+// wider poster, not a taller one.
+func (a *App) nowPlayingPoster(c *ui.Context, p palette) {
+	h := float32(52)
+	w := h
+	if a.nowArt != nil {
+		if bw, bh := a.nowArt.Size(); bw > 0 && bh > 0 {
+			w = h * float32(bw) / float32(bh)
+		}
+	}
+	// The placeholder and the artwork's corners use the media card's own
+	// background: a card-colored tile leaves a light edge until the first
+	// artwork arrives.
+	box := ui.Box(c).Size(w, h).Radius(9).Clip().Shrink(0).Background(p.pill)
+	if a.nowArt != nil {
+		box.Children(func() {
+			ui.Image(c, a.nowArt).Size(w, h).Fit(ui.Cover)
+		})
+		return
+	}
+	box.Center().Children(func() {
+		ui.Icon(c, iconNote).Size(18, 18).TextColor(p.muted)
+	})
+}
+
+// nowTransport draws the enabled transport controls in the session arrow's
+// card style: 24-DIP circles 4 DIPs apart, with the same fill and muted glyph.
+func (a *App) nowTransport(c *ui.Context, p palette, s nowplaying.Session) {
+	if !a.nowHasControls(s) {
+		return
+	}
+	ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
+		if s.CanPrev {
+			a.nowTransportButton(c, p, iconPrev, locales.FlyoutPrevious(), nowplaying.ActionPrevious, s.AUMID)
+		}
+		if s.Playing && s.CanPause {
+			a.nowTransportButton(c, p, iconPause, locales.FlyoutPause(), nowplaying.ActionPause, s.AUMID)
+		} else if s.CanPlay {
+			a.nowTransportButton(c, p, iconPlay, locales.FlyoutPlay(), nowplaying.ActionPlay, s.AUMID)
+		}
+		if s.CanNext {
+			a.nowTransportButton(c, p, iconNext, locales.FlyoutNext(), nowplaying.ActionNext, s.AUMID)
+		}
+	})
+}
+
+func (a *App) nowTransportButton(c *ui.Context, p palette, icon *ui.SVG, label string, action nowplaying.Action, aumid string) {
+	btn := ui.ButtonBase(c).Size(24, 24).Radius(12).Center().
+		Background(p.card).Cursor(ui.CursorPointer).Label(label)
+	if btn.Hovered() {
+		btn.Background(p.cardHover)
+	}
+	btn.OnClick(func() {
+		if a.controlNow != nil {
+			a.controlNow(aumid, action)
+		}
+	})
+	btn.Children(func() {
+		col := p.muted
+		if btn.Hovered() {
+			col = p.fg
+		}
+		ui.Icon(c, icon).Size(12, 12).TextColor(col)
+	})
+}
+
+// nowPlayingMeter draws five bars centered on one horizontal axis. Each bar is
+// a window into the cover's color field at its own column, so the spectrum
+// follows the art's colors as well as its level.
+func (a *App) nowPlayingMeter(c *ui.Context, p palette, s nowplaying.Session) {
+	field := a.nowFieldLight
+	if p.dark {
+		field = a.nowFieldDark
+	}
+	playing := s.Playing
+	delay := time.Duration(a.latencyMS()) * time.Millisecond
+	ui.Box(c).Size(fieldW, fieldH).Shrink(0).Draw(func(pt *ui.Painter, r ui.Rect) {
+		frame := analyze.Frame{}
+		if a.levelFrame != nil {
+			frame = a.levelFrame(delay)
+		}
+		for i := 0; i < analyze.BandCount; i++ {
+			h := float32(3)
+			if playing {
+				h = 8 + frame.Bands[i]*16
+			}
+			if h > fieldH {
+				h = fieldH
+			}
+			top := int(12 - h/2)
+			bottom := int(12 + h/2)
+			from := fieldColor(field, i*5+1, top)
+			to := fieldColor(field, i*5+1, bottom)
+			if !playing {
+				alpha := float32(0.45)
+				if p.dark {
+					alpha = 0.58
+				}
+				from, to = from.Alpha(alpha), to.Alpha(alpha)
+			}
+			bar := ui.Rect{X: r.X + float32(i*5), Y: r.Y + (r.H-h)/2, W: 3, H: h}
+			pt.FillGradient(bar, ui.LinearGradient{From: from, To: to, Angle: 180}, 1.5)
+		}
+		// A headless tester settles by waiting for animations to stop; only a
+		// real window should request the meter's continuous repaint.
+		if playing && a.win != nil && !mygo.Theme.Preferences().ReduceMotion {
+			pt.AnimationFrameRate(30)
+		}
+	})
+}
+
+// nowPlayingProgress is the transport row. A session with a timeline shows
+// elapsed, the cover-field fill and thumb, and remaining; a session without a
+// timeline keeps the same row as an empty track, with no fill, thumb, or copy.
+func (a *App) nowPlayingProgress(c *ui.Context, p palette, s nowplaying.Session) {
+	ui.Row(c).Gap(7).Height(28).AlignItems(ui.Center).Padding(4, 0, 0, 0).Children(func() {
+		a.nowTransport(c, p, s)
+		if s.Duration <= 0 {
+			ui.Box(c).Grow(1).Height(3).Radius(1.5).Background(p.line)
+			return
+		}
+		pos := s.Position
+		if s.Playing && !a.nowSnap.ReadAt.IsZero() {
+			pos += time.Since(a.nowSnap.ReadAt)
+		}
+		if pos < 0 {
+			pos = 0
+		}
+		if pos > s.Duration {
+			pos = s.Duration
+		}
+		frac := float32(pos) / float32(s.Duration)
+		field := a.nowFieldLight
+		if p.dark {
+			field = a.nowFieldDark
+		}
+		ui.Text(c, formatClock(pos)).FontSize(10).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+		ui.Box(c).Grow(1).Height(3).Draw(func(pt *ui.Painter, r ui.Rect) {
+			pt.Fill(r, p.line, 1.5)
+			if frac > 0 {
+				pt.FillGradient(ui.Rect{X: r.X, Y: r.Y, W: r.W * frac, H: r.H}, ui.LinearGradient{
+					From:  fieldColor(field, 0, fieldH/2),
+					To:    fieldColor(field, fieldW-1, fieldH/2),
+					Angle: 90,
+				}, 1.5)
+			}
+			x := r.X + r.W*frac
+			thumb := ui.Rect{X: x - 4.5, Y: r.Y - 3, W: 9, H: 9}
+			pt.Shadow(thumb, 4.5, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.18))
+			pt.Fill(thumb, p.card, 4.5)
+			pt.Stroke(thumb, p.line, 4.5, 1)
+		})
+		ui.Text(c, "-"+formatClock(s.Duration-pos)).FontSize(10).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+	})
+}
+
+func (a *App) nowHasControls(s nowplaying.Session) bool {
+	return s.AUMID != "" && (s.CanPlay || s.CanPause || s.CanNext || s.CanPrev)
+}
+
+func fieldColor(f *image.RGBA, x, y int) ui.Color {
+	if f == nil {
+		return ui.RGBA(128, 128, 128, 1)
+	}
+	b := f.Bounds()
+	x = clampInt(x, b.Min.X, b.Max.X-1)
+	y = clampInt(y, b.Min.Y, b.Max.Y-1)
+	c := f.RGBAAt(x, y)
+	return ui.RGBA(c.R, c.G, c.B, 1)
+}
+
+func (a *App) nowPlayingSubFor(s nowplaying.Session) string {
 	switch {
 	case a.nowErr != "":
 		return locales.FlyoutNowPlayingSessionFailed()
-	case !a.nowOK || a.nowTrack.Title == "":
+	case s.Artist != "":
+		return s.Artist
+	case s.Album != "":
+		return locales.FlyoutNowPlayingAlbum(s.Album)
+	default:
 		return locales.FlyoutNowPlayingSession()
-	case a.nowTrack.Album != "":
-		return locales.FlyoutNowPlayingAlbum(a.nowTrack.Album)
 	}
-	return locales.FlyoutNowPlaying()
+}
+
+func formatClock(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	total := int(d / time.Second)
+	return fmt.Sprintf("%d:%02d", total/60, total%60)
 }
 
 func (a *App) flyoutFooter(c *ui.Context, p palette) {
