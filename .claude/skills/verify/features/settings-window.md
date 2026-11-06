@@ -38,9 +38,14 @@ Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
 - 正在播放 page: one card. The header is the display master 显示正在播放
   (`showNowPlayingPanel`, on) with the 系统媒体 badge; below it a preview of the
   real Now Playing card (the live session, or a sample card when nothing
-  plays), then the rows 播放控制 (`playbackControls`),
-  接收器显示曲目信息 (`showNowPlaying`, the existing engine setting, off),
-  封面配色 (`coverColors`), and 音频电平 (`audioLevel`). Master off greys the
+  plays); a live session's meter animates at 30 fps while the master is on,
+  and the sample's stays still. Then come the rows 封面 (a three-way
+  latency-style segmented control: 无封面 / 默认封面 / 媒体封面, default
+  media; persists as `coverMode`), 播放控制 (`playbackControls`),
+  封面配色 (`coverColors`), 音频电平 (`audioLevel`), and last
+  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting,
+  off); the receiver push is last because it leaves the panel untouched.
+  Master off greys the
   preview at 45% and disables every row; the dependent values stay. The
   receiver row is effective only while the master is on. New `settings.json`
   keys default on; missing keys read their defaults; changes save immediately
@@ -62,7 +67,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Live engine path for the mute (mutes the receiver first, drives the engine

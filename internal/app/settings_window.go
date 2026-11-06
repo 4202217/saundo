@@ -318,21 +318,25 @@ func (a *App) nowPlayingPage(c *ui.Context, p palette) {
 		})
 		a.nowPlayingPreview(c, p)
 		rowLine(c, p)
+		a.nowPlayingCoverRow(c, p, master)
+		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsPlaybackControls(), locales.SettingsPlaybackControlsDesc(),
 			&a.cfg.PlaybackControls, master, func(bool) { a.persistNowPlaying() })
-		rowLine(c, p)
-		a.nowPlayingOptionRow(c, p, locales.SettingsTrackInfoOnReceiver(), locales.SettingsTrackInfoOnReceiverDesc(),
-			&a.showNowPlaying, master, func(v bool) {
-				if a.eng != nil {
-					a.eng.SetShowNowPlaying(v)
-				}
-			})
 		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsCoverColors(), locales.SettingsCoverColorsDesc(),
 			&a.cfg.CoverColors, master, func(bool) { a.persistNowPlaying() })
 		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsAudioLevel(), locales.SettingsAudioLevelDesc(),
 			&a.cfg.AudioLevel, master, func(bool) { a.persistNowPlaying() })
+		rowLine(c, p)
+		// The receiver push is the card's last row: it leaves the panel
+		// untouched, so it sits apart from the panel's display options.
+		a.nowPlayingOptionRow(c, p, locales.SettingsTrackInfoOnReceiver(), locales.SettingsTrackInfoOnReceiverDesc(),
+			&a.showNowPlaying, master, func(v bool) {
+				if a.eng != nil {
+					a.eng.SetShowNowPlaying(v)
+				}
+			})
 	})
 }
 
@@ -340,6 +344,80 @@ func (a *App) nowPlayingBadge(c *ui.Context, p palette) {
 	ui.Row(c).Height(22).Radius(11).Padding(0, 9).Border(1, p.line).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, locales.SettingsSystemMediaBadge()).FontSize(11.5).TextColor(p.muted).SingleLine()
 	})
+}
+
+// nowPlayingCoverRow is the three-way cover control: none, the default
+// placeholder, or the media's own artwork.
+func (a *App) nowPlayingCoverRow(c *ui.Context, p palette, enabled bool) {
+	titleColor, subColor := p.fg, p.muted
+	if !enabled {
+		titleColor, subColor = p.muted, p.faint
+	}
+	ui.Column(c).Padding(10, 14).Gap(8).Children(func() {
+		ui.Column(c).Gap(2).Children(func() {
+			ui.Text(c, locales.SettingsCover()).FontSize(13).FontWeight(500).TextColor(titleColor).SingleLine()
+			ui.Text(c, locales.SettingsCoverDesc()).FontSize(11.5).TextColor(subColor).SingleLine().Ellipsis("…")
+		})
+		seg := a.coverModeIndex()
+		parts := ui.SegmentedBase(c, &seg, 3)
+		parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
+			Label(locales.SettingsCover()).Disabled(!enabled).Children(func() {
+			icons := []*ui.SVG{iconSlash, iconNote, iconImage}
+			names := []string{
+				locales.SettingsCoverNone(),
+				locales.SettingsCoverPlaceholder(),
+				locales.SettingsCoverMedia(),
+			}
+			for i := range names {
+				s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).Cursor(ui.CursorPointer).Label(names[i])
+				if i == seg {
+					if p.dark {
+						s.Background(p.pillHover)
+					} else {
+						s.Background(p.card)
+					}
+					s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
+				}
+				s.Children(func() {
+					ic := ui.Icon(c, icons[i]).Size(12, 12)
+					tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
+					if i == seg {
+						ic.TextColor(p.accent)
+						tx.TextColor(p.fg)
+					} else {
+						ic.TextColor(p.muted)
+						tx.TextColor(p.muted)
+					}
+				})
+			}
+		})
+		if parts.Track.Changed() {
+			a.cfg.CoverMode = coverModeAt(seg)
+			a.persistNowPlaying()
+		}
+	})
+}
+
+func (a *App) coverModeIndex() int {
+	switch a.cfg.CoverMode {
+	case settings.CoverNone:
+		return 0
+	case settings.CoverPlaceholder:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func coverModeAt(i int) settings.CoverMode {
+	switch i {
+	case 0:
+		return settings.CoverNone
+	case 1:
+		return settings.CoverPlaceholder
+	default:
+		return settings.CoverMedia
+	}
 }
 
 func (a *App) nowPlayingOptionRow(c *ui.Context, p palette, title, sub string, on *bool, enabled bool, changed func(bool)) {
@@ -360,6 +438,7 @@ func (a *App) persistNowPlaying() {
 		cfg.ShowNowPlayingPanel = a.cfg.ShowNowPlayingPanel
 		cfg.PlaybackControls = a.cfg.PlaybackControls
 		cfg.CoverColors = a.cfg.CoverColors
+		cfg.CoverMode = a.cfg.CoverMode
 		cfg.AudioLevel = a.cfg.AudioLevel
 		_ = a.sets.Save(cfg)
 	}

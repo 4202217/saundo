@@ -204,7 +204,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
-		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "播放控制", "接收器显示曲目信息", "封面配色", "音频电平", "Apple Music", "夜航"}},
+		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "在接收器上显示曲目信息", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
@@ -420,7 +420,7 @@ func TestNowPlayingCardControlsSendActions(t *testing.T) {
 	}
 }
 
-func TestNowPlayingPlaceholderBlendsWithTheCard(t *testing.T) {
+func TestNowPlayingPlaceholderStandsOutFromTheCard(t *testing.T) {
 	a := previewApp()
 	a.nowSnap = nowplaying.Snapshot{
 		Sessions: []nowplaying.Session{{
@@ -431,6 +431,9 @@ func TestNowPlayingPlaceholderBlendsWithTheCard(t *testing.T) {
 		Current: 0,
 	}
 	a.nowMediaAUMID = "loading.session"
+	// The entry pose fades the content in over time, and the tester's clock
+	// stands still; settle it so the frame shows the card.
+	a.flyoutEntered = true
 	for _, dark := range []bool{false, true} {
 		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 		tt.SetDark(dark)
@@ -446,13 +449,50 @@ func TestNowPlayingPlaceholderBlendsWithTheCard(t *testing.T) {
 		x := int((title.X - 10 - 52 + 3) * scale)
 		y := int((title.Y + 18.5) * scale)
 		got := img.RGBAAt(x, y)
-		want := paletteFor(dark).pill
+		pal := paletteFor(dark)
 		near := func(a, b uint8) bool {
 			d := int(a) - int(b)
 			return d >= -1 && d <= 1
 		}
-		if !near(got.R, want.R) || !near(got.G, want.G) || !near(got.B, want.B) {
-			t.Fatalf("dark=%v poster placeholder pixel = %v, want the card pill %v", dark, got, want)
+		if !near(got.R, pal.card.R) || !near(got.G, pal.card.G) || !near(got.B, pal.card.B) {
+			t.Fatalf("dark=%v placeholder pixel = %v, want the raised card surface %v", dark, got, pal.card)
+		}
+		if near(got.R, pal.pill.R) && near(got.G, pal.pill.G) && near(got.B, pal.pill.B) {
+			t.Fatalf("dark=%v placeholder pixel = %v matches the media card's pill %v", dark, got, pal.pill)
+		}
+	}
+}
+
+func TestMeterAnimatesOnlyLivePlaybackInAWindow(t *testing.T) {
+	tests := []struct {
+		name             string
+		animate, playing bool
+		windowed, reduce bool
+		want             bool
+	}{
+		{"live", true, true, true, false, true},
+		{"feature off", false, true, true, false, false},
+		{"paused", true, false, true, false, false},
+		{"headless", true, true, false, false, false},
+		{"reduced motion", true, true, true, true, false},
+	}
+	for _, tt := range tests {
+		if got := meterAnimates(tt.animate, tt.playing, tt.windowed, func() bool { return tt.reduce }); got != tt.want {
+			t.Fatalf("%s: meterAnimates = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestSettingsPreviewMeterFollowsLivePlaybackOnly(t *testing.T) {
+	tests := []struct{ live, enabled, want bool }{
+		{true, true, true},
+		{true, false, false},
+		{false, true, false},
+		{false, false, false},
+	}
+	for _, tt := range tests {
+		if got := previewMeterAnimates(tt.live, tt.enabled); got != tt.want {
+			t.Fatalf("previewMeterAnimates(live=%v, enabled=%v) = %v, want %v", tt.live, tt.enabled, got, tt.want)
 		}
 	}
 }
@@ -1163,5 +1203,54 @@ func TestNowPlayingArtworkRefreshes(t *testing.T) {
 	a.refreshNowArtwork()
 	if a.nowArt == nil || a.nowArt == first {
 		t.Fatal("the artwork did not refresh under the same title")
+	}
+}
+
+func TestNowPlayingCoverModes(t *testing.T) {
+	titleX := func(mode settings.CoverMode) (float32, int) {
+		a := previewApp()
+		a.cfg.CoverMode = mode
+		a.nowSnap = nowplaying.Snapshot{Sessions: []nowplaying.Session{{
+			AUMID: "test.session", AppName: "Test", Title: "夜曲", Artist: "周杰伦",
+			Status: nowplaying.StatusPlaying, Playing: true,
+		}}, Current: 0}
+		a.nowMediaAUMID = "test.session"
+		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+		tt.Frame()
+		title, ok := tt.Find("夜曲")
+		if !ok {
+			t.Fatalf("mode %q: title missing", mode)
+		}
+		return title.X, visibleFlyoutHeight(a)
+	}
+	none, hNone := titleX(settings.CoverNone)
+	placeholder, hPlaceholder := titleX(settings.CoverPlaceholder)
+	media, hMedia := titleX(settings.CoverMedia)
+	if none >= placeholder || none >= media {
+		t.Fatalf("title x none=%.1f placeholder=%.1f media=%.1f, want none furthest left", none, placeholder, media)
+	}
+	if placeholder != media {
+		t.Fatalf("title x placeholder=%.1f media=%.1f, want the same poster width", placeholder, media)
+	}
+	if hNone != hMedia || hPlaceholder != hMedia {
+		t.Fatalf("heights none=%d placeholder=%d media=%d, want a fixed card height", hNone, hPlaceholder, hMedia)
+	}
+}
+
+func TestNowPlayingCoverModePersists(t *testing.T) {
+	a := previewApp()
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	a.page = pageNowPlaying
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	if err := tt.Click(locales.SettingsCoverNone()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.cfg.CoverMode != settings.CoverNone {
+		t.Fatalf("cover mode = %q, want none", a.cfg.CoverMode)
+	}
+	if got := a.sets.Load().CoverMode; got != settings.CoverNone {
+		t.Fatalf("stored cover mode = %q, want none", got)
 	}
 }

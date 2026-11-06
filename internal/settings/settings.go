@@ -39,6 +39,15 @@ const (
 )
 
 // Settings is the user's configuration.
+// CoverMode is what the Now Playing card shows on its left.
+type CoverMode string
+
+const (
+	CoverNone        CoverMode = "none"
+	CoverPlaceholder CoverMode = "placeholder"
+	CoverMedia       CoverMode = "media"
+)
+
 type Settings struct {
 	Name                string             `json:"name"`
 	DeviceID            string             `json:"deviceId"`
@@ -61,6 +70,7 @@ type Settings struct {
 	ShowNowPlayingPanel bool               `json:"showNowPlayingPanel"`
 	PlaybackControls    bool               `json:"playbackControls"`
 	CoverColors         bool               `json:"coverColors"`
+	CoverMode           CoverMode          `json:"coverMode"`
 	AudioLevel          bool               `json:"audioLevel"`
 	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
 	TrayAnimation       bool               `json:"trayAnimation"`
@@ -90,6 +100,7 @@ func Default() Settings {
 		ShowNowPlayingPanel: true,
 		PlaybackControls:    true,
 		CoverColors:         true,
+		CoverMode:           CoverMedia,
 		AudioLevel:          true,
 		Reconnect:           true,
 		TrayAnimation:       true,
@@ -171,6 +182,11 @@ func (s *Store) Load() Settings {
 	case ThemeLight, ThemeDark:
 	default:
 		out.Theme = ThemeSystem
+	}
+	switch out.CoverMode {
+	case CoverNone, CoverPlaceholder, CoverMedia:
+	default:
+		out.CoverMode = CoverMedia
 	}
 	return out
 }

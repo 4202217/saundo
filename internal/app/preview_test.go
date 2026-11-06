@@ -121,14 +121,14 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	}
 	// saveScrolled shows the page scrolled with the pointer over it, so the
 	// scrollbar and the fixed title divider are visible.
-	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool) {
+	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool, dy float32) {
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
 		tt.SetLocale(locale)
 		tt.SetDark(dark)
 		tt.Advance(400 * time.Millisecond)
 		tt.Move(600, 300)
-		tt.Scroll(600, 300, 0, 80)
+		tt.Scroll(600, 300, 0, dy)
 		tt.Frame()
 		f, err := os.Create(filepath.Join(dir, name+"-"+suffix+".png"))
 		if err != nil {
@@ -312,6 +312,29 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-nowplaying-live-dark", nowSettings.settingsView, 720, 500, true)
 	nowSettings.cfg.ShowNowPlayingPanel = false
 	save("settings-nowplaying-off-light", nowSettings.settingsView, 720, 500, false)
+	nowSettings.cfg.ShowNowPlayingPanel = true
+	nowSettings.cfg.CoverMode = settings.CoverPlaceholder
+	save("settings-nowplaying-placeholder-light", nowSettings.settingsView, 720, 500, false)
+	save("settings-nowplaying-placeholder-dark", nowSettings.settingsView, 720, 500, true)
+	nowSettings.cfg.CoverMode = settings.CoverNone
+	save("settings-nowplaying-no-cover-light", nowSettings.settingsView, 720, 500, false)
+	nowSettings.cfg.CoverMode = settings.CoverMedia
+	saveScrolled("settings-nowplaying-bottom-light", nowSettings.settingsView, 720, 500, false, 500)
+
+	// The flyout cover modes with the sample card.
+	coverFly := fixture()
+	coverFly.nowSnap = sampleSnapshot(locale)
+	coverFly.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	coverCover := sampleCoverImage()
+	coverFly.nowArt = ui.NewBitmap(coverCover)
+	coverFly.nowFieldLight = coverField(coverCover, false)
+	coverFly.nowFieldDark = coverField(coverCover, true)
+	coverFly.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
+	coverFly.cfg.CoverMode = settings.CoverNone
+	save("flyout-cover-none-light", coverFly.view, flyoutWidth, visibleFlyoutHeight(coverFly), false)
+	coverFly.cfg.CoverMode = settings.CoverPlaceholder
+	save("flyout-cover-placeholder-light", coverFly.view, flyoutWidth, visibleFlyoutHeight(coverFly), false)
+	save("flyout-cover-placeholder-dark", coverFly.view, flyoutWidth, visibleFlyoutHeight(coverFly), true)
 
 	// The flyout with the media panel switched off: no card, compact panel.
 	mediaOff := fixture()
@@ -385,8 +408,8 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-audio-custom-dark", customSettings.settingsView, 720, 500, true)
 	save("settings-audio-compact-light", customSettings.settingsView, 720, 420, false)
 	save("settings-audio-compact-dark", customSettings.settingsView, 720, 420, true)
-	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false)
-	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true)
+	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false, 80)
+	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true, 80)
 
 	pin := fixture()
 	pin.snap.PinRequired = true

@@ -397,10 +397,12 @@ software stereo groups built from independent receivers.
   the first thumbnail, the poster showed the note tile filled with the card
   color while the media card uses the pill; the tile's edge read as a white
   border (reported from the first Apple Music play on Windows 11 26300).
-  Later plays used the cached artwork, which covers the tile. The placeholder
-  and the artwork's corners now use the pill;
-  `TestNowPlayingPlaceholderBlendsWithTheCard` samples the tile's edge in
-  both themes.
+  Later plays used the cached artwork, which covers the tile. The artwork's
+  tile now keeps the pill, so a corner sliver never shows as an edge; the
+  placeholder tile moved to the raised card surface so it reads as a cover
+  distinct from the card,
+  and `TestNowPlayingPlaceholderStandsOutFromTheCard` pins that fill in both
+  themes.
 - **The meter.** Capture blocks feed `internal/audio/analyze.Meter` on the
   capture goroutine: stereo-energy level over 60 dB and five Goertzel bands,
   fast attack/slow release, a 20 s frame ring. The card reads the frame
@@ -445,11 +447,21 @@ software stereo groups built from independent receivers.
 - **The 正在播放 page.** The settings window gains an eighth page between 采集
   and 更新. It has one card: the display master (`showNowPlayingPanel`, on)
   with the 系统媒体 badge, a preview of the real Now Playing card (the live session, or a sample Apple Music / 夜航 / 白鲸电台 card when nothing plays), and
-  the rows 播放控制 (`playbackControls`), 接收器显示曲目信息
-  (`showNowPlaying`, the existing engine setting, off), 封面配色
-  (`coverColors`), and 音频电平 (`audioLevel`). Master off greys the preview
+  the rows 播放控制 (`playbackControls`), 封面配色
+  (`coverColors`), 音频电平 (`audioLevel`), and last
+  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting, off);
+  the receiver push is last because it leaves the panel untouched. Master off greys the preview
   and disables every row; there is no closed placeholder. New keys in
   `settings.json` default on; a missing key reads its default.
+- **The cover mode.** The page's 封面 row is a three-way segmented control
+  in the latency switch's style: 无封面 (`none`), 默认封面 (`placeholder`),
+  and 媒体封面 (`media`, default). The card omits the poster for none, shows
+  the raised note tile for placeholder, and the media artwork for media; the main
+  row keeps its 62-DIP height, so the flyout height is identical in all three.
+  The mode persists as `coverMode` in `settings.json`; an invalid stored value
+  reads as `media`. `TestNowPlayingCoverModes` pins the left title shift with
+  no poster and the fixed card height; `TestNowPlayingCoverModePersists` and
+  the settings test pin persistence and the invalid fallback.
 - **The flyout follows the page.** `nowPlayingCard` returns nothing while the
   master is off, and `hasNowMedia` drops the card's 150 DIP from the flyout;
   the flyout shrinks exactly like the no-media state. The playback controls
@@ -460,6 +472,16 @@ software stereo groups built from independent receivers.
   opacity and read-only; it falls back to a fixed sample so no-media users still
   see the card. The sample strings are `settingsNowPlayingSampleTitle` /
   `settingsNowPlayingSampleArtist`.
+- **The settings preview's meter stepped every two seconds.** The preview
+  passed its read-only flag as the meter's animate flag, so the settings card
+  never asked for paint frames; the bars sampled the live level only when the
+  SMTC poll invalidated the window, once per 2 s. The card body now takes the
+  meter's animation separately: the flyout always animates, and the preview
+  animates only for a live session while the master is on. `meterAnimates`
+  and `previewMeterAnimates` pin the decision. `meterAnimates` reads Reduce
+  Motion through a func because `mygo.Theme.Preferences()` blocks without a
+  running app; the eager read hung the table test. The smoothness itself is
+  user-observed: no automated check counts a real window's frames.
 - **Previews and tests.** `.audit/previews/nowplaying-settings/` (uncommitted)
   holds the live settings page, the master-off page, and the compact flyout
   without the card, zh-CN and English, light and dark. The page is covered by

@@ -61,8 +61,8 @@ Open the flyout from the tray icon. All controls are on the playback card.
 Headless UI drives the real view functions:
 
 ```bash
-go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderBlendsWithTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingArtworkRefreshes|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
-go test -run 'TestMeterLevelBandsAndDelay' -v ./internal/audio/analyze/
+go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderStandsOutFromTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingArtworkRefreshes|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
+go test -run 'TestMeterLevelBandsAndDelay|TestMeterGatesNoiseBelowTheFloor|TestMeterQuietToneKeepsBarsLow|TestFollowIgnoresSubBarChanges' -v ./internal/audio/analyze/
 go test -run 'TestSilenceMeterFeedsTheLevelMeter' -v ./internal/engine/
 SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/
 SAUNDO_PREVIEW_DIR="$EV/frames" go test -run TestRenderPreviews ./internal/app/

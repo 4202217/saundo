@@ -1142,23 +1142,23 @@ func (msgs Messages) SettingsPlaybackControlsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsPlaybackControlsDesc", nil)
 }
 
-// SettingsTrackInfoOnReceiver says "Show track info on receiver"
+// SettingsTrackInfoOnReceiver says "Show track info on the receiver"
 // in the language the app shows.
 func SettingsTrackInfoOnReceiver() string { return In(i18n.Locale()).SettingsTrackInfoOnReceiver() }
 
-// SettingsTrackInfoOnReceiver says "Show track info on receiver"
+// SettingsTrackInfoOnReceiver says "Show track info on the receiver"
 // in the language of msgs.
 func (msgs Messages) SettingsTrackInfoOnReceiver() string {
 	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiver", nil)
 }
 
-// SettingsTrackInfoOnReceiverDesc says "Send the title and artist to the receiver; this only changes the receiver's display, not the panel."
+// SettingsTrackInfoOnReceiverDesc says "Send the title, artist, album, and cover to the receiver; this only changes the receiver's display, not the panel."
 // in the language the app shows.
 func SettingsTrackInfoOnReceiverDesc() string {
 	return In(i18n.Locale()).SettingsTrackInfoOnReceiverDesc()
 }
 
-// SettingsTrackInfoOnReceiverDesc says "Send the title and artist to the receiver; this only changes the receiver's display, not the panel."
+// SettingsTrackInfoOnReceiverDesc says "Send the title, artist, album, and cover to the receiver; this only changes the receiver's display, not the panel."
 // in the language of msgs.
 func (msgs Messages) SettingsTrackInfoOnReceiverDesc() string {
 	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiverDesc", nil)
@@ -1182,6 +1182,56 @@ func SettingsCoverColorsDesc() string { return In(i18n.Locale()).SettingsCoverCo
 // in the language of msgs.
 func (msgs Messages) SettingsCoverColorsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverColorsDesc", nil)
+}
+
+// SettingsCover says "Cover"
+// in the language the app shows.
+func SettingsCover() string { return In(i18n.Locale()).SettingsCover() }
+
+// SettingsCover says "Cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCover() string {
+	return Catalog.Format(msgs.locale, "settingsCover", nil)
+}
+
+// SettingsCoverDesc says "What the media card shows on its left."
+// in the language the app shows.
+func SettingsCoverDesc() string { return In(i18n.Locale()).SettingsCoverDesc() }
+
+// SettingsCoverDesc says "What the media card shows on its left."
+// in the language of msgs.
+func (msgs Messages) SettingsCoverDesc() string {
+	return Catalog.Format(msgs.locale, "settingsCoverDesc", nil)
+}
+
+// SettingsCoverNone says "No cover"
+// in the language the app shows.
+func SettingsCoverNone() string { return In(i18n.Locale()).SettingsCoverNone() }
+
+// SettingsCoverNone says "No cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverNone() string {
+	return Catalog.Format(msgs.locale, "settingsCoverNone", nil)
+}
+
+// SettingsCoverPlaceholder says "Default cover"
+// in the language the app shows.
+func SettingsCoverPlaceholder() string { return In(i18n.Locale()).SettingsCoverPlaceholder() }
+
+// SettingsCoverPlaceholder says "Default cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverPlaceholder() string {
+	return Catalog.Format(msgs.locale, "settingsCoverPlaceholder", nil)
+}
+
+// SettingsCoverMedia says "Media cover"
+// in the language the app shows.
+func SettingsCoverMedia() string { return In(i18n.Locale()).SettingsCoverMedia() }
+
+// SettingsCoverMedia says "Media cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverMedia() string {
+	return Catalog.Format(msgs.locale, "settingsCoverMedia", nil)
 }
 
 // SettingsAudioLevel says "Audio level"

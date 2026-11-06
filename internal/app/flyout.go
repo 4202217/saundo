@@ -16,6 +16,7 @@ import (
 	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
 	"saundo/internal/nowplaying"
+	"saundo/internal/settings"
 )
 
 const (
@@ -334,12 +335,13 @@ func (a *App) nowPlayingCard(c *ui.Context, p palette) {
 		}
 		return analyze.Frame{}
 	}
-	a.nowPlayingCardBody(c, p, s, false, a.nowArt, field, level, len(a.nowSnap.Sessions) > 1)
+	a.nowPlayingCardBody(c, p, s, false, true, a.nowArt, field, level, len(a.nowSnap.Sessions) > 1)
 }
 
 // nowPlayingCardBody draws the card. preview is the settings page's copy:
-// its transport and session switch are read-only.
-func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session, preview bool, art *ui.Bitmap, field *image.RGBA, level func() analyze.Frame, showSwitch bool) {
+// its transport and session switch are read-only, and animateMeter says
+// whether its meter asks for continuous frames.
+func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session, preview, animateMeter bool, art *ui.Bitmap, field *image.RGBA, level func() analyze.Frame, showSwitch bool) {
 	ui.Column(c).Margin(8, 12, 8, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
 		ui.Row(c).Height(28).Gap(7).AlignItems(ui.Center).Children(func() {
 			name := s.AppName
@@ -363,8 +365,10 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 				})
 			}
 		})
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Padding(6, 0, 4, 0).Children(func() {
-			a.nowPlayingPoster(c, p, art)
+		ui.Row(c).Height(62).Gap(10).AlignItems(ui.Center).Padding(6, 0, 4, 0).Children(func() {
+			if a.cfg.CoverMode != settings.CoverNone {
+				a.nowPlayingPoster(c, p, art, a.cfg.CoverMode)
+			}
 			ui.Column(c).Grow(1).Gap(2).Children(func() {
 				title := s.Title
 				if title == "" {
@@ -377,7 +381,7 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 				ui.Text(c, a.nowPlayingSubFor(s)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 			})
 			if a.cfg.AudioLevel {
-				a.nowPlayingMeter(c, p, s, field, level, !preview)
+				a.nowPlayingMeter(c, p, s, field, level, animateMeter)
 			}
 		})
 		a.nowPlayingProgress(c, p, s, preview, field)
@@ -413,7 +417,7 @@ func (a *App) nowPlayingPreview(c *ui.Context, p palette) {
 		wrap.Opacity(0.45)
 	}
 	wrap.Children(func() {
-		a.nowPlayingCardBody(c, p, s, true, art, field, level, true)
+		a.nowPlayingCardBody(c, p, s, true, previewMeterAnimates(ok, a.cfg.ShowNowPlayingPanel), art, field, level, true)
 	})
 }
 
@@ -446,26 +450,26 @@ func previewSession() (nowplaying.Session, *ui.Bitmap, *image.RGBA, *image.RGBA,
 // nowPlayingPoster keeps the cover's own aspect ratio around a fixed height,
 // so switching sessions never changes the card's height: a 16:9 cover gets a
 // wider poster, not a taller one.
-func (a *App) nowPlayingPoster(c *ui.Context, p palette, art *ui.Bitmap) {
+func (a *App) nowPlayingPoster(c *ui.Context, p palette, art *ui.Bitmap, mode settings.CoverMode) {
 	h := float32(52)
 	w := h
-	if art != nil {
-		if bw, bh := art.Size(); bw > 0 && bh > 0 {
-			w = h * float32(bw) / float32(bh)
-		}
-	}
-	// The placeholder and the artwork's corners use the media card's own
-	// background: a card-colored tile leaves a light edge until the first
-	// artwork arrives.
-	box := ui.Box(c).Size(w, h).Radius(9).Clip().Shrink(0).Background(p.pill)
-	if art != nil {
-		box.Children(func() {
-			ui.Image(c, art).Size(w, h).Fit(ui.Cover)
+	// The placeholder is a raised tile on the media card's pill surface, like
+	// the transport circles, so it reads as a cover rather than empty space.
+	if mode == settings.CoverPlaceholder || art == nil {
+		box := ui.Box(c).Size(w, h).Radius(9).Clip().Shrink(0).Background(p.card)
+		box.Center().Children(func() {
+			ui.Icon(c, iconNote).Size(18, 18).TextColor(p.muted)
 		})
 		return
 	}
-	box.Center().Children(func() {
-		ui.Icon(c, iconNote).Size(18, 18).TextColor(p.muted)
+	if bw, bh := art.Size(); bw > 0 && bh > 0 {
+		w = h * float32(bw) / float32(bh)
+	}
+	// The artwork's tile keeps the card's pill, so a corner sliver never
+	// shows as a light edge around the image.
+	box := ui.Box(c).Size(w, h).Radius(9).Clip().Shrink(0).Background(p.pill)
+	box.Children(func() {
+		ui.Image(c, art).Size(w, h).Fit(ui.Cover)
 	})
 }
 
@@ -510,6 +514,18 @@ func (a *App) nowTransportButton(c *ui.Context, p palette, icon *ui.SVG, label s
 	})
 }
 
+// meterAnimates reports whether the meter asks for continuous paint frames:
+// only a playing meter on a real window, and only when motion is allowed.
+// A headless tester has no window and would wait forever for frames to stop.
+// reduceMotion runs last: without a running app the theme's preferences block.
+func meterAnimates(animate, playing, windowed bool, reduceMotion func() bool) bool {
+	return animate && playing && windowed && !reduceMotion()
+}
+
+// previewMeterAnimates keeps the settings sample still: the preview follows
+// the live level only while a session plays and the feature is on.
+func previewMeterAnimates(live, enabled bool) bool { return live && enabled }
+
 // nowPlayingMeter draws five bars centered on one horizontal axis. Each bar is
 // a window into the cover's color field at its own column, so the spectrum
 // follows the art's colors as well as its level.
@@ -549,9 +565,10 @@ func (a *App) nowPlayingMeter(c *ui.Context, p palette, s nowplaying.Session, fi
 			bar := ui.Rect{X: r.X + float32(i*5), Y: r.Y + (r.H-h)/2, W: 3, H: h}
 			pt.FillGradient(bar, ui.LinearGradient{From: from, To: to, Angle: 180}, 1.5)
 		}
-		// A headless tester settles by waiting for animations to stop; only a
-		// real window should request the meter's continuous repaint.
-		if animate && playing && a.win != nil && !mygo.Theme.Preferences().ReduceMotion {
+		windowed := a.win != nil || a.settingsWin != nil
+		if meterAnimates(animate, playing, windowed, func() bool {
+			return mygo.Theme.Preferences().ReduceMotion
+		}) {
 			pt.AnimationFrameRate(30)
 		}
 	})

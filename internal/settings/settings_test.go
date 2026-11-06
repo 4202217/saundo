@@ -177,3 +177,22 @@ func TestLatencyText(t *testing.T) {
 		}
 	}
 }
+
+func TestCoverModeDefaultsToMedia(t *testing.T) {
+	if got := Default().CoverMode; got != CoverMedia {
+		t.Fatalf("default cover mode = %q, want media", got)
+	}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"coverMode":"nonsense"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := NewStoreAt(path).Load().CoverMode; got != CoverMedia {
+		t.Fatalf("invalid cover mode = %q, want media", got)
+	}
+	if err := os.WriteFile(path, []byte(`{"coverMode":"placeholder"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := NewStoreAt(path).Load().CoverMode; got != CoverPlaceholder {
+		t.Fatalf("stored cover mode = %q, want placeholder", got)
+	}
+}

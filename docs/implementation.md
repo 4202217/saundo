@@ -63,7 +63,7 @@ the card's meter follows the audio being heard.
 | `internal/airplay/device` | Receiver description and auth enum shared by discovery, engine, and UI |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) and transport commands (Windows/other build split) |
-| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `audioLevel`) default on and the receiver push (`showNowPlaying`) defaults off |
+| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`) default on and the receiver push (`showNowPlaying`) defaults off |
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
