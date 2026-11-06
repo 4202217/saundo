@@ -5,7 +5,7 @@ go 1.27.3
 tool github.com/egoist/mygo/cmd/mygo
 
 require (
-	github.com/egoist/mygo v0.7.4
+	github.com/egoist/mygo v0.8.0
 	github.com/hashicorp/mdns v1.0.7
 	github.com/miekg/dns v1.1.72
 	golang.org/x/crypto v0.58.0
