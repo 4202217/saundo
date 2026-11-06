@@ -455,7 +455,7 @@ func TestFlyoutALACLineShowsActiveReceiverDelay(t *testing.T) {
 	a.latency = 200
 	a.snap.SelectedID = "AA:BB:CC:DD:EE:01"
 	a.snap.Receivers = []receivers.View{{Key: "AA:BB:CC:DD:EE:01", DelayMS: 120}}
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if !tt.HasText("延迟 320 ms") {
 		t.Fatalf("ALAC line lacks the effective latency: %q", tt.Texts())
 	}
@@ -466,7 +466,7 @@ func TestFlyoutFiltersHiddenReceivers(t *testing.T) {
 	// contract the flyout draws: what snap.Devices carries is visible, what
 	// it drops is not.
 	a := receiverFixture()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if !tt.HasText("客厅 HomePod") {
 		t.Fatalf("visible receiver missing from the flyout: %q", tt.Texts())
 	}

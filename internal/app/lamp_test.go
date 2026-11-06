@@ -53,7 +53,7 @@ func TestSettingsLampSwitchHidesFlyout(t *testing.T) {
 
 func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, false))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	if _, ok := tt.Find("苔庭"); ok {
 		t.Fatal("the preset grid is visible while collapsed")
@@ -64,7 +64,7 @@ func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	if !a.lampExpanded {
 		t.Fatal("the arrow did not expand the card")
 	}
-	tt = ui.NewTester(a.view, flyoutWidth, flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, true))
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	for _, want := range []string{"默认", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"} {
 		if _, ok := tt.Find(want); !ok {
@@ -127,7 +127,7 @@ func TestSettingsLampPageChoosesPreset(t *testing.T) {
 func TestLampSurfacesInEnglish(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{"Ambient light", "HomePod only", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English flyout is missing %q; texts: %q", want, tt.Texts())

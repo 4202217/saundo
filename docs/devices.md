@@ -13,13 +13,32 @@ One section per receiver family: how it advertises, which pairing path it takes,
 - Latency: `latencyMin` = `latencyMax` = 8820 (200 ms) unless the user configured another value.
 - `SETRATEANCHORTIME` returns plist `status: -12782` and is ignored on realtime streams.
 - Event-channel keys derive from the SRP shared secret; feedback every 2 s.
+- **Directed discovery.** Multicast is intermittent on this network: the
+  2026-11-06 failure report described an 8-second browse that saw only the
+  MacBook Air and the Redmi, and three repeated 2-second browse runs during
+  verification alternated between the complete 卧室 group, the two HomePods as
+  separate `_raop`-only rows (the `_airplay` replies were lost, so no `tsid`),
+  and the MacBook/REDMI only. Both HomePods answered a directed DNS-SD query
+  on UDP 5353 (`_airplay._tcp` and `_raop._tcp` PTR, then SRV, TXT, and A)
+  every time, in about 10 to 30 ms, and both accepted TCP 7000. Discovery
+  keeps the multicast browse and adds a directed pass every fifth cycle over
+  the Windows ARP neighbor table and the remembered receiver addresses; the
+  directed reply carries the same TXT fields, including the stereo `tsid` and
+  `gpn`.
 - Verified on software 27.2 (2026-10-31): pairing, PTP, a 35-second muted session, a six-minute app run, a 30-minute soak at exactly 44100 × 1800 frames with zero drops, an audible tone with volume restore — and a cold start that needed more than 10 s to re-establish PTP after a long session (the handshake deadline is now 30 s).
 - Ambient light / Sound Glow (2026-11-07): the top display renders the current Now Playing cover once Sound Glow is enabled in the HomePod settings; without it the top stays white. A new 600×600 `SET_PARAMETER image/jpeg` cover on the encrypted control channel repaints it. `POST /artwork/command` is not needed and was removed after three consecutive cover changes repainted an `AudioAccessory5,1` at 27.2. A black cover lands on the default white; a true LED-off has no AirPlay command, only the on-device `SoundBoardServices` XPC (`setLEDContents:`, `disable_leds`) with entitlement. `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
 ## HomePod stereo pair
 
-- Both members advertise the same `tsid`; `gpn` carries the group name (`HomePods`); `igl=1` appears only on the leader (a real pair marks HomePod R). `gcgl` alone does not mark a leader.
+- Both members advertise the same `tsid`; `gpn` carries the group name (`HomePods`). A UTF-8 group name arrives in RFC 1035 `\DDD` byte escapes, the same presentation form as the instance name, and must be decoded before display. `igl=1` marks the leader; `gcgl` alone does not. The 2026-10-31 pair marked only HomePod R, and the re-merged 2026-11-06 pair marked both members.
 - Discovery collapses the pair into one target `stereo:<tsid>`, hides the member rows, and reports online only when both members are online.
+- A directed query to a member returns only that member's own instance, so
+  rebuilding the pair needs both addresses in the candidate list. The ARP
+  neighbor table usually holds both after the sender's earlier TCP
+  connections; the remembered group row stores the leader's host and port as
+  its next-probe seed.
+- When both members carry `igl=1`, the collapse sorts leaders first and then
+  by name, so it still produces one stable leader-first group.
 - One AP2 session per member with `groupUUID = tsid`; SETPEERS carries both members plus the sender; **the sender is the PTP grandmaster** (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
 - Capture fans out to one ring per member; both sessions must reach streaming before the group launches.
 - Verified (2026-10-31): both member sessions streamed through the sender-supplied master, a system tone caused zero drops, the flyout showed `正在播放到 HomePods`, and a 60 s silence suspend kept both sessions up and resumed audibly.
@@ -35,6 +54,7 @@ Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
 - `shk` is the Events-Write key (protocol.md §2.5).
 - **PTP required** (feature bit 41); the same follower serves it, its clock likewise boot-relative.
 - Latency: `latencyMin 11025`, `latencyMax 88200`, plus a 66150-sample scheduling latency.
+- **Now Playing metadata.** While streaming, the sender's DMAP `mlit` and the follow-up image `SET_PARAMETER` reach its Now Playing UI. The pushed SMTC cover was confirmed on screen on 2026-11-07 (MacBook Air, `Mac14,2`).
 
 ## Apple TV (on-screen PIN)
 

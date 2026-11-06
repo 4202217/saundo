@@ -12,8 +12,9 @@ import (
 
 const (
 	// lampSectionHeight is the collapsed flyout section: its head, the 44-DIP
-	// row, and the body gap above it.
-	lampSectionHeight = 75
+	// row, the card border and margin, the body gap above it, and 4 DIP of
+	// body slack that keeps a one-row flyout from compressing its cards.
+	lampSectionHeight = 83
 	lampRowHeight     = 44
 	lampColumns       = 10
 	lampSwatchSize    = 30

@@ -17,6 +17,7 @@ Stop and report when any of these is true:
 
 - The working tree is dirty.
 - The docs audit has an open item.
+- The verification skill audit reports a product defect.
 - `cmd/saundo/mygo.json` and the tag disagree.
 - `mingw32-make check` fails.
 - The local build or its update manifest is wrong.
@@ -36,16 +37,31 @@ Use the version from the release request as `v<version>`. Without one, pick the 
 
 Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release commit.
 
-- `README.md` and `README.zh-CN.md`: feature list, screenshots, install, and update surface. The update surface is the settings Updates page and its notes dialog. There is no standalone update window.
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
 - `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
 
-Do not commit yet. The release commit comes after the maintainer's test is recorded.
+Do not commit the docs, README, or changelog changes yet. The release commit comes after the maintainer's test is recorded.
 
-## 3. Gate, local build, and the maintainer's test
+## 3. Update the READMEs
+
+Update `README.md` and `README.zh-CN.md` in the release commit. Both are user-facing and must say the same thing.
+
+- Add or revise the feature list for the release's user-visible changes. The Chinese file uses the Chinese UI labels.
+- Keep the install section and the update surface current. The update surface is the settings Updates page and its notes dialog. There is no standalone update window.
+- Check that every screenshot and link the two files reference resolves.
+
+## 4. Maintain the verification skill
+
+Run `/pstack:maintain-verification-skill` before the gate. It audits `.claude/skills/verify/` from source and drives every feature once.
+
+- `clean`: continue.
+- `changed`: land the proven corrections on the release branch as their own commit before the release commit. If it opened a PR, merge or cherry-pick it first. Do not fold these changes into `build: release <version>`.
+- `blocked`: record the coverage gap in `docs/verification.md` and continue when the gap is coverage. A proven product defect stops the release.
+
+## 5. Gate, local build, and the maintainer's test
 
 Run the acceptance gate:
 
@@ -67,9 +83,9 @@ MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
 
 Check `build/windows-amd64/update-windows-amd64.json`. It must carry the version, the English changelog notes, and a signature. The release request confirms the maintainer tested this build on their own PC. Record that pre-release test in `docs/verification.md`, with the date and version, from what the request says. Do not ask for a second install or a clean-machine run.
 
-## 4. Release commit and preflight
+## 6. Release commit and preflight
 
-Commit the version, both changelogs, the docs audit, and the maintainer's test record under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
+Commit the version, both changelogs, both READMEs, the docs audit, and the maintainer's test record under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
 
 Then run:
 
@@ -79,7 +95,7 @@ bash scripts/release-check.sh
 
 The script checks the clean tree, the release commit subject, the version, the tag, the English changelog, the Chinese changelog, the docs files, links and screenshots, the public repository, the update secret, the release workflow, and the current update feed. Stop on any failure.
 
-## 5. Tag the release commit
+## 7. Tag the release commit
 
 The tag points to the release commit. Do not add a commit between the release commit and the tag. The tag creates the draft only; publishing is the public step. Tag and push:
 
@@ -93,7 +109,7 @@ git push origin "v$VERSION"
 
 The tag commit subject is `build: release <version>`. The preflight enforces it. The tag push runs `.github/workflows/release.yml`.
 
-## 6. Watch the workflow
+## 8. Watch the workflow
 
 ```bash
 gh run list --workflow release.yml --limit 1 --json databaseId,status
@@ -102,7 +118,7 @@ gh run watch <id> --exit-status
 
 The workflow runs `check`, `draft`, and `build`. The build uploads the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS` to the draft. Stop if any job fails. Read the failed log before changing anything.
 
-## 7. Verify the draft
+## 9. Verify the draft
 
 ```bash
 gh release view "v$VERSION" --json isDraft,assets
@@ -115,7 +131,7 @@ Check the draft without installing it. The assets are present: the installer, th
 
 The draft is invisible to the updater. The previous release updates to this one after publish. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
 
-## 8. Release notes and publish
+## 10. Release notes and publish
 
 The workflow's generated notes are sparse. Set the draft body from the bilingual release notes. The script prints the English section, the `<!-- lang:zh -->` marker, and the Chinese section:
 
@@ -134,7 +150,7 @@ Publish when the release request authorized it; otherwise ask once, with the dra
 gh release edit "v$VERSION" --draft=false
 ```
 
-## 9. Verify the public feed
+## 11. Verify the public feed
 
 ```bash
 curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json"
@@ -144,14 +160,14 @@ The manifest must be the new version and carry a signature. The installer downlo
 
 The repository must stay public. A private repository returns 404 for the feed even after publish. If the repository is private, stop and use a public `updates.url` host instead.
 
-## 10. Beta releases
+## 12. Beta releases
 
 Use a version such as `0.4.2-beta.1`. Set `mygo.json`, `CHANGELOG.md`, and `CHANGELOG.zh-CN.md` to the exact same version headings. Tag `v0.4.2-beta.1` and publish with `--prerelease`. Apps with Beta updates see it. Stable apps skip it. The first stable release after the beta must use a higher stable version.
 
-## 11. Rollback, signing, GPL
+## 13. Rollback, signing, GPL
 
 For rollback, signing, and GPL compliance, follow `docs/releasing.md`. Do not rotate the update key. Keep the previous installers available. The source tag is the GPL source for the release.
 
 ## Report
 
-State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, and the update test. If you stopped, name the failing gate and the file or command that proves it.
+State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, and the verification skill outcome. If you stopped, name the failing gate and the file or command that proves it.

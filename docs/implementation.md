@@ -37,19 +37,33 @@ through bounded channels:
   resamples, and writes the ring buffer or the stereo fanout. It never
   touches the network.
 
-The app also polls the Windows SMTC session every two seconds
-(`internal/nowplaying`) for the Now Playing row.
+The app also polls Windows SMTC every two seconds (`internal/nowplaying`) for
+the Now Playing card and its transport buttons. Capture blocks are measured
+into level and five-band frames (`internal/audio/analyze`) on the capture
+goroutine; `Engine.LevelFrame` reads them back with the presentation delay so
+the card's meter follows the audio being heard. The bands gate energy below
+-50 dBFS and stop the per-band AGC at a floor 18 dB above the gate, and the
+envelopes ignore changes under 0.02 of the bar's range, so dither and room
+tone leave the bars steady and quiet passages compress instead of filling
+them.
+
+The receiver push carries the same track's title, artist, album, and SMTC
+thumbnail as a DMAP `SET_PARAMETER` followed by an image `SET_PARAMETER`;
+the app keys each push on the text plus an FNV-1a hash of the cover bytes,
+so a thumbnail that arrives or changes after the text is sent again in the
+same session.
 
 ## Package map
 
 | Package | Responsibility |
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
-| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, plus the always-present ambient-light card in `lamp.go`), settings window (`settings_window.go`, eight pages behind a 190 sidebar, with the 关于 page in `about.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), snapshots |
-| `internal/discovery` | mDNS browse, TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
-| `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`) |
+| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`), the ambient-light page (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
+| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`), the ambient-light image cache and application (`engine.go`), snapshots |
+| `internal/discovery` | mDNS browse plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
+| `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`), and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/audio/ring` | Bounded overwrite-oldest SPSC `Buffer` and multi-sink `Fanout` (`KeepNewest` trim, drop counters) |
+| `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a -50 dBFS noise gate, a floored per-band AGC, deadband smoothing, and a delayed frame ring for the Now Playing card |
 | `internal/audio/resample` | Linear 48 kHz → 44.1 kHz conversion for interleaved stereo int16 |
 | `internal/airplay/crypto` | Wire primitives: SHA-512/HMAC/HKDF, ChaCha20-Poly1305, X25519/Ed25519, SRP-6a, TLV8, bplist, Digest |
 | `internal/airplay/alac` | Uncompressed ALAC frame encoder (`EncodeUncompressed`) |
@@ -60,8 +74,8 @@ The app also polls the Windows SMTC session every two seconds
 | `internal/airplay/device` | Receiver description, auth enum, and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
 | `internal/lamp` | Ambient-light preset registry, the seeded six-blob palette renderer, the origin default reset, and a lazy per-preset 600×600 JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
-| `internal/nowplaying` | Windows SMTC reader for the Now Playing row (Windows/other build split) |
-| `internal/settings` | JSON configuration store |
+| `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) and transport commands (Windows/other build split) |
+| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`) default on and the receiver push (`showNowPlaying`) defaults off |
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
@@ -69,7 +83,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetShowNowPlaying`, `SetNowPlaying`, `SetLamp`, and the receiver-management commands
+`SetShowNowPlaying`, `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
@@ -89,6 +103,14 @@ for a manual row and on the first snapshot that reports a discovered one
 online. A user connect or disconnect ends the launch wait, and a failed
 launch falls into the ordinary reconnect policy. The global
 `settings.AutoConnect` flag is a migration input only.
+
+Each remembered row also stores its last advertised host and port (a stereo
+group stores the leader's) and a `lastSeen` timestamp. Discovery seeds its
+directed pass from those addresses, so a restart can probe a receiver whose
+multicast never reaches the PC. A `stereo:<tsid>` row unseen for a day is
+pruned with its auto-connect flag: splitting and re-merging a pair mints a
+new tsid, so the old key never returns. A row without `lastSeen` is stamped on
+the first launch and is not pruned at upgrade.
 
 The engine's SETUP latency for a receiver is the global base plus that
 receiver's DSP/DAC delay, clamped to 20–4000 ms. The app composes the
@@ -129,10 +151,13 @@ mode.
 
 All under `%APPDATA%\saundo\`:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, and the global ambient-light choice (`lamp.enabled`, `lamp.preset`; an unknown preset is normalized to `origin` on load). The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
-- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, and delay settings. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, and the global ambient-light choice (`lamp.enabled`, `lamp.preset`; an unknown preset is normalized to `origin` on load). The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
+- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.
+- `mute-guard.json` — written before the engine mutes the local render
+  endpoint and removed after it restores it. A crash or forced kill leaves it
+  for the next launch to undo (`internal/engine/mute.go`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.
 - The first run after the airgoplay rename copies `settings.json` and
   `credentials.dat` from `%APPDATA%\airgoplay` (`internal/app/migrate.go`).

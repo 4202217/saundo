@@ -1,5 +1,7 @@
 // Package discovery browses mDNS for AirPlay receivers and aggregates the
-// _raop and _airplay advertisements of each device.
+// _raop and _airplay advertisements of each device. A multicast browse is the
+// primary path; a directed DNS-SD query to known addresses covers receivers
+// whose multicast traffic does not reach this PC.
 package discovery
 
 import (
@@ -38,6 +40,17 @@ type Service struct {
 	stop      chan struct{}
 	startOnce sync.Once
 	stopOnce  sync.Once
+
+	// Unicast fallback. The neighbors lookup and the query are injected so
+	// tests can supply a loopback DNS server and a fixed address list.
+	neighbors      func() ([]string, error)
+	unicastLookup  unicastLookupFunc
+	unicastPort    int
+	unicastTimeout time.Duration
+	unicastEvery   int
+	cycles         int
+	seedsMu        sync.Mutex
+	seeds          []string
 }
 
 type seen struct {
@@ -54,14 +67,19 @@ func New(queryInterval, queryTimeout time.Duration) *Service {
 		queryTimeout = 2 * time.Second
 	}
 	return &Service{
-		devices:       make(map[string]*seen),
-		updates:       make(chan []device.Device, 1),
-		queryInterval: queryInterval,
-		queryTimeout:  queryTimeout,
-		staleAfter:    3*queryInterval + queryTimeout,
-		dropAfter:     90 * time.Second,
-		now:           time.Now,
-		stop:          make(chan struct{}),
+		devices:        make(map[string]*seen),
+		updates:        make(chan []device.Device, 1),
+		queryInterval:  queryInterval,
+		queryTimeout:   queryTimeout,
+		staleAfter:     3*queryInterval + queryTimeout,
+		dropAfter:      90 * time.Second,
+		now:            time.Now,
+		stop:           make(chan struct{}),
+		neighbors:      neighborHosts,
+		unicastLookup:  queryUnicast,
+		unicastPort:    defaultUnicastPort,
+		unicastTimeout: 500 * time.Millisecond,
+		unicastEvery:   unicastEveryPasses,
 	}
 }
 
@@ -165,6 +183,15 @@ func (s *Service) run() {
 
 func (s *Service) queryOnce() {
 	var wg sync.WaitGroup
+	// The directed pass is parallel to the browse so a slow neighbor does not
+	// extend the cycle by its full timeout.
+	if s.unicastDue() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.unicastOnce()
+		}()
+	}
 	for _, service := range []string{raopService, airplayService} {
 		wg.Add(1)
 		go func(service string) {
@@ -320,7 +347,7 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 		AM:               txt["am"],
 		PasswordRequired: strings.EqualFold(txt["pw"], "true") || strings.EqualFold(txt["pw"], "1") || sf&0x80 != 0,
 		AirPlay2:         service == airplayService,
-		GroupName:        txt["gpn"],
+		GroupName:        unescapeDNS(txt["gpn"]),
 		GroupLeader:      leader,
 		StereoID:         strings.TrimSpace(txt["tsid"]),
 	}
@@ -328,9 +355,11 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 	return d, true
 }
 
-// unescapeDNS decodes the RFC 1035 escapes hashicorp/mdns reports. `\DDD`
-// is one decimal byte and `\X` is the literal character X, so a UTF-8 name
-// arrives as a run of three-digit escapes (HomePod\ R becomes HomePod R).
+// unescapeDNS decodes the RFC 1035 escapes hashicorp/mdns reports in instance
+// names and TXT strings. `\DDD` is one decimal byte and `\X` is the literal
+// character X, so a UTF-8 name arrives as a run of three-digit escapes
+// (HomePod\ R becomes HomePod R, and a `gpn` of 卧室 stays escaped until it
+// passes through here).
 func unescapeDNS(s string) string {
 	if !strings.ContainsRune(s, '\\') {
 		return s

@@ -64,16 +64,6 @@ func (msgs Messages) AboutBrand() string {
 	return Catalog.Format(msgs.locale, "aboutBrand", nil)
 }
 
-// AboutTagline says "Ferry whatever Windows is playing to AirPlay 2."
-// in the language the app shows.
-func AboutTagline() string { return In(i18n.Locale()).AboutTagline() }
-
-// AboutTagline says "Ferry whatever Windows is playing to AirPlay 2."
-// in the language of msgs.
-func (msgs Messages) AboutTagline() string {
-	return Catalog.Format(msgs.locale, "aboutTagline", nil)
-}
-
 // AboutVersion says "Version {version} · {channel}"
 // in the language the app shows.
 func AboutVersion(version string, channel string) string {
@@ -578,26 +568,6 @@ func (msgs Messages) FlyoutSyncPTPPending() string {
 	return Catalog.Format(msgs.locale, "flyoutSyncPTPPending", nil)
 }
 
-// FlyoutPush says "Push"
-// in the language the app shows.
-func FlyoutPush() string { return In(i18n.Locale()).FlyoutPush() }
-
-// FlyoutPush says "Push"
-// in the language of msgs.
-func (msgs Messages) FlyoutPush() string {
-	return Catalog.Format(msgs.locale, "flyoutPush", nil)
-}
-
-// FlyoutPushLabel says "Push Now Playing"
-// in the language the app shows.
-func FlyoutPushLabel() string { return In(i18n.Locale()).FlyoutPushLabel() }
-
-// FlyoutPushLabel says "Push Now Playing"
-// in the language of msgs.
-func (msgs Messages) FlyoutPushLabel() string {
-	return Catalog.Format(msgs.locale, "flyoutPushLabel", nil)
-}
-
 // FlyoutVolumeValue says "{v, number, integer}%"
 // in the language the app shows.
 func FlyoutVolumeValue(v float64) string { return In(i18n.Locale()).FlyoutVolumeValue(v) }
@@ -648,16 +618,6 @@ func (msgs Messages) FlyoutDropped(n int) string {
 	return Catalog.Format(msgs.locale, "flyoutDropped", map[string]any{"n": n})
 }
 
-// FlyoutNowPlayingReadFailed says "Could not read"
-// in the language the app shows.
-func FlyoutNowPlayingReadFailed() string { return In(i18n.Locale()).FlyoutNowPlayingReadFailed() }
-
-// FlyoutNowPlayingReadFailed says "Could not read"
-// in the language of msgs.
-func (msgs Messages) FlyoutNowPlayingReadFailed() string {
-	return Catalog.Format(msgs.locale, "flyoutNowPlayingReadFailed", nil)
-}
-
 // FlyoutNowPlayingNoMedia says "No media detected"
 // in the language the app shows.
 func FlyoutNowPlayingNoMedia() string { return In(i18n.Locale()).FlyoutNowPlayingNoMedia() }
@@ -700,14 +660,64 @@ func (msgs Messages) FlyoutNowPlayingAlbum(album string) string {
 	return Catalog.Format(msgs.locale, "flyoutNowPlayingAlbum", map[string]any{"album": album})
 }
 
-// FlyoutNowPlaying says "Now playing"
+// FlyoutSwitchMedia says "Switch media"
 // in the language the app shows.
-func FlyoutNowPlaying() string { return In(i18n.Locale()).FlyoutNowPlaying() }
+func FlyoutSwitchMedia() string { return In(i18n.Locale()).FlyoutSwitchMedia() }
 
-// FlyoutNowPlaying says "Now playing"
+// FlyoutSwitchMedia says "Switch media"
 // in the language of msgs.
-func (msgs Messages) FlyoutNowPlaying() string {
-	return Catalog.Format(msgs.locale, "flyoutNowPlaying", nil)
+func (msgs Messages) FlyoutSwitchMedia() string {
+	return Catalog.Format(msgs.locale, "flyoutSwitchMedia", nil)
+}
+
+// FlyoutUnknownApp says "Unknown app"
+// in the language the app shows.
+func FlyoutUnknownApp() string { return In(i18n.Locale()).FlyoutUnknownApp() }
+
+// FlyoutUnknownApp says "Unknown app"
+// in the language of msgs.
+func (msgs Messages) FlyoutUnknownApp() string {
+	return Catalog.Format(msgs.locale, "flyoutUnknownApp", nil)
+}
+
+// FlyoutPrevious says "Previous"
+// in the language the app shows.
+func FlyoutPrevious() string { return In(i18n.Locale()).FlyoutPrevious() }
+
+// FlyoutPrevious says "Previous"
+// in the language of msgs.
+func (msgs Messages) FlyoutPrevious() string {
+	return Catalog.Format(msgs.locale, "flyoutPrevious", nil)
+}
+
+// FlyoutPlay says "Play"
+// in the language the app shows.
+func FlyoutPlay() string { return In(i18n.Locale()).FlyoutPlay() }
+
+// FlyoutPlay says "Play"
+// in the language of msgs.
+func (msgs Messages) FlyoutPlay() string {
+	return Catalog.Format(msgs.locale, "flyoutPlay", nil)
+}
+
+// FlyoutPause says "Pause"
+// in the language the app shows.
+func FlyoutPause() string { return In(i18n.Locale()).FlyoutPause() }
+
+// FlyoutPause says "Pause"
+// in the language of msgs.
+func (msgs Messages) FlyoutPause() string {
+	return Catalog.Format(msgs.locale, "flyoutPause", nil)
+}
+
+// FlyoutNext says "Next"
+// in the language the app shows.
+func FlyoutNext() string { return In(i18n.Locale()).FlyoutNext() }
+
+// FlyoutNext says "Next"
+// in the language of msgs.
+func (msgs Messages) FlyoutNext() string {
+	return Catalog.Format(msgs.locale, "flyoutNext", nil)
 }
 
 // ActionCancel says "Cancel"
@@ -980,6 +990,16 @@ func (msgs Messages) SettingsNavCapture() string {
 	return Catalog.Format(msgs.locale, "settingsNavCapture", nil)
 }
 
+// SettingsNavNowPlaying says "Now Playing"
+// in the language the app shows.
+func SettingsNavNowPlaying() string { return In(i18n.Locale()).SettingsNavNowPlaying() }
+
+// SettingsNavNowPlaying says "Now Playing"
+// in the language of msgs.
+func (msgs Messages) SettingsNavNowPlaying() string {
+	return Catalog.Format(msgs.locale, "settingsNavNowPlaying", nil)
+}
+
 // PageGeneralDesc says "Sender identity, startup, and appearance."
 // in the language the app shows.
 func PageGeneralDesc() string { return In(i18n.Locale()).PageGeneralDesc() }
@@ -1030,6 +1050,38 @@ func (msgs Messages) PageCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "pageCaptureDesc", nil)
 }
 
+// PageNowPlayingDesc says "The panel's Now Playing, cover colors, and audio level."
+// in the language the app shows.
+func PageNowPlayingDesc() string { return In(i18n.Locale()).PageNowPlayingDesc() }
+
+// PageNowPlayingDesc says "The panel's Now Playing, cover colors, and audio level."
+// in the language of msgs.
+func (msgs Messages) PageNowPlayingDesc() string {
+	return Catalog.Format(msgs.locale, "pageNowPlayingDesc", nil)
+}
+
+// SettingsNowPlayingSampleTitle says "Night Ferry"
+// in the language the app shows.
+func SettingsNowPlayingSampleTitle() string { return In(i18n.Locale()).SettingsNowPlayingSampleTitle() }
+
+// SettingsNowPlayingSampleTitle says "Night Ferry"
+// in the language of msgs.
+func (msgs Messages) SettingsNowPlayingSampleTitle() string {
+	return Catalog.Format(msgs.locale, "settingsNowPlayingSampleTitle", nil)
+}
+
+// SettingsNowPlayingSampleArtist says "Signal Coast"
+// in the language the app shows.
+func SettingsNowPlayingSampleArtist() string {
+	return In(i18n.Locale()).SettingsNowPlayingSampleArtist()
+}
+
+// SettingsNowPlayingSampleArtist says "Signal Coast"
+// in the language of msgs.
+func (msgs Messages) SettingsNowPlayingSampleArtist() string {
+	return Catalog.Format(msgs.locale, "settingsNowPlayingSampleArtist", nil)
+}
+
 // SettingsSenderName says "Sender name"
 // in the language the app shows.
 func SettingsSenderName() string { return In(i18n.Locale()).SettingsSenderName() }
@@ -1048,6 +1100,158 @@ func SettingsSenderNameDesc() string { return In(i18n.Locale()).SettingsSenderNa
 // in the language of msgs.
 func (msgs Messages) SettingsSenderNameDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSenderNameDesc", nil)
+}
+
+// SettingsShowNowPlaying says "Show Now Playing"
+// in the language the app shows.
+func SettingsShowNowPlaying() string { return In(i18n.Locale()).SettingsShowNowPlaying() }
+
+// SettingsShowNowPlaying says "Show Now Playing"
+// in the language of msgs.
+func (msgs Messages) SettingsShowNowPlaying() string {
+	return Catalog.Format(msgs.locale, "settingsShowNowPlaying", nil)
+}
+
+// SettingsSystemMediaBadge says "System media"
+// in the language the app shows.
+func SettingsSystemMediaBadge() string { return In(i18n.Locale()).SettingsSystemMediaBadge() }
+
+// SettingsSystemMediaBadge says "System media"
+// in the language of msgs.
+func (msgs Messages) SettingsSystemMediaBadge() string {
+	return Catalog.Format(msgs.locale, "settingsSystemMediaBadge", nil)
+}
+
+// SettingsPlaybackControls says "Playback controls"
+// in the language the app shows.
+func SettingsPlaybackControls() string { return In(i18n.Locale()).SettingsPlaybackControls() }
+
+// SettingsPlaybackControls says "Playback controls"
+// in the language of msgs.
+func (msgs Messages) SettingsPlaybackControls() string {
+	return Catalog.Format(msgs.locale, "settingsPlaybackControls", nil)
+}
+
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next; only the buttons the player supports appear."
+// in the language the app shows.
+func SettingsPlaybackControlsDesc() string { return In(i18n.Locale()).SettingsPlaybackControlsDesc() }
+
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next; only the buttons the player supports appear."
+// in the language of msgs.
+func (msgs Messages) SettingsPlaybackControlsDesc() string {
+	return Catalog.Format(msgs.locale, "settingsPlaybackControlsDesc", nil)
+}
+
+// SettingsTrackInfoOnReceiver says "Show track info on the receiver"
+// in the language the app shows.
+func SettingsTrackInfoOnReceiver() string { return In(i18n.Locale()).SettingsTrackInfoOnReceiver() }
+
+// SettingsTrackInfoOnReceiver says "Show track info on the receiver"
+// in the language of msgs.
+func (msgs Messages) SettingsTrackInfoOnReceiver() string {
+	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiver", nil)
+}
+
+// SettingsTrackInfoOnReceiverDesc says "Send the title, artist, album, and cover to the receiver; this only changes the receiver's display, not the panel."
+// in the language the app shows.
+func SettingsTrackInfoOnReceiverDesc() string {
+	return In(i18n.Locale()).SettingsTrackInfoOnReceiverDesc()
+}
+
+// SettingsTrackInfoOnReceiverDesc says "Send the title, artist, album, and cover to the receiver; this only changes the receiver's display, not the panel."
+// in the language of msgs.
+func (msgs Messages) SettingsTrackInfoOnReceiverDesc() string {
+	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiverDesc", nil)
+}
+
+// SettingsCoverColors says "Cover colors"
+// in the language the app shows.
+func SettingsCoverColors() string { return In(i18n.Locale()).SettingsCoverColors() }
+
+// SettingsCoverColors says "Cover colors"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverColors() string {
+	return Catalog.Format(msgs.locale, "settingsCoverColors", nil)
+}
+
+// SettingsCoverColorsDesc says "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors."
+// in the language the app shows.
+func SettingsCoverColorsDesc() string { return In(i18n.Locale()).SettingsCoverColorsDesc() }
+
+// SettingsCoverColorsDesc says "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors."
+// in the language of msgs.
+func (msgs Messages) SettingsCoverColorsDesc() string {
+	return Catalog.Format(msgs.locale, "settingsCoverColorsDesc", nil)
+}
+
+// SettingsCover says "Cover"
+// in the language the app shows.
+func SettingsCover() string { return In(i18n.Locale()).SettingsCover() }
+
+// SettingsCover says "Cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCover() string {
+	return Catalog.Format(msgs.locale, "settingsCover", nil)
+}
+
+// SettingsCoverDesc says "What the media card shows on its left."
+// in the language the app shows.
+func SettingsCoverDesc() string { return In(i18n.Locale()).SettingsCoverDesc() }
+
+// SettingsCoverDesc says "What the media card shows on its left."
+// in the language of msgs.
+func (msgs Messages) SettingsCoverDesc() string {
+	return Catalog.Format(msgs.locale, "settingsCoverDesc", nil)
+}
+
+// SettingsCoverNone says "No cover"
+// in the language the app shows.
+func SettingsCoverNone() string { return In(i18n.Locale()).SettingsCoverNone() }
+
+// SettingsCoverNone says "No cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverNone() string {
+	return Catalog.Format(msgs.locale, "settingsCoverNone", nil)
+}
+
+// SettingsCoverPlaceholder says "Default cover"
+// in the language the app shows.
+func SettingsCoverPlaceholder() string { return In(i18n.Locale()).SettingsCoverPlaceholder() }
+
+// SettingsCoverPlaceholder says "Default cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverPlaceholder() string {
+	return Catalog.Format(msgs.locale, "settingsCoverPlaceholder", nil)
+}
+
+// SettingsCoverMedia says "Media cover"
+// in the language the app shows.
+func SettingsCoverMedia() string { return In(i18n.Locale()).SettingsCoverMedia() }
+
+// SettingsCoverMedia says "Media cover"
+// in the language of msgs.
+func (msgs Messages) SettingsCoverMedia() string {
+	return Catalog.Format(msgs.locale, "settingsCoverMedia", nil)
+}
+
+// SettingsAudioLevel says "Audio level"
+// in the language the app shows.
+func SettingsAudioLevel() string { return In(i18n.Locale()).SettingsAudioLevel() }
+
+// SettingsAudioLevel says "Audio level"
+// in the language of msgs.
+func (msgs Messages) SettingsAudioLevel() string {
+	return Catalog.Format(msgs.locale, "settingsAudioLevel", nil)
+}
+
+// SettingsAudioLevelDesc says "The five-band level at the title row, following playback; it stays still when Windows animation effects are off."
+// in the language the app shows.
+func SettingsAudioLevelDesc() string { return In(i18n.Locale()).SettingsAudioLevelDesc() }
+
+// SettingsAudioLevelDesc says "The five-band level at the title row, following playback; it stays still when Windows animation effects are off."
+// in the language of msgs.
+func (msgs Messages) SettingsAudioLevelDesc() string {
+	return Catalog.Format(msgs.locale, "settingsAudioLevelDesc", nil)
 }
 
 // SettingsSave says "Save"
@@ -2142,6 +2346,66 @@ func SettingsAuto() string { return In(i18n.Locale()).SettingsAuto() }
 // in the language of msgs.
 func (msgs Messages) SettingsAuto() string {
 	return Catalog.Format(msgs.locale, "settingsAuto", nil)
+}
+
+// SettingsMuteLocal says "Mute this PC while connected"
+// in the language the app shows.
+func SettingsMuteLocal() string { return In(i18n.Locale()).SettingsMuteLocal() }
+
+// SettingsMuteLocal says "Mute this PC while connected"
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocal() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocal", nil)
+}
+
+// SettingsMuteLocalDesc says "Mute local speakers while connected; restore on disconnect."
+// in the language the app shows.
+func SettingsMuteLocalDesc() string { return In(i18n.Locale()).SettingsMuteLocalDesc() }
+
+// SettingsMuteLocalDesc says "Mute local speakers while connected; restore on disconnect."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDesc() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDesc", nil)
+}
+
+// SettingsMuteLocalDescOn says "Local speakers are muted; restore on disconnect."
+// in the language the app shows.
+func SettingsMuteLocalDescOn() string { return In(i18n.Locale()).SettingsMuteLocalDescOn() }
+
+// SettingsMuteLocalDescOn says "Local speakers are muted; restore on disconnect."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescOn() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescOn", nil)
+}
+
+// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now."
+// in the language the app shows.
+func SettingsMuteLocalDescWaiting() string { return In(i18n.Locale()).SettingsMuteLocalDescWaiting() }
+
+// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescWaiting() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescWaiting", nil)
+}
+
+// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device."
+// in the language the app shows.
+func SettingsMuteLocalDescFailed() string { return In(i18n.Locale()).SettingsMuteLocalDescFailed() }
+
+// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescFailed() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescFailed", nil)
+}
+
+// SettingsMuteLocalNote says "Some drivers mute capture too; turn this off if audio stops."
+// in the language the app shows.
+func SettingsMuteLocalNote() string { return In(i18n.Locale()).SettingsMuteLocalNote() }
+
+// SettingsMuteLocalNote says "Some drivers mute capture too; turn this off if audio stops."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalNote() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalNote", nil)
 }
 
 // SettingsSystemOutput says "System output"

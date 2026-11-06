@@ -339,9 +339,9 @@ func (g *groupTransport) InitialVolumePercent() (float64, bool) {
 	return 0, false
 }
 
-func (g *groupTransport) SetNowPlaying(title, artist, album string) {
+func (g *groupTransport) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
 	for _, m := range g.members {
-		m.sender.SetNowPlaying(title, artist, album, nil, "")
+		m.sender.SetNowPlaying(title, artist, album, cover, coverMIME)
 	}
 }
 
