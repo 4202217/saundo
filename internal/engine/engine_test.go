@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"sync/atomic"
@@ -18,30 +19,32 @@ import (
 const testDeviceID = "AA:BB:CC:DD:EE:01"
 
 type fakeTransport struct {
-	evs         chan raopio.Event
-	ev          sender.Events
-	started     bool
-	stopped     bool
-	state       sender.State
-	identity    sender.Identity
-	authDev     string
-	authAP2     bool
-	strict      bool
-	ptpSet      bool
-	inputRates  []int
-	latencies   []int
-	volumes     []float64
-	authPW      string
-	nowPlaying  []string
-	artwork     [][]byte
-	artworkMIME []string
-	pins        []string
-	waitingPin  bool
-	pauses      []bool
-	pauseOK     bool
-	initialPct  float64
-	hasInitial  bool
-	rings       []*ring.Buffer
+	evs          chan raopio.Event
+	ev           sender.Events
+	started      bool
+	stopped      bool
+	state        sender.State
+	identity     sender.Identity
+	authDev      string
+	authAP2      bool
+	strict       bool
+	ptpSet       bool
+	inputRates   []int
+	latencies    []int
+	volumes      []float64
+	authPW       string
+	nowPlaying   []string
+	nowCover     []byte
+	nowCoverMIME string
+	artwork      [][]byte
+	artworkMIME  []string
+	pins         []string
+	waitingPin   bool
+	pauses       []bool
+	pauseOK      bool
+	initialPct   float64
+	hasInitial   bool
+	rings        []*ring.Buffer
 }
 
 func newFakeTransport(ev sender.Events) *fakeTransport {
@@ -88,8 +91,10 @@ func (f *fakeTransport) WaitingForPin() bool           { return f.waitingPin }
 func (f *fakeTransport) InitialVolumePercent() (float64, bool) {
 	return f.initialPct, f.hasInitial
 }
-func (f *fakeTransport) SetNowPlaying(title, artist, album string) {
+func (f *fakeTransport) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
 	f.nowPlaying = append(f.nowPlaying, title+"\x00"+artist+"\x00"+album)
+	f.nowCover = append([]byte(nil), cover...)
+	f.nowCoverMIME = coverMIME
 }
 func (f *fakeTransport) SetArtwork(data []byte, mime string) {
 	f.artwork = append(f.artwork, append([]byte(nil), data...))
@@ -833,9 +838,13 @@ func TestNowPlayingCommandForwardsWhenEnabled(t *testing.T) {
 	}
 
 	h.e.handleCommand(command{kind: cmdShowNowPlaying, value: 1})
-	h.e.handleCommand(command{kind: cmdNowPlaying, text: "歌", name: "手", album: "片"})
+	h.e.handleCommand(command{kind: cmdNowPlaying, text: "歌", name: "手", album: "片",
+		cover: []byte{0x89, 'P', 'N', 'G'}, coverMIME: "image/png"})
 	if len(h.fake.nowPlaying) != 1 || h.fake.nowPlaying[0] != "歌\x00手\x00片" {
 		t.Fatalf("now playing = %q", h.fake.nowPlaying)
+	}
+	if !bytes.Equal(h.fake.nowCover, []byte{0x89, 'P', 'N', 'G'}) || h.fake.nowCoverMIME != "image/png" {
+		t.Fatalf("cover = %v mime = %q", h.fake.nowCover, h.fake.nowCoverMIME)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"saundo/internal/audio/analyze"
 	"saundo/internal/audio/ring"
 )
 
@@ -17,18 +18,23 @@ const silencePeak = 1
 // forwarded even while suspended, so a resume starts from live audio.
 type silenceMeter struct {
 	sink     ring.Sink
+	level    *analyze.Meter
 	now      func() time.Time
 	lastLoud atomic.Int64
 	paused   atomic.Bool
 }
 
-func newSilenceMeter(sink ring.Sink) *silenceMeter {
-	m := &silenceMeter{sink: sink, now: time.Now}
+func newSilenceMeter(sink ring.Sink, level *analyze.Meter) *silenceMeter {
+	m := &silenceMeter{sink: sink, level: level, now: time.Now}
 	m.lastLoud.Store(m.now().UnixNano())
 	return m
 }
 
 func (m *silenceMeter) Push(samples []int16) int {
+	at := m.now()
+	if m.level != nil {
+		m.level.Push(samples, at)
+	}
 	loud := false
 	for _, v := range samples {
 		if v > silencePeak || v < -silencePeak {
@@ -37,7 +43,7 @@ func (m *silenceMeter) Push(samples []int16) int {
 		}
 	}
 	if loud {
-		m.lastLoud.Store(m.now().UnixNano())
+		m.lastLoud.Store(at.UnixNano())
 	}
 	if m.paused.Load() && !loud {
 		return 0

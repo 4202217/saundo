@@ -23,6 +23,7 @@ const (
 	pageAudio
 	pageLamp
 	pageCapture
+	pageNowPlaying
 	pageUpdate
 	pageAbout
 )
@@ -37,6 +38,7 @@ var settingsNav = []struct {
 	{pageAudio, iconWave},
 	{pageLamp, iconLamp},
 	{pageCapture, iconScreen},
+	{pageNowPlaying, iconNote},
 	{pageUpdate, iconRefresh},
 	{pageAbout, iconInfo},
 }
@@ -53,6 +55,8 @@ func pageTitle(page settingsPage) string {
 		return locales.SettingsNavLamp()
 	case pageCapture:
 		return locales.SettingsNavCapture()
+	case pageNowPlaying:
+		return locales.SettingsNavNowPlaying()
 	case pageUpdate:
 		return locales.SettingsNavUpdates()
 	case pageAbout:
@@ -231,6 +235,8 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 					a.lampPage(c, p)
 				case pageCapture:
 					a.capturePage(c, p)
+				case pageNowPlaying:
+					a.nowPlayingPage(c, p)
 				case pageUpdate:
 					a.updatePage(c, p)
 				case pageAbout:
@@ -253,6 +259,8 @@ func pageCopy(page settingsPage) (title, desc string) {
 		return pageTitle(page), locales.PageLampDesc()
 	case pageCapture:
 		return pageTitle(page), locales.PageCaptureDesc()
+	case pageNowPlaying:
+		return pageTitle(page), locales.PageNowPlayingDesc()
 	case pageUpdate:
 		return pageTitle(page), locales.PageUpdatesDesc()
 	case pageAbout:
@@ -301,6 +309,149 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			}
 		})
 	})
+}
+
+// nowPlayingPage is the settings page for the panel's Now Playing card. The
+// display switch is the card's master; the options below it are subordinate.
+func (a *App) nowPlayingPage(c *ui.Context, p palette) {
+	master := a.cfg.ShowNowPlayingPanel
+	pageCard(c, p, func() {
+		ui.Row(c).Padding(12, 14).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, locales.SettingsShowNowPlaying()).FontSize(15).FontWeight(600).Grow(1)
+			a.nowPlayingBadge(c, p)
+			toggle(c, p, &a.cfg.ShowNowPlayingPanel, locales.SettingsShowNowPlaying(), func(v bool) {
+				a.showNowPlayingPanel.Store(v)
+				a.persistNowPlaying()
+			})
+		})
+		a.nowPlayingPreview(c, p)
+		rowLine(c, p)
+		a.nowPlayingCoverRow(c, p, master)
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsPlaybackControls(), locales.SettingsPlaybackControlsDesc(),
+			&a.cfg.PlaybackControls, master, func(bool) { a.persistNowPlaying() })
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsCoverColors(), locales.SettingsCoverColorsDesc(),
+			&a.cfg.CoverColors, master, func(bool) { a.persistNowPlaying() })
+		rowLine(c, p)
+		a.nowPlayingOptionRow(c, p, locales.SettingsAudioLevel(), locales.SettingsAudioLevelDesc(),
+			&a.cfg.AudioLevel, master, func(bool) { a.persistNowPlaying() })
+		rowLine(c, p)
+		// The receiver push is the card's last row: it leaves the panel
+		// untouched, so it sits apart from the panel's display options.
+		a.nowPlayingOptionRow(c, p, locales.SettingsTrackInfoOnReceiver(), locales.SettingsTrackInfoOnReceiverDesc(),
+			&a.showNowPlaying, master, func(v bool) {
+				if a.eng != nil {
+					a.eng.SetShowNowPlaying(v)
+				}
+			})
+	})
+}
+
+func (a *App) nowPlayingBadge(c *ui.Context, p palette) {
+	ui.Row(c).Height(22).Radius(11).Padding(0, 9).Border(1, p.line).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, locales.SettingsSystemMediaBadge()).FontSize(11.5).TextColor(p.muted).SingleLine()
+	})
+}
+
+// nowPlayingCoverRow is the three-way cover control: none, the default
+// placeholder, or the media's own artwork.
+func (a *App) nowPlayingCoverRow(c *ui.Context, p palette, enabled bool) {
+	titleColor, subColor := p.fg, p.muted
+	if !enabled {
+		titleColor, subColor = p.muted, p.faint
+	}
+	ui.Column(c).Padding(10, 14).Gap(8).Children(func() {
+		ui.Column(c).Gap(2).Children(func() {
+			ui.Text(c, locales.SettingsCover()).FontSize(13).FontWeight(500).TextColor(titleColor).SingleLine()
+			ui.Text(c, locales.SettingsCoverDesc()).FontSize(11.5).TextColor(subColor).SingleLine().Ellipsis("…")
+		})
+		seg := a.coverModeIndex()
+		parts := ui.SegmentedBase(c, &seg, 3)
+		parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
+			Label(locales.SettingsCover()).Disabled(!enabled).Children(func() {
+			icons := []*ui.SVG{iconSlash, iconNote, iconImage}
+			names := []string{
+				locales.SettingsCoverNone(),
+				locales.SettingsCoverPlaceholder(),
+				locales.SettingsCoverMedia(),
+			}
+			for i := range names {
+				s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).Cursor(ui.CursorPointer).Label(names[i])
+				if i == seg {
+					if p.dark {
+						s.Background(p.pillHover)
+					} else {
+						s.Background(p.card)
+					}
+					s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
+				}
+				s.Children(func() {
+					ic := ui.Icon(c, icons[i]).Size(12, 12)
+					tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
+					if i == seg {
+						ic.TextColor(p.accent)
+						tx.TextColor(p.fg)
+					} else {
+						ic.TextColor(p.muted)
+						tx.TextColor(p.muted)
+					}
+				})
+			}
+		})
+		if parts.Track.Changed() {
+			a.cfg.CoverMode = coverModeAt(seg)
+			a.persistNowPlaying()
+		}
+	})
+}
+
+func (a *App) coverModeIndex() int {
+	switch a.cfg.CoverMode {
+	case settings.CoverNone:
+		return 0
+	case settings.CoverPlaceholder:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func coverModeAt(i int) settings.CoverMode {
+	switch i {
+	case 0:
+		return settings.CoverNone
+	case 1:
+		return settings.CoverPlaceholder
+	default:
+		return settings.CoverMedia
+	}
+}
+
+func (a *App) nowPlayingOptionRow(c *ui.Context, p palette, title, sub string, on *bool, enabled bool, changed func(bool)) {
+	titleColor, subColor := p.fg, p.muted
+	if !enabled {
+		titleColor, subColor = p.muted, p.faint
+	}
+	settingRowColors(c, p, title, sub, titleColor, subColor, func() {
+		toggle(c, p, on, title, changed).Disabled(!enabled)
+	})
+}
+
+// persistNowPlaying stores the panel display options and resizes the flyout.
+func (a *App) persistNowPlaying() {
+	a.showNowPlayingPanel.Store(a.cfg.ShowNowPlayingPanel)
+	if a.sets != nil {
+		cfg := a.sets.Load()
+		cfg.ShowNowPlayingPanel = a.cfg.ShowNowPlayingPanel
+		cfg.PlaybackControls = a.cfg.PlaybackControls
+		cfg.CoverColors = a.cfg.CoverColors
+		cfg.CoverMode = a.cfg.CoverMode
+		cfg.AudioLevel = a.cfg.AudioLevel
+		_ = a.sets.Save(cfg)
+	}
+	a.fitFlyout()
+	a.updateUI(func() {})
 }
 
 // updatePage is the settings page for versions and automatic checks.
@@ -511,7 +662,48 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
 			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
 		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsMuteLocal(), a.muteLocalSub(), func() {
+			toggle(c, p, &a.cfg.MuteLocalOnConnect, locales.SettingsMuteLocal(), a.setMuteLocal)
+		})
 	})
+	if a.cfg.MuteLocalOnConnect {
+		ui.Row(c).Margin(8, 0, 0, 2).Gap(6).AlignItems(ui.Start).Children(func() {
+			ui.Icon(c, iconInfo).Size(13, 13).TextColor(p.muted)
+			ui.Text(c, locales.SettingsMuteLocalNote()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		})
+	}
+}
+
+// muteLocalSub follows the engine's effective state, not just the switch: on
+// means muted now, waiting means it applies on the next connection, failed
+// means the endpoint refused the call.
+func (a *App) muteLocalSub() string {
+	switch a.snap.MuteLocal {
+	case engine.MuteLocalActive:
+		return locales.SettingsMuteLocalDescOn()
+	case engine.MuteLocalWaiting:
+		return locales.SettingsMuteLocalDescWaiting()
+	case engine.MuteLocalFailed:
+		return locales.SettingsMuteLocalDescFailed()
+	default:
+		return locales.SettingsMuteLocalDesc()
+	}
+}
+
+// setMuteLocal saves the preference and forwards it to the engine. The write
+// is field-targeted, like the other options that share settings.json with the
+// engine's debounced save.
+func (a *App) setMuteLocal(on bool) {
+	a.cfg.MuteLocalOnConnect = on
+	if a.eng != nil {
+		a.eng.SetMuteLocal(on)
+	}
+	if a.sets != nil {
+		cfg := a.sets.Load()
+		cfg.MuteLocalOnConnect = on
+		_ = a.sets.Save(cfg)
+	}
 }
 
 func (a *App) audioPage(c *ui.Context, p palette) {

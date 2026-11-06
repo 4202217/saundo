@@ -48,6 +48,15 @@ type LampSettings struct {
 }
 
 // Settings is the user's configuration.
+// CoverMode is what the Now Playing card shows on its left.
+type CoverMode string
+
+const (
+	CoverNone        CoverMode = "none"
+	CoverPlaceholder CoverMode = "placeholder"
+	CoverMedia       CoverMode = "media"
+)
+
 type Settings struct {
 	Name                string             `json:"name"`
 	NameMigrated        bool               `json:"nameMigrated"`
@@ -68,6 +77,12 @@ type Settings struct {
 	AutoConnect         bool               `json:"autoConnect"`
 	Reconnect           bool               `json:"reconnect"`
 	ShowNowPlaying      bool               `json:"showNowPlaying"`
+	ShowNowPlayingPanel bool               `json:"showNowPlayingPanel"`
+	PlaybackControls    bool               `json:"playbackControls"`
+	CoverColors         bool               `json:"coverColors"`
+	CoverMode           CoverMode          `json:"coverMode"`
+	AudioLevel          bool               `json:"audioLevel"`
+	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
 	Lamp                LampSettings       `json:"lamp"`
 	TrayAnimation       bool               `json:"trayAnimation"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
@@ -83,20 +98,25 @@ type Settings struct {
 // Default returns the first-run configuration.
 func Default() Settings {
 	return Settings{
-		Name:              "声渡",
-		DeviceID:          newDeviceID(),
-		Volume:            80,
-		AutoUpdate:        true,
-		VolumeByDevice:    make(map[string]float64),
-		Passwords:         make(map[string]string),
-		LatencyMS:         LatencyLowMS,
-		LatencyMode:       LatencyLow,
-		LatencyCustomMS:   DefaultLatencyCustomMS,
-		ShowLatencySwitch: true,
-		Reconnect:         true,
-		TrayAnimation:     true,
-		Theme:             ThemeSystem,
-		Lamp:              LampSettings{Preset: lamp.DefaultID},
+		Name:                "声渡",
+		DeviceID:            newDeviceID(),
+		Volume:              80,
+		AutoUpdate:          true,
+		VolumeByDevice:      make(map[string]float64),
+		Passwords:           make(map[string]string),
+		LatencyMS:           LatencyLowMS,
+		LatencyMode:         LatencyLow,
+		LatencyCustomMS:     DefaultLatencyCustomMS,
+		ShowLatencySwitch:   true,
+		ShowNowPlayingPanel: true,
+		PlaybackControls:    true,
+		CoverColors:         true,
+		CoverMode:           CoverMedia,
+		AudioLevel:          true,
+		Reconnect:           true,
+		TrayAnimation:       true,
+		Theme:               ThemeSystem,
+		Lamp:                LampSettings{Preset: lamp.DefaultID},
 	}
 }
 
@@ -117,6 +137,10 @@ func NewStore() *Store {
 
 // NewStoreAt is the testable form of NewStore.
 func NewStoreAt(path string) *Store { return &Store{path: path} }
+
+// Dir returns the directory holding settings.json and the engine's guard
+// files. A test store points it at the test's temporary directory.
+func (s *Store) Dir() string { return filepath.Dir(s.path) }
 
 // Load returns the stored settings, filling defaults for missing fields. A
 // missing or corrupt file yields the defaults.
@@ -170,6 +194,11 @@ func (s *Store) Load() Settings {
 	case ThemeLight, ThemeDark:
 	default:
 		out.Theme = ThemeSystem
+	}
+	switch out.CoverMode {
+	case CoverNone, CoverPlaceholder, CoverMedia:
+	default:
+		out.CoverMode = CoverMedia
 	}
 	// An old file has no lamp object at all, which decodes as off + the
 	// default preset. An unknown preset never survives a load.

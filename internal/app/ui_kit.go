@@ -198,7 +198,7 @@ func chip(c *ui.Context, p palette, label string, tone chipTone) {
 // toggle is the design's switch: a 32x19 track that fills with ink, with a
 // white knob sliding across it. It is a SwitchBase, so a click, Space and
 // assistive technology toggle it; changed runs with the new value.
-func toggle(c *ui.Context, p palette, on *bool, label string, changed func(bool)) {
+func toggle(c *ui.Context, p palette, on *bool, label string, changed func(bool)) ui.Element {
 	b := ui.SwitchBase(c.Key("switch:"+label), on).Size(32, 19).Radius(9.5).Shrink(0).
 		Cursor(ui.CursorPointer).Label(label)
 	pos := b.Animate("on", boolFlag(*on), 140*time.Millisecond)
@@ -209,6 +209,7 @@ func toggle(c *ui.Context, p palette, on *bool, label string, changed func(bool)
 		pt.Fill(knob, ui.RGB(255, 255, 255).Mix(p.bg, pos), 7.5)
 	})
 	b.OnChange(func() { changed(*on) })
+	return b
 }
 
 // slider is the design's slider: a hairline rail, ink below the knob and a

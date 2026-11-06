@@ -144,33 +144,7 @@ func comCallQuery(obj uintptr, iid *guid, out *uintptr) uint32 {
 // await polls a WinRT IAsyncOperation<T> until it completes and returns the
 // result object.
 func await(op uintptr, timeout time.Duration) (uintptr, error) {
-	if op == 0 {
-		return 0, fmt.Errorf("nowplaying: nil async operation")
-	}
-	var info uintptr
-	if hr := comCallQuery(op, &iidIAsyncInfo, &info); hr != 0 {
-		return 0, fmt.Errorf("nowplaying: async operation is not IAsyncInfo (HRESULT %#08x)", hr)
-	}
-	defer release(info)
-	statusFn := vtblFn(info, asyncInfoStatus)
-	deadline := time.Now().Add(timeout)
-	for {
-		var status int32
-		if hr, _, _ := syscall.SyscallN(statusFn, info, uintptr(unsafe.Pointer(&status))); hr != 0 {
-			return 0, fmt.Errorf("nowplaying: get_Status failed (HRESULT %#08x)", uint32(hr))
-		}
-		if status == asyncStatusCompleted {
-			break
-		}
-		if status != 0 { // not Started
-			return 0, fmt.Errorf("nowplaying: async operation status %d", status)
-		}
-		if time.Now().After(deadline) {
-			return 0, fmt.Errorf("nowplaying: async operation timed out")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	return callObjectProperty(op, asyncGetResults), nil
+	return awaitSlot(op, asyncGetResults, timeout)
 }
 
 // ensureManager activates the SMTC session manager once per process.

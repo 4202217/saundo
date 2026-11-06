@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"strings"
+	"time"
 
 	"saundo/internal/airplay/device"
 )
@@ -66,7 +67,17 @@ type Entry struct {
 	Hidden      bool   `json:"hidden,omitempty"`
 	AutoConnect bool   `json:"autoConnect,omitempty"`
 	DelayMS     int    `json:"delayMs,omitempty"`
+	// LastSeen is the last time discovery saw this receiver. A remembered
+	// stereo group unseen for GroupGrace is pruned because a split and
+	// re-merge mints a new tsid, so the old key never returns.
+	LastSeen time.Time `json:"lastSeen,omitempty"`
 }
+
+// GroupGrace is how long a remembered stereo group may stay unseen before its
+// row is pruned. A day covers a receiver that is merely powered off for a
+// while; a group gone longer than that has been split or re-merged, which
+// produces a new tsid under a new key.
+const GroupGrace = 24 * time.Hour
 
 // Registry is the document stored in receivers.json.
 type Registry struct {
@@ -108,6 +119,26 @@ func (r *Registry) Delete(key string) bool {
 		}
 	}
 	return false
+}
+
+// PruneStaleGroups removes remembered stereo groups discovery has not seen for
+// grace and returns their keys. A group with no LastSeen is kept: the caller
+// stamps it first so an upgraded registry gets a full grace period.
+func PruneStaleGroups(reg *Registry, seen map[string]bool, now time.Time, grace time.Duration) []string {
+	if reg == nil || grace <= 0 {
+		return nil
+	}
+	var removed []string
+	kept := reg.Entries[:0]
+	for _, e := range reg.Entries {
+		if e.IsGroup() && !seen[e.Key] && !e.LastSeen.IsZero() && now.Sub(e.LastSeen) > grace {
+			removed = append(removed, e.Key)
+			continue
+		}
+		kept = append(kept, e)
+	}
+	reg.Entries = kept
+	return removed
 }
 
 // SingleAutoConnect keeps the one-target invariant: every entry but key

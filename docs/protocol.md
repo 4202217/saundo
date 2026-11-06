@@ -197,7 +197,7 @@ A stereo pair expects the sender to supply the timeline: one PTP master binds UD
 
 A HomePod stereo pair is not one session:
 
-- Group members share `tsid`; `igl=1` marks the leader (`gcgl` only says the group contains its leader). Discovery collapses the members into one logical target, `stereo:<tsid>`, named from `gpn`, leader first; the group is online only when both members are online.
+- Group members share `tsid`; `igl=1` marks the leader (`gcgl` only says the group contains its leader). Discovery collapses the members into one logical target, `stereo:<tsid>`, named from `gpn` (decode its RFC 1035 `\DDD` escapes first), leader first; the group is online only when both members are online.
 - Open one AP2 session **per member**; each session SETUP carries `groupUUID = tsid`.
 - SETPEERS lists every member address plus the sender.
 - Capture fans out into one ring per member (`ring.Fanout`); the group reports streaming only when every member's session launched.

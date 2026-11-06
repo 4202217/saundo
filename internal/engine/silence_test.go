@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
 )
 
 type recordingSink struct {
@@ -16,9 +17,29 @@ func (s *recordingSink) Dropped() uint64          { return 0 }
 func (s *recordingSink) Reset()                   {}
 func (s *recordingSink) KeepNewest(int) int       { return 0 }
 
+func TestSilenceMeterFeedsTheLevelMeter(t *testing.T) {
+	level := analyze.New(48000)
+	m := newSilenceMeter(&recordingSink{}, level)
+	now := time.Unix(100, 0)
+	m.now = func() time.Time { return now }
+	block := make([]int16, 960)
+	for i := range block {
+		if i%2 == 0 {
+			block[i] = 12000
+		} else {
+			block[i] = -12000
+		}
+	}
+	m.Push(block)
+	frame, ok := level.At(now, 0)
+	if !ok || frame.Level == 0 {
+		t.Fatalf("level frame = %+v ok=%v, want the capture block's level", frame, ok)
+	}
+}
+
 func TestSilenceMeterDropsSilentBlocksOnlyWhilePaused(t *testing.T) {
 	sink := &recordingSink{}
-	m := newSilenceMeter(sink)
+	m := newSilenceMeter(sink, nil)
 	now := time.Unix(100, 0)
 	m.now = func() time.Time { return now }
 	m.lastLoud.Store(now.UnixNano())

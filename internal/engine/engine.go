@@ -15,6 +15,7 @@ import (
 	raopio "saundo/internal/airplay/io"
 	"saundo/internal/airplay/ptp"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
 	"saundo/internal/audio/ring"
 	"saundo/internal/capture"
 	"saundo/internal/diagnostics"
@@ -48,6 +49,8 @@ type Snapshot struct {
 	// AudioIdle is true while the engine has suspended RTP after sustained
 	// digital silence. The session stays connected.
 	AudioIdle          bool
+	MuteLocal          MuteLocalState
+	MuteLocalError     string
 	ShowNowPlaying     bool
 	LampEnabled        bool
 	LampPreset         string
@@ -84,6 +87,7 @@ const (
 	cmdShowNowPlaying
 	cmdLamp
 	cmdTrayAnimation
+	cmdMuteLocal
 	cmdNowPlaying
 	cmdLatency
 	cmdLatencySettings
@@ -102,6 +106,8 @@ type command struct {
 	text      string
 	name      string
 	album     string
+	cover     []byte
+	coverMIME string
 	reconnect bool
 	show      bool
 	spec      receivers.Spec
@@ -157,7 +163,7 @@ type transport interface {
 	SubmitPin(code string)
 	WaitingForPin() bool
 	InitialVolumePercent() (float64, bool)
-	SetNowPlaying(title, artist, album string)
+	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)
 	SetArtwork(data []byte, mime string)
 	PTP() (active, ready bool, offsetMS float64)
 }
@@ -200,8 +206,8 @@ func (s *session) WaitingForPin() bool           { return s.sender.WaitingForPin
 func (s *session) InitialVolumePercent() (float64, bool) {
 	return s.sender.InitialVolumePercent()
 }
-func (s *session) SetNowPlaying(title, artist, album string) {
-	s.sender.SetNowPlaying(title, artist, album, nil, "")
+func (s *session) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
+	s.sender.SetNowPlaying(title, artist, album, cover, coverMIME)
 }
 func (s *session) SetArtwork(data []byte, mime string) { s.sender.SetArtwork(data, mime) }
 func (s *session) PTP() (active, ready bool, offsetMS float64) {
@@ -238,6 +244,11 @@ const (
 	audioPausePoll  = 25 * time.Millisecond
 )
 
+// lastSeenWriteEvery bounds how often a discovery sighting rewrites
+// receivers.json. The stale-group grace is a day, so an hour of resolution is
+// plenty and avoids a file write on every three-second discovery cycle.
+const lastSeenWriteEvery = time.Hour
+
 // reconnectBackoff is the delay before the nth retry.
 var reconnectBackoff = []time.Duration{
 	time.Second, 2 * time.Second, 5 * time.Second, 10 * time.Second,
@@ -254,6 +265,7 @@ type Engine struct {
 
 	ring          *ring.Buffer
 	captureSink   *ring.Fanout
+	level         *analyze.Meter
 	silence       *silenceMeter
 	memberRings   []*ring.Buffer
 	discovery     *discovery.Service
@@ -262,6 +274,7 @@ type Engine struct {
 	capture       captureSource
 	captureInfo   chan captureInfo
 	captureResult chan captureStart
+	mute          localMute
 
 	commands       chan command
 	quit           chan struct{}
@@ -273,6 +286,12 @@ type Engine struct {
 	now            func() time.Time
 	newSession     func(d device.Device) (transport, func(), error)
 	captureStartFn func(capture.Config) (captureSource, error)
+
+	// The endpoint mute is injected so tests never touch the machine's audio.
+	endpointMuted    func(string) (bool, error)
+	setEndpointMuted func(string, bool) error
+	defaultEndpoint  func() (capture.Endpoint, error)
+	endpoints        func() ([]capture.Endpoint, error)
 
 	mu   sync.Mutex
 	snap Snapshot
@@ -369,7 +388,14 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.newSession = e.openSession
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
-	e.silence = newSilenceMeter(e.captureSink)
+	e.level = analyze.New(0)
+	e.silence = newSilenceMeter(e.captureSink, e.level)
+	e.endpointMuted = capture.EndpointMuted
+	e.setEndpointMuted = capture.SetEndpointMuted
+	e.defaultEndpoint = capture.DefaultEndpoint
+	e.endpoints = capture.Endpoints
+	e.mute.state = e.idleMuteState()
+	e.recoverMuteGuard()
 	e.prepareLampImage()
 	e.rebuildTargets()
 	e.snap = e.buildSnapshot()
@@ -386,6 +412,9 @@ func startCaptureDefault(cfg capture.Config) (captureSource, error) {
 
 // openSession builds the production transport for one receiver.
 func (e *Engine) openSession(d device.Device) (transport, func(), error) {
+	if d.Host == "" || d.Port == 0 {
+		return nil, nil, fmt.Errorf("receiver %q has no address", d.Name)
+	}
 	if d.IsStereoGroup() {
 		return e.openGroupSession(d)
 	}
@@ -437,6 +466,7 @@ func (e *Engine) Start() {
 	e.startOnce.Do(func() {
 		e.stopping = false
 		e.discovery = discovery.New(3*time.Second, 1500*time.Millisecond)
+		e.discovery.SetSeedHosts(receiverHosts(e.reg))
 		e.discovery.Start()
 		e.startCapture()
 		e.started.Store(true)
@@ -459,6 +489,17 @@ func (e *Engine) Snapshot() Snapshot {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.snap
+}
+
+// LevelFrame returns the capture level and bands as they were delay ago. The
+// Now Playing card passes the receiver latency so the meter follows the audio
+// being heard, not the audio just captured.
+func (e *Engine) LevelFrame(delay time.Duration) analyze.Frame {
+	if e.level == nil {
+		return analyze.Frame{}
+	}
+	frame, _ := e.level.At(time.Now(), delay)
+	return frame
 }
 
 // Refresh asks discovery to browse now.
@@ -566,9 +607,16 @@ func (e *Engine) SetTrayAnimation(on bool) {
 	e.send(command{kind: cmdTrayAnimation, value: v})
 }
 
-// SetNowPlaying pushes track metadata to the receiver.
-func (e *Engine) SetNowPlaying(title, artist, album string) {
-	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album})
+// SetMuteLocal turns the local-output mute on or off for this and later
+// sessions. Turning it on while streaming mutes at once; turning it off
+// restores the endpoint.
+func (e *Engine) SetMuteLocal(on bool) {
+	e.send(command{kind: cmdMuteLocal, show: on})
+}
+
+// SetNowPlaying pushes track metadata and cover art to the receiver.
+func (e *Engine) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
+	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album, cover: cover, coverMIME: coverMIME})
 }
 
 // SetLamp turns the ambient light on or off and chooses its preset. The
@@ -737,6 +785,7 @@ func (e *Engine) shutdown() {
 }
 
 func (e *Engine) closeSession() {
+	e.restoreLocalMute()
 	e.detachMemberRings()
 	e.audioPaused = false
 	e.pauseUnsupported = false
@@ -782,9 +831,9 @@ func (e *Engine) handleCommand(cmd command) {
 	switch cmd.kind {
 	case cmdConnect:
 		e.autoTried = true
-		if d, ok := e.find(cmd.deviceID); ok {
+		if t, ok := e.target(cmd.deviceID); ok {
 			e.userDisconnect = false
-			e.connect(d)
+			e.connect(t.Device)
 		} else {
 			e.lastError = "未找到设备，请刷新后重试"
 			e.publish()
@@ -834,6 +883,9 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.CaptureProcessPID = 0
 		e.setsValue.CaptureProcessName = ""
 		e.markSettingsDirty()
+		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
+			e.refreshLocalMute()
+		}
 		e.restartCapture()
 		e.publish()
 	case cmdCaptureProcess:
@@ -842,6 +894,9 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.CaptureProcessPID = e.captureProcess
 		e.setsValue.CaptureProcessName = cmd.name
 		e.markSettingsDirty()
+		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
+			e.refreshLocalMute()
+		}
 		e.restartCapture()
 		e.publish()
 	case cmdLatency:
@@ -927,9 +982,18 @@ func (e *Engine) handleCommand(cmd command) {
 		e.setsValue.TrayAnimation = cmd.value != 0
 		e.markSettingsDirty()
 		e.publish()
+	case cmdMuteLocal:
+		e.setsValue.MuteLocalOnConnect = cmd.show
+		e.markSettingsDirty()
+		if cmd.show {
+			e.applyLocalMute()
+		} else {
+			e.restoreLocalMute()
+		}
+		e.publish()
 	case cmdNowPlaying:
 		if e.setsValue.ShowNowPlaying && e.tr != nil {
-			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album)
+			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album, cmd.cover, cmd.coverMIME)
 			e.publish()
 		}
 	case cmdAddReceiver:
@@ -1193,9 +1257,11 @@ func (e *Engine) onLaunched(ok bool, err string) {
 				e.markSettingsDirty()
 			}
 		}
+		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
 		e.applyLamp()
 	} else {
+		e.restoreLocalMute()
 		e.connectedName = ""
 		e.lastError = err
 		e.logf("session failed: %s", err)
@@ -1317,14 +1383,19 @@ func (e *Engine) maybeAutoConnect() bool {
 	return true
 }
 
-// rememberDiscovered persists first sightings, and refreshes the name and
-// model of a remembered receiver, so the receiver list keeps offline rows
-// after a receiver leaves the network. Stereo pairs are remembered under
-// their group key so their hidden, delay, password, and auto-connect settings
-// survive the pair going offline. Only an actual change writes the file.
+// rememberDiscovered persists first sightings, keeps the last address and
+// sighting time, and refreshes the name and model of a remembered receiver, so
+// the receiver list keeps offline rows after a receiver leaves the network.
+// Stereo pairs are remembered under their group key so their hidden, delay,
+// password, and auto-connect settings survive the pair going offline; a group
+// unseen for receivers.GroupGrace is pruned with its auto-connect flag. Only
+// an actual change writes the file.
 func (e *Engine) rememberDiscovered() {
 	changed := false
+	now := e.now()
+	live := make(map[string]bool, len(e.discovered))
 	for _, d := range e.discovered {
+		live[d.ID] = true
 		entry, ok := e.reg.Get(d.ID)
 		if !ok {
 			// A password moved by the startup migration belongs to a device
@@ -1336,6 +1407,7 @@ func (e *Engine) rememberDiscovered() {
 			e.reg.Put(receivers.Entry{
 				Key: d.ID, Kind: receivers.KindDiscovered,
 				Name: d.Name, Model: d.Model, AirPlay2: d.AirPlay2,
+				Host: d.Host, Port: d.Port, LastSeen: now,
 			})
 			changed = true
 			continue
@@ -1357,10 +1429,40 @@ func (e *Engine) rememberDiscovered() {
 			entry.AirPlay2 = true
 			entryChanged = true
 		}
+		// Keep the last address so a receiver that is offline now can be
+		// probed directly on the next launch. A stereo group stores the
+		// leader's endpoint, which rediscovers the pair.
+		if d.Host != "" && d.Port != 0 && (entry.Host != d.Host || entry.Port != d.Port) {
+			entry.Host, entry.Port = d.Host, d.Port
+			entryChanged = true
+		}
+		if entry.LastSeen.IsZero() || now.Sub(entry.LastSeen) >= lastSeenWriteEvery {
+			entry.LastSeen = now
+			entryChanged = true
+		}
 		if entryChanged {
 			e.reg.Put(entry)
 			changed = true
 		}
+	}
+	// A group remembered before LastSeen existed starts its grace now. A zero
+	// timestamp means unknown, not gone; pruning on upgrade could delete a
+	// pair that is merely powered off.
+	for i := range e.reg.Entries {
+		entry := &e.reg.Entries[i]
+		if entry.IsGroup() && entry.LastSeen.IsZero() {
+			entry.LastSeen = now
+			changed = true
+		}
+	}
+	// An active session keeps its row even when discovery has already dropped
+	// it; the reconnect policy owns that receiver until the user disconnects.
+	if (e.tr != nil || e.reconnectWanted) && e.selectedID != "" {
+		live[e.selectedID] = true
+	}
+	for _, key := range receivers.PruneStaleGroups(&e.reg, live, now, receivers.GroupGrace) {
+		e.logf("pruned stale stereo group %s", key)
+		changed = true
 	}
 	if changed {
 		e.saveRegistry()
@@ -1384,11 +1486,35 @@ func (e *Engine) rebuildTargets() {
 	if e.tr != nil || e.reconnectWanted {
 		active = e.selectedID
 	}
+	targets = receivers.Manageable(targets, active)
 	e.devices = receivers.Visible(targets, active)
 	e.receiversViews = make([]receivers.View, len(targets))
 	for i, t := range targets {
 		e.receiversViews[i] = t.View(e.passwords[t.Entry.Key])
 	}
+	e.refreshDiscoverySeeds()
+}
+
+// receiverHosts is the seed list for discovery's directed pass: manual and
+// last-known addresses, which survive an offline receiver and a restart.
+func receiverHosts(reg receivers.Registry) []string {
+	hosts := make([]string, 0, len(reg.Entries))
+	for _, entry := range reg.Entries {
+		if host := strings.TrimSpace(entry.Host); host != "" {
+			hosts = append(hosts, host)
+		}
+	}
+	return hosts
+}
+
+// refreshDiscoverySeeds hands discovery the addresses the registry remembers.
+// rebuildTargets is the single projection point, so a manual add or a first
+// sighting reaches the next directed pass.
+func (e *Engine) refreshDiscoverySeeds() {
+	if e.discovery == nil {
+		return
+	}
+	e.discovery.SetSeedHosts(receiverHosts(e.reg))
 }
 
 func (e *Engine) find(id string) (device.Device, bool) {
@@ -1544,6 +1670,9 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	e.captureError = ""
 	stats := res.src.Stats()
 	e.captureRate = stats.Rate
+	if e.level != nil {
+		e.level.SetRate(stats.Rate)
+	}
 	if stats.Device != "" {
 		e.captureName = stats.Device
 	}
@@ -1551,6 +1680,13 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 		e.tr.SetInputFormat(stats.Rate)
 	}
 	e.captureSink.Reset()
+	if e.mute.state == MuteLocalActive && e.captureProcess == 0 && e.captureEndpoint == "" {
+		// Capture follows the default device. If Windows moved the default,
+		// move the mute with it.
+		if ep, err := e.defaultEndpoint(); err == nil && ep.ID != e.mute.endpointID {
+			e.refreshLocalMute()
+		}
+	}
 	e.logf("capture open: %s (%d Hz)", e.captureName, stats.Rate)
 	e.publish()
 }
@@ -1563,6 +1699,9 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 	}
 	if info.rate > 0 && info.rate != e.captureRate {
 		e.captureRate = info.rate
+		if e.level != nil {
+			e.level.SetRate(info.rate)
+		}
 		if e.tr != nil {
 			e.tr.SetInputFormat(info.rate)
 		}
@@ -1637,6 +1776,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 		Reconnect:          e.setsValue.Reconnect,
 		Reconnecting:       e.reconnectWanted && !e.reconnectAt.IsZero(),
 		AudioIdle:          e.audioPaused,
+		MuteLocal:          e.mute.state,
+		MuteLocalError:     e.mute.err,
 		LatencyMS:          e.setsValue.LatencyMS,
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,

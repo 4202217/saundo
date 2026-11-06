@@ -2,27 +2,41 @@ package app
 
 import (
 	"fmt"
+	"image"
+	"image/color"
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
 	"saundo/internal/lamp"
+	"saundo/internal/nowplaying"
+	"saundo/internal/settings"
 )
 
 const (
+	// flyoutHeight is the height with three device rows, no latency row, and
+	// no media card; the no-media panel is compact and the media card adds
+	// its own height when a session exists.
 	flyoutWidth  = 420
-	flyoutHeight = 500
+	flyoutHeight = 474
+
+	// The media card fills the space the old 62-DIP Now Playing row used, and
+	// adds its own height when shown.
+	nowPlayingRowHeight  = 62
+	nowPlayingCardHeight = 150
 
 	// The device card shows one row per device, up to deviceRows, and the
 	// empty state's box when there is none.
 	deviceRows        = 3
 	deviceRowHeight   = 56
-	deviceEmptyHeight = 140
+	deviceEmptyHeight = 141
 
 	// latencySwitchHeight is the four-segment row and its divider.
 	latencySwitchHeight = 44
@@ -36,17 +50,21 @@ func deviceCardHeight(n int) float32 {
 	return float32(min(n, deviceRows))*deviceRowHeight + 2
 }
 
-// flyoutHeightFor is the window height that keeps the spacing between the
-// device card and the playback card the same for any device count: the
-// design's height fits deviceRows rows, and each missing row, or the empty
-// state, shortens the window by as much as the card lost. The ambient section
-// adds its collapsed height only while the setting is on.
-func flyoutHeightFor(n int, showLatencySwitch bool, lampOn ...bool) int {
+// flyoutHeightFor is the window height for the visible device count, the
+// current media state, and the ambient section. The device card and the
+// playback card touch through the body's gap; there is no flexible spacer.
+// A shown media card adds its height, and the no-media panel is shorter by
+// the same amount. The ambient section adds its collapsed height only while
+// the setting is on.
+func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool, lampOn ...bool) int {
 	on := true
 	if len(lampOn) > 0 {
 		on = lampOn[0]
 	}
-	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n))
+	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n)) - nowPlayingRowHeight
+	if hasMedia {
+		h += nowPlayingCardHeight
+	}
 	if showLatencySwitch {
 		h += latencySwitchHeight
 	}
@@ -59,12 +77,12 @@ func flyoutHeightFor(n int, showLatencySwitch bool, lampOn ...bool) int {
 // flyoutHeightForState adds the preset grid while the ambient card is on and
 // expanded. The window is anchored by its bottom edge, so this grows it
 // upward.
-func flyoutHeightForState(n int, showLatencySwitch, lampExpanded bool, lampOn ...bool) int {
+func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampExpanded bool, lampOn ...bool) int {
 	on := true
 	if len(lampOn) > 0 {
 		on = lampOn[0]
 	}
-	h := flyoutHeightFor(n, showLatencySwitch, on)
+	h := flyoutHeightFor(n, showLatencySwitch, hasMedia, on)
 	if on && lampExpanded {
 		h += lampGridHeight(len(lamp.All()))
 	}
@@ -80,7 +98,6 @@ func (a *App) view(c *ui.Context) {
 			a.flyoutHeader(c, p)
 			ui.Column(c).Grow(1).Padding(2, 12, 8, 12).Gap(8).Children(func() {
 				a.deviceSection(c, p)
-				ui.Spacer(c)
 				a.playbackSection(c, p)
 				a.lampSection(c, p)
 			})
@@ -272,7 +289,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 			ui.Column(c).Padding(6, 12, 7, 12).Children(func() { a.latencySwitch(c, p) })
 			rowLine(c, p)
 		}
-		a.nowPlayingRow(c, p)
+		a.nowPlayingCard(c, p)
 		// The error bar already cost the room the capture line took.
 		if phaseOf(a.snap) != phaseError {
 			rowLine(c, p)
@@ -325,33 +342,344 @@ func (a *App) latencySwitch(c *ui.Context, p palette) {
 	}
 }
 
-func (a *App) nowPlayingRow(c *ui.Context, p palette) {
-	ui.Row(c).Height(62).Padding(9, 12).Gap(10).Children(func() {
-		ui.Box(c).Size(34, 34).Radius(9).Center().Shrink(0).Background(p.accentSoft).Children(func() {
-			ui.Icon(c, iconNote).Size(16, 16).TextColor(p.accent)
+func (a *App) nowPlayingCard(c *ui.Context, p palette) {
+	if !a.cfg.ShowNowPlayingPanel {
+		return
+	}
+	s, ok := a.nowSession()
+	if !ok {
+		return
+	}
+	field := a.nowFieldLight
+	if p.dark {
+		field = a.nowFieldDark
+	}
+	delay := time.Duration(a.latencyMS()) * time.Millisecond
+	level := func() analyze.Frame {
+		if a.levelFrame != nil {
+			return a.levelFrame(delay)
+		}
+		return analyze.Frame{}
+	}
+	a.nowPlayingCardBody(c, p, s, false, true, a.nowArt, field, level, len(a.nowSnap.Sessions) > 1)
+}
+
+// nowPlayingCardBody draws the card. preview is the settings page's copy:
+// its transport and session switch are read-only, and animateMeter says
+// whether its meter asks for continuous frames.
+func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session, preview, animateMeter bool, art *ui.Bitmap, field *image.RGBA, level func() analyze.Frame, showSwitch bool) {
+	ui.Column(c).Margin(8, 12, 8, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
+		ui.Row(c).Height(28).Gap(7).AlignItems(ui.Center).Children(func() {
+			name := s.AppName
+			if name == "" {
+				name = locales.FlyoutUnknownApp()
+			}
+			ui.Text(c, name).FontSize(13).FontWeight(600).SingleLine().Ellipsis("…").Grow(1)
+			if showSwitch {
+				btn := ui.ButtonBase(c).Size(24, 24).Radius(7).Center().Background(p.card).
+					Cursor(ui.CursorPointer).Label(locales.FlyoutSwitchMedia()).Disabled(preview)
+				if btn.Hovered() {
+					btn.Background(p.cardHover)
+				}
+				btn.OnClick(a.switchNowMedia)
+				btn.Children(func() {
+					col := p.muted
+					if btn.Hovered() {
+						col = p.fg
+					}
+					ui.Icon(c, iconChevronRight).Size(12, 12).TextColor(col)
+				})
+			}
 		})
-		ui.Column(c).Grow(1).Gap(1).Children(func() {
-			ui.Text(c, a.nowPlayingText()).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-			ui.Text(c, a.nowPlayingSub()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		ui.Row(c).Height(62).Gap(10).AlignItems(ui.Center).Padding(6, 0, 4, 0).Children(func() {
+			if a.cfg.CoverMode != settings.CoverNone {
+				a.nowPlayingPoster(c, p, art, a.cfg.CoverMode)
+			}
+			ui.Column(c).Grow(1).Gap(2).Children(func() {
+				title := s.Title
+				if title == "" {
+					title = s.AppName
+				}
+				if title == "" {
+					title = locales.FlyoutNowPlayingNoMedia()
+				}
+				ui.Text(c, title).FontSize(15).FontWeight(500).SingleLine().Ellipsis("…")
+				ui.Text(c, a.nowPlayingSubFor(s)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+			})
+			if a.cfg.AudioLevel {
+				a.nowPlayingMeter(c, p, s, field, level, animateMeter)
+			}
 		})
-		ui.Row(c).Gap(7).Children(func() {
-			ui.Text(c, locales.FlyoutPush()).FontSize(11.5).TextColor(p.muted).SingleLine()
-			toggle(c, p, &a.showNowPlaying, locales.FlyoutPushLabel(), func(v bool) { a.eng.SetShowNowPlaying(v) })
-		})
+		a.nowPlayingProgress(c, p, s, preview, field)
 	})
 }
 
-// nowPlayingSub is the line under the track in the playback card.
-func (a *App) nowPlayingSub() string {
+// nowPlayingPreview is the settings page's card. It shows the live session,
+// or a sample card when nothing plays, so the preview never disappears; the
+// master off dims it and the page disables its rows.
+func (a *App) nowPlayingPreview(c *ui.Context, p palette) {
+	s, ok := a.nowSession()
+	var art *ui.Bitmap
+	var light, dark *image.RGBA
+	level := func() analyze.Frame { return analyze.Frame{} }
+	if ok {
+		art, light, dark = a.nowArt, a.nowFieldLight, a.nowFieldDark
+		delay := time.Duration(a.latencyMS()) * time.Millisecond
+		level = func() analyze.Frame {
+			if a.levelFrame != nil {
+				return a.levelFrame(delay)
+			}
+			return analyze.Frame{}
+		}
+	} else {
+		s, art, light, dark, level = previewSession()
+	}
+	field := light
+	if p.dark {
+		field = dark
+	}
+	wrap := ui.Column(c)
+	if !a.cfg.ShowNowPlayingPanel {
+		wrap.Opacity(0.45)
+	}
+	wrap.Children(func() {
+		a.nowPlayingCardBody(c, p, s, true, previewMeterAnimates(ok, a.cfg.ShowNowPlayingPanel), art, field, level, true)
+	})
+}
+
+// previewSession is the settings page's sample card when nothing plays.
+func previewSession() (nowplaying.Session, *ui.Bitmap, *image.RGBA, *image.RGBA, func() analyze.Frame) {
+	sample := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			t := float64(x+y) / 126
+			sample.SetRGBA(x, y, color.RGBA{
+				R: uint8(135 + (47-135)*t),
+				G: uint8(121 + (142-121)*t),
+				B: uint8(221 + (154-221)*t),
+				A: 255,
+			})
+		}
+	}
+	s := nowplaying.Session{
+		AUMID: "settings.preview", AppName: "Apple Music",
+		Title:  locales.SettingsNowPlayingSampleTitle(),
+		Artist: locales.SettingsNowPlayingSampleArtist(),
+		Status: nowplaying.StatusPlaying, Playing: true,
+		CanPlay: true, CanPause: true, CanPrev: true, CanNext: true,
+		Position: 128 * time.Second, Duration: 244 * time.Second,
+	}
+	frame := analyze.Frame{Bands: [analyze.BandCount]float32{0.35, 0.6, 0.85, 0.55, 0.4}}
+	return s, ui.NewBitmap(sample), coverField(sample, false), coverField(sample, true), func() analyze.Frame { return frame }
+}
+
+// nowPlayingPoster keeps the cover's own aspect ratio around a fixed height,
+// so switching sessions never changes the card's height: a 16:9 cover gets a
+// wider poster, not a taller one.
+func (a *App) nowPlayingPoster(c *ui.Context, p palette, art *ui.Bitmap, mode settings.CoverMode) {
+	h := float32(52)
+	w := h
+	// The placeholder is a raised tile on the media card's pill surface, like
+	// the transport circles, so it reads as a cover rather than empty space.
+	if mode == settings.CoverPlaceholder || art == nil {
+		box := ui.Box(c).Size(w, h).Radius(9).Clip().Shrink(0).Background(p.card)
+		box.Center().Children(func() {
+			ui.Icon(c, iconNote).Size(18, 18).TextColor(p.muted)
+		})
+		return
+	}
+	if bw, bh := art.Size(); bw > 0 && bh > 0 {
+		w = h * float32(bw) / float32(bh)
+	}
+	// The artwork's tile keeps the card's pill, so a corner sliver never
+	// shows as a light edge around the image.
+	box := ui.Box(c).Size(w, h).Radius(9).Clip().Shrink(0).Background(p.pill)
+	box.Children(func() {
+		ui.Image(c, art).Size(w, h).Fit(ui.Cover)
+	})
+}
+
+// nowTransport draws the enabled transport controls in the session arrow's
+// card style: 24-DIP circles 4 DIPs apart, with the same fill and muted glyph.
+func (a *App) nowTransport(c *ui.Context, p palette, s nowplaying.Session, preview bool) {
+	if !a.cfg.PlaybackControls || !a.nowHasControls(s) {
+		return
+	}
+	ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
+		if s.CanPrev {
+			a.nowTransportButton(c, p, iconPrev, locales.FlyoutPrevious(), nowplaying.ActionPrevious, s.AUMID, preview)
+		}
+		if s.Playing && s.CanPause {
+			a.nowTransportButton(c, p, iconPause, locales.FlyoutPause(), nowplaying.ActionPause, s.AUMID, preview)
+		} else if s.CanPlay {
+			a.nowTransportButton(c, p, iconPlay, locales.FlyoutPlay(), nowplaying.ActionPlay, s.AUMID, preview)
+		}
+		if s.CanNext {
+			a.nowTransportButton(c, p, iconNext, locales.FlyoutNext(), nowplaying.ActionNext, s.AUMID, preview)
+		}
+	})
+}
+
+func (a *App) nowTransportButton(c *ui.Context, p palette, icon *ui.SVG, label string, action nowplaying.Action, aumid string, preview bool) {
+	btn := ui.ButtonBase(c).Size(24, 24).Radius(12).Center().
+		Background(p.card).Cursor(ui.CursorPointer).Label(label).Disabled(preview)
+	if btn.Hovered() {
+		btn.Background(p.cardHover)
+	}
+	btn.OnClick(func() {
+		if a.controlNow != nil {
+			a.controlNow(aumid, action)
+		}
+	})
+	btn.Children(func() {
+		col := p.muted
+		if btn.Hovered() {
+			col = p.fg
+		}
+		ui.Icon(c, icon).Size(12, 12).TextColor(col)
+	})
+}
+
+// meterAnimates reports whether the meter asks for continuous paint frames:
+// only a playing meter on a real window, and only when motion is allowed.
+// A headless tester has no window and would wait forever for frames to stop.
+// reduceMotion runs last: without a running app the theme's preferences block.
+func meterAnimates(animate, playing, windowed bool, reduceMotion func() bool) bool {
+	return animate && playing && windowed && !reduceMotion()
+}
+
+// previewMeterAnimates keeps the settings sample still: the preview follows
+// the live level only while a session plays and the feature is on.
+func previewMeterAnimates(live, enabled bool) bool { return live && enabled }
+
+// nowPlayingMeter draws five bars centered on one horizontal axis. Each bar is
+// a window into the cover's color field at its own column, so the spectrum
+// follows the art's colors as well as its level.
+func (a *App) nowPlayingMeter(c *ui.Context, p palette, s nowplaying.Session, field *image.RGBA, level func() analyze.Frame, animate bool) {
+	tint := a.cfg.CoverColors
+	color := func(x, y int) ui.Color {
+		if !tint {
+			return p.fg
+		}
+		return fieldColor(field, x, y)
+	}
+	playing := s.Playing
+	ui.Box(c).Size(fieldW, fieldH).Shrink(0).Draw(func(pt *ui.Painter, r ui.Rect) {
+		frame := analyze.Frame{}
+		if level != nil {
+			frame = level()
+		}
+		for i := 0; i < analyze.BandCount; i++ {
+			h := float32(3)
+			if playing {
+				h = 8 + frame.Bands[i]*16
+			}
+			if h > fieldH {
+				h = fieldH
+			}
+			top := int(12 - h/2)
+			bottom := int(12 + h/2)
+			from := color(i*5+1, top)
+			to := color(i*5+1, bottom)
+			if !playing {
+				alpha := float32(0.45)
+				if p.dark {
+					alpha = 0.58
+				}
+				from, to = from.Alpha(alpha), to.Alpha(alpha)
+			}
+			bar := ui.Rect{X: r.X + float32(i*5), Y: r.Y + (r.H-h)/2, W: 3, H: h}
+			pt.FillGradient(bar, ui.LinearGradient{From: from, To: to, Angle: 180}, 1.5)
+		}
+		windowed := a.win != nil || a.settingsWin != nil
+		if meterAnimates(animate, playing, windowed, func() bool {
+			return mygo.Theme.Preferences().ReduceMotion
+		}) {
+			pt.AnimationFrameRate(30)
+		}
+	})
+}
+
+// nowPlayingProgress is the transport row. A session with a timeline shows
+// elapsed, the cover-field fill and thumb, and remaining; a session without a
+// timeline keeps the same row as an empty track, with no fill, thumb, or copy.
+func (a *App) nowPlayingProgress(c *ui.Context, p palette, s nowplaying.Session, preview bool, field *image.RGBA) {
+	ui.Row(c).Gap(7).Height(28).AlignItems(ui.Center).Padding(4, 0, 0, 0).Children(func() {
+		a.nowTransport(c, p, s, preview)
+		if s.Duration <= 0 {
+			ui.Box(c).Grow(1).Height(3).Radius(1.5).Background(p.line)
+			return
+		}
+		pos := s.Position
+		if s.Playing && !preview && !a.nowSnap.ReadAt.IsZero() {
+			pos += time.Since(a.nowSnap.ReadAt)
+		}
+		if pos < 0 {
+			pos = 0
+		}
+		if pos > s.Duration {
+			pos = s.Duration
+		}
+		frac := float32(pos) / float32(s.Duration)
+		ui.Text(c, formatClock(pos)).FontSize(10).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+		ui.Box(c).Grow(1).Height(3).Draw(func(pt *ui.Painter, r ui.Rect) {
+			pt.Fill(r, p.line, 1.5)
+			if frac > 0 {
+				fill := ui.Rect{X: r.X, Y: r.Y, W: r.W * frac, H: r.H}
+				if a.cfg.CoverColors {
+					pt.FillGradient(fill, ui.LinearGradient{
+						From:  fieldColor(field, 0, fieldH/2),
+						To:    fieldColor(field, fieldW-1, fieldH/2),
+						Angle: 90,
+					}, 1.5)
+				} else {
+					pt.Fill(fill, p.fg, 1.5)
+				}
+			}
+			x := r.X + r.W*frac
+			thumb := ui.Rect{X: x - 4.5, Y: r.Y - 3, W: 9, H: 9}
+			pt.Shadow(thumb, 4.5, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.18))
+			pt.Fill(thumb, p.card, 4.5)
+			pt.Stroke(thumb, p.line, 4.5, 1)
+		})
+		ui.Text(c, "-"+formatClock(s.Duration-pos)).FontSize(10).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+	})
+}
+
+func (a *App) nowHasControls(s nowplaying.Session) bool {
+	return s.AUMID != "" && (s.CanPlay || s.CanPause || s.CanNext || s.CanPrev)
+}
+
+func fieldColor(f *image.RGBA, x, y int) ui.Color {
+	if f == nil {
+		return ui.RGBA(128, 128, 128, 1)
+	}
+	b := f.Bounds()
+	x = clampInt(x, b.Min.X, b.Max.X-1)
+	y = clampInt(y, b.Min.Y, b.Max.Y-1)
+	c := f.RGBAAt(x, y)
+	return ui.RGBA(c.R, c.G, c.B, 1)
+}
+
+func (a *App) nowPlayingSubFor(s nowplaying.Session) string {
 	switch {
 	case a.nowErr != "":
 		return locales.FlyoutNowPlayingSessionFailed()
-	case !a.nowOK || a.nowTrack.Title == "":
+	case s.Artist != "":
+		return s.Artist
+	case s.Album != "":
+		return locales.FlyoutNowPlayingAlbum(s.Album)
+	default:
 		return locales.FlyoutNowPlayingSession()
-	case a.nowTrack.Album != "":
-		return locales.FlyoutNowPlayingAlbum(a.nowTrack.Album)
 	}
-	return locales.FlyoutNowPlaying()
+}
+
+func formatClock(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	total := int(d / time.Second)
+	return fmt.Sprintf("%d:%02d", total/60, total%60)
 }
 
 func (a *App) flyoutFooter(c *ui.Context, p palette) {

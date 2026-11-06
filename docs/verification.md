@@ -23,6 +23,9 @@ live state:
 
 - Apple TV on-screen PIN pairing and stored-credential reconnect — the
   remaining definition-of-done gap.
+- Local output mute in the live app: the engine session path passed
+  (`TestLiveMuteLocal`); the settings-window switch itself has only headless
+  coverage.
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
@@ -50,6 +53,10 @@ live state:
   the per-receiver delay restart, receiver-password save and clear, and a
   manual receiver with no mDNS advertisement. Pinned by the receivers, engine,
   and app tests and the `settings-receivers-*` / `dialog-receiver-*` previews.
+- The directed discovery fallback in the live app: the resolver is proven
+  against both HomePods (`TestLiveUnicastQuery`), but the app's first sighting
+  of the re-merged group and the stale-group prune are pinned by headless
+  engine tests only.
 - Ambient light, artwork channel: the 2026-11-07 `AudioAccessory5,1` muted
   run shows three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon,
   orchid) each repainted the top display with no `/artwork/command`. The
@@ -110,6 +117,8 @@ Opt-in live tests, skipped unless their environment variable is set:
 
 ```bash
 SAUNDO_MDNS_TEST=1 go test -run TestBrowseIntegration -v ./internal/discovery/
+SAUNDO_UNICAST_TEST=192.168.31.46,192.168.31.164 go test -run TestLiveUnicastQuery -v ./internal/discovery/
+SAUNDO_UNICAST_BROWSE=1 go test -run TestLiveUnicastBrowse -v ./internal/discovery/
 SAUNDO_DEVICE_TEST=1 go test -run TestLiveHomePodHandshake -v ./internal/airplay/sender/
 SAUNDO_DEVICE_TEST=1 SAUNDO_DEVICE_LONG=1 go test -run TestLiveHomePodHandshake -v ./internal/airplay/sender/
 ```
@@ -353,7 +362,7 @@ software stereo groups built from independent receivers.
   It updates every two seconds even with pushing off, shows
   `title · artist`, falls back to 未检测到媒体, and has the 推送 switch beside
   it. The duplicate switch in the settings card was removed. Pinned by
-  `TestNowPlayingRowShowsTrack`.
+  `TestNowPlayingCardShowsTrack`.
 - **Push behavior.** A changed track is sent only while the toggle is on and a
   session is streaming; a new stream resets the sent marker and resends the
   current track after reconnect. Pinned by
@@ -368,6 +377,169 @@ software stereo groups built from independent receivers.
   tests.
 - `gofmt -l .` and `go vet ./...` printed nothing; `go test -count=1 ./...`
   passed every package after the change.
+
+## Now Playing media card (2026-11-06)
+
+- **SMTC supplies the whole card.** `internal/nowplaying.Read` enumerates
+  `GetSessions`, reads each session's source AUMID, media properties,
+  playback status and control flags, timeline, and thumbnail, and keeps the
+  manager's current session. Artwork comes through `IRandomAccessStream` →
+  `IInputStream` → `IBuffer`/`IBufferByteAccess`; PowerShell cannot unwrap
+  the same thumbnail (`Cannot convert System.__ComObject to
+  IRandomAccessStreamWithContentType`). Live on Windows 11 26300: Chrome
+  "Late Night Afrobeats Mix …" (paused, play only, seek available,
+  53:41 / 58:39, 22,171-byte PNG) and Apple Music
+  "Daimeiwakusei." (paused, play + next, 0:16 / 4:12, 210,734-byte
+  JPEG). A later re-run at 2026-11-06 02:04 read Apple Music
+  "Cinderella (feat. Ty Dolla $ign)" (paused, play/next/previous, 3:29 /
+  8:00, 99,852-byte JPEG) cleanly. Re-run with
+  `SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/`.
+- **The card** shows the app name, the session-switch arrow, a
+  fixed-52-DIP-tall poster whose width follows the cover's ratio (a 16:9
+  thumbnail gets a wider poster, never a taller card), title/artist, a
+  five-band meter, and the progress row. The transport controls sit at the
+  row's left as 24-DIP circles in the session arrow's card style — card
+  fill, muted 12-DIP glyph, hover, 4 DIP apart, no filled primary — and
+  only enabled commands are drawn. Each calls `nowplaying.Control`
+  (TryPlay/TryPause/TrySkipNext/TrySkipPrevious, plus
+  TryChangePlaybackPosition for a later seek affordance); the tester pins
+  the pause click and the AUMID in
+  `TestNowPlayingCardControlsSendActions`. An unrecognized AUMID reads
+  未知应用 / Unknown app. A session with no timeline keeps the same progress
+  row as an empty track — no fill, thumb, times, or copy — so the card
+  height does not change. With no session at all the card is not drawn: the
+  playback card keeps the volume, latency, and capture lines, `fitFlyout`
+  drops the card's 150 DIP, and the 62-DIP spacer that used to separate the
+  device card from the playback card is gone. The tester pins the hidden card
+  in `TestNowPlayingCardHidesWithoutMedia`, and the height cases in
+  `TestFlyoutHeightForDeviceRows`. The commands were not sent to a live media
+  app in this unit, because that would change the user's playback; the
+  session lookup they use is the one the live SMTC test covers.
+- **The first-artwork placeholder drew a light ring.** Before SMTC supplied
+  the first thumbnail, the poster showed the note tile filled with the card
+  color while the media card uses the pill; the tile's edge read as a white
+  border (reported from the first Apple Music play on Windows 11 26300).
+  Later plays used the cached artwork, which covers the tile. The artwork's
+  tile now keeps the pill, so a corner sliver never shows as an edge; the
+  placeholder tile moved to the raised card surface so it reads as a cover
+  distinct from the card,
+  and `TestNowPlayingPlaceholderStandsOutFromTheCard` pins that fill in both
+  themes.
+- **The meter.** Capture blocks feed `internal/audio/analyze.Meter` on the
+  capture goroutine: stereo-energy level over 60 dB and five Goertzel bands,
+  fast attack/slow release, a 20 s frame ring. The card reads the frame
+  delayed by the selected latency, so the bars follow what the receiver is
+  playing. `TestMeterLevelBandsAndDelay` pins level, bands, delayed read,
+  and decay; `TestSilenceMeterFeedsTheLevelMeter` pins the engine tap. The
+  card asks for 30 fps only with a real window and Reduce Motion off, so
+  headless previews settle.
+- **The meter twitched at low level.** Each band normalized its magnitude by
+  its own running peak, and that peak decayed into the noise floor during
+  quiet passages; every block then read `mag/peak` near 1, so dither and room
+  tone filled the bars and moved them on tiny changes (reported against
+  quiet playback). The meter now ignores band energy below -50 dBFS, floors
+  the per-band gain 18 dB above the gate (a quiet passage compresses instead
+  of pumping), and the envelope follower ignores changes under 0.02 of the
+  bar range. `TestMeterGatesNoiseBelowTheFloor` and
+  `TestMeterQuietToneKeepsBarsLow` read about 1.0 on the old meter and pass
+  now; `TestFollowIgnoresSubBarChanges` pins the deadband. The change was
+  judged with synthetic tones and noise, not with a listener's track; the
+  live meter was not captured.
+- **The cover field.** `coverField` center-crops the artwork, samples a
+  23×24 grid, blurs it, blends toward its average, compresses HSL
+  lightness, and lifts brightness/saturation per theme.
+  `TestCoverFieldCompressesLightness` pins the size and compressed range.
+  The native previews (`.audit/previews/nowplaying-card-v6/`, uncommitted)
+  show the stream, compact no-media, and unknown/no-timeline states in both
+  locales and themes; their artwork is a generated gradient, not a
+  listener's cover.
+- **Checks.** `mingw32-make check` passed: gofmt, go vet, `go tool mygo
+  vet`, the catalog validation, every package's tests, and the verify map
+  (`map ok`). `SAUNDO_PREVIEW_DIR=… go test ./internal/app -run
+  TestRenderPreviews` passed in 20 s, and `mingw32-make build` rebuilt and
+  relaunched `bin/saundo.exe`. With no media session the rebuilt flyout
+  measured 420×456 live (the media card hidden and the old spacer gone) and
+  was captured at `/tmp/saundo-verify/20261106-110235/flyout-compact.png`;
+  the capture is DPI-clipped to the window's top-left, so the compact
+  visual is `.audit/previews/nowplaying-card-v6/flyout-idle-zh.png` and the
+  media state is `.audit/previews/nowplaying-card-v6/flyout-stream-light-zh.png`
+  (606 DIP). Live HomePod audio, the meter against a real receiver, and a
+  live press of the transport commands were not exercised in this unit.
+
+- **The media card kept the first thumbnail.** `internal/nowplaying` cached
+  each session's artwork by AUMID/title/album, and the app's decode key used
+  the same fields. Chrome first exposed its logo as the thumbnail and the real
+  video thumbnail arrived a poll later; both caches kept the logo while
+  Windows' own media overlay showed the video. The package cache is gone (the
+  thumbnail is read on every poll) and the app key now includes an FNV-1a
+  hash of the bytes; `TestNowPlayingArtworkRefreshes` changes the artwork under
+  the same title and fails without it. A fresh live read of the Chrome session
+  returned the 14,243-byte video thumbnail.
+
+## Now Playing settings (2026-11-06)
+
+- **The 正在播放 page.** The settings window gains an eighth page between 采集
+  and 更新. It has one card: the display master (`showNowPlayingPanel`, on)
+  with the 系统媒体 badge, a preview of the real Now Playing card (the live session, or a sample Apple Music / 夜航 / 白鲸电台 card when nothing plays), and
+  the rows 播放控制 (`playbackControls`), 封面配色
+  (`coverColors`), 音频电平 (`audioLevel`), and last
+  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting, off);
+  the receiver push is last because it leaves the panel untouched. Master off greys the preview
+  and disables every row; there is no closed placeholder. New keys in
+  `settings.json` default on; a missing key reads its default.
+- **The cover mode.** The page's 封面 row is a three-way segmented control
+  in the latency switch's style: 无封面 (`none`), 默认封面 (`placeholder`),
+  and 媒体封面 (`media`, default). The card omits the poster for none, shows
+  the raised note tile for placeholder, and the media artwork for media; the main
+  row keeps its 62-DIP height, so the flyout height is identical in all three.
+  The mode persists as `coverMode` in `settings.json`; an invalid stored value
+  reads as `media`. `TestNowPlayingCoverModes` pins the left title shift with
+  no poster and the fixed card height; `TestNowPlayingCoverModePersists` and
+  the settings test pin persistence and the invalid fallback.
+- **The flyout follows the page.** `nowPlayingCard` returns nothing while the
+  master is off, and `hasNowMedia` drops the card's 150 DIP from the flyout;
+  the flyout shrinks exactly like the no-media state. The playback controls
+  setting removes the transport; cover colors off draws the progress fill and
+  meter in the default ink; audio level off removes the five bands. The
+  receiver push is effective only as `showNowPlaying && showNowPlayingPanel`.
+  The settings preview uses the same card body in preview mode, dimmed at 45%
+  opacity and read-only; it falls back to a fixed sample so no-media users still
+  see the card. The sample strings are `settingsNowPlayingSampleTitle` /
+  `settingsNowPlayingSampleArtist`.
+- **The settings preview's meter stepped every two seconds.** The preview
+  passed its read-only flag as the meter's animate flag, so the settings card
+  never asked for paint frames; the bars sampled the live level only when the
+  SMTC poll invalidated the window, once per 2 s. The card body now takes the
+  meter's animation separately: the flyout always animates, and the preview
+  animates only for a live session while the master is on. `meterAnimates`
+  and `previewMeterAnimates` pin the decision. `meterAnimates` reads Reduce
+  Motion through a func because `mygo.Theme.Preferences()` blocks without a
+  running app; the eager read hung the table test. The smoothness itself is
+  user-observed: no automated check counts a real window's frames.
+- **The receiver push carries the cover.** The sender already emitted the
+  thumbnail as an image `SET_PARAMETER`, but `Engine.SetNowPlaying` passed
+  nil and the app's change key held only the text. The cover now rides
+  through the engine command and both transports; the key includes an FNV-1a
+  hash of the bytes, so a thumbnail that lands or changes after the text is
+  sent again in the same session, and turning the switch back on resends the
+  current track instead of waiting for the next.
+  `TestNowPlayingCoverRidesAsImage`,
+  `TestNowPlayingCommandForwardsWhenEnabled`, and
+  `TestRefreshNowPlayingPushesArtworkChanges` pin the path. Live check
+  2026-11-07: the MacBook Air (`Mac14,2`) AirPlay receiver showed the pushed
+  SMTC cover in its Now Playing UI (user-confirmed). The HomePod pair has no
+  display; its rows still receive the same metadata push.
+- **Previews and tests.** `.audit/previews/nowplaying-settings/` (uncommitted)
+  holds the live settings page, the master-off page, and the compact flyout
+  without the card, zh-CN and English, light and dark. The page is covered by
+  `TestSettingsPagesRender`; the master switch, persistence, disabled rows,
+  and the flyout shrink by `TestNowPlayingSettingsPersist` and
+  `TestNowPlayingPanelHiddenWhenOff`; the transport gate by
+  `TestNowPlayingControlsSetting`.
+- **Checks.** `mingw32-make check` passed (gofmt, go vet, `go tool mygo vet`,
+  catalog validation, every package's tests, verify map `map ok`);
+  `SAUNDO_PREVIEW_DIR=… TestRenderPreviews` passed; the previews above were
+  inspected. Live app driving of the new page was not run in this unit.
 
 ## Tray flyout (2026-10-31)
 
@@ -770,6 +942,123 @@ muted to volume 0 so no test made sound.
   real receiver, the 6,1 and first-generation HomePod, and a stereo pair's
   simultaneous repaint. A true LED-off has no AirPlay command.
 
+## Local output mute (2026-11-06)
+
+The connection mute calls `IAudioEndpointVolume.SetMute` on the render
+endpoint. On some drivers that also silences WASAPI loopback capture, which
+would silence the stream itself. A manual probe
+(`go test -tags muteprobe ./internal/capture -run TestLoopbackSurvivesEndpointMute -v`)
+played a 440 Hz tone through the default endpoint, captured the loopback, and
+muted the endpoint between two measurements.
+
+- **Probe result.** RMS stayed at about 0.17: 0.1679 before the mute, 0.1768
+  while muted, and 0.1768 after the restore in the latest run. The endpoint
+  was already muted before the probe (`previousMute=true`), and the probe
+  restored that state. On this machine, Realtek Digital Output at 48 kHz, the
+  loopback tap is upstream of the endpoint mute.
+- **Driver dependence.** The tap point is driver-dependent; the settings note
+  warns that muting can also silence capture. The probe is manual because it
+  touches the user's audio device, not a CI test.
+- **Crash guard.** The engine writes `mute-guard.json` before muting and
+  removes it after restoring. `TestMuteGuardRecoversAfterCrash` covers the
+  next-launch restore; `TestMuteGuardCorruptIsLeftAlone` keeps an unreadable
+  guard instead of guessing which endpoint to unmute.
+- **Pins.** `TestMuteLocalFollowsTheSession`,
+  `TestMuteLocalOffRestoresAtOnce`, `TestMuteLocalOnWhileStreaming`,
+  `TestMuteLocalFailureIsVisible`, `TestMuteLocalTargetsSelectedEndpoint`,
+  `TestMuteLocalProcessCaptureUsesDefaultEndpoint`,
+  `TestMuteLocalSettingPersists`, `TestConnectionPageMuteLocalStates`.
+- **Live session (2026-11-06).** `SAUNDO_MUTE_TEST=1 go test ./internal/engine -run TestLiveMuteLocal -v`
+  discovered HomePod L at 192.168.31.46, reached streaming, observed the local
+  endpoint muted and `mute-guard.json` present, then disconnected and observed
+  the endpoint restored and the guard gone. The test mutes the receiver before
+  audio can flow, drives the engine directly with temporary settings and
+  credentials, and restores the receiver's remembered volume before
+  disconnecting; it does not click the settings-window switch. That switch is
+  pinned by the headless UI tests and the native previews.
+- **Still owed.** A forced kill in the live app, and the settings-window
+  toggle clicked in a real session; the engine guard and the UI wiring are
+  covered separately.
+
+## Stereo group name decoding (2026-11-06)
+
+A HomePod mini stereo pair (`AudioAccessory5,1`, software 27) advertises the
+Home app group name in the TXT `gpn` field. `hashicorp/mdns` reports TXT
+strings in RFC 1035 presentation form, so a UTF-8 name arrives as `\DDD` byte
+escapes: the pair named 卧室 advertised `gpn=\229\141\167\229\174\164`.
+Discovery decoded those escapes for the instance name but not for `gpn`, so
+the collapsed pair row and `receivers.json` stored the escaped text.
+
+- **Finding.** A live browse printed the group as
+  `name="\\229\\141\\167\\229\\174\\164"`, and `receivers.json` held the same
+  escaped name under `stereo:7A6CE980-7265-5ABD-B3E9-B90563D5932F`.
+- **Fix.** `parseEntry` runs `gpn` through `unescapeDNS`, the same path as
+  the instance name; devices.md and protocol.md record the rule.
+- **Pin.** `TestStereoGroupNameDecodesDNSEscapes` fails before the fix with
+  `group name = "\\229\\141\\167\\229\\174\\164"` and passes after it.
+- **Live app (2026-11-06).** The rebuilt 0.4.2 app discovered the pair as
+  `卧室 · AudioAccessory5,1 · 立体声组 2/2`, showed `正在播放到 卧室`, and
+  rewrote the stored name to `卧室`. Flyout capture:
+  `/tmp/saundo-verify/20261106-gpn-fix/flyout-after.png`.
+
+## Directed discovery fallback (2026-11-06)
+
+On this network the HomePod pair (HomePod L 192.168.31.46 and HomePod R
+192.168.31.164, software 27.3) was online and accepted TCP 7000, but the
+reported 8-second multicast browse saw only the MacBook Air and the Redmi. The
+app therefore marked the pair offline, and a remembered group could not be
+connected.
+
+- **Multicast is intermittent.** Repeating
+  `SAUNDO_MDNS_TEST=1 go test -run TestBrowseIntegration -v ./internal/discovery`
+  with the directed pass disabled (the test now sets `unicastEvery = 0` so it
+  measures multicast alone) produced three different snapshots in three runs:
+  the complete 卧室 group; HomePod L and HomePod R as separate `_raop`-only
+  devices (`ap2=false`, no tsid, so no group); and the MacBook Air and Redmi
+  only. The loss is per reply, not a permanent block, which is why a single
+  successful browse does not prove the next cycle will be complete.
+- **Directed queries are reliable.** A directed PTR query to each address
+  returned that HomePod's own `_airplay` and `_raop` instance every run, in
+  about 10 to 30 ms. `_airplay` carried
+  `tsid=7A6CE980-7265-5ABD-B3E9-B90563D5932F`, `gpn` 卧室, `deviceid`, and the
+  feature bits. `_raop` carried `am`, `ft`, and `sf` and no `deviceid`, so its
+  identity came from the `<MAC>@<name>` instance. Both members advertised
+  `igl=1` in this capture. The `_airplay` reply is about 700 bytes; the DNS
+  client read buffer must exceed the 512-byte default (the resolver uses
+  8192).
+- **Fallback.** `internal/discovery` keeps the multicast browse and adds a
+  directed pass every fifth cycle (15 s at the 3 s interval). Candidates are
+  the Windows ARP neighbor table (`GetIpNetTable`) plus the manual and
+  last-known receiver hosts from `receivers.json`. The pass queries both
+  service types, follows SRV/TXT/A when the responder omits them, synthesizes
+  an `mdns.ServiceEntry`, and runs the existing `parseEntry`/merge path. A
+  missing record skips that instance; it never becomes a device with an empty
+  address.
+- **Persistence and prune.** A discovered row stores its last host, port, and
+  `lastSeen`; a stereo group stores the leader's endpoint. A remembered
+  `stereo:<tsid>` unseen for 24 h is pruned with its auto-connect flag, because
+  a split and re-merge mints a new tsid. A group without `lastSeen` is stamped
+  on the first launch instead of pruned, so an upgrade still gets the full
+  grace.
+- **Pins.** `TestUnicastFallbackDiscoversStereoPair` (loopback DNS server,
+  both service types, group 卧室), `TestUnicastSkipsInstanceWithoutAddress`,
+  `TestUnicastRunsEveryFifthCycle`,
+  `TestUnicastCandidatesMergeNeighborsAndSeeds`,
+  `TestParseIpNetTableFiltersUnusableNeighbors`,
+  `TestNeighborHostsReadsTheArpTable`,
+  `TestDiscoveredReceiverPersistsAddressAndLastSeen`,
+  `TestDiscoveredGroupPersistsLeaderAddress`,
+  `TestLegacyGroupGetsGraceInsteadOfImmediatePrune`,
+  `TestStaleGroupPrunedAfterGraceAndLosesAutoConnect`,
+  `TestGroupOfflineWithinGraceIsKept`, and
+  `TestPruneStaleGroupsRemovesOnlyExpiredUndiscoveredGroups`.
+- **Live check.** `SAUNDO_UNICAST_TEST=192.168.31.46,192.168.31.164 go test
+  -run TestLiveUnicastQuery -v ./internal/discovery` resolved both HomePods
+  over both services in 20 ms; the log showed `tsid=7A6CE980-...` and
+  `gpn="卧室"` for each member. With multicast disabled and only the directed
+  pass running (`SAUNDO_UNICAST_BROWSE=1 go test -run TestLiveUnicastBrowse -v
+  ./internal/discovery`), the service found the MacBook Air, the Redmi, and the
+  卧室 group (2 members, online) in 1.0 s from the real ARP table.
 ## Ambient light, cover-only (2026-11-07)
 
 HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
@@ -799,7 +1088,7 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
 | Pairing 470 | The receiver wants a PIN but did not show one. The app falls back from transient to on-screen PIN once. |
 | No audio after reconnect | Stored credentials are missing or corrupt; the app pairs afresh. Check the DPAPI file is readable by the same Windows user. |
 | Timing requests unanswered | Windows Firewall blocks inbound UDP to the app. Allow the app on private networks. |
-| Discovery empty | mDNS blocked, wrong network profile, VPN, or AP/client isolation. |
+| Discovery empty | mDNS blocked, wrong network profile, VPN, or AP/client isolation. A receiver that answers directed queries but not multicast is found from the ARP neighbor table; one absent from both stays undiscovered. |
 
 ## Evidence to capture before changing protocol code
 

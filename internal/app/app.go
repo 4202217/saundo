@@ -3,10 +3,14 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"hash/fnv"
+	"image"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -17,6 +21,7 @@ import (
 	"saundo/internal/airplay/creds"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
 	"saundo/internal/capture"
 	"saundo/internal/diagnostics"
 	"saundo/internal/engine"
@@ -105,31 +110,40 @@ type App struct {
 	receiverDelayTimer *time.Timer
 	receiverDelayPend  map[string]int
 
-	readNowPlaying    func() (nowplaying.Track, bool, error)
-	pushNowPlaying    func(title, artist, album string)
+	readNowPlaying    func() (nowplaying.Snapshot, error)
+	pushNowPlaying    func(title, artist, album string, cover []byte, coverMIME string)
 	nowPlayingSetting func() (show, streaming bool)
 	// setThemeSource applies the appearance; a test replaces it, because
 	// mygo.Theme.SetSource needs the running application's main thread.
 	setThemeSource func(mygo.ThemeSource)
+	nowSnap        nowplaying.Snapshot
+	nowMediaAUMID  string
+	nowArt         *ui.Bitmap
+	nowArtKey      string
+	nowFieldLight  *image.RGBA
+	nowFieldDark   *image.RGBA
+	levelFrame     func(delay time.Duration) analyze.Frame
+	controlNow     func(aumid string, action nowplaying.Action)
 	nowTrack       nowplaying.Track
 	nowOK          bool
 	nowErr         string
 	nowSent        string
 	lastStreaming  bool
 
-	nameDraft      string
-	strict         bool
-	reconnect      bool
-	launchAtStart  bool
-	showNowPlaying bool
-	lampEnabled    bool
-	lampPreset     string
-	lampExpanded   bool
-	trayAnimation  bool
-	autoUpdate     bool
-	beta           bool
-	showLog        bool
-	page           settingsPage
+	nameDraft           string
+	strict              bool
+	reconnect           bool
+	launchAtStart       bool
+	showNowPlaying      bool
+	showNowPlayingPanel atomic.Bool
+	lampEnabled         bool
+	lampPreset          string
+	lampExpanded        bool
+	trayAnimation       bool
+	autoUpdate          bool
+	beta                bool
+	showLog             bool
+	page                settingsPage
 
 	flyoutEntered   bool
 	settingsEntered bool
@@ -223,6 +237,7 @@ func Run() error {
 			res.MovedPasswords, res.KeptPasswords, res.SeededAuto)
 	}
 	a.cfg = a.sets.Load()
+	a.showNowPlayingPanel.Store(a.cfg.ShowNowPlayingPanel)
 
 	a.eng = engine.NewWithReceivers(a.sets, credsStore, recvStore, a.log, a.onEngineChange)
 
@@ -277,8 +292,8 @@ func (a *App) ready() {
 			}
 		})
 		// Discovery has not reported yet, so the flyout opens at the empty
-		// state's height and grows as devices arrive.
-		a.flyoutH = flyoutHeightForState(0, a.showLatencySwitch, false, a.lampEnabled)
+		// state's height and grows as devices and a media session arrive.
+		a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch, false, a.lampEnabled)
 		a.win = mygo.NewFlyout(mygo.FlyoutOptions{
 			Tray:      a.tray,
 			Placement: mygo.PlacementBottom,
@@ -295,7 +310,7 @@ func (a *App) ready() {
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:     locales.AppName(),
 			Width:     flyoutWidth,
-			Height:    flyoutHeight,
+			Height:    flyoutHeightFor(0, a.showLatencySwitch, false),
 			MinWidth:  380,
 			MinHeight: 460,
 			Hidden:    false,
@@ -368,11 +383,19 @@ func (a *App) ready() {
 		})
 	}()
 
-	a.readNowPlaying = nowplaying.Current
+	a.readNowPlaying = nowplaying.Read
 	a.pushNowPlaying = a.eng.SetNowPlaying
+	a.levelFrame = a.eng.LevelFrame
+	a.controlNow = func(aumid string, action nowplaying.Action) {
+		go func() {
+			if err := nowplaying.Control(aumid, action, 0); err != nil && a.log != nil {
+				a.log.Printf("now playing control: %v", err)
+			}
+		}()
+	}
 	a.nowPlayingSetting = func() (show, streaming bool) {
 		snap := a.eng.Snapshot()
-		return snap.ShowNowPlaying, snap.State == sender.StateStreaming
+		return snap.ShowNowPlaying && a.showNowPlayingPanel.Load(), snap.State == sender.StateStreaming
 	}
 	a.eng.Start()
 	if !silent {
@@ -399,18 +422,19 @@ func (a *App) pollNowPlaying() {
 	}
 }
 
-// refreshNowPlaying updates the visible track and pushes it to a streaming
-// receiver when the toggle is on. A new stream resends the current track so a
-// reconnect does not leave the receiver without metadata.
+// refreshNowPlaying updates the card and pushes the current track to a
+// streaming receiver when 推送正在播放 is on. A new stream resends the current
+// track so a reconnect does not leave the receiver without metadata.
 func (a *App) refreshNowPlaying() {
 	if a.readNowPlaying == nil {
 		return
 	}
-	track, ok, err := a.readNowPlaying()
+	snap, err := a.readNowPlaying()
 	errText := ""
 	if err != nil {
 		errText = err.Error()
 	}
+	track, ok := nowPlayingTrack(snap)
 	show, streaming := false, false
 	if a.nowPlayingSetting != nil {
 		show, streaming = a.nowPlayingSetting()
@@ -419,39 +443,158 @@ func (a *App) refreshNowPlaying() {
 		a.nowSent = ""
 	}
 	a.lastStreaming = streaming
-	if !ok {
+	if !ok || !show {
 		a.nowSent = ""
 	}
 	a.updateUI(func() {
-		a.nowTrack, a.nowOK, a.nowErr = track, ok, errText
+		a.setNowSnapshot(snap, errText)
 	})
 	if !show || !ok || !streaming || a.pushNowPlaying == nil {
 		return
 	}
-	key := track.Title + "\x00" + track.Artist + "\x00" + track.Album
+	s := snap.Sessions[snapIndex(snap)]
+	key := nowPlayingPushKey(track, s)
 	if key == a.nowSent {
 		return
 	}
 	a.nowSent = key
-	a.pushNowPlaying(track.Title, track.Artist, track.Album)
+	a.pushNowPlaying(track.Title, track.Artist, track.Album, s.Artwork, s.ArtworkMIME)
 	if a.log != nil {
 		a.log.Printf("now playing: %s - %s", track.Title, track.Artist)
 	}
 }
 
-// nowPlayingText is the line under 正在播放 in the playback card.
-func (a *App) nowPlayingText() string {
-	if a.nowErr != "" {
-		return locales.FlyoutNowPlayingReadFailed()
+func snapIndex(snap nowplaying.Snapshot) int {
+	if snap.Current < 0 || snap.Current >= len(snap.Sessions) {
+		return 0
 	}
-	if !a.nowOK || a.nowTrack.Title == "" {
-		return locales.FlyoutNowPlayingNoMedia()
+	return snap.Current
+}
+
+func nowPlayingTrack(snap nowplaying.Snapshot) (nowplaying.Track, bool) {
+	if len(snap.Sessions) == 0 {
+		return nowplaying.Track{}, false
 	}
-	text := a.nowTrack.Title
-	if a.nowTrack.Artist != "" {
-		text += " · " + a.nowTrack.Artist
+	s := snap.Sessions[snapIndex(snap)]
+	if s.Title == "" {
+		return nowplaying.Track{}, false
 	}
-	return text
+	return nowplaying.Track{Title: s.Title, Artist: s.Artist, Album: s.Album}, true
+}
+
+// setNowSnapshot adopts a read on the UI thread, keeping the selected session
+// by AUMID and decoding the cover only when the selected track changes.
+func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
+	a.nowSnap = snap
+	a.nowErr = errText
+	a.nowTrack, a.nowOK = nowPlayingTrack(snap)
+	if len(snap.Sessions) == 0 {
+		a.nowMediaAUMID = ""
+	} else if !a.hasNowSession(a.nowMediaAUMID) {
+		a.nowMediaAUMID = snap.Sessions[snapIndex(snap)].AUMID
+	}
+	a.refreshNowArtwork()
+	a.fitFlyout()
+}
+
+func (a *App) hasNowSession(aumid string) bool {
+	if aumid == "" {
+		return false
+	}
+	for _, s := range a.nowSnap.Sessions {
+		if s.AUMID == aumid {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) nowMediaIndex() int {
+	if len(a.nowSnap.Sessions) == 0 {
+		return 0
+	}
+	for i, s := range a.nowSnap.Sessions {
+		if s.AUMID != "" && s.AUMID == a.nowMediaAUMID {
+			return i
+		}
+	}
+	return snapIndex(a.nowSnap)
+}
+
+func (a *App) nowSession() (nowplaying.Session, bool) {
+	if len(a.nowSnap.Sessions) > 0 {
+		return a.nowSnap.Sessions[a.nowMediaIndex()], true
+	}
+	if a.nowOK && a.nowTrack.Title != "" {
+		return nowplaying.Session{Title: a.nowTrack.Title, Artist: a.nowTrack.Artist, Album: a.nowTrack.Album}, true
+	}
+	return nowplaying.Session{}, false
+}
+
+func (a *App) refreshNowArtwork() {
+	s, ok := a.nowSession()
+	key := ""
+	if ok {
+		key = nowArtworkKey(s)
+	}
+	if key == a.nowArtKey {
+		return
+	}
+	a.nowArtKey = key
+	a.nowArt = nil
+	a.nowFieldLight = nil
+	a.nowFieldDark = nil
+	if !ok || len(s.Artwork) == 0 {
+		return
+	}
+	img, _, err := image.Decode(bytes.NewReader(s.Artwork))
+	if err != nil {
+		if a.log != nil {
+			a.log.Printf("now playing artwork: %v", err)
+		}
+		return
+	}
+	a.nowFieldLight = coverField(img, false)
+	a.nowFieldDark = coverField(img, true)
+	a.nowArt = ui.NewBitmap(img)
+}
+
+// nowArtworkKey includes the thumbnail bytes so a cover that arrives late —
+// a placeholder logo first, the real artwork a poll later — refreshes under
+// the same session title.
+func nowArtworkKey(s nowplaying.Session) string {
+	if len(s.Artwork) == 0 {
+		return s.AUMID + "\x00" + s.Title + "\x00" + s.Album
+	}
+	return fmt.Sprintf("%s\x00%s\x00%s\x00%x", s.AUMID, s.Title, s.Album, fnv64(s.Artwork))
+}
+
+// nowPlayingPushKey changes when the receiver should see new metadata: the
+// text fields or the cover bytes. SMTC can supply the thumbnail a poll after
+// the text, so the bytes belong in the key.
+func nowPlayingPushKey(track nowplaying.Track, s nowplaying.Session) string {
+	key := track.Title + "\x00" + track.Artist + "\x00" + track.Album + "\x00" + s.ArtworkMIME
+	if len(s.Artwork) == 0 {
+		return key
+	}
+	return fmt.Sprintf("%s\x00%x", key, fnv64(s.Artwork))
+}
+
+func fnv64(b []byte) uint64 {
+	h := fnv.New64a()
+	_, _ = h.Write(b)
+	return h.Sum64()
+}
+
+// switchNowMedia cycles the card between the available SMTC sessions.
+func (a *App) switchNowMedia() {
+	if len(a.nowSnap.Sessions) <= 1 {
+		return
+	}
+	next := (a.nowMediaIndex() + 1) % len(a.nowSnap.Sessions)
+	a.nowMediaAUMID = a.nowSnap.Sessions[next].AUMID
+	a.refreshNowArtwork()
+	a.updateUI(func() {})
 }
 
 func hasArg(name string) bool {
@@ -549,20 +692,30 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.fitFlyout()
 }
 
-// fitFlyout sizes the tray flyout to the visible device rows, so the playback
-// card keeps the same spacing under the device card for any device count. The
-// flyout is anchored to the tray icon by its bottom edge, so a resize grows or
-// shrinks it upward and leaves the playback card where it is. Main thread only.
+// fitFlyout sizes the tray flyout to the visible device rows and the current
+// media state. The device card and the playback card touch directly, and the
+// media card adds its height only while a session exists. The flyout is
+// anchored to the tray icon by its bottom edge, so a resize grows or shrinks
+// it upward. Main thread only.
 func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.lampExpanded, a.lampEnabled)
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampExpanded, a.lampEnabled)
 	if h == a.flyoutH {
 		return
 	}
 	a.flyoutH = h
 	a.win.SetSize(flyoutWidth, h)
+}
+
+// hasNowMedia reports whether the media card has a session to draw.
+func (a *App) hasNowMedia() bool {
+	if !a.cfg.ShowNowPlayingPanel {
+		return false
+	}
+	_, ok := a.nowSession()
+	return ok
 }
 
 func (a *App) syncCaptureChoice() {

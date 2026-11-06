@@ -4,7 +4,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
+	"time"
 
 	"saundo/internal/airplay/device"
 	"saundo/internal/settings"
@@ -66,6 +68,31 @@ func TestMergeKeepsRememberedRowOffline(t *testing.T) {
 	}
 	if d.Name != "客厅" || d.Model != "AudioAccessory5,1" || !d.AirPlay2 {
 		t.Fatalf("offline row lost its remembered fields: %+v", d)
+	}
+}
+
+// TestManageableDropsOfflineRememberedRows pins the display rule: a
+// remembered receiver with no live advertisement is not shown, while a
+// manual receiver and an online receiver are, and the active session's row
+// stays reachable even when it just went offline.
+func TestManageableDropsOfflineRememberedRows(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "在线"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "离线"},
+		{Key: "m:01", Kind: KindManual, Type: TypeAirPlay2, Name: "手动", Host: "192.0.2.9", Port: 7000},
+	}}
+	devs := []device.Device{discovered("AA:00", "在线", "192.0.2.1", 7000)}
+	targets := Manageable(Merge(reg, devs, nil), "")
+	if len(targets) != 2 {
+		t.Fatalf("targets = %+v, want the online and the manual row", targets)
+	}
+	for _, target := range targets {
+		if target.Entry.Key == "AA:01" {
+			t.Fatalf("offline remembered row survived: %+v", target)
+		}
+	}
+	if got := Manageable(Merge(reg, devs, nil), "AA:01"); len(got) != 3 {
+		t.Fatalf("active row dropped: %+v", got)
 	}
 }
 
@@ -448,6 +475,35 @@ func TestMigrateSettingsKeepsAnExistingDpapiPassword(t *testing.T) {
 type fakePasswords struct {
 	values map[string]string
 	fail   bool
+}
+
+// TestPruneStaleGroupsRemovesOnlyExpiredUndiscoveredGroups pins the prune
+// rule: a stereo group unseen for longer than the grace goes, carrying its
+// auto-connect flag; a recent group, an unstamped group, a live group, a
+// single receiver, and a manual entry stay.
+func TestPruneStaleGroupsRemovesOnlyExpiredUndiscoveredGroups(t *testing.T) {
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	old := now.Add(-25 * time.Hour)
+	reg := Registry{Entries: []Entry{
+		{Key: "stereo:old", Kind: KindDiscovered, AutoConnect: true, LastSeen: old},
+		{Key: "stereo:recent", Kind: KindDiscovered, LastSeen: now.Add(-time.Hour)},
+		{Key: "stereo:unstamped", Kind: KindDiscovered},
+		{Key: "stereo:live", Kind: KindDiscovered, LastSeen: old},
+		{Key: "AA:00", Kind: KindDiscovered, LastSeen: old},
+		{Key: "m:01", Kind: KindManual, Host: "192.0.2.9", LastSeen: old},
+	}}
+	removed := PruneStaleGroups(&reg, map[string]bool{"stereo:live": true}, now, GroupGrace)
+	if !slices.Equal(removed, []string{"stereo:old"}) {
+		t.Fatalf("removed = %v, want the expired group", removed)
+	}
+	if _, ok := reg.Get("stereo:old"); ok {
+		t.Fatal("expired group survived")
+	}
+	for _, key := range []string{"stereo:recent", "stereo:unstamped", "stereo:live", "AA:00", "m:01"} {
+		if _, ok := reg.Get(key); !ok {
+			t.Fatalf("row %q was pruned", key)
+		}
+	}
 }
 
 func (f *fakePasswords) SavePassword(key, password string) error {

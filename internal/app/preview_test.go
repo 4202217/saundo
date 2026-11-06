@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"image"
+	"image/color"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -13,6 +15,8 @@ import (
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/audio/analyze"
+	"saundo/internal/engine"
 	"saundo/internal/nowplaying"
 	"saundo/internal/settings"
 )
@@ -48,6 +52,50 @@ func sampleTrack(locale string) nowplaying.Track {
 	return nowplaying.Track{Title: "夜航", Artist: "白鲸电台", Album: "远洋信号"}
 }
 
+// sampleCoverImage is a generated gradient, so a preview shows the cover path
+// without embedding a real listener's artwork.
+func sampleCoverImage() image.Image {
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			img.SetRGBA(x, y, color.RGBA{R: uint8(60 + x), G: uint8(90 + y/2), B: uint8(150 + x/3), A: 255})
+		}
+	}
+	return img
+}
+
+// sampleLevel is a fixed meter frame: previews must not depend on the
+// machine's audio or on the capture engine.
+func sampleLevel() analyze.Frame {
+	return analyze.Frame{Bands: [analyze.BandCount]float32{0.25, 0.6, 0.85, 0.55, 0.35}}
+}
+
+// sampleSnapshot is the card fixture: one playing session and a second one
+// behind the switch arrow. The artwork stays empty, so the cover falls back to
+// the note tile instead of showing a real listener's media.
+func sampleSnapshot(locale string) nowplaying.Snapshot {
+	tr := sampleTrack(locale)
+	return nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{
+			{
+				AUMID: "AppleInc.AppleMusicWin_preview", AppName: "Apple Music",
+				Title: tr.Title, Artist: tr.Artist, Album: tr.Album,
+				Status: nowplaying.StatusPlaying, Playing: true,
+				CanPlay: true, CanPause: true, CanNext: true, CanPrev: true,
+				Position: 128 * time.Second, Duration: 244 * time.Second,
+			},
+			{
+				AUMID: "Chrome.UserData.preview", AppName: "Chrome",
+				Title: "Open Water Sessions", Artist: "Signal Coast",
+				Status:  nowplaying.StatusPaused,
+				CanPlay: true, CanSeek: true,
+				Position: 416 * time.Second, Duration: 899 * time.Second,
+			},
+		},
+		Current: 0,
+	}
+}
+
 func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	t.Helper()
 	// A local build stamps git describe, the widest version the About pill
@@ -73,14 +121,14 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	}
 	// saveScrolled shows the page scrolled with the pointer over it, so the
 	// scrollbar and the fixed title divider are visible.
-	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool) {
+	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool, dy float32) {
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
 		tt.SetLocale(locale)
 		tt.SetDark(dark)
 		tt.Advance(400 * time.Millisecond)
 		tt.Move(600, 300)
-		tt.Scroll(600, 300, 0, 80)
+		tt.Scroll(600, 300, 0, dy)
 		tt.Frame()
 		f, err := os.Create(filepath.Join(dir, name+"-"+suffix+".png"))
 		if err != nil {
@@ -129,22 +177,50 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	stream := fixture()
 	stream.nowOK = true
 	stream.nowTrack = sampleTrack(locale)
-	stream.showNowPlaying = true
+	stream.nowSnap = sampleSnapshot(locale)
+	stream.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	cover := sampleCoverImage()
+	stream.nowArt = ui.NewBitmap(cover)
+	stream.nowFieldLight = coverField(cover, false)
+	stream.nowFieldDark = coverField(cover, true)
+	stream.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
 	stream.snap.ShowNowPlaying = true
 
-	save("flyout-stream-light", stream.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
-	save("flyout-stream-dark", stream.view, flyoutWidth, flyoutHeightFor(deviceRows, true), true)
+	save("flyout-stream-light", stream.view, flyoutWidth, visibleFlyoutHeight(stream), false)
+	save("flyout-stream-dark", stream.view, flyoutWidth, visibleFlyoutHeight(stream), true)
+
+	// The unknown-app, no-timeline card: the third SMTC state the mockup
+	// covered. It has no artwork and no duration, so the note tile and the
+	// empty progress track stand in.
+	unknownTitle, unknownArtist := "触屏版 MacBook Pro", "未知来源"
+	if locale == "en" {
+		unknownTitle, unknownArtist = "Touchscreen MacBook Pro", "Unknown source"
+	}
+	unknown := fixture()
+	unknown.nowSnap = nowplaying.Snapshot{
+		Sessions: []nowplaying.Session{{
+			AUMID: "Unknown.Player", Title: unknownTitle, Artist: unknownArtist,
+			Status:  nowplaying.StatusPaused,
+			CanPlay: true, CanPrev: true, CanNext: true,
+		}},
+		Current: 0,
+	}
+	unknown.nowMediaAUMID = "Unknown.Player"
+	unknown.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
+	unknown.snap.ShowNowPlaying = true
+	save("flyout-nowplaying-unknown-light", unknown.view, flyoutWidth, visibleFlyoutHeight(unknown), false)
+	save("flyout-nowplaying-unknown-dark", unknown.view, flyoutWidth, visibleFlyoutHeight(unknown), true)
 
 	idle := fixture()
 	idle.snap.State = sender.StateIdle
 	idle.snap.ConnectedName = ""
 	idle.snap.PTPActive = false
-	save("flyout-idle", idle.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-idle", idle.view, flyoutWidth, visibleFlyoutHeight(idle), false)
 
 	connecting := fixture()
 	connecting.snap.State = sender.StateHandshake
 	connecting.snap.ConnectedName = ""
-	save("flyout-connecting", connecting.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-connecting", connecting.view, flyoutWidth, visibleFlyoutHeight(connecting), false)
 
 	failed := fixture()
 	failed.snap.State = sender.StateIdle
@@ -153,39 +229,39 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		failed.snap.Error = "接收器没有响应。"
 	}
 	failed.snap.ConnectedName = ""
-	save("flyout-error", failed.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-error", failed.view, flyoutWidth, visibleFlyoutHeight(failed), false)
 
 	customFly := fixture()
 	customFly.latencyMode = settings.LatencyCustom
 	customFly.latencyCustom = 700
 	customFly.latency = 700
 	customFly.snap.LatencyMS = 700
-	save("flyout-custom-light", customFly.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
-	save("flyout-custom-dark", customFly.view, flyoutWidth, flyoutHeightFor(deviceRows, true), true)
+	save("flyout-custom-light", customFly.view, flyoutWidth, visibleFlyoutHeight(customFly), false)
+	save("flyout-custom-dark", customFly.view, flyoutWidth, visibleFlyoutHeight(customFly), true)
 
 	offFly := fixture()
 	offFly.showLatencySwitch = false
-	save("flyout-switch-off", offFly.view, flyoutWidth, flyoutHeightFor(deviceRows, false), false)
+	save("flyout-switch-off", offFly.view, flyoutWidth, visibleFlyoutHeight(offFly), false)
 
 	applying := fixture()
 	applying.latencyMode = settings.LatencyStandard
 	applying.latency = 1500
 	applying.latencyApplying = true
-	save("flyout-latency-applying", applying.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
-	save("flyout-latency-applying-dark", applying.view, flyoutWidth, flyoutHeightFor(deviceRows, true), true)
+	save("flyout-latency-applying", applying.view, flyoutWidth, visibleFlyoutHeight(applying), false)
+	save("flyout-latency-applying-dark", applying.view, flyoutWidth, visibleFlyoutHeight(applying), true)
 
 	empty := fixture()
 	empty.snap.Devices = nil
 	empty.snap.State = sender.StateIdle
 	empty.snap.SelectedID = ""
 	empty.selID = ""
-	save("flyout-empty", empty.view, flyoutWidth, flyoutHeightFor(0, true), false)
+	save("flyout-empty", empty.view, flyoutWidth, visibleFlyoutHeight(empty), false)
 
 	stereo := fixture()
 	stereo.snap.Devices = nil
 	stereo.snap.SelectedID = ""
 	stereo.selID = ""
-	save("flyout-no-device", stereo.view, flyoutWidth, flyoutHeightFor(0, true), false)
+	save("flyout-no-device", stereo.view, flyoutWidth, visibleFlyoutHeight(stereo), false)
 
 	pageNames := map[settingsPage]string{
 		pageGeneral:    "settings-general",
@@ -194,9 +270,10 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		pageAudio:      "settings-audio",
 		pageLamp:       "settings-lamp",
 		pageCapture:    "settings-capture",
+		pageNowPlaying: "settings-nowplaying",
 		pageAbout:      "settings-about",
 	}
-	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageLamp, pageCapture, pageAbout}
+	pages := []settingsPage{pageGeneral, pageConnection, pageReceivers, pageAudio, pageLamp, pageCapture, pageNowPlaying, pageAbout}
 	for _, page := range pages {
 		a := fixture()
 		a.page = page
@@ -205,6 +282,68 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		}
 		save(pageNames[page]+"-light", a.settingsView, 720, 500, false)
 	}
+	// The connection page with the local-output mute on: the target state the
+	// mockup settled, plus the waiting state a disconnected user sees.
+	muteSettings := fixture()
+	muteSettings.page = pageConnection
+	muteSettings.cfg.MuteLocalOnConnect = true
+	muteSettings.snap.MuteLocal = engine.MuteLocalActive
+	save("settings-connection-mute-light", muteSettings.settingsView, 720, 500, false)
+	save("settings-connection-mute-dark", muteSettings.settingsView, 720, 500, true)
+
+	muteWaiting := fixture()
+	muteWaiting.page = pageConnection
+	muteWaiting.cfg.MuteLocalOnConnect = true
+	muteWaiting.snap.MuteLocal = engine.MuteLocalWaiting
+	muteWaiting.snap.State = sender.StateIdle
+	muteWaiting.snap.ConnectedName = ""
+	save("settings-connection-mute-waiting-light", muteWaiting.settingsView, 720, 500, false)
+
+	// The Now Playing settings page with a live card, master on and off.
+	nowSettings := fixture()
+	nowSettings.page = pageNowPlaying
+	nowSettings.nowSnap = sampleSnapshot(locale)
+	nowSettings.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	nowCover := sampleCoverImage()
+	nowSettings.nowArt = ui.NewBitmap(nowCover)
+	nowSettings.nowFieldLight = coverField(nowCover, false)
+	nowSettings.nowFieldDark = coverField(nowCover, true)
+	nowSettings.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
+	save("settings-nowplaying-live-light", nowSettings.settingsView, 720, 500, false)
+	save("settings-nowplaying-live-dark", nowSettings.settingsView, 720, 500, true)
+	nowSettings.cfg.ShowNowPlayingPanel = false
+	save("settings-nowplaying-off-light", nowSettings.settingsView, 720, 500, false)
+	nowSettings.cfg.ShowNowPlayingPanel = true
+	nowSettings.cfg.CoverMode = settings.CoverPlaceholder
+	save("settings-nowplaying-placeholder-light", nowSettings.settingsView, 720, 500, false)
+	save("settings-nowplaying-placeholder-dark", nowSettings.settingsView, 720, 500, true)
+	nowSettings.cfg.CoverMode = settings.CoverNone
+	save("settings-nowplaying-no-cover-light", nowSettings.settingsView, 720, 500, false)
+	nowSettings.cfg.CoverMode = settings.CoverMedia
+	saveScrolled("settings-nowplaying-bottom-light", nowSettings.settingsView, 720, 500, false, 500)
+
+	// The flyout cover modes with the sample card.
+	coverFly := fixture()
+	coverFly.nowSnap = sampleSnapshot(locale)
+	coverFly.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	coverCover := sampleCoverImage()
+	coverFly.nowArt = ui.NewBitmap(coverCover)
+	coverFly.nowFieldLight = coverField(coverCover, false)
+	coverFly.nowFieldDark = coverField(coverCover, true)
+	coverFly.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
+	coverFly.cfg.CoverMode = settings.CoverNone
+	save("flyout-cover-none-light", coverFly.view, flyoutWidth, visibleFlyoutHeight(coverFly), false)
+	coverFly.cfg.CoverMode = settings.CoverPlaceholder
+	save("flyout-cover-placeholder-light", coverFly.view, flyoutWidth, visibleFlyoutHeight(coverFly), false)
+	save("flyout-cover-placeholder-dark", coverFly.view, flyoutWidth, visibleFlyoutHeight(coverFly), true)
+
+	// The flyout with the media panel switched off: no card, compact panel.
+	mediaOff := fixture()
+	mediaOff.cfg.ShowNowPlayingPanel = false
+	mediaOff.nowSnap = sampleSnapshot(locale)
+	mediaOff.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	save("flyout-media-off-light", mediaOff.view, flyoutWidth, visibleFlyoutHeight(mediaOff), false)
+
 	darkSettings := fixture()
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)
@@ -270,8 +409,8 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-audio-custom-dark", customSettings.settingsView, 720, 500, true)
 	save("settings-audio-compact-light", customSettings.settingsView, 720, 420, false)
 	save("settings-audio-compact-dark", customSettings.settingsView, 720, 420, true)
-	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false)
-	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true)
+	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false, 80)
+	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true, 80)
 
 	lampOff := fixture()
 	lampOff.page = pageLamp
@@ -283,13 +422,13 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	lampFly := fixture()
 	lampFly.lampExpanded = true
 	save("flyout-lamp-expanded-light", lampFly.view, flyoutWidth,
-		flyoutHeightForState(deviceRows, true, true), false)
+		visibleFlyoutHeight(lampFly), false)
 	save("flyout-lamp-expanded-dark", lampFly.view, flyoutWidth,
-		flyoutHeightForState(deviceRows, true, true), true)
+		visibleFlyoutHeight(lampFly), true)
 	lampFly.lampEnabled = false
 	lampFly.snap.LampEnabled = false
 	save("flyout-lamp-off-light", lampFly.view, flyoutWidth,
-		flyoutHeightForState(deviceRows, true, true, false), false)
+		visibleFlyoutHeight(lampFly), false)
 
 	origin := fixture()
 	origin.page = pageLamp
@@ -302,23 +441,23 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	originFly.snap.LampPreset = "origin"
 	originFly.lampExpanded = true
 	save("flyout-lamp-origin-light", originFly.view, flyoutWidth,
-		flyoutHeightForState(deviceRows, true, true), false)
+		visibleFlyoutHeight(lampFly), false)
 	save("flyout-lamp-origin-dark", originFly.view, flyoutWidth,
-		flyoutHeightForState(deviceRows, true, true), true)
+		visibleFlyoutHeight(lampFly), true)
 
 	pin := fixture()
 	pin.snap.PinRequired = true
 	pin.snap.PinDevice = "Apple TV"
 	pin.pinOpen = true
 	pin.pinCode = "3939"
-	save("dialog-pin", pin.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("dialog-pin", pin.view, flyoutWidth, visibleFlyoutHeight(pin), false)
 
 	password := fixture()
 	password.snap.PasswordRequired = true
 	password.snap.PasswordDevice = "MacBook"
 	password.passwordOpen = true
 	password.passwordPrompt = "hunter2"
-	save("dialog-password", password.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("dialog-password", password.view, flyoutWidth, visibleFlyoutHeight(password), false)
 
 	log := fixture()
 	log.showLog = true
@@ -330,15 +469,15 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		"2026-11-01 12:00:04 ptp: follower ready",
 		"2026-11-01 12:00:05 capture open: PHL 27E2F7901 (NVIDIA High Definition Audio) (48000 Hz)",
 	}
-	save("dialog-log", log.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("dialog-log", log.view, flyoutWidth, visibleFlyoutHeight(log), false)
 
-	frames("probe-flyout-enter", fixture().view, flyoutWidth, flyoutHeightFor(deviceRows, true))
+	frames("probe-flyout-enter", fixture().view, flyoutWidth, visibleFlyoutHeight(fixture()))
 	pinProbe := fixture()
 	pinProbe.snap.PinRequired = true
 	pinProbe.snap.PinDevice = "Apple TV"
 	pinProbe.pinOpen = true
 	pinProbe.pinCode = "3939"
-	frames("probe-pin-enter", pinProbe.view, flyoutWidth, flyoutHeightFor(deviceRows, true))
+	frames("probe-pin-enter", pinProbe.view, flyoutWidth, visibleFlyoutHeight(pinProbe))
 	settingsProbe := fixture()
 	settingsProbe.page = pageConnection
 	frames("probe-settings-enter", settingsProbe.settingsView, 720, 500)
@@ -352,10 +491,10 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	mac.snap.State = sender.StateIdle
 	mac.snap.ConnectedName = ""
 	mac.selID = ""
-	save("flyout-mac", mac.view, flyoutWidth, flyoutHeightFor(1, true), false)
+	save("flyout-mac", mac.view, flyoutWidth, visibleFlyoutHeight(mac), false)
 
 	hover := fixture()
-	tt := ui.NewTester(hover.view, flyoutWidth, flyoutHeightFor(deviceRows, true))
+	tt := ui.NewTester(hover.view, flyoutWidth, visibleFlyoutHeight(hover))
 	tt.SetScale(2)
 	tt.SetLocale(locale)
 	tt.Advance(400 * time.Millisecond)
@@ -418,7 +557,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	upd.upd.phase = updateReady
 	save("settings-update-ready", upd.settingsView, 720, 500, false)
 	upd.upd.phase = updateAvailable
-	save("flyout-update-chip", upd.view, flyoutWidth, flyoutHeightFor(deviceRows, true), false)
+	save("flyout-update-chip", upd.view, flyoutWidth, visibleFlyoutHeight(upd), false)
 
 	upd.upd = updateState{phase: updateChecking}
 	save("settings-update-checking", upd.settingsView, 720, 500, false)
