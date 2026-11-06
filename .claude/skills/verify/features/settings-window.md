@@ -42,10 +42,9 @@ Eight pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, �
   and resize the flyout.
 - 更新 page: update states, channel (stable/beta), release-history list —
   see [updates.md](updates.md).
-- 关于 page: the identity card shows the app's smile mark, the product
-  tagline, and the version line. Below it are the project links and the
-  license/notices rows, and the version line never shows the git describe
-  suffix.
+- 关于 page: the identity card shows the app's smile mark and the version
+  line. Below it are the project links and the license/notices rows, and the
+  version line never shows the git describe suffix.
 
 ## How to get to it (user POV)
 

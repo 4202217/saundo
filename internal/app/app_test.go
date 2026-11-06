@@ -206,7 +206,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "播放控制", "接收器显示曲目信息", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
-		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "把 Windows 上正在播放的声音，渡到 AirPlay 2。", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
+		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
 	for _, tc := range cases {
 		a := previewApp()

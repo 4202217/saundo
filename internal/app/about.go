@@ -28,7 +28,6 @@ func (a *App) aboutPage(c *ui.Context, p palette) {
 			})
 			ui.Column(c).Grow(1).Gap(2).Children(func() {
 				ui.Text(c, locales.SettingsAboutBrand()).FontSize(15).FontWeight(650).SingleLine()
-				ui.Text(c, locales.AboutTagline()).FontSize(12).TextColor(p.muted).SingleLine().Ellipsis("…")
 				ui.Text(c, aboutVersionText(a.currentVersion(), a.channelLabel())).
 					FontSize(11.5).TextColor(p.muted).FontFeatures("tnum").SingleLine()
 			})

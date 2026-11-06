@@ -64,16 +64,6 @@ func (msgs Messages) AboutBrand() string {
 	return Catalog.Format(msgs.locale, "aboutBrand", nil)
 }
 
-// AboutTagline says "Ferry whatever Windows is playing to AirPlay 2."
-// in the language the app shows.
-func AboutTagline() string { return In(i18n.Locale()).AboutTagline() }
-
-// AboutTagline says "Ferry whatever Windows is playing to AirPlay 2."
-// in the language of msgs.
-func (msgs Messages) AboutTagline() string {
-	return Catalog.Format(msgs.locale, "aboutTagline", nil)
-}
-
 // AboutVersion says "Version {version} · {channel}"
 // in the language the app shows.
 func AboutVersion(version string, channel string) string {

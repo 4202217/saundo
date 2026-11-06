@@ -3,7 +3,6 @@
   "appName": "saundo",
   "appSubtitle": "AIRPLAY 2",
   "aboutBrand": "saundo",
-  "aboutTagline": "Ferry whatever Windows is playing to AirPlay 2.",
   "aboutVersion": "Version {version} · {channel}",
   "@aboutVersion": {
     "placeholders": {

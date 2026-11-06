@@ -3,7 +3,6 @@
   "appName": "声渡",
   "appSubtitle": "saundo",
   "aboutBrand": "声渡 · saundo",
-  "aboutTagline": "把 Windows 上正在播放的声音，渡到 AirPlay 2。",
   "aboutVersion": "版本 {version} · {channel}",
   "@aboutVersion": {
     "placeholders": {
