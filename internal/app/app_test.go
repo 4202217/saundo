@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 // visibleFlyoutHeight is the height a tester should use for this App's
 // current devices, latency row, and media card.
 func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia())
+	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampExpanded, a.lampEnabled)
 }
 
 func withLocale(t *testing.T, tag string) {
@@ -62,6 +62,8 @@ func previewApp() *App {
 		latencyMode:       "low",
 		latencyCustom:     700,
 		showLatencySwitch: true,
+		lampEnabled:       true,
+		lampPreset:        "dune",
 	}
 	a.selID = "AA:BB:CC:DD:EE:01"
 	a.snap = engine.Snapshot{
@@ -82,6 +84,8 @@ func previewApp() *App {
 		PTPActive:      true,
 		PTPReady:       true,
 		Reconnect:      true,
+		LampEnabled:    true,
+		LampPreset:     "dune",
 	}
 	a.reconnect = true
 	return a
@@ -94,6 +98,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "诊断日志",
+		"氛围灯", "HomePod 专属", "沙丘",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
@@ -203,6 +208,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "连接时静音本机扬声器，断开或退出时恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
+		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "开启氛围灯", "HomePod 专属", "HomePod 顶屏", "默认", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "关闭后回到默认"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "在接收器上显示曲目信息", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
@@ -557,15 +563,19 @@ func TestFlyoutHeightForDeviceRows(t *testing.T) {
 	noMedia := map[int]int{0: 383, 1: 300, 2: 356, 3: 412, 5: 412}
 	withMedia := map[int]int{0: 533, 1: 450, 2: 506, 3: 562, 5: 562}
 	for _, tc := range []struct {
+		name  string
 		media bool
 		want  map[int]int
-	}{{false, noMedia}, {true, withMedia}} {
+	}{{"no media", false, noMedia}, {"media", true, withMedia}} {
 		for devices, want := range tc.want {
-			if got := flyoutHeightFor(devices, false, tc.media); got != want {
-				t.Errorf("flyoutHeightFor(%d, false, media=%v) = %d, want %d", devices, tc.media, got, want)
+			if got := flyoutHeightFor(devices, false, tc.media, false); got != want {
+				t.Errorf("flyoutHeightFor(%d, false, media=%v, lamp=off) = %d, want %d", devices, tc.media, got, want)
 			}
-			if got := flyoutHeightFor(devices, true, tc.media); got != want+latencySwitchHeight {
-				t.Errorf("flyoutHeightFor(%d, true, media=%v) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
+			if got := flyoutHeightFor(devices, true, tc.media, false); got != want+latencySwitchHeight {
+				t.Errorf("flyoutHeightFor(%d, true, media=%v, lamp=off) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
+			}
+			if got := flyoutHeightFor(devices, false, tc.media, true); got != want+lampSectionHeight {
+				t.Errorf("flyoutHeightFor(%d, false, media=%v, lamp=on) = %d, want %d", devices, tc.media, got, want+lampSectionHeight)
 			}
 		}
 	}

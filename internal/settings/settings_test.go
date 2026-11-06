@@ -178,6 +178,53 @@ func TestLatencyText(t *testing.T) {
 	}
 }
 
+func TestLampDefaultsOffAndOrigin(t *testing.T) {
+	s := NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	got := s.Load()
+	if got.Lamp.Enabled {
+		t.Fatal("lamp should default to off")
+	}
+	if got.Lamp.Preset != "origin" {
+		t.Fatalf("lamp preset = %q, want origin", got.Lamp.Preset)
+	}
+}
+
+func TestLampOldFileLoadsDefaults(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"name":"x","volume":42}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := NewStoreAt(path).Load()
+	if got.Lamp.Enabled || got.Lamp.Preset != "origin" {
+		t.Fatalf("legacy file lamp = %+v, want off + origin", got.Lamp)
+	}
+}
+
+func TestLampUnknownPresetNormalizesToOrigin(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"lamp":{"enabled":true,"preset":"bogus"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := NewStoreAt(path).Load()
+	if !got.Lamp.Enabled || got.Lamp.Preset != "origin" {
+		t.Fatalf("unknown preset = %+v, want on + origin", got.Lamp)
+	}
+}
+
+func TestLampRoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	s := NewStoreAt(path)
+	cfg := s.Load()
+	cfg.Lamp = LampSettings{Enabled: true, Preset: "ember"}
+	if err := s.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	got := s.Load()
+	if !got.Lamp.Enabled || got.Lamp.Preset != "ember" {
+		t.Fatalf("lamp round trip = %+v", got.Lamp)
+	}
+}
+
 func TestCoverModeDefaultsToMedia(t *testing.T) {
 	if got := Default().CoverMode; got != CoverMedia {
 		t.Fatalf("default cover mode = %q, want media", got)

@@ -58,6 +58,50 @@ func TestParseAppleTVEntryChoosesPin(t *testing.T) {
 	}
 }
 
+func TestParseOSVersionTXT(t *testing.T) {
+	d, ok := parseEntry(&mdns.ServiceEntry{
+		Name:   "Living Room._airplay._tcp.local.",
+		AddrV4: net.IPv4(192, 168, 1, 40),
+		Port:   7000,
+		InfoFields: []string{
+			"deviceid=11:22:33:44:55:66",
+			"model=AudioAccessory6,1",
+			"osvers=27.2",
+			"features=0x4A7FCA00,0x3C354B00",
+		},
+	}, airplayService)
+	if !ok {
+		t.Fatal("entry rejected")
+	}
+	if d.OSVersion != "27.2" {
+		t.Fatalf("OSVersion = %q, want 27.2", d.OSVersion)
+	}
+}
+
+// TestMergeKeepsOSVersion covers the two advertisements: the AirPlay record
+// carries osvers while the RAOP record does not, and the merged device keeps
+// it.
+func TestMergeKeepsOSVersion(t *testing.T) {
+	s := New(0, 0)
+	raop, _ := parseEntry(&mdns.ServiceEntry{
+		Name: "AABBCCDDEEFF@Living Room", AddrV4: net.IPv4(10, 0, 0, 2), Port: 5000,
+		InfoFields: []string{"deviceid=AA:BB:CC:DD:EE:FF", "model=AudioAccessory6,1"},
+	}, raopService)
+	air, _ := parseEntry(&mdns.ServiceEntry{
+		Name: "Living Room", AddrV4: net.IPv4(10, 0, 0, 2), Port: 7000,
+		InfoFields: []string{"deviceid=AA:BB:CC:DD:EE:FF", "model=AudioAccessory6,1", "osvers=27.2"},
+	}, airplayService)
+	if raop.OSVersion != "" {
+		t.Fatalf("RAOP record carried osvers %q", raop.OSVersion)
+	}
+	s.merge(raop)
+	s.merge(air)
+	got := s.Snapshot()
+	if len(got) != 1 || got[0].OSVersion != "27.2" {
+		t.Fatalf("merged OSVersion = %+v, want 27.2", got)
+	}
+}
+
 func TestPasswordAndAirportAuth(t *testing.T) {
 	ap := device.Device{AM: "AirPort10,115", Features: featureHKPairing}
 	if chooseAuth(ap) != device.AuthSetup {

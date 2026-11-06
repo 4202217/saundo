@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # AirPlay 2 wire protocol
 
@@ -219,3 +219,27 @@ A session starts at the live edge: capture runs from launch, so the ring holds s
 - The first `Begin` from the engine's Tick performs the one trim that keeps the newest 50 ms cushion (`DefaultStartCushion`) — the session ring for a single receiver, or every member ring through the fanout in one call under its push lock for a pair. The trim is policy, not capture overflow, so it does not increment the dropped-sample counter.
 - Every member begins from the same epoch in that Tick, so a pair's rings keep the same content window and the members arm their pacers in lockstep.
 - Sync timestamps are anchored to that shared epoch: the published RTP value is `latency + frames since epoch`, not the number of packets actually sent, so a late pacer tick does not become a pair offset. Audio packet timestamps remain `latency + framesSent`.
+
+## 10. Top-display artwork (Sound Glow)
+
+HomePod software 27.2 renders the current Now Playing cover on its top display once the user enables Sound Glow in the HomePod settings. Without that setting the display stays blank even though every request succeeds.
+
+The top display renders the artwork already attached to the Now Playing item. One `SET_PARAMETER` with `Content-Type: image/jpeg` and the raw JPEG body on the encrypted control channel, with the same `Session` and `RTP-Info` headers as track metadata, makes the image the Now Playing cover and repaints the top display:
+
+```
+SET_PARAMETER rtsp://<receiver>/<session> RTSP/1.0
+Session: <session>
+RTP-Info: seq=<n>;rtptime=<ts>
+Content-Type: image/jpeg
+Content-Length: <n>
+
+<raw JPEG bytes>
+```
+
+- When the sender has no track metadata, it first sends a minimal DMAP item (`mlit` containing `minm` = `saundo`) so the cover has a Now Playing item to attach to.
+- The image is a 600×600 sRGB JPEG at quality ~0.9; the receiver downscales and softens it for the top display.
+- The sender pushes on light change and on stream start. The first preset `origin` is a solid black 600×600 JPEG; the HomePod's color-stop normalization lifts black to a full channel, so it lands on the default white rather than an LED-off. The off switch sends the same image. A true LED-off has no AirPlay command; only the on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) drives the LEDs directly, and it is entitlement-gated.
+- A song's own cover competes for the same slot. The ambient light wins while it is on; while it is off, the receiver track-info cover wins when that setting is on, and the origin image is the fallback. Media-follow needs no separate mode: the device colors from whatever cover arrives.
+- The setting cannot be discovered over the protocol; `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
+
+Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the receiver muted, raw JPEG `/artwork/command` POSTs returned `400 Bad Request`; a binary-plist POST returned `200 OK` but did not replace the cover. On 2026-11-07, three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon, orchid) each repainted the top display with no `/artwork/command`; the POST trigger and the separate `TCPArtwork` channel were removed.

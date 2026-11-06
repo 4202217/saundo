@@ -131,6 +131,7 @@ func (r *rig) start() {
 	// A plain Tick at the current fake time seals the start gate and fires
 	// Launched without sending audio, so tests control the first packet.
 	r.sender.Tick()
+	r.step()
 }
 
 type fakeIO struct{ r *rig }
@@ -145,9 +146,10 @@ func (f *fakeIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) erro
 }
 
 func (f *fakeIO) TCPSend(ch raopio.TCPChannel, data []byte) error {
-	if ch == raopio.TCPControl {
+	switch ch {
+	case raopio.TCPControl:
 		f.r.rx.handleControl(data)
-	} else {
+	default:
 		f.r.rx.handleEventResponse(data)
 	}
 	return nil

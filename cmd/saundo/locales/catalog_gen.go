@@ -720,6 +720,16 @@ func (msgs Messages) FlyoutNext() string {
 	return Catalog.Format(msgs.locale, "flyoutNext", nil)
 }
 
+// FlyoutNowPlaying says "Now playing"
+// in the language the app shows.
+func FlyoutNowPlaying() string { return In(i18n.Locale()).FlyoutNowPlaying() }
+
+// FlyoutNowPlaying says "Now playing"
+// in the language of msgs.
+func (msgs Messages) FlyoutNowPlaying() string {
+	return Catalog.Format(msgs.locale, "flyoutNowPlaying", nil)
+}
+
 // ActionCancel says "Cancel"
 // in the language the app shows.
 func ActionCancel() string { return In(i18n.Locale()).ActionCancel() }
@@ -3142,4 +3152,214 @@ func UpdateCountUpdated(n int) string { return In(i18n.Locale()).UpdateCountUpda
 // in the language of msgs.
 func (msgs Messages) UpdateCountUpdated(n int) string {
 	return Catalog.Format(msgs.locale, "updateCountUpdated", map[string]any{"n": n})
+}
+
+// SettingsNavLamp says "Ambient light"
+// in the language the app shows.
+func SettingsNavLamp() string { return In(i18n.Locale()).SettingsNavLamp() }
+
+// SettingsNavLamp says "Ambient light"
+// in the language of msgs.
+func (msgs Messages) SettingsNavLamp() string {
+	return Catalog.Format(msgs.locale, "settingsNavLamp", nil)
+}
+
+// PageLampDesc says "Every HomePod top display shows the same light."
+// in the language the app shows.
+func PageLampDesc() string { return In(i18n.Locale()).PageLampDesc() }
+
+// PageLampDesc says "Every HomePod top display shows the same light."
+// in the language of msgs.
+func (msgs Messages) PageLampDesc() string {
+	return Catalog.Format(msgs.locale, "pageLampDesc", nil)
+}
+
+// SettingsLampEnable says "Enable ambient light"
+// in the language the app shows.
+func SettingsLampEnable() string { return In(i18n.Locale()).SettingsLampEnable() }
+
+// SettingsLampEnable says "Enable ambient light"
+// in the language of msgs.
+func (msgs Messages) SettingsLampEnable() string {
+	return Catalog.Format(msgs.locale, "settingsLampEnable", nil)
+}
+
+// SettingsLampHomePodOnly says "HomePod only"
+// in the language the app shows.
+func SettingsLampHomePodOnly() string { return In(i18n.Locale()).SettingsLampHomePodOnly() }
+
+// SettingsLampHomePodOnly says "HomePod only"
+// in the language of msgs.
+func (msgs Messages) SettingsLampHomePodOnly() string {
+	return Catalog.Format(msgs.locale, "settingsLampHomePodOnly", nil)
+}
+
+// SettingsLampTop says "HomePod top display"
+// in the language the app shows.
+func SettingsLampTop() string { return In(i18n.Locale()).SettingsLampTop() }
+
+// SettingsLampTop says "HomePod top display"
+// in the language of msgs.
+func (msgs Messages) SettingsLampTop() string {
+	return Catalog.Format(msgs.locale, "settingsLampTop", nil)
+}
+
+// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover."
+// in the language the app shows.
+func SettingsLampHintOn() string { return In(i18n.Locale()).SettingsLampHintOn() }
+
+// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover."
+// in the language of msgs.
+func (msgs Messages) SettingsLampHintOn() string {
+	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
+}
+
+// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to sho…"
+// in the language the app shows.
+func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
+
+// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to sho…"
+// in the language of msgs.
+func (msgs Messages) SettingsLampHintOff() string {
+	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
+}
+
+// SettingsLampSoundGlowHint says "Enable Sound Glow in the HomePod settings; without it the top display stays white."
+// in the language the app shows.
+func SettingsLampSoundGlowHint() string { return In(i18n.Locale()).SettingsLampSoundGlowHint() }
+
+// SettingsLampSoundGlowHint says "Enable Sound Glow in the HomePod settings; without it the top display stays white."
+// in the language of msgs.
+func (msgs Messages) SettingsLampSoundGlowHint() string {
+	return Catalog.Format(msgs.locale, "settingsLampSoundGlowHint", nil)
+}
+
+// LampToggle says "Ambient light switch"
+// in the language the app shows.
+func LampToggle() string { return In(i18n.Locale()).LampToggle() }
+
+// LampToggle says "Ambient light switch"
+// in the language of msgs.
+func (msgs Messages) LampToggle() string {
+	return Catalog.Format(msgs.locale, "lampToggle", nil)
+}
+
+// LampPresetOrigin says "Default"
+// in the language the app shows.
+func LampPresetOrigin() string { return In(i18n.Locale()).LampPresetOrigin() }
+
+// LampPresetOrigin says "Default"
+// in the language of msgs.
+func (msgs Messages) LampPresetOrigin() string {
+	return Catalog.Format(msgs.locale, "lampPresetOrigin", nil)
+}
+
+// LampPresetEmber says "Ember"
+// in the language the app shows.
+func LampPresetEmber() string { return In(i18n.Locale()).LampPresetEmber() }
+
+// LampPresetEmber says "Ember"
+// in the language of msgs.
+func (msgs Messages) LampPresetEmber() string {
+	return Catalog.Format(msgs.locale, "lampPresetEmber", nil)
+}
+
+// LampPresetDune says "Dune"
+// in the language the app shows.
+func LampPresetDune() string { return In(i18n.Locale()).LampPresetDune() }
+
+// LampPresetDune says "Dune"
+// in the language of msgs.
+func (msgs Messages) LampPresetDune() string {
+	return Catalog.Format(msgs.locale, "lampPresetDune", nil)
+}
+
+// LampPresetMoss says "Moss"
+// in the language the app shows.
+func LampPresetMoss() string { return In(i18n.Locale()).LampPresetMoss() }
+
+// LampPresetMoss says "Moss"
+// in the language of msgs.
+func (msgs Messages) LampPresetMoss() string {
+	return Catalog.Format(msgs.locale, "lampPresetMoss", nil)
+}
+
+// LampPresetTide says "Tide"
+// in the language the app shows.
+func LampPresetTide() string { return In(i18n.Locale()).LampPresetTide() }
+
+// LampPresetTide says "Tide"
+// in the language of msgs.
+func (msgs Messages) LampPresetTide() string {
+	return Catalog.Format(msgs.locale, "lampPresetTide", nil)
+}
+
+// LampPresetOrchid says "Orchid"
+// in the language the app shows.
+func LampPresetOrchid() string { return In(i18n.Locale()).LampPresetOrchid() }
+
+// LampPresetOrchid says "Orchid"
+// in the language of msgs.
+func (msgs Messages) LampPresetOrchid() string {
+	return Catalog.Format(msgs.locale, "lampPresetOrchid", nil)
+}
+
+// LampPresetMoon says "Moon"
+// in the language the app shows.
+func LampPresetMoon() string { return In(i18n.Locale()).LampPresetMoon() }
+
+// LampPresetMoon says "Moon"
+// in the language of msgs.
+func (msgs Messages) LampPresetMoon() string {
+	return Catalog.Format(msgs.locale, "lampPresetMoon", nil)
+}
+
+// FlyoutLampSection says "Ambient light"
+// in the language the app shows.
+func FlyoutLampSection() string { return In(i18n.Locale()).FlyoutLampSection() }
+
+// FlyoutLampSection says "Ambient light"
+// in the language of msgs.
+func (msgs Messages) FlyoutLampSection() string {
+	return Catalog.Format(msgs.locale, "flyoutLampSection", nil)
+}
+
+// FlyoutLampHomePodOnly says "HomePod only"
+// in the language the app shows.
+func FlyoutLampHomePodOnly() string { return In(i18n.Locale()).FlyoutLampHomePodOnly() }
+
+// FlyoutLampHomePodOnly says "HomePod only"
+// in the language of msgs.
+func (msgs Messages) FlyoutLampHomePodOnly() string {
+	return Catalog.Format(msgs.locale, "flyoutLampHomePodOnly", nil)
+}
+
+// FlyoutLampColors says "Colors"
+// in the language the app shows.
+func FlyoutLampColors() string { return In(i18n.Locale()).FlyoutLampColors() }
+
+// FlyoutLampColors says "Colors"
+// in the language of msgs.
+func (msgs Messages) FlyoutLampColors() string {
+	return Catalog.Format(msgs.locale, "flyoutLampColors", nil)
+}
+
+// FlyoutLampExpand says "Show colors"
+// in the language the app shows.
+func FlyoutLampExpand() string { return In(i18n.Locale()).FlyoutLampExpand() }
+
+// FlyoutLampExpand says "Show colors"
+// in the language of msgs.
+func (msgs Messages) FlyoutLampExpand() string {
+	return Catalog.Format(msgs.locale, "flyoutLampExpand", nil)
+}
+
+// FlyoutLampCollapse says "Hide colors"
+// in the language the app shows.
+func FlyoutLampCollapse() string { return In(i18n.Locale()).FlyoutLampCollapse() }
+
+// FlyoutLampCollapse says "Hide colors"
+// in the language of msgs.
+func (msgs Messages) FlyoutLampCollapse() string {
+	return Catalog.Format(msgs.locale, "flyoutLampCollapse", nil)
 }

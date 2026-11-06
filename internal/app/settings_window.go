@@ -21,6 +21,7 @@ const (
 	pageConnection
 	pageReceivers
 	pageAudio
+	pageLamp
 	pageCapture
 	pageNowPlaying
 	pageUpdate
@@ -35,6 +36,7 @@ var settingsNav = []struct {
 	{pageConnection, iconLink},
 	{pageReceivers, iconSpeaker},
 	{pageAudio, iconWave},
+	{pageLamp, iconLamp},
 	{pageCapture, iconScreen},
 	{pageNowPlaying, iconNote},
 	{pageUpdate, iconRefresh},
@@ -49,6 +51,8 @@ func pageTitle(page settingsPage) string {
 		return locales.SettingsNavReceivers()
 	case pageAudio:
 		return locales.SettingsNavAudio()
+	case pageLamp:
+		return locales.SettingsNavLamp()
 	case pageCapture:
 		return locales.SettingsNavCapture()
 	case pageNowPlaying:
@@ -227,6 +231,8 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 					a.receiversPage(c, p)
 				case pageAudio:
 					a.audioPage(c, p)
+				case pageLamp:
+					a.lampPage(c, p)
 				case pageCapture:
 					a.capturePage(c, p)
 				case pageNowPlaying:
@@ -249,6 +255,8 @@ func pageCopy(page settingsPage) (title, desc string) {
 		return pageTitle(page), locales.PageReceiversDesc()
 	case pageAudio:
 		return pageTitle(page), locales.PageAudioDesc()
+	case pageLamp:
+		return pageTitle(page), locales.PageLampDesc()
 	case pageCapture:
 		return pageTitle(page), locales.PageCaptureDesc()
 	case pageNowPlaying:
