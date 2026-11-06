@@ -289,7 +289,22 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	lampFly.lampEnabled = false
 	lampFly.snap.LampEnabled = false
 	save("flyout-lamp-off-light", lampFly.view, flyoutWidth,
+		flyoutHeightForState(deviceRows, true, true, false), false)
+
+	origin := fixture()
+	origin.page = pageLamp
+	origin.lampPreset = "origin"
+	origin.snap.LampPreset = "origin"
+	save("settings-lamp-origin-light", origin.settingsView, 720, 500, false)
+	save("settings-lamp-origin-dark", origin.settingsView, 720, 500, true)
+	originFly := fixture()
+	originFly.lampPreset = "origin"
+	originFly.snap.LampPreset = "origin"
+	originFly.lampExpanded = true
+	save("flyout-lamp-origin-light", originFly.view, flyoutWidth,
 		flyoutHeightForState(deviceRows, true, true), false)
+	save("flyout-lamp-origin-dark", originFly.view, flyoutWidth,
+		flyoutHeightForState(deviceRows, true, true), true)
 
 	pin := fixture()
 	pin.snap.PinRequired = true

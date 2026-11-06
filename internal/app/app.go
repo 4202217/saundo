@@ -278,7 +278,7 @@ func (a *App) ready() {
 		})
 		// Discovery has not reported yet, so the flyout opens at the empty
 		// state's height and grows as devices arrive.
-		a.flyoutH = flyoutHeightForState(0, a.showLatencySwitch, false)
+		a.flyoutH = flyoutHeightForState(0, a.showLatencySwitch, false, a.lampEnabled)
 		a.win = mygo.NewFlyout(mygo.FlyoutOptions{
 			Tray:      a.tray,
 			Placement: mygo.PlacementBottom,
@@ -557,7 +557,7 @@ func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.lampExpanded)
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.lampExpanded, a.lampEnabled)
 	if h == a.flyoutH {
 		return
 	}

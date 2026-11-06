@@ -8,34 +8,36 @@ import (
 	"saundo/internal/airplay/device"
 )
 
-func imageRequests(r *rig) []string {
-	return r.rx.artworks
+// coverRequests returns the SET_PARAMETER image bodies the fake receiver saw.
+func coverRequests(r *rig) []string {
+	var out []string
+	for _, p := range r.rx.setParams {
+		ct, body, ok := strings.Cut(p, "\x00")
+		if ok && ct == "image/jpeg" {
+			out = append(out, body)
+		}
+	}
+	return out
 }
 
-// SetArtwork must push the image as one RTSP POST on the encrypted control
-// channel, with a raw JPEG body, the way the reference sender does.
-func TestSetArtworkSendsArtworkCommand(t *testing.T) {
+// TestSetArtworkSendsCover pins the top-display path. The image becomes the
+// Now Playing cover and the receiver repaints from it; the separate artwork
+// POST was removed after a cover-only HomePod test.
+func TestSetArtworkSendsCover(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	r.start()
-	r.rx.artworks = nil
+	r.rx.setParams = nil
 	image := []byte{0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0xff, 0xd9}
 
 	r.sender.SetArtwork(image, "image/jpeg")
 	r.step()
 
-	got := imageRequests(r)
-	if len(got) != 1 {
-		t.Fatalf("artwork requests = %d, want 1", len(got))
+	covers := coverRequests(r)
+	if len(covers) != 1 {
+		t.Fatalf("cover requests = %d, want 1", len(covers))
 	}
-	ct, body, ok := strings.Cut(got[0], "\x00")
-	if !ok {
-		t.Fatalf("artwork capture missing content-type separator: %q", got[0][:min(40, len(got[0]))])
-	}
-	if ct != "image/jpeg" {
-		t.Fatalf("content type = %q, want image/jpeg", ct)
-	}
-	if !bytes.Equal([]byte(body), image) {
-		t.Fatalf("image = % x, want % x", body, image)
+	if !bytes.Equal([]byte(covers[0]), image) {
+		t.Fatalf("cover = % x, want % x", covers[0], image)
 	}
 }
 
@@ -44,13 +46,13 @@ func TestSetArtworkWaitsForStreaming(t *testing.T) {
 	image := []byte{0xff, 0xd8, 0xff, 0xd9}
 	r.sender.SetArtwork(image, "image/jpeg")
 	r.step()
-	if got := imageRequests(r); len(got) != 0 {
-		t.Fatalf("artwork sent before streaming: %v", got)
+	if got := coverRequests(r); len(got) != 0 {
+		t.Fatalf("cover sent before streaming: %v", got)
 	}
 
 	r.start()
-	if got := imageRequests(r); len(got) != 1 {
-		t.Fatalf("artwork sent on streaming start = %d, want 1", len(got))
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("cover on streaming start = %d, want 1", len(got))
 	}
 }
 
@@ -62,13 +64,14 @@ func TestSetArtworkDuplicateIsNoOp(t *testing.T) {
 
 	r.sender.SetArtwork(image, "image/jpeg")
 	r.step()
-	if got := imageRequests(r); len(got) != 1 {
-		t.Fatalf("first send = %d, want 1", len(got))
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("first cover = %d, want 1", len(got))
 	}
+
 	r.sender.SetArtwork(append([]byte(nil), image...), "image/jpeg")
 	r.step()
-	if got := imageRequests(r); len(got) != 1 {
-		t.Fatalf("duplicate send = %d, want 1", len(got))
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("duplicate cover = %d, want 1", len(got))
 	}
 }
 
@@ -98,8 +101,8 @@ func TestSetArtworkDoesNotTouchDMAPText(t *testing.T) {
 	if dmapAfter != dmapBefore {
 		t.Fatalf("artwork resent DMAP text: %d -> %d", dmapBefore, dmapAfter)
 	}
-	if got := imageRequests(r); len(got) != 1 {
-		t.Fatalf("image requests = %d, want 1", len(got))
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("cover requests = %d, want 1", len(got))
 	}
 }
 
@@ -109,13 +112,13 @@ func TestSetArtworkClearSendsNothing(t *testing.T) {
 	r.rx.setParams = nil
 	r.sender.SetArtwork([]byte{0xff, 0xd8, 0xff, 0xd9}, "image/jpeg")
 	r.step()
-	if got := imageRequests(r); len(got) != 1 {
-		t.Fatalf("first send = %d, want 1", len(got))
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("first cover = %d, want 1", len(got))
 	}
 
 	r.sender.SetArtwork(nil, "")
 	r.step()
-	if got := imageRequests(r); len(got) != 1 {
-		t.Fatalf("clear sent an image: %d requests", len(got))
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("clear sent a cover: %d requests", len(got))
 	}
 }

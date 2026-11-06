@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-05 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # Verification
 
@@ -50,11 +50,14 @@ live state:
   the per-receiver delay restart, receiver-password save and clear, and a
   manual receiver with no mDNS advertisement. Pinned by the receivers, engine,
   and app tests and the `settings-receivers-*` / `dialog-receiver-*` previews.
-- Ambient light, artwork channel: the 2026-11-05 `AudioAccessory5,1` run
-  displayed a lagoon blue once Sound Glow was enabled in the HomePod
-  settings. The working path is the HTTP `/artwork/command` binary plist
-  with a data URL over one keep-alive connection; the off/return-to-native
-  behavior is still owed.
+- Ambient light, artwork channel: the 2026-11-07 `AudioAccessory5,1` muted
+  run shows three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon,
+  orchid) each repainted the top display with no `/artwork/command`. The
+  POST trigger and `TCPArtwork` channel are removed. A black image lands on
+  the default white because the firmware lifts black to a full channel. A
+  true LED-off has no AirPlay command; only the on-device
+  SoundBoardServices XPC (`setLEDContents:`, `disable_leds`) drives the
+  LEDs, and it is entitlement-gated.
 - Ambient light, off behavior: whether the receiver returns to its native top
   display when the sender stops pushing, or keeps the last light. The sender
   currently sends no clear image; the UI only promises that off sends no
@@ -711,16 +714,16 @@ development PC with a real HomePod stereo pair on the LAN.
   fans the image out per capable member. The 氛围灯 settings page and the
   flyout's always-visible ambient card read one snapshot; neither gates on
   connection, and the tray menu gained no item.
-- **Pinned by.** `TestPresetsAreSixStableIDs`, `TestGeneratedJPEGsAre600Square`,
+- **Pinned by.** `TestPresetsMatchCatalog`, `TestGeneratedJPEGsAre600Square`,
   `TestPresetPixelsFollowTheBlobs`, `TestGeneratorCachesPerPreset`,
-  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOffAndDune`,
-  `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToDune`,
+  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOffAndOrigin`,
+  `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToOrigin`,
   `TestLampRoundTrips`, `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
-  `TestMergeKeepsOSVersion`, `TestSetArtworkSendsArtworkCommand`,
+  `TestMergeKeepsOSVersion`, `TestSetArtworkSendsCover`,
   `TestSetArtworkWaitsForStreaming`, `TestSetArtworkDuplicateIsNoOp`,
   `TestSetArtworkDoesNotTouchDMAPText`, `TestSetArtworkClearSendsNothing`,
   `TestLampToggleAppliesAndPersists`, `TestLampAppliedWhenStreamingStarts`,
-  `TestLampUnknownPresetFallsBackToDune`, `TestLampSkipsIncapableReceivers`,
+  `TestLampUnknownPresetFallsBackToOrigin`, `TestLampSkipsIncapableReceivers`,
   `TestLampTogglingTwiceLogsTheSkipOnce`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`, and the app lamp tests named in
@@ -734,6 +737,55 @@ development PC with a real HomePod stereo pair on the LAN.
 - **Not verified live.** Still unverified: off/return-to-native, the 6,1
   artwork channel, the stereo pair's simultaneous rendering, and
   reconnect/takeover behavior.
+
+## Ambient light, two-step cover (2026-11-06)
+
+HomePod R (`AudioAccessory5,1`, software 27.2) with Sound Glow enabled,
+muted to volume 0 so no test made sound.
+
+- **Raw JPEG is rejected.** `POST /artwork/command` with `image/jpeg` returns
+  `400 Bad Request` on both the plaintext HTTP server and the encrypted RTSP
+  channel. The binary-plist body returns `200 OK`.
+- **The POST alone does not replace the artwork.** A red cover sent by
+  `SET_PARAMETER image/jpeg` stayed red after a blue binary-plist POST. The
+  top display renders the current Now Playing cover, not the POST body.
+- **The cover plus the POST works.** Blue `SET_PARAMETER image/jpeg`, then the
+  binary-plist POST one second later, made the top display blue. The same
+  sequence without the cover showed nothing.
+- **Production path (superseded 2026-11-07).** `SetArtwork` sent a minimal
+  DMAP item when the app had no track metadata, set the cover by
+  `SET_PARAMETER image/jpeg`, then fired `POST /artwork/command` one second
+  later. The cover-only run removed the POST; the current path is pinned by
+  `TestSetArtworkSendsCover`, `TestSetArtworkWaitsForStreaming`,
+  `TestSetArtworkDuplicateIsNoOp`, `TestSetArtworkDoesNotTouchDMAPText`, and
+  `TestSetArtworkClearSendsNothing`.
+- **Default reset, no LED-off.** The first preset `origin` is a solid black
+  JPEG. On HomePod 27.2 the firmware lifts black to a full channel for its
+  color stops, so the top display lands on the default white, not an
+  LED-off. The off switch sends the same image. A true LED-off has no
+  AirPlay command; only the on-device SoundBoardServices XPC
+  (`setLEDContents:`, `disable_leds`) drives the LEDs, and it is
+  entitlement-gated.
+- **Still unverified.** The default white through the `origin` preset on a
+  real receiver, the 6,1 and first-generation HomePod, and a stereo pair's
+  simultaneous repaint. A true LED-off has no AirPlay command.
+
+## Ambient light, cover-only (2026-11-07)
+
+HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
+`SAUNDO_LAMP_NO_TRIGGER=1`.
+
+- **Cover-only repaint works.** Three consecutive `SET_PARAMETER image/jpeg`
+  covers (tide, moon, orchid) each repainted the top display; no
+  `/artwork/command` was sent. The startup ember cover was not the only one.
+- **Removed.** `sendArtwork` now only sets the Now Playing cover. The
+  `TCPArtwork` channel, `artworkTrigger` timer, binary-plist data URL body,
+  keep-alive response parser, and 1 s delay are gone. Pinned by
+  `TestSetArtworkSendsCover`, `TestSetArtworkWaitsForStreaming`,
+  `TestSetArtworkDuplicateIsNoOp`, `TestSetArtworkDoesNotTouchDMAPText`, and
+  `TestSetArtworkClearSendsNothing`.
+- **Still unverified.** The media-follow mode, the 6,1 and first-generation
+  HomePod, and a stereo pair's simultaneous repaint.
 
 ## Failure modes and meanings
 

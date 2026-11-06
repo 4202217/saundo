@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-05 -->
+<!-- reviewed-through: 2026-11-07 -->
 
 # Implementation overview
 
@@ -58,7 +58,7 @@ The app also polls the Windows SMTC session every two seconds
 | `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON (`dpapi_windows.go`) |
 | `internal/airplay/device` | Receiver description, auth enum, and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
-| `internal/lamp` | Ambient-light preset registry, the deterministic base-plus-three-blobs renderer, and a lazy per-preset 600×600 JPEG cache |
+| `internal/lamp` | Ambient-light preset registry, the seeded six-blob palette renderer, the origin default reset, and a lazy per-preset 600×600 JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader for the Now Playing row (Windows/other build split) |
 | `internal/settings` | JSON configuration store |
@@ -121,16 +121,15 @@ mode.
    of digital silence the engine suspends the pacer until the next audible
    block. The engine reapplies the ambient light once the session streams,
    and the sender also resends stored artwork at every stream start, so a
-   reconnect does not lose the top display. The artwork leaves on a plaintext
-   HTTP `/artwork/command` connection of its own (`raopio.TCPArtwork`), a
-   binary plist carrying the JPEG as a data URL over one keep-alive socket;
-   the encrypted RTSP control channel never carries it.
+   reconnect does not lose the top display. The artwork leaves as the Now
+   Playing cover on the encrypted control channel (`SET_PARAMETER
+   image/jpeg`); there is no separate artwork HTTP connection.
 
 ## On-disk state
 
 All under `%APPDATA%\saundo\`:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, and the global ambient-light choice (`lamp.enabled`, `lamp.preset`; an unknown preset is normalized to `dune` on load). The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, and the global ambient-light choice (`lamp.enabled`, `lamp.preset`; an unknown preset is normalized to `origin` on load). The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, and delay settings. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.

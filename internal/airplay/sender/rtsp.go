@@ -672,26 +672,26 @@ func (s *Sender) SetNowPlaying(title, artist, album string, cover []byte, coverM
 	}
 }
 
-// SetArtwork stores the top-display image and sends it over the artwork
-// SET_PARAMETER path while streaming. It is independent of the DMAP text: a
-// new image never resends the title, artist, or album. Empty data clears the
-// stored image without sending anything, because the receiver's return to its
-// native top display is still unverified.
+// SetArtwork stores the top-display image. The receiver renders the current
+// Now Playing cover on its top display, so the image is sent twice: once as
+// the cover over SET_PARAMETER, then a POST /artwork/command as the repaint
+// trigger. Empty data clears the stored image without sending anything.
 func (s *Sender) SetArtwork(data []byte, mime string) {
-	if bytes.Equal(data, s.artwork) && mime == s.artworkMIME {
+	if bytes.Equal(data, s.artwork) && mime == s.artworkMIME && s.artworkSent {
 		s.info("artwork set: unchanged (%d bytes)", len(data))
 		return
 	}
 	s.artwork = append(s.artwork[:0], data...)
 	s.artworkMIME = mime
+	s.artworkSent = false
 	s.info("artwork set: %d bytes, state=%s", len(data), s.state)
 	if s.state == StateStreaming && len(s.artwork) > 0 {
 		s.sendArtwork()
 	}
 }
 
-// sendArtwork pushes the top-display image as one RTSP POST on the
-// encrypted control channel, with the raw JPEG as the body.
+// sendArtwork sets the image as the Now Playing cover. The receiver renders
+// the cover on its top display; no separate artwork POST is needed.
 func (s *Sender) sendArtwork() {
 	if s.state != StateStreaming || len(s.artwork) == 0 || len(s.artwork) > 8*1024*1024 {
 		return
@@ -700,7 +700,26 @@ func (s *Sender) sendArtwork() {
 	if mime == "" {
 		mime = "image/jpeg"
 	}
-	s.sendRequest("POST", "/artwork/command", mime, string(s.artwork), nil)
+	// The top display needs a Now Playing item to attach the artwork to.
+	// When the app has no track metadata, send a minimal one.
+	if s.npTitle == "" && s.npArtist == "" && s.npAlbum == "" {
+		s.sendRequest("SET_PARAMETER", s.rtspURI(), "application/x-dmap-tagged",
+			dmapTag("mlit", dmapTag("minm", "saundo")), s.metadataHeaders())
+	}
+	s.sendRequest("SET_PARAMETER", s.rtspURI(), mime, string(s.artwork), s.metadataHeaders())
+	s.artworkSent = true
+}
+
+// metadataHeaders is the Session and RTP-Info pair that track metadata,
+// volume, and artwork requests carry.
+func (s *Sender) metadataHeaders() []header {
+	rtpInfo := "seq=" + utoa(uint64(s.seq)) + ";rtptime=" + utoa(uint64(s.rtpTime32()))
+	var hdr []header
+	if s.rtspSession != "" {
+		hdr = append(hdr, header{"Session", s.rtspSession})
+	}
+	hdr = append(hdr, header{"RTP-Info", rtpInfo})
+	return hdr
 }
 
 func (s *Sender) sendMetadata() {
@@ -710,12 +729,7 @@ func (s *Sender) sendMetadata() {
 	if s.npTitle == "" && s.npArtist == "" && s.npAlbum == "" && len(s.npCover) == 0 {
 		return
 	}
-	rtpInfo := "seq=" + utoa(uint64(s.seq)) + ";rtptime=" + utoa(uint64(s.rtpTime32()))
-	var hdr []header
-	if s.rtspSession != "" {
-		hdr = append(hdr, header{"Session", s.rtspSession})
-	}
-	hdr = append(hdr, header{"RTP-Info", rtpInfo})
+	hdr := s.metadataHeaders()
 	var inner strings.Builder
 	if s.npTitle != "" {
 		inner.WriteString(dmapTag("minm", s.npTitle))

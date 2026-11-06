@@ -178,14 +178,14 @@ func TestLatencyText(t *testing.T) {
 	}
 }
 
-func TestLampDefaultsOffAndSand(t *testing.T) {
+func TestLampDefaultsOffAndOrigin(t *testing.T) {
 	s := NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
 	got := s.Load()
 	if got.Lamp.Enabled {
 		t.Fatal("lamp should default to off")
 	}
-	if got.Lamp.Preset != "sand" {
-		t.Fatalf("lamp preset = %q, want sand", got.Lamp.Preset)
+	if got.Lamp.Preset != "origin" {
+		t.Fatalf("lamp preset = %q, want origin", got.Lamp.Preset)
 	}
 }
 
@@ -195,19 +195,19 @@ func TestLampOldFileLoadsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if got.Lamp.Enabled || got.Lamp.Preset != "sand" {
-		t.Fatalf("legacy file lamp = %+v, want off + sand", got.Lamp)
+	if got.Lamp.Enabled || got.Lamp.Preset != "origin" {
+		t.Fatalf("legacy file lamp = %+v, want off + origin", got.Lamp)
 	}
 }
 
-func TestLampUnknownPresetNormalizesToSand(t *testing.T) {
+func TestLampUnknownPresetNormalizesToOrigin(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	if err := os.WriteFile(path, []byte(`{"lamp":{"enabled":true,"preset":"bogus"}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "sand" {
-		t.Fatalf("unknown preset = %+v, want on + sand", got.Lamp)
+	if !got.Lamp.Enabled || got.Lamp.Preset != "origin" {
+		t.Fatalf("unknown preset = %+v, want on + origin", got.Lamp)
 	}
 }
 
