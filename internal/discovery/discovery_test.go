@@ -160,6 +160,9 @@ func TestBrowseIntegration(t *testing.T) {
 		t.Skip("set SAUNDO_MDNS_TEST=1 to browse the LAN")
 	}
 	s := New(2*time.Second, 2*time.Second)
+	// This test measures the multicast browse alone; the directed fallback
+	// has its own live test.
+	s.unicastEvery = 0
 	s.Start()
 	defer s.Stop()
 	deadline := time.After(8 * time.Second)
@@ -464,6 +467,9 @@ func TestStopReturnsDuringInFlightQuery(t *testing.T) {
 	defer func() { releaseOnce(); finished.Wait(); mdnsQuery = prev }()
 
 	s := New(0, 0)
+	// This test replaces only the multicast query; keep the directed pass off
+	// the LAN so no neighbor is probed for real.
+	s.neighbors = func() ([]string, error) { return nil, nil }
 	s.Start()
 	entered.Wait()
 

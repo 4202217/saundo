@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-04 -->
+<!-- reviewed-through: 2026-11-06 -->
 
 # saundo Architecture and Technology Selection
 
@@ -164,7 +164,7 @@ advertises feature bit 41 and its model starts with `AudioAccessory` or `Mac`.
 The sender talks to it through a narrow `PTPClock` interface, so NTP stays the
 path for Apple TV.
 
-**No old Go libraries.** SRP, TLV8, bplist, ALAC, and WASAPI are implemented in-house or ported from C++/Rust. Only discovery uses hashicorp/mdns, with Windows DNS-SD as a fallback. This avoids dependence on unmaintained go-wca and zeroconf.
+**No old Go libraries.** SRP, TLV8, bplist, ALAC, and WASAPI are implemented in-house or ported from C++/Rust. Only discovery uses hashicorp/mdns, for the multicast browse, plus miekg/dns for a directed query to the ARP neighbor table and remembered receiver addresses when multicast does not reach the PC. This avoids dependence on unmaintained go-wca and zeroconf.
 
 **DPAPI for credentials.** Long-term keys never touch disk in plaintext. Logs never contain PINs, long-term keys, or session keys.
 
@@ -184,7 +184,7 @@ path for Apple TV.
 
 **WASAPI capture.** A pure-Go COM binding needs careful lifetime handling and default-device switching. Reference AirFlash's `wasapi.rs` and mygo's WASAPI output.
 
-**mDNS and firewall.** Windows Firewall, multiple NICs, and VPNs all affect discovery. Start with hashicorp/mdns and switch to the Windows DNS-SD API if needed.
+**mDNS and firewall.** Windows Firewall, multiple NICs, and VPNs all affect discovery. The multicast browse is primary; when a receiver's multicast does not reach the PC, a directed query on UDP 5353 to addresses in the ARP neighbor table and the remembered receiver list still resolves it.
 
 **HomePod OS differences.** Confirmed on real hardware on 2026-10-31: HomePod
 software 27.2 accepts an NTP session SETUP and RECORD but silently ignores the
@@ -202,6 +202,7 @@ ready PTP follower it streams. The app selects PTP automatically for
 | golang.org/x/crypto | BSD-3-Clause | Active | ChaCha20-Poly1305, HKDF, Ed25519, X25519 |
 | github.com/egoist/mygo | MIT | 2026-10 | UI, tray, packaging |
 | github.com/hashicorp/mdns | MIT | 2026-10 | mDNS discovery |
+| github.com/miekg/dns | BSD-3-Clause | Active | Directed DNS-SD queries |
 | airplay2-sender-cpp | Apache-2.0 | 2026-09 | Primary reference; keep NOTICE when porting |
 | pyatv | MIT | 2026-06 | Secondary reference; keep copyright notices when porting |
 | AirFlash | GPLv3+ (or commercial) | 2026-10 | Code reference; ported under the GPLv3 option |

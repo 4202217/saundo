@@ -53,6 +53,10 @@ live state:
   the per-receiver delay restart, receiver-password save and clear, and a
   manual receiver with no mDNS advertisement. Pinned by the receivers, engine,
   and app tests and the `settings-receivers-*` / `dialog-receiver-*` previews.
+- The directed discovery fallback in the live app: the resolver is proven
+  against both HomePods (`TestLiveUnicastQuery`), but the app's first sighting
+  of the re-merged group and the stale-group prune are pinned by headless
+  engine tests only.
 
 ## Automated checks
 
@@ -91,6 +95,8 @@ Opt-in live tests, skipped unless their environment variable is set:
 
 ```bash
 SAUNDO_MDNS_TEST=1 go test -run TestBrowseIntegration -v ./internal/discovery/
+SAUNDO_UNICAST_TEST=192.168.31.46,192.168.31.164 go test -run TestLiveUnicastQuery -v ./internal/discovery/
+SAUNDO_UNICAST_BROWSE=1 go test -run TestLiveUnicastBrowse -v ./internal/discovery/
 SAUNDO_DEVICE_TEST=1 go test -run TestLiveHomePodHandshake -v ./internal/airplay/sender/
 SAUNDO_DEVICE_TEST=1 SAUNDO_DEVICE_LONG=1 go test -run TestLiveHomePodHandshake -v ./internal/airplay/sender/
 ```
@@ -852,6 +858,65 @@ the collapsed pair row and `receivers.json` stored the escaped text.
   rewrote the stored name to `卧室`. Flyout capture:
   `/tmp/saundo-verify/20261106-gpn-fix/flyout-after.png`.
 
+## Directed discovery fallback (2026-11-06)
+
+On this network the HomePod pair (HomePod L 192.168.31.46 and HomePod R
+192.168.31.164, software 27.3) was online and accepted TCP 7000, but the
+reported 8-second multicast browse saw only the MacBook Air and the Redmi. The
+app therefore marked the pair offline, and a remembered group could not be
+connected.
+
+- **Multicast is intermittent.** Repeating
+  `SAUNDO_MDNS_TEST=1 go test -run TestBrowseIntegration -v ./internal/discovery`
+  with the directed pass disabled (the test now sets `unicastEvery = 0` so it
+  measures multicast alone) produced three different snapshots in three runs:
+  the complete 卧室 group; HomePod L and HomePod R as separate `_raop`-only
+  devices (`ap2=false`, no tsid, so no group); and the MacBook Air and Redmi
+  only. The loss is per reply, not a permanent block, which is why a single
+  successful browse does not prove the next cycle will be complete.
+- **Directed queries are reliable.** A directed PTR query to each address
+  returned that HomePod's own `_airplay` and `_raop` instance every run, in
+  about 10 to 30 ms. `_airplay` carried
+  `tsid=7A6CE980-7265-5ABD-B3E9-B90563D5932F`, `gpn` 卧室, `deviceid`, and the
+  feature bits. `_raop` carried `am`, `ft`, and `sf` and no `deviceid`, so its
+  identity came from the `<MAC>@<name>` instance. Both members advertised
+  `igl=1` in this capture. The `_airplay` reply is about 700 bytes; the DNS
+  client read buffer must exceed the 512-byte default (the resolver uses
+  8192).
+- **Fallback.** `internal/discovery` keeps the multicast browse and adds a
+  directed pass every fifth cycle (15 s at the 3 s interval). Candidates are
+  the Windows ARP neighbor table (`GetIpNetTable`) plus the manual and
+  last-known receiver hosts from `receivers.json`. The pass queries both
+  service types, follows SRV/TXT/A when the responder omits them, synthesizes
+  an `mdns.ServiceEntry`, and runs the existing `parseEntry`/merge path. A
+  missing record skips that instance; it never becomes a device with an empty
+  address.
+- **Persistence and prune.** A discovered row stores its last host, port, and
+  `lastSeen`; a stereo group stores the leader's endpoint. A remembered
+  `stereo:<tsid>` unseen for 24 h is pruned with its auto-connect flag, because
+  a split and re-merge mints a new tsid. A group without `lastSeen` is stamped
+  on the first launch instead of pruned, so an upgrade still gets the full
+  grace.
+- **Pins.** `TestUnicastFallbackDiscoversStereoPair` (loopback DNS server,
+  both service types, group 卧室), `TestUnicastSkipsInstanceWithoutAddress`,
+  `TestUnicastRunsEveryFifthCycle`,
+  `TestUnicastCandidatesMergeNeighborsAndSeeds`,
+  `TestParseIpNetTableFiltersUnusableNeighbors`,
+  `TestNeighborHostsReadsTheArpTable`,
+  `TestDiscoveredReceiverPersistsAddressAndLastSeen`,
+  `TestDiscoveredGroupPersistsLeaderAddress`,
+  `TestLegacyGroupGetsGraceInsteadOfImmediatePrune`,
+  `TestStaleGroupPrunedAfterGraceAndLosesAutoConnect`,
+  `TestGroupOfflineWithinGraceIsKept`, and
+  `TestPruneStaleGroupsRemovesOnlyExpiredUndiscoveredGroups`.
+- **Live check.** `SAUNDO_UNICAST_TEST=192.168.31.46,192.168.31.164 go test
+  -run TestLiveUnicastQuery -v ./internal/discovery` resolved both HomePods
+  over both services in 20 ms; the log showed `tsid=7A6CE980-...` and
+  `gpn="卧室"` for each member. With multicast disabled and only the directed
+  pass running (`SAUNDO_UNICAST_BROWSE=1 go test -run TestLiveUnicastBrowse -v
+  ./internal/discovery`), the service found the MacBook Air, the Redmi, and the
+  卧室 group (2 members, online) in 1.0 s from the real ARP table.
+
 ## Failure modes and meanings
 
 | Symptom | Likely cause |
@@ -864,7 +929,7 @@ the collapsed pair row and `receivers.json` stored the escaped text.
 | Pairing 470 | The receiver wants a PIN but did not show one. The app falls back from transient to on-screen PIN once. |
 | No audio after reconnect | Stored credentials are missing or corrupt; the app pairs afresh. Check the DPAPI file is readable by the same Windows user. |
 | Timing requests unanswered | Windows Firewall blocks inbound UDP to the app. Allow the app on private networks. |
-| Discovery empty | mDNS blocked, wrong network profile, VPN, or AP/client isolation. |
+| Discovery empty | mDNS blocked, wrong network profile, VPN, or AP/client isolation. A receiver that answers directed queries but not multicast is found from the ARP neighbor table; one absent from both stays undiscovered. |
 
 ## Evidence to capture before changing protocol code
 

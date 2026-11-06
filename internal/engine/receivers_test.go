@@ -477,7 +477,7 @@ func TestDiscoveredRowIgnoresAddressAndTypeEdits(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: testDeviceID,
 		patch: receivers.Patch{Host: &host, Type: &typ}})
 	e, _ := h.e.reg.Get(testDeviceID)
-	if e.Host != "" || e.Type != "" {
+	if e.Host != "192.0.2.10" || e.Port != 7000 || e.Type != "" {
 		t.Fatalf("discovered entry took a manual edit: %+v", e)
 	}
 	if h.e.Snapshot().Error != "" {

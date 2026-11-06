@@ -4,7 +4,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
+	"time"
 
 	"saundo/internal/airplay/device"
 	"saundo/internal/settings"
@@ -473,6 +475,35 @@ func TestMigrateSettingsKeepsAnExistingDpapiPassword(t *testing.T) {
 type fakePasswords struct {
 	values map[string]string
 	fail   bool
+}
+
+// TestPruneStaleGroupsRemovesOnlyExpiredUndiscoveredGroups pins the prune
+// rule: a stereo group unseen for longer than the grace goes, carrying its
+// auto-connect flag; a recent group, an unstamped group, a live group, a
+// single receiver, and a manual entry stay.
+func TestPruneStaleGroupsRemovesOnlyExpiredUndiscoveredGroups(t *testing.T) {
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	old := now.Add(-25 * time.Hour)
+	reg := Registry{Entries: []Entry{
+		{Key: "stereo:old", Kind: KindDiscovered, AutoConnect: true, LastSeen: old},
+		{Key: "stereo:recent", Kind: KindDiscovered, LastSeen: now.Add(-time.Hour)},
+		{Key: "stereo:unstamped", Kind: KindDiscovered},
+		{Key: "stereo:live", Kind: KindDiscovered, LastSeen: old},
+		{Key: "AA:00", Kind: KindDiscovered, LastSeen: old},
+		{Key: "m:01", Kind: KindManual, Host: "192.0.2.9", LastSeen: old},
+	}}
+	removed := PruneStaleGroups(&reg, map[string]bool{"stereo:live": true}, now, GroupGrace)
+	if !slices.Equal(removed, []string{"stereo:old"}) {
+		t.Fatalf("removed = %v, want the expired group", removed)
+	}
+	if _, ok := reg.Get("stereo:old"); ok {
+		t.Fatal("expired group survived")
+	}
+	for _, key := range []string{"stereo:recent", "stereo:unstamped", "stereo:live", "AA:00", "m:01"} {
+		if _, ok := reg.Get(key); !ok {
+			t.Fatalf("row %q was pruned", key)
+		}
+	}
 }
 
 func (f *fakePasswords) SavePassword(key, password string) error {

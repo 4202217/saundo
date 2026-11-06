@@ -49,7 +49,7 @@ the card's meter follows the audio being heard.
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height), settings window (`settings_window.go`, eight pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
 | `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`), snapshots |
-| `internal/discovery` | mDNS browse, TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
+| `internal/discovery` | mDNS browse plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), format conversion (`convert.go`), and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/audio/ring` | Bounded overwrite-oldest SPSC `Buffer` and multi-sink `Fanout` (`KeepNewest` trim, drop counters) |
 | `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a delayed frame ring for the Now Playing card |
@@ -89,6 +89,14 @@ online. A user connect or disconnect ends the launch wait, and a failed
 launch falls into the ordinary reconnect policy. The global
 `settings.AutoConnect` flag is a migration input only.
 
+Each remembered row also stores its last advertised host and port (a stereo
+group stores the leader's) and a `lastSeen` timestamp. Discovery seeds its
+directed pass from those addresses, so a restart can probe a receiver whose
+multicast never reaches the PC. A `stereo:<tsid>` row unseen for a day is
+pruned with its auto-connect flag: splitting and re-merging a pair mints a
+new tsid, so the old key never returns. A row without `lastSeen` is stamped on
+the first launch and is not pruned at upgrade.
+
 The engine's SETUP latency for a receiver is the global base plus that
 receiver's DSP/DAC delay, clamped to 20–4000 ms. The app composes the
 flyout's ALAC line from the same two values for the active receiver; a delay
@@ -125,7 +133,7 @@ mode.
 All under `%APPDATA%\saundo\`:
 
 - `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, and the language and appearance choices. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
-- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, and delay settings. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
+- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.
 - `mute-guard.json` — written before the engine mutes the local render
