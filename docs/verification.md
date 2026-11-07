@@ -1108,6 +1108,15 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
 - **Defaults (2026-11-07).** The local-output mute, ambient light, and
   receiver track-info switches default on. `TestDefaultsEnableMuteAndReceiverPush`,
   `TestLampDefaultsOnAndOrigin`, and `TestLampOldFileLoadsDefaults` pin this.
+- **CI gate and final draft (2026-11-07).** The defaults release commit
+  `d1f6e76`'s workflow passed check, draft, and build (run 42339224999);
+  the CI check job is the release gate because this machine's engine test
+  binary fails its settings save with an impossible `json.SyntaxError`.
+  The draft carried the installer, the 0.5.0 archive, the 0.4.2 and 0.4.1
+  deltas, `install.ps1`, `SHA256SUMS`, and the manifest; `sha256sum -c
+  SHA256SUMS` passed every listed file. The manifest is version 0.5.0 with
+  a signature, the English notes, and the defaults and mygo 0.8.0 lines.
+  The installer is unsigned, so SmartScreen warns.
 - **Publish gate.** The maintainer's real-device test of the draft is still
   pending; publishing is not authorized yet.
 
