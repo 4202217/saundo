@@ -834,6 +834,7 @@ func TestNowPlayingCommandForwardsWhenEnabled(t *testing.T) {
 	h.connect()
 	h.launch()
 
+	h.e.handleCommand(command{kind: cmdShowNowPlaying, value: 0})
 	h.e.handleCommand(command{kind: cmdNowPlaying, text: "歌", name: "手", album: "片"})
 	if len(h.fake.nowPlaying) != 0 {
 		t.Fatal("metadata forwarded while the switch is off")

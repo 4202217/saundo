@@ -108,15 +108,17 @@ func Default() Settings {
 		LatencyMode:         LatencyLow,
 		LatencyCustomMS:     DefaultLatencyCustomMS,
 		ShowLatencySwitch:   true,
+		ShowNowPlaying:      true,
 		ShowNowPlayingPanel: true,
 		PlaybackControls:    true,
 		CoverColors:         true,
 		CoverMode:           CoverMedia,
 		AudioLevel:          true,
+		MuteLocalOnConnect:  true,
 		Reconnect:           true,
 		TrayAnimation:       true,
 		Theme:               ThemeSystem,
-		Lamp:                LampSettings{Preset: lamp.DefaultID},
+		Lamp:                LampSettings{Enabled: true, Preset: lamp.DefaultID},
 	}
 }
 
@@ -200,8 +202,8 @@ func (s *Store) Load() Settings {
 	default:
 		out.CoverMode = CoverMedia
 	}
-	// An old file has no lamp object at all, which decodes as off + the
-	// default preset. An unknown preset never survives a load.
+	// An old file has no lamp object at all, which keeps the default (on +
+	// the default preset). An unknown preset never survives a load.
 	out.Lamp.Preset = lamp.Normalize(out.Lamp.Preset)
 	return out
 }

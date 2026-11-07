@@ -14,10 +14,10 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   开机自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language, and
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at once).
 - 连接 page: a status card for the current device, 断开后自动重连,
-  严格验证接收器, and 连接后静音本机输出. The mute row's subtitle follows
-  the engine state (`MuteLocal`): off, waiting for a connection, muted now,
-  or failed; the driver caveat under the card shows only while the switch is
-  on. Launch auto-connect is not here — it is per receiver on the 接收器 page.
+  严格验证接收器, and 连接后静音本机输出 (on by default). The mute row's
+  subtitle follows the engine state (`MuteLocal`): off, waiting for a
+  connection, muted now, or failed; the driver caveat under the card shows
+  only while the switch is on. Launch auto-connect is not here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); per-receiver password
@@ -33,7 +33,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   (20–2000 ms, applies 500 ms after the last change), the 面板快捷切换
   header switch that shows or hides the flyout's latency segment row, and
   read-only format/sync rows.
-- 氛围灯 page: the 开启氛围灯 switch with the HomePod 专属 tag, a 72-DIP
+- 氛围灯 page: the 开启氛围灯 switch (on by default) with the HomePod 专属 tag, a 72-DIP
   preview of the current preset with its localized name, seven preset tiles
   (默认, 暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白), the on/off hint, and the Sound
   Glow reminder. Off dims the preview to 35% and disables the grid. The page
@@ -50,7 +50,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   media; persists as `coverMode`), 播放控制 (`playbackControls`),
   封面配色 (`coverColors`), 音频电平 (`audioLevel`), and last
   在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting,
-  off); the receiver push is last because it leaves the panel untouched.
+  on); the receiver push is last because it leaves the panel untouched.
   Master off greys the
   preview at 45% and disables every row; the dependent values stay. The
   receiver row is effective only while the master is on. New `settings.json`
@@ -74,6 +74,12 @@ Headless UI pins the split and rendering:
 
 ```bash
 go test -run 'TestSettingsPagesRender|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+```
+
+Settings defaults:
+
+```bash
+go test -run 'TestDefaultsEnableMuteAndReceiverPush|TestLampDefaultsOnAndOrigin|TestLampOldFileLoadsDefaults' -v ./internal/settings/
 ```
 
 Live engine path for the mute (mutes the receiver first, drives the engine

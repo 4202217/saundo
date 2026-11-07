@@ -178,14 +178,24 @@ func TestLatencyText(t *testing.T) {
 	}
 }
 
-func TestLampDefaultsOffAndOrigin(t *testing.T) {
+func TestLampDefaultsOnAndOrigin(t *testing.T) {
 	s := NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
 	got := s.Load()
-	if got.Lamp.Enabled {
-		t.Fatal("lamp should default to off")
+	if !got.Lamp.Enabled {
+		t.Fatal("lamp should default to on")
 	}
 	if got.Lamp.Preset != "origin" {
 		t.Fatalf("lamp preset = %q, want origin", got.Lamp.Preset)
+	}
+}
+
+func TestDefaultsEnableMuteAndReceiverPush(t *testing.T) {
+	got := Default()
+	if !got.MuteLocalOnConnect {
+		t.Fatal("local output mute should default to on")
+	}
+	if !got.ShowNowPlaying {
+		t.Fatal("receiver track info should default to on")
 	}
 }
 
@@ -195,8 +205,8 @@ func TestLampOldFileLoadsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if got.Lamp.Enabled || got.Lamp.Preset != "origin" {
-		t.Fatalf("legacy file lamp = %+v, want off + origin", got.Lamp)
+	if !got.Lamp.Enabled || got.Lamp.Preset != "origin" {
+		t.Fatalf("legacy file lamp = %+v, want on + origin", got.Lamp)
 	}
 }
 
