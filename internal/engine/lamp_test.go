@@ -87,12 +87,13 @@ func TestLampAppliedWhenStreamingStarts(t *testing.T) {
 
 func TestLampUnknownPresetFallsBackToOrigin(t *testing.T) {
 	h := newHarness(t)
-	h.e.setDevices([]device.Device{capableLampDevice()})
-	h.connect()
-	h.launch()
+	h.e.setsValue.Lamp.Enabled = false
 	h.e.lampJPEG = func(preset string) ([]byte, error) {
 		return []byte("jpeg:" + preset), nil
 	}
+	h.e.setDevices([]device.Device{capableLampDevice()})
+	h.connect()
+	h.launch()
 	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "bogus"})
 
 	if got := h.e.Snapshot().LampPreset; got != "origin" {

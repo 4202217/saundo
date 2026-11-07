@@ -484,7 +484,7 @@ software stereo groups built from independent receivers.
   with the 系统媒体 badge, a preview of the real Now Playing card (the live session, or a sample Apple Music / 夜航 / 白鲸电台 card when nothing plays), and
   the rows 播放控制 (`playbackControls`), 封面配色
   (`coverColors`), 音频电平 (`audioLevel`), and last
-  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting, off);
+  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting, on);
   the receiver push is last because it leaves the panel untouched. Master off greys the preview
   and disables every row; there is no closed placeholder. New keys in
   `settings.json` default on; a missing key reads its default.
@@ -889,7 +889,7 @@ development PC with a real HomePod stereo pair on the LAN.
   connection, and the tray menu gained no item.
 - **Pinned by.** `TestPresetsMatchCatalog`, `TestGeneratedJPEGsAre600Square`,
   `TestPresetPixelsFollowTheBlobs`, `TestGeneratorCachesPerPreset`,
-  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOffAndOrigin`,
+  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOnAndOrigin`,
   `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToOrigin`,
   `TestLampRoundTrips`, `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
   `TestMergeKeepsOSVersion`, `TestSetLampArtworkSendsCover`,
@@ -1105,6 +1105,9 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   listed file. The manifest is version 0.5.0 with a signature, the English
   notes, and the mygo 0.8.0 line. The installer is unsigned, so SmartScreen
   warns. This supersedes run 42264388577 and its assets.
+- **Defaults (2026-11-07).** The local-output mute, ambient light, and
+  receiver track-info switches default on. `TestDefaultsEnableMuteAndReceiverPush`,
+  `TestLampDefaultsOnAndOrigin`, and `TestLampOldFileLoadsDefaults` pin this.
 - **Publish gate.** The maintainer's real-device test of the draft is still
   pending; publishing is not authorized yet.
 

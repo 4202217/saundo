@@ -7,8 +7,8 @@ of the media cover. One global choice, not per receiver.
 ## Sub-features
 
 - 氛围灯 settings page and the flyout's ambient card. The settings page owns
-  the 开启氛围灯 switch; the flyout card appears only while it is on and has
-  no switch. The tray menu has no ambient item.
+  the 开启氛围灯 switch, on by default; the flyout card appears only while it
+  is on and has no switch. The tray menu has no ambient item.
 - Seven presets: 默认 (origin reset), 暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白.
   `internal/lamp` renders six palettes plus origin as deterministic 600×600
   JPEGs and caches each one.
@@ -43,6 +43,7 @@ Renderer and capability:
 ```bash
 go test -run 'TestPresetsMatchCatalog|TestGeneratedJPEGsAre600Square|TestPresetPixelsFollowTheBlobs|TestGeneratorCachesPerPreset' -v ./internal/lamp/
 go test -run 'TestTopDisplayCapable' -v ./internal/airplay/device/
+go test -run 'TestLampDefaultsOnAndOrigin|TestLampOldFileLoadsDefaults' -v ./internal/settings/
 ```
 
 Sender and engine:
