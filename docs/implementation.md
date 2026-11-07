@@ -158,8 +158,9 @@ All under `%APPDATA%\saundo\`:
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.
 - `mute-guard.json` — written before the engine mutes the local render
-  endpoint and removed after it restores it. A crash or forced kill leaves it
-  for the next launch to undo (`internal/engine/mute.go`).
+  endpoint and removed after it releases it. The connection mute is temporary
+  and never outlives the session; a crash or forced kill leaves the guard for
+  the next launch to release the endpoint (`internal/engine/mute.go`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.
 - The first run after the airgoplay rename copies `settings.json` and
   `credentials.dat` from `%APPDATA%\airgoplay` (`internal/app/migrate.go`).

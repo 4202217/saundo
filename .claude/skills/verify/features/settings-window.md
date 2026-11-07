@@ -99,9 +99,9 @@ the value persists in settings.json after a restart. Flip one 接收器 toggle, 
 value back from `receivers.json` on disk — never trust the UI echo. On 连接,
 turn on 连接后静音本机输出 while streaming: the PC speakers mute, the
 HomePod keeps playing, and the subtitle reads 本机已静音; disconnecting or
-quitting restores the speakers. A forced kill while muted leaves
-`mute-guard.json` under `%APPDATA%\saundo\`, and the next launch restores the
-endpoint and removes the file.
+quitting restores the speakers, even when they were muted before the session.
+A forced kill while muted leaves `mute-guard.json` under `%APPDATA%\saundo\`,
+and the next launch releases the endpoint and removes the file.
 
 Proven end state: the change survives a settings-window close/reopen and an
 app restart, and the corresponding engine command fired (log line or state

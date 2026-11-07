@@ -127,6 +127,47 @@ func TestLiveMuteLocal(t *testing.T) {
 		t.Fatalf("mute guard survived the disconnect: %v", err)
 	}
 	t.Logf("disconnected; local endpoint restored")
+
+	// A second session starts with the endpoint muted, the state left by a
+	// user who muted local output before connecting. The connection mute must
+	// still release it on disconnect.
+	if err := capture.SetEndpointMuted("", true); err != nil {
+		t.Fatalf("pre-mute the local endpoint: %v", err)
+	}
+	e.Connect(target.ID)
+	e.SetVolume(0)
+	waitLive(t, 40*time.Second, "streaming again", e, func() bool {
+		return e.Snapshot().State == sender.StateStreaming
+	})
+	waitLive(t, 5*time.Second, "the local mute again", e, func() bool {
+		return e.Snapshot().MuteLocal == MuteLocalActive
+	})
+	muted, err = capture.EndpointMuted("")
+	if err != nil {
+		t.Fatalf("read the local endpoint: %v", err)
+	}
+	if !muted {
+		t.Fatal("the pre-muted local endpoint is not muted while streaming")
+	}
+	t.Logf("streaming; pre-muted local endpoint held muted")
+
+	e.SetVolume(restoreVolume)
+	time.Sleep(500 * time.Millisecond)
+	e.Disconnect()
+	waitLive(t, 15*time.Second, "idle after the second disconnect", e, func() bool {
+		return e.Snapshot().State == sender.StateIdle && e.Snapshot().MuteLocal == MuteLocalWaiting
+	})
+	muted, err = capture.EndpointMuted("")
+	if err != nil {
+		t.Fatalf("read the local endpoint: %v", err)
+	}
+	if muted {
+		t.Fatal("the local endpoint stayed muted after disconnect")
+	}
+	if _, err := os.Stat(e.muteGuardPath()); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("mute guard survived the second disconnect: %v", err)
+	}
+	t.Logf("disconnected; pre-muted local endpoint released")
 }
 
 func waitLive(t *testing.T, timeout time.Duration, what string, e *Engine, cond func() bool) {

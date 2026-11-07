@@ -23,22 +23,20 @@ const (
 	MuteLocalFailed
 )
 
-// localMute is the mute the engine currently owns. endpointID and previous are
-// meaningful only in MuteLocalActive.
+// localMute is the mute the engine currently owns. endpointID is meaningful
+// only in MuteLocalActive.
 type localMute struct {
 	state      MuteLocalState
 	endpointID string
-	previous   bool
 	err        string
 }
 
 // muteGuard is written before the endpoint is muted and removed after it is
-// restored. A crash between those points leaves it for the next launch. The
-// PID is diagnostic; the app runs one instance.
+// released. A crash between those points leaves it for the next launch, which
+// releases the endpoint. The PID is diagnostic; the app runs one instance.
 type muteGuard struct {
-	EndpointID   string `json:"endpointId"`
-	PreviousMute bool   `json:"previousMute"`
-	PID          int    `json:"pid"`
+	EndpointID string `json:"endpointId"`
+	PID        int    `json:"pid"`
 }
 
 func (e *Engine) idleMuteState() MuteLocalState {
@@ -49,7 +47,9 @@ func (e *Engine) idleMuteState() MuteLocalState {
 }
 
 // applyLocalMute mutes the local render endpoint when the setting is on and a
-// session is streaming. It is idempotent: an already active mute returns.
+// session is streaming. The mute is temporary: restoreLocalMute always ends
+// it, even when the endpoint was muted before the session began. It is
+// idempotent: an already active mute returns.
 func (e *Engine) applyLocalMute() {
 	if !e.setsValue.MuteLocalOnConnect {
 		e.setMuteState(MuteLocalOff, "")
@@ -76,12 +76,7 @@ func (e *Engine) applyLocalMute() {
 		}
 		endpointID = ep.ID
 	}
-	previous, err := e.endpointMuted(endpointID)
-	if err != nil {
-		e.failLocalMute(err)
-		return
-	}
-	if err := e.writeMuteGuard(endpointID, previous); err != nil {
+	if err := e.writeMuteGuard(endpointID); err != nil {
 		e.failLocalMute(fmt.Errorf("write mute guard: %w", err))
 		return
 	}
@@ -90,19 +85,21 @@ func (e *Engine) applyLocalMute() {
 		e.failLocalMute(err)
 		return
 	}
-	e.mute = localMute{state: MuteLocalActive, endpointID: endpointID, previous: previous}
+	e.mute = localMute{state: MuteLocalActive, endpointID: endpointID}
 	e.logf("local output muted (%s)", endpointID)
 	e.publish()
 }
 
-// restoreLocalMute puts the endpoint back to the state it had before the
-// session. A failed restore keeps the state active and the guard in place so a
-// later close or the next launch can retry.
+// restoreLocalMute unmutes the endpoint and ends the session's mute. The
+// connection mute never outlives the session: an endpoint that was muted
+// before the session would otherwise stay silent after every disconnect. A
+// failed restore keeps the state active and the guard in place so a later
+// close or the next launch can retry.
 func (e *Engine) restoreLocalMute() {
 	if e.mute.state != MuteLocalActive {
 		return
 	}
-	if err := e.setEndpointMuted(e.mute.endpointID, e.mute.previous); err != nil {
+	if err := e.setEndpointMuted(e.mute.endpointID, false); err != nil {
 		e.mute.err = err.Error()
 		e.logf("local output restore failed for %s: %v", e.mute.endpointID, err)
 		e.publish()
@@ -128,7 +125,6 @@ func (e *Engine) setMuteState(state MuteLocalState, errText string) {
 	e.mute.err = errText
 	if state != MuteLocalActive {
 		e.mute.endpointID = ""
-		e.mute.previous = false
 	}
 	e.publish()
 }
@@ -138,7 +134,7 @@ func (e *Engine) failLocalMute(err error) {
 	e.setMuteState(MuteLocalFailed, err.Error())
 }
 
-// recoverMuteGuard restores an endpoint left muted by a previous run. It runs
+// recoverMuteGuard releases an endpoint left muted by a previous run. It runs
 // once at construction, before any session can own the mute.
 func (e *Engine) recoverMuteGuard() {
 	path := e.muteGuardPath()
@@ -163,9 +159,9 @@ func (e *Engine) recoverMuteGuard() {
 		e.logf("mute guard has no endpoint; leaving it in place")
 		return
 	}
-	if err := e.setEndpointMuted(guard.EndpointID, guard.PreviousMute); err != nil {
+	if err := e.setEndpointMuted(guard.EndpointID, false); err != nil {
 		if e.endpointExists(guard.EndpointID) {
-			e.logf("mute guard restore failed for %s: %v", guard.EndpointID, err)
+			e.logf("mute guard release failed for %s: %v", guard.EndpointID, err)
 			return
 		}
 		e.clearMuteGuard()
@@ -173,7 +169,7 @@ func (e *Engine) recoverMuteGuard() {
 		return
 	}
 	e.clearMuteGuard()
-	e.logf("restored local output from the previous run (%s)", guard.EndpointID)
+	e.logf("released local output from the previous run (%s)", guard.EndpointID)
 }
 
 func (e *Engine) endpointExists(id string) bool {
@@ -199,12 +195,12 @@ func (e *Engine) muteGuardPath() string {
 	return filepath.Join(e.sets.Dir(), "mute-guard.json")
 }
 
-func (e *Engine) writeMuteGuard(endpointID string, previous bool) error {
+func (e *Engine) writeMuteGuard(endpointID string) error {
 	path := e.muteGuardPath()
 	if path == "" {
 		return errors.New("no settings directory")
 	}
-	data, err := json.Marshal(muteGuard{EndpointID: endpointID, PreviousMute: previous, PID: os.Getpid()})
+	data, err := json.Marshal(muteGuard{EndpointID: endpointID, PID: os.Getpid()})
 	if err != nil {
 		return err
 	}
