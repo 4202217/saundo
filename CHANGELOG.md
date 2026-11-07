@@ -52,6 +52,8 @@ release notes.
 - A local build reports its git describe stamp, and the updater still
   offers the release that the build sits past.
 - The app now builds on mygo 0.8.0.
+- The local-output mute, ambient light, and receiver track-info switches
+  now default on.
 
 ### Fixed
 
