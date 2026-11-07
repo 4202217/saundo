@@ -953,30 +953,45 @@ played a 440 Hz tone through the default endpoint, captured the loopback, and
 muted the endpoint between two measurements.
 
 - **Probe result.** RMS stayed at about 0.17: 0.1679 before the mute, 0.1768
-  while muted, and 0.1768 after the restore in the latest run. The endpoint
-  was already muted before the probe (`previousMute=true`), and the probe
-  restored that state. On this machine, Realtek Digital Output at 48 kHz, the
+  while muted, and 0.1768 after the release in the latest run. The endpoint
+  was already muted before the probe (`previousMute=true`), and the probe left
+  it in that state. On this machine, Realtek Digital Output at 48 kHz, the
   loopback tap is upstream of the endpoint mute.
+- **Pre-muted endpoints (2026-11-07).** The first version restored the
+  endpoint's mute state from before the session. On a machine whose endpoint
+  was already muted, every disconnect and quit restored silence: the
+  `mute-guard.json` written at 16:13:55 read `previousMute=true` while the app
+  was streaming, and each earlier restore had put the mute straight back. The
+  connection mute is now temporary: `applyLocalMute` mutes, and
+  `restoreLocalMute` always unmutes the endpoint it owns, whatever state it
+  was found in. `TestMuteLocalReleasesAPreMutedEndpoint` starts with a muted
+  endpoint and fails on the old code with "disconnect left the pre-session
+  mute in place".
 - **Driver dependence.** The tap point is driver-dependent; the settings note
   warns that muting can also silence capture. The probe is manual because it
   touches the user's audio device, not a CI test.
 - **Crash guard.** The engine writes `mute-guard.json` before muting and
-  removes it after restoring. `TestMuteGuardRecoversAfterCrash` covers the
-  next-launch restore; `TestMuteGuardCorruptIsLeftAlone` keeps an unreadable
-  guard instead of guessing which endpoint to unmute.
+  removes it after releasing. `TestMuteGuardRecoversAfterCrash` covers the
+  next-launch release, including a guard written by the first format with
+  `previousMute`; `TestMuteGuardCorruptIsLeftAlone` keeps an unreadable guard
+  instead of guessing which endpoint to unmute.
 - **Pins.** `TestMuteLocalFollowsTheSession`,
   `TestMuteLocalOffRestoresAtOnce`, `TestMuteLocalOnWhileStreaming`,
   `TestMuteLocalFailureIsVisible`, `TestMuteLocalTargetsSelectedEndpoint`,
   `TestMuteLocalProcessCaptureUsesDefaultEndpoint`,
-  `TestMuteLocalSettingPersists`, `TestConnectionPageMuteLocalStates`.
-- **Live session (2026-11-06).** `SAUNDO_MUTE_TEST=1 go test ./internal/engine -run TestLiveMuteLocal -v`
-  discovered HomePod L at 192.168.31.46, reached streaming, observed the local
-  endpoint muted and `mute-guard.json` present, then disconnected and observed
-  the endpoint restored and the guard gone. The test mutes the receiver before
-  audio can flow, drives the engine directly with temporary settings and
-  credentials, and restores the receiver's remembered volume before
-  disconnecting; it does not click the settings-window switch. That switch is
-  pinned by the headless UI tests and the native previews.
+  `TestMuteLocalReleasesAPreMutedEndpoint`, `TestMuteLocalSettingPersists`,
+  `TestConnectionPageMuteLocalStates`.
+- **Live sessions.** `SAUNDO_MUTE_TEST=1 go test ./internal/engine -run TestLiveMuteLocal -v`
+  discovered HomePod L at 192.168.31.46 on 2026-11-06, reached streaming,
+  observed the local endpoint muted and `mute-guard.json` present, then
+  disconnected and observed the endpoint released and the guard gone. The
+  2026-11-07 run repeated the cycle with the stereo pair at 192.168.31.164 and
+  added a second session that starts with the endpoint pre-muted: it stayed
+  muted while streaming and was released on disconnect. The test mutes the
+  receiver before audio can flow, drives the engine directly with temporary
+  settings and credentials, and restores the receiver's remembered volume
+  before disconnecting; it does not click the settings-window switch. That
+  switch is pinned by the headless UI tests and the native previews.
 - **Still owed.** A forced kill in the live app, and the settings-window
   toggle clicked in a real session; the engine guard and the UI wiring are
   covered separately.

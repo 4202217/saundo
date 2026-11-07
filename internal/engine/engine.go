@@ -290,7 +290,6 @@ type Engine struct {
 	captureStartFn func(capture.Config) (captureSource, error)
 
 	// The endpoint mute is injected so tests never touch the machine's audio.
-	endpointMuted    func(string) (bool, error)
 	setEndpointMuted func(string, bool) error
 	defaultEndpoint  func() (capture.Endpoint, error)
 	endpoints        func() ([]capture.Endpoint, error)
@@ -392,7 +391,6 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.captureSink = ring.NewFanout(e.ring)
 	e.level = analyze.New(0)
 	e.silence = newSilenceMeter(e.captureSink, e.level)
-	e.endpointMuted = capture.EndpointMuted
 	e.setEndpointMuted = capture.SetEndpointMuted
 	e.defaultEndpoint = capture.DefaultEndpoint
 	e.endpoints = capture.Endpoints

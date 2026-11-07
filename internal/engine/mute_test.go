@@ -17,7 +17,6 @@ type muteCall struct {
 type fakeMuter struct {
 	muted        map[string]bool
 	setCalls     []muteCall
-	readErr      error
 	setErr       error
 	defaultID    string
 	defaultErr   error
@@ -31,13 +30,6 @@ func newFakeMuter() *fakeMuter {
 		defaultID: "default-ep",
 		endpoints: []capture.Endpoint{{ID: "default-ep", Name: "Speakers"}},
 	}
-}
-
-func (f *fakeMuter) endpointMuted(id string) (bool, error) {
-	if f.readErr != nil {
-		return false, f.readErr
-	}
-	return f.muted[id], nil
 }
 
 func (f *fakeMuter) setEndpointMuted(id string, muted bool) error {
@@ -61,7 +53,6 @@ func (f *fakeMuter) listEndpoints() ([]capture.Endpoint, error) {
 }
 
 func useMuter(h *harness, m *fakeMuter) {
-	h.e.endpointMuted = m.endpointMuted
 	h.e.setEndpointMuted = m.setEndpointMuted
 	h.e.defaultEndpoint = m.defaultEndpoint
 	h.e.endpoints = m.listEndpoints
@@ -203,12 +194,38 @@ func TestMuteLocalProcessCaptureUsesDefaultEndpoint(t *testing.T) {
 	}
 }
 
+func TestMuteLocalReleasesAPreMutedEndpoint(t *testing.T) {
+	h := newHarness(t)
+	m := newFakeMuter()
+	useMuter(h, m)
+	m.muted["default-ep"] = true
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	h.e.handleCommand(command{kind: cmdDisconnect})
+
+	if m.muted["default-ep"] {
+		t.Fatal("disconnect left the pre-session mute in place")
+	}
+	if got := h.e.Snapshot().MuteLocal; got != MuteLocalWaiting {
+		t.Fatalf("state after disconnect = %v, want waiting", got)
+	}
+	last := m.setCalls[len(m.setCalls)-1]
+	if last.muted || last.endpointID != "default-ep" {
+		t.Fatalf("last set call = %+v, want unmute of default-ep", last)
+	}
+}
+
 func TestMuteGuardRecoversAfterCrash(t *testing.T) {
 	h := newHarness(t)
 	m := newFakeMuter()
 	useMuter(h, m)
 	m.muted["default-ep"] = true
-	guard := []byte(`{"endpointId":"default-ep","previousMute":false,"pid":1234}`)
+	// The previousMute field is what the first guard format wrote; recovery
+	// releases the endpoint regardless of it.
+	guard := []byte(`{"endpointId":"default-ep","previousMute":true,"pid":1234}`)
 	if err := os.WriteFile(h.e.muteGuardPath(), guard, 0o600); err != nil {
 		t.Fatal(err)
 	}
