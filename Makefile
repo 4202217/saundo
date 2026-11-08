@@ -4,7 +4,8 @@
 #
 # `mingw32-make build` goes through mygo so the exe carries resources/icon.png,
 # the manifest and the version. scripts/build.sh then stops the running app,
-# copies the exe to bin/saundo.exe, and starts it.
+# copies the exe to bin/saundo.exe, and starts it. `build-fast` skips the
+# installer and leaves the copy to the same script.
 
 # Local builds carry git describe, so a commit past a release sorts below it
 # and the updater still offers that release. Override with
@@ -13,10 +14,14 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
 
-.PHONY: build test race vet uivet i18n fmt check
+.PHONY: build build-fast test race vet uivet i18n fmt check
 
 build:
 	GO="$(GO)" VERSION="$(VERSION)" ./scripts/build.sh
+
+# The same binary without the NSIS installer, for the development loop.
+build-fast:
+	GO="$(GO)" VERSION="$(VERSION)" ./scripts/build.sh --fast
 
 test:
 	$(GO) test ./...
