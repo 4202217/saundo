@@ -5,16 +5,20 @@ area (the window frame adds a few DIPs; min 640×420), hidden title bar,
 created hidden at startup before the engine starts. The title, cards, and
 notes share one content column capped at 720 DIP and centered on a wider
 window; the scroll gutter stays at the window edge. Title is localized: `设置 · 声渡` under zh-CN,
-`Settings · saundo` under en — match windows by class `MyGoWindow` + pid,
-or `-TitleLike` the active locale's brand string, never a hardcoded title.
+`Settings · Saundo` under en — match windows by class `MyGoWindow` + pid;
+`-TitleLike` is case-sensitive and the old `"saundo"` matches neither
+locale.
 Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
 氛围灯, 采集, 正在播放, 更新, 关于; each page body scrolls in the gutter at the window edge.
 
 ## Sub-features
 
 - 通用 page: 发送端名称 (the name receivers show on their next connection),
-  登录时自动启动 (`HKCU\...\Run` value `saundo`), 托盘动画, language, and
-  外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at once).
+  登录时自动启动 (a `HKCU\...\Run` value named `com.saundo.app` in the
+  packaged build; a macOS login item on darwin), 托盘动画, language, and
+  外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
+  once). On macOS the page also carries the 托盘面板气泡样式 / Tray panel as
+  popover row (`flyoutStyleSetting`); it is hidden on Windows.
 - 连接 page: a status card for the current device, 断开后自动重连,
   严格验证接收器, and 连接后静音本机输出 (on by default). The mute row's
   subtitle follows the engine state (`MuteLocal`): off, waiting for a
@@ -23,7 +27,8 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); per-receiver password
-  row (masked, saved/cleared through the DPAPI store); add/edit/password/
+  row (masked, saved/cleared through the OS secret store: DPAPI on Windows,
+  Keychain-backed AES on macOS); add/edit/password/
   remove dialogs (`receivers_dialogs.go`). The flyout and this list show
   manual receivers and online discovered receivers; an offline discovered
   receiver is hidden and returns with its saved settings. The active
@@ -36,7 +41,8 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   header switch that shows or hides the flyout's latency segment row, and
   read-only format/sync rows. Below 714 DIP the three presets stack as
   full-width rows in the custom tile's shape; at every width they take the
-  height their wrapped description needs, so no text leaves its card.
+  height their wrapped description needs, so no text leaves its card. The
+  latency caveat sits under the card as an infoNote.
 - 氛围灯 page: the top-display card with the HomePod 专属 tag and the power
   action, a 72-DIP preview of the current preset with its localized name, a
   颜色来源 row (封面 / 模板) whose segment sits at its right, a 模板 block
@@ -78,7 +84,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Settings defaults:
@@ -97,16 +103,18 @@ SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
 Live app: open via the flyout's gear (and once via the tray menu — the
 设置… entry is a separate path), confirm the window class is `MyGoWindow`,
 the sidebar order is 通用/连接/接收器/音频/氛围灯/采集/正在播放/更新/关于, and the
-window is ~720 DIP wide. Open 正在播放, flip the master off: the preview greys,
-the rows disable, and the flyout (reopened) has no media card and is shorter;
-the value persists in settings.json after a restart. Flip one 接收器 toggle, close via the title-bar button
+window is ~720 DIP wide. Open 正在播放, turn 托盘面板中显示 off: the flyout
+(reopened) has no media card and is shorter, while the preview stays live
+and every option row stays active; the value persists in settings.json after
+a restart. Flip one 接收器 toggle, close via the title-bar button
 (process must stay alive, window reopens), restart the app and read the
 value back from `receivers.json` on disk — never trust the UI echo. On 连接,
 turn on 连接后静音本机输出 while streaming: the PC speakers mute, the
 HomePod keeps playing, and the subtitle reads 本机已静音; disconnecting or
 quitting restores the speakers, even when they were muted before the session.
-A forced kill while muted leaves `mute-guard.json` under `%APPDATA%\saundo\`,
-and the next launch releases the endpoint and removes the file.
+A forced kill while muted leaves `mute-guard.json` under `%APPDATA%\saundo\`
+on Windows (`~/Library/Application Support/saundo/` on macOS), and the next
+launch releases the endpoint and removes the file.
 
 Proven end state: the change survives a settings-window close/reopen and an
 app restart, and the corresponding engine command fired (log line or state
@@ -120,8 +128,8 @@ change in the flyout).
   (latency presets, receiver delay) with the 300/500 ms debounce — one
   restart with the final value is correct; one per click is a bug.
 - The window title follows the app locale (`设置 · 声渡` / `Settings ·
-  saundo`); capture-window.ps1 with `-TitleLike "saundo"` only matches the
-  en locale — prefer `-Class MyGoWindow` plus `-ProcId`.
+  Saundo`); capture-window.ps1 with `-TitleLike "saundo"` matches neither
+  locale — use `-Class MyGoWindow` plus `-ProcId`.
 - The audio page's custom slider debounces; a screenshot taken mid-debounce
   shows the old value with the new selection.
 - The media card display switch only hides the flyout card; the settings

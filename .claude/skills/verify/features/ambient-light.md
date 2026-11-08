@@ -9,8 +9,9 @@ per receiver.
 ## Sub-features
 
 - 氛围灯 settings page and the flyout's ambient card. The card is always
-  present; its head carries the desk-lamp glyph and the power action (关灯
-  when lit, 开灯 when dark). The row carries the compact 封面/模板 priority
+  present; the flyout head carries the section label and the power action
+  (关灯 when lit, 开灯 when dark), while the desk-lamp glyph is on the
+  settings card head only. The row carries the compact 封面/模板 priority
   segment left of the chevron. The settings page puts a 颜色来源 row
   (封面 / 模板) at its right, under the 72-DIP preview and its name, and its
   head keeps the HomePod 专属 tag. The tray menu has no
@@ -55,9 +56,9 @@ per receiver.
   an unknown/empty preset turns it on and resets the template to `dune`; a
   valid old template keeps it off. The priority segment and the template
   grid write the same flag.
-- Picking a template while the light is off turns the light on and chooses
-  template priority; choosing the cover segment also turns the light on. The
-  grid stays clickable while dimmed.
+- While the light is off, picking a template or the cover segment does
+  nothing and the grid is disabled; only 开灯 restores the current choice.
+  `TestLampOffIgnoresPriorityAndPreset` pins the early return.
 - With cover priority on and no media cover, the sender stops sending an
   image and the receiver keeps its last light. A fresh session with no
   artwork shows the receiver's white-center placeholder. The sender has no
@@ -66,10 +67,11 @@ per receiver.
 - One artwork slot: cover priority hands it to the media cover and a
   template owns it; the playback state is independent. A media cover change
   updates the text without displacing a template.
-- Capability gate. `device.TopDisplayCapable` accepts the HomePod family at
-  software 27.2 or later and fails closed on an unknown model or version.
-  A stereo group fans the image and the playback state out to each capable
-  member.
+- Capability gate. `device.TopDisplayCapable` accepts any `AudioAccessory*`
+  model at software 27.2 or later (6,1 included; there is no model
+  whitelist) and fails closed on an unknown model or version. A stereo
+  group fans the image out to each capable member; the playback state goes
+  to every member.
 - Sound Glow must be enabled on the HomePod's own settings. Without it the
   top stays white.
 
@@ -87,7 +89,7 @@ collapsed until it is clicked.
 Headless UI:
 
 ```bash
-go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish' -v ./internal/app/
+go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish|TestLampTemplateTilesKeepTheirSize|TestLampPreviewFollowsThePushedSessionNotTheCard' -v ./internal/app/
 ```
 
 Renderer, cover palette, and settings:
@@ -179,10 +181,12 @@ and the off state survive a settings-window close/reopen and an app restart.
   it, so the next open starts collapsed.
 - The light must be on before the priority segment or a template changes. The
   off preview dims like the templates, and the off chip reads 已关灯.
-- The 6,1 and first-generation HomePod are outside `TopDisplayCapable` until
-  they are verified. An unknown model or version stays off.
-- A stereo pair's simultaneous repaint is not yet verified; a member that is
-  not top-display capable is skipped.
+- `TopDisplayCapable` accepts any `AudioAccessory*` at 27.2 or later,
+  including 6,1; there is no model whitelist. An unknown model or version
+  stays off.
+- A stereo pair's simultaneous repaint is not yet verified; the image is
+  skipped for a member that is not top-display capable, while the playback
+  state still reaches every member.
 - A state `1` on a stereo follower can leave its renderer white; a new
   session restores it. The sender avoids a redundant state `1` and resends
   the artwork after a resume's state `1`; if it sticks, reconnect.

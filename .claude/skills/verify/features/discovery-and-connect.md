@@ -7,22 +7,32 @@
 - Directed fallback every fifth cycle (15 s at the 3 s interval): a unicast
   DNS-SD query on UDP 5353 to the Windows ARP neighbors and the remembered
   receiver hosts, for both `_airplay._tcp` and `_raop._tcp`, feeding the same
-  parse and merge path. It finds HomePods that miss multicast.
+  parse and merge path. It finds HomePods that miss multicast. Windows only:
+  macOS has no ARP neighbor table (`neighbors_other.go`), so the directed
+  pass probes remembered hosts only.
 - A discovered row stores its last host, port, and `lastSeen`; a
   `stereo:<tsid>` unseen for 24 h is pruned with its auto-connect flag, while
   a group without `lastSeen` gets the full grace.
 - Offline marking after about three missed query cycles
-  (`staleAfter = 3×interval + timeout`) and pruning after 90 s; a row shows
-  离线.
-- Stereo-group collapse (`tsid`): one `HomePods · 立体声组 · 2/2` row, leader
-  first, member rows hidden, group offline unless both members are online.
+  (`staleAfter = 3×interval + timeout`) and pruning after 90 s. Neither
+  surface lists an offline remembered row: `Manageable`
+  (`receivers/merge.go:133-146`) drops it, and its saved settings return when
+  it is seen again. The 离线 row action survives only in the UI fixture and
+  the unreachable `flyout.go` branch, not in the live app.
+- Stereo-group collapse (`tsid`): one row named `HomePods` with the subtitle
+  `<model> · 立体声组 2/2`, leader first, member rows hidden, group offline
+  unless both members are online.
 - Connect paths by auth kind: HAP transient (fixed PIN `3939`, stops at M4),
   on-screen PIN (配对码 dialog, Apple TV), receiver password (masked dialog on
   first connect, stored per device), legacy FairPlay fail-fast
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  attempts, then 自动重连 5 次后停止 (`engine.go:221,236-239`).
+  attempts, then 自动重连 5 次后停止 (`engine.go:258-262`, budget at
+  `:238-239`, give-up message at `:1131`).
+- A failed attempt clears its error on the next connect or disconnect
+  (`engine.go:851`, `:1025`), and other online rows stay connectable in the
+  error phase (`flyout.go:251-267`; `TestRowActionKeepsOtherReceiversConnectable`).
 
 ## How to get to it (user POV)
 
@@ -49,15 +59,15 @@ SAUNDO_DEVICE_TEST=1 go test -run TestLiveHomePodHandshake -v ./internal/airplay
 ```
 
 Live app: run the doctor, connect from the real flyout, and judge by log
-lines — `pair-setup M1`…M4, `control channel now encrypted`, `session SETUP`,
-`event channel open`, `streaming to "<name>"`. Capture
+lines — `reply "RTSP/1.0 200 OK" for POST`, `control channel now encrypted`,
+`session SETUP ok`, `event channel open`, `streaming to "<name>"`. Capture
 `$EV/flyout-before.png` and `-after.png` with capture-window.ps1. Disconnect
-by 断开 and confirm `session stopped` plus the row returning to idle.
+by 断开连接 and confirm `session stopped` plus the row returning to 连接.
 
 Proven end state: the flyout shows 正在通过 `<name>` 播放 with the
-`ALAC · 44.1 kHz · 立体声 · PTP · 已同步` line (PTP on HomePod/Mac), the row
-carries 已连接, and the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK`
-every 2 s.
+`ALAC · 44.1 kHz · PTP · 已同步 · 延迟 N ms` line (PTP on HomePod/Mac), and
+the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK` every 2 s. The 已连接
+chip is the settings connection page and sidebar, not a flyout row.
 
 ## Gotchas
 
@@ -72,10 +82,13 @@ every 2 s.
 - Multicast is intermittent on some LANs; one successful browse does not
   prove the next cycle. A receiver that is online but missing from the flyout
   should be checked with the directed pass before calling it offline.
-- A failed launch must not become the auto-connect target: `lastDeviceId`
-  is persisted only after streaming is first reached.
+- A failed launch must not become the auto-connect target: the registry's
+  auto-connect flag is seeded once from `lastDeviceId` by migration, and
+  `lastDeviceId` is persisted only after streaming is first reached.
 - Windows Firewall must allow inbound UDP on the private network, or PTP
-  and timing requests go unanswered (UI reports a PTP timeout).
+  and timing requests go unanswered (UI reports a PTP timeout). On macOS the
+  equivalent is Local Network permission: mDNS, RTSP, and PTP are dropped
+  until the user allows the app.
 - FairPlay receivers (Xiaomi/Redmi `AppleTV3,2`) accept SETUP and produce
   no sound — the app must fail fast with the FairPlay message; that is the
   correct behavior, not a bug.
