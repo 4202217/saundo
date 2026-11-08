@@ -432,6 +432,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		visibleFlyoutHeight(lampFly), true)
 	lampFly.lampOff = true
 	lampFly.snap.LampOff = true
+	lampFly.lampExpanded = false
 	save("flyout-lamp-off-light", lampFly.view, flyoutWidth,
 		visibleFlyoutHeight(lampFly), false)
 

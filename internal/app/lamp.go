@@ -107,6 +107,7 @@ func lampGridHeight(count int) int { return lampGridScrollHeight(count) + 1 }
 func (a *App) setLampOff(off bool) {
 	a.lampOff = off
 	a.snap.LampOff = off
+	a.lampExpanded = false
 	a.cfg.Lamp = settings.LampSettings{Off: off, Cover: a.lampCover, Preset: a.lampPreset}
 	if a.eng != nil {
 		a.eng.SetLamp(off, a.lampCover, a.lampPreset)
@@ -118,6 +119,9 @@ func (a *App) setLampOff(off bool) {
 // choice collapses the template list; the chevron opens it in template
 // priority.
 func (a *App) setLampCover(on bool) {
+	if a.lampOff {
+		return
+	}
 	a.lampCover = on
 	a.snap.LampCover = on
 	a.lampExpanded = false
@@ -134,6 +138,9 @@ func (a *App) setLampCover(on bool) {
 // the light back on if it was off; picking a light is deliberate. The
 // flyout list stays open after the pick; closing the flyout collapses it.
 func (a *App) chooseLampPreset(id string) {
+	if a.lampOff {
+		return
+	}
 	a.lampPreset = lamp.Normalize(id)
 	a.snap.LampPreset = a.lampPreset
 	a.lampCover = false
@@ -185,7 +192,7 @@ func (a *App) lampPowerButton(c *ui.Context, p palette) {
 	}
 	color := p.fg
 	if a.lampOff {
-		color = p.faint
+		color = p.accent
 	}
 	btn.Children(func() {
 		ui.Icon(c, iconPower).Size(14, 14).TextColor(color)
@@ -201,14 +208,19 @@ func (a *App) lampSection(c *ui.Context, p palette) {
 		card := ui.Column(c).Margin(2, 0, 0, 0).Radius(10).Background(p.card).Border(1, p.line).Clip()
 		card.Children(func() {
 			ui.Row(c).Height(lampRowHeight).Padding(0, 12).Gap(8).AlignItems(ui.Center).Children(func() {
-				if a.lampCover {
+				if a.lampCover || a.lampOff {
 					ui.Row(c).Grow(1).Gap(8).AlignItems(ui.Center).Children(func() {
 						preview := a.lampPreview(c, p, 9).Size(32, 32).Shrink(0)
-						name := ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(500).SingleLine()
 						if a.lampOff {
 							preview.Opacity(0.35)
-							name.TextColor(p.faint)
 						}
+						ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+							name := ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(500).SingleLine()
+							if a.lampOff {
+								name.TextColor(p.faint)
+							}
+							a.lampStatusChip(c, p)
+						})
 					})
 					a.lampPrioritySegment(c, p, true)
 					return
@@ -217,12 +229,11 @@ func (a *App) lampSection(c *ui.Context, p palette) {
 					Cursor(ui.CursorPointer).Label(locales.FlyoutLampSection())
 				pick.OnClick(a.toggleLampExpanded)
 				pick.Children(func() {
-					preview := a.lampPreview(c, p, 9).Size(32, 32).Shrink(0)
-					name := ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(500).SingleLine()
-					if a.lampOff {
-						preview.Opacity(0.35)
-						name.TextColor(p.faint)
-					}
+					a.lampPreview(c, p, 9).Size(32, 32).Shrink(0)
+					ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(500).SingleLine()
+						a.lampStatusChip(c, p)
+					})
 				})
 
 				a.lampPrioritySegment(c, p, true)
@@ -246,6 +257,21 @@ func (a *App) lampSection(c *ui.Context, p palette) {
 	})
 }
 
+// lampStatusChip names the off or no-cover state next to the light's name.
+func (a *App) lampStatusChip(c *ui.Context, p palette) {
+	label := ""
+	switch {
+	case a.lampOff:
+		label = locales.LampOffStatus()
+	case a.lampCover && !a.nowLampOK:
+		label = locales.LampNoMedia()
+	}
+	if label == "" {
+		return
+	}
+	chip(c, p, label, chipNeutral)
+}
+
 func (a *App) lampArrowLabel() string {
 	if a.lampExpanded {
 		return locales.FlyoutLampCollapse()
@@ -255,10 +281,6 @@ func (a *App) lampArrowLabel() string {
 
 func (a *App) lampGrid(c *ui.Context, p palette) {
 	grid := ui.Scroll(c).Height(float32(lampGridScrollHeight(len(lamp.All())))).Padding(10, 12, 12, 12)
-	if a.lampOff {
-		// Still clickable: choosing a mode turns the light back on.
-		grid.Opacity(0.55)
-	}
 	grid.Children(func() {
 		tracks := make([]ui.Track, lampColumns)
 		for i := range tracks {
@@ -277,7 +299,7 @@ func (a *App) lampGrid(c *ui.Context, p palette) {
 func (a *App) lampSwatch(c *ui.Context, p palette, id string) {
 	selected := id == a.lampPreset
 	swatch := ui.ButtonBase(c).Size(lampSwatchSize, lampSwatchSize).Radius(lampSwatchSize / 2).
-		Clip().Cursor(ui.CursorPointer).Label(lampPresetName(id))
+		Clip().Cursor(ui.CursorPointer).Disabled(a.lampOff).Label(lampPresetName(id))
 	swatch.OnClick(func() { a.chooseLampPreset(id) })
 	preset, _ := lamp.ByID(lamp.Normalize(id))
 	swatch.Draw(func(pt *ui.Painter, r ui.Rect) {
@@ -329,23 +351,31 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 					preview.Opacity(0.35)
 				}
 				ui.Column(c).Gap(2).Children(func() {
-					name := ui.Text(c, a.lampModeName()).FontSize(14).FontWeight(550)
+					ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+						name := ui.Text(c, a.lampModeName()).FontSize(14).FontWeight(550)
+						if !on {
+							name.TextColor(p.faint)
+						}
+						a.lampStatusChip(c, p)
+					})
+					sub := ui.Text(c, locales.SettingsLampTop()).FontSize(10.5).TextColor(p.muted)
 					if !on {
-						name.TextColor(p.faint)
+						sub.TextColor(p.faint)
 					}
-					ui.Text(c, locales.SettingsLampTop()).FontSize(10.5).TextColor(p.muted)
 				})
 				ui.Spacer(c)
 				a.lampPrioritySegment(c, p, false)
 			})
 
-			ui.Text(c, locales.SettingsLampTemplates()).FontSize(10.5).FontWeight(600).
+			label := ui.Text(c, locales.SettingsLampTemplates()).FontSize(10.5).FontWeight(600).
 				LetterSpacing(0.55).TextColor(p.muted).Margin(12, 0, 0, 0)
+			if !on {
+				label.TextColor(p.faint)
+			}
 
 			strip := ui.Row(c).Gap(8).Margin(8, 0, 0, 0)
 			if !on {
-				// Still clickable: choosing a mode turns the light back on.
-				strip.Opacity(0.55)
+				strip.Opacity(0.35)
 			}
 			strip.Children(func() {
 				for _, preset := range lamp.All() {
@@ -378,7 +408,7 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 		coverLabel, templateLabel = locales.LampPriorityCoverShort(), locales.LampPriorityTemplateShort()
 	}
 	parts.Track.Width(width).Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
-		Label(locales.LampPriority()).Children(func() {
+		Label(locales.LampPriority()).Disabled(a.lampOff).Children(func() {
 		names := []string{coverLabel, templateLabel}
 		for i := range names {
 			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Cursor(ui.CursorPointer).Label(names[i])
@@ -392,9 +422,12 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 			}
 			s.Children(func() {
 				tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
-				if i == seg {
+				switch {
+				case a.lampOff:
+					tx.TextColor(p.faint)
+				case i == seg:
 					tx.TextColor(p.fg)
-				} else {
+				default:
 					tx.TextColor(p.muted)
 				}
 			})
@@ -409,8 +442,8 @@ func (a *App) lampTile(c *ui.Context, p palette, id string) {
 	selected := id == a.lampPreset
 	name := lampPresetName(id)
 	tile := ui.ButtonBase(c).Grow(1).Column().Height(64).Padding(5).Radius(9).
-		Gap(5).AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(name).
-		Border(1, p.line).Background(p.card)
+		Gap(5).AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
+		Disabled(a.lampOff).Label(name).Border(1, p.line).Background(p.card)
 	if selected {
 		tile.Background(p.accentSoft).BorderColor(p.accent)
 	}

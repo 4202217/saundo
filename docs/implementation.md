@@ -73,7 +73,7 @@ text is sent again in the same session.
 | `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON (`dpapi_windows.go`) |
 | `internal/airplay/device` | Receiver description, auth enum, and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
-| `internal/lamp` | Six seeded palette templates, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette 600×600 JPEG cache |
+| `internal/lamp` | Six three-color palette templates whose 600×600 carriers are flat color fields, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) and transport commands (Windows/other build split) |
 | `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`), the local-output mute (`muteLocalOnConnect`), and the ambient light (`lamp.off`, `lamp.cover`, `lamp.preset`) all default on, with cover priority and the dune template; the receiver push is unconditional |

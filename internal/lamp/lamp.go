@@ -3,9 +3,8 @@ package lamp
 import (
 	"bytes"
 	"image"
-	"image/draw"
+	"image/color"
 	"image/jpeg"
-	"math"
 	"sync"
 )
 
@@ -56,29 +55,23 @@ func (g *Generator) JPEG(preset string) ([]byte, error) {
 	return data, nil
 }
 
-// render paints the base color, then blends each seeded blob with the linear
-// alpha falloff the live probe verified on hardware. The blob's Alpha scales
-// the blend so the composition covers the tile without flattening the base.
+// render paints the carrier the receiver clusters. The receiver never shows
+// this image: it runs a Lab k-means over it and drives the LEDs from the three
+// colors, so the carrier is three flat color fields with a narrow feather,
+// not a picture. The dark base and overlapping gradients the old renderer
+// used pulled every template toward one muddy hue, and the receiver reduced
+// all four colors to three near neighbours.
 func render(p Preset) ([]byte, error) {
 	img := image.NewRGBA(image.Rect(0, 0, Size, Size))
-	draw.Draw(img, img.Bounds(), &image.Uniform{C: p.Base}, image.Point{}, draw.Src)
-	blobs := p.Blobs()
+	var cuts [4]int
+	for i, w := range p.Weights {
+		cuts[i+1] = cuts[i] + int(w*Size+0.5)
+	}
+	cuts[3] = Size
+	const feather = Size / 24
 	for y := 0; y < Size; y++ {
 		for x := 0; x < Size; x++ {
-			c := p.Base
-			for _, b := range blobs {
-				dx := float64(x)/Size - b.X/100
-				dy := float64(y)/Size - b.Y/100
-				d := math.Hypot(dx, dy) / (b.Radius / 100)
-				if d >= 1 {
-					continue
-				}
-				a := (1 - d) * b.Alpha
-				c.R = uint8(float64(b.Color.R)*a + float64(c.R)*(1-a) + 0.5)
-				c.G = uint8(float64(b.Color.G)*a + float64(c.G)*(1-a) + 0.5)
-				c.B = uint8(float64(b.Color.B)*a + float64(c.B)*(1-a) + 0.5)
-			}
-			img.SetRGBA(x, y, c)
+			img.SetRGBA(x, y, carrierColor(p.Colors, cuts, feather, x))
 		}
 	}
 	var buf bytes.Buffer
@@ -86,4 +79,33 @@ func render(p Preset) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// carrierColor blends across a band boundary over 2*feather pixels. The flat
+// cores stay exact, so the receiver's k-means recovers the three colors.
+func carrierColor(colors [3]color.RGBA, cuts [4]int, feather, x int) color.RGBA {
+	for i := 0; i < 2; i++ {
+		cut := cuts[i+1]
+		if x < cut-feather {
+			return colors[i]
+		}
+		if x <= cut+feather {
+			t := float64(x-(cut-feather)) / float64(2*feather)
+			return blendColor(colors[i], colors[i+1], t)
+		}
+	}
+	return colors[2]
+}
+
+func blendColor(a, b color.RGBA, t float64) color.RGBA {
+	if t < 0 {
+		t = 0
+	}
+	if t > 1 {
+		t = 1
+	}
+	mix := func(x, y uint8) uint8 {
+		return uint8(float64(x)*(1-t) + float64(y)*t + 0.5)
+	}
+	return color.RGBA{R: mix(a.R, b.R), G: mix(a.G, b.G), B: mix(a.B, b.B), A: 0xff}
 }

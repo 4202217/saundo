@@ -3202,11 +3202,11 @@ func (msgs Messages) SettingsLampHintOn() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
 }
 
-// SettingsLampHintOff says "The top display is dark; turn on restores the current choice."
+// SettingsLampHintOff says "The top display is off; turn it on before changing the light."
 // in the language the app shows.
 func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
 
-// SettingsLampHintOff says "The top display is dark; turn on restores the current choice."
+// SettingsLampHintOff says "The top display is off; turn it on before changing the light."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOff() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
@@ -3240,6 +3240,26 @@ func LampTurnOn() string { return In(i18n.Locale()).LampTurnOn() }
 // in the language of msgs.
 func (msgs Messages) LampTurnOn() string {
 	return Catalog.Format(msgs.locale, "lampTurnOn", nil)
+}
+
+// LampOffStatus says "Off"
+// in the language the app shows.
+func LampOffStatus() string { return In(i18n.Locale()).LampOffStatus() }
+
+// LampOffStatus says "Off"
+// in the language of msgs.
+func (msgs Messages) LampOffStatus() string {
+	return Catalog.Format(msgs.locale, "lampOffStatus", nil)
+}
+
+// LampNoMedia says "No media"
+// in the language the app shows.
+func LampNoMedia() string { return In(i18n.Locale()).LampNoMedia() }
+
+// LampNoMedia says "No media"
+// in the language of msgs.
+func (msgs Messages) LampNoMedia() string {
+	return Catalog.Format(msgs.locale, "lampNoMedia", nil)
 }
 
 // LampPriority says "Priority"

@@ -70,9 +70,10 @@ func CoverPreset(src image.Image) (Preset, bool) {
 	}
 
 	type cluster struct {
-		c    color.RGBA
-		orig color.RGBA
-		l    float64
+		c      color.RGBA
+		orig   color.RGBA
+		l      float64
+		weight float64
 	}
 	var clusters []cluster
 	for k := range centers {
@@ -81,33 +82,36 @@ func CoverPreset(src image.Image) (Preset, bool) {
 		}
 		orig := color.RGBA{R: centers[k].r, G: centers[k].g, B: centers[k].b, A: 0xff}
 		clusters = append(clusters, cluster{
-			c:    normalizeGlow(orig),
-			orig: orig,
-			l:    centers[k].l,
+			c:      normalizeGlow(orig),
+			orig:   orig,
+			l:      centers[k].l,
+			weight: float64(counts[k]) / float64(len(samples)),
 		})
 	}
 	if len(clusters) == 0 {
 		return Preset{}, false
 	}
 	sort.SliceStable(clusters, func(i, j int) bool { return clusters[i].l < clusters[j].l })
-	palette := make([]color.RGBA, 0, 3)
-	for _, c := range clusters {
-		palette = append(palette, c.c)
+	var colors [3]color.RGBA
+	var weights [3]float64
+	for i, c := range clusters {
+		if i == len(colors) {
+			break
+		}
+		colors[i] = c.c
+		weights[i] = c.weight
 	}
 	// A cover with one dominant color can leave fewer than three clusters.
 	// Fill from the default template so the preview still has a composition.
-	if len(palette) < 3 {
+	if len(clusters) < len(colors) {
 		if def, ok := ByID(DefaultID); ok {
-			for _, c := range def.Palette {
-				if len(palette) == 3 {
-					break
-				}
-				palette = append(palette, c)
+			for i := len(clusters); i < len(colors); i++ {
+				colors[i] = def.Colors[i]
 			}
 		}
 	}
 	base := scaleColor(clusters[0].orig, 0.22)
-	return Preset{ID: "cover", Base: base, Palette: palette, Seed: coverSeed}, true
+	return Preset{ID: "cover", Colors: colors, Weights: weights, Base: base, Seed: coverSeed}, true
 }
 
 // coverSum accumulates a cluster in RGB and Lab.
