@@ -63,6 +63,12 @@ resource, then to the known-app map; without an icon the card shows the name
 alone. The result is cached per AUMID, so the two-second poll does not touch
 the shell again.
 
+Each poll adopts the system's current session as the card's selection; the
+switch arrow pins another session until the current session changes or the
+pinned one disappears. The light preview reads that same current session's
+cover — the one the receiver push sends — so a manual card switch on the
+flyout cannot move the preview away from the top display.
+
 ## Package map
 
 | Package | Responsibility |

@@ -1146,6 +1146,25 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   the receiver track-info cover, the 6,1 and first-generation HomePod, and a
   stereo pair's simultaneous repaint.
 
+## Ambient light preview and session following (2026-11-08)
+
+- **The card follows the system's current session.** Reported live: a new
+  media started playing, the top display's cover-following light moved to it,
+  but the flyout card stayed on the old session. `setNowSnapshot` adopted a
+  session only when the old one disappeared. It now follows the SMTC current
+  session on every read; the switch arrow sets a pin that survives polls
+  until a different session becomes current. `TestNowPlayingFollowsTheCurrentSession`
+  pins the follow, the pin, and the takeover by a newly current session.
+- **The light preview follows the push, not the card.** Reported live:
+  switching the card to a paused session with the arrow changed the ambient
+  preview while the HomePod kept the playing session's cover. The preview
+  was derived from the card's selected session. `refreshNowLamp` now reads
+  the session the engine pushes (`snapIndex`), and the card's own cover no
+  longer feeds it. `TestLampPreviewFollowsThePushedSessionNotTheCard` pins a
+  manual switch that leaves the preview on the pushed cover. The live app
+  was not driven with two playing sessions in this unit; the HomePod
+  observation above was user-reported.
+
 ## Ambient light, playback-state off (2026-11-07)
 
 HomePod mini (`AudioAccessory5,1`, 27.2), muted. The sender connected, held a

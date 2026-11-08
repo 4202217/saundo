@@ -19,6 +19,7 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
+	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
 	"saundo/internal/settings"
 )
@@ -1515,5 +1516,84 @@ func TestNowPlayingCoverModePersists(t *testing.T) {
 	}
 	if got := a.sets.Load().CoverMode; got != settings.CoverNone {
 		t.Fatalf("stored cover mode = %q, want none", got)
+	}
+}
+
+func TestNowPlayingFollowsTheCurrentSession(t *testing.T) {
+	a := previewApp()
+	first := nowplaying.Session{AUMID: "first", Title: "First", Playing: true}
+	second := nowplaying.Session{AUMID: "second", Title: "Second", Playing: true}
+	snap := func(current int, sessions ...nowplaying.Session) nowplaying.Snapshot {
+		return nowplaying.Snapshot{Sessions: sessions, Current: current}
+	}
+	a.setNowSnapshot(snap(0, first, second), "")
+	if a.nowMediaAUMID != "first" {
+		t.Fatalf("selected %q, want the current session first", a.nowMediaAUMID)
+	}
+	a.setNowSnapshot(snap(1, first, second), "")
+	if a.nowMediaAUMID != "second" {
+		t.Fatalf("selected %q, want the new current session second", a.nowMediaAUMID)
+	}
+
+	// A manual pick sticks while the system's current session is unchanged.
+	a.switchNowMedia()
+	if a.nowMediaAUMID != "first" {
+		t.Fatalf("manual pick = %q, want first", a.nowMediaAUMID)
+	}
+	a.setNowSnapshot(snap(1, first, second), "")
+	if a.nowMediaAUMID != "first" {
+		t.Fatalf("manual pick did not stick: %q", a.nowMediaAUMID)
+	}
+
+	// A newly current session takes the card back.
+	third := nowplaying.Session{AUMID: "third", Title: "Third", Playing: true}
+	a.setNowSnapshot(snap(2, first, second, third), "")
+	if a.nowMediaAUMID != "third" {
+		t.Fatalf("selected %q, want the newly current third", a.nowMediaAUMID)
+	}
+}
+
+func solidCoverPNG(t *testing.T, c color.RGBA) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	for y := 0; y < 16; y++ {
+		for x := 0; x < 16; x++ {
+			img.SetRGBA(x, y, c)
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestLampPreviewFollowsThePushedSessionNotTheCard(t *testing.T) {
+	red := solidCoverPNG(t, color.RGBA{R: 220, G: 40, B: 40, A: 255})
+	blue := solidCoverPNG(t, color.RGBA{R: 40, G: 80, B: 220, A: 255})
+	redImg, err := png.Decode(bytes.NewReader(red))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, ok := lamp.CoverPreset(redImg)
+	if !ok {
+		t.Fatal("the red cover produced no preset")
+	}
+	a := previewApp()
+	first := nowplaying.Session{AUMID: "first", Title: "First", Playing: true, Artwork: red, ArtworkMIME: "image/png"}
+	second := nowplaying.Session{AUMID: "second", Title: "Second", Playing: true, Artwork: blue, ArtworkMIME: "image/png"}
+	a.setNowSnapshot(nowplaying.Snapshot{Sessions: []nowplaying.Session{first, second}, Current: 0}, "")
+	if !a.nowLampOK || a.nowLamp != want {
+		t.Fatalf("lamp preview = %+v ok=%v, want the current session's cover", a.nowLamp, a.nowLampOK)
+	}
+
+	// The light follows the pushed (current) session, so switching the card
+	// to the paused/other session must not change the preview.
+	a.switchNowMedia()
+	if a.nowMediaAUMID != "second" {
+		t.Fatalf("selected %q, want second", a.nowMediaAUMID)
+	}
+	if a.nowLamp != want {
+		t.Fatal("the lamp preview followed the card switch away from the pushed session")
 	}
 }
