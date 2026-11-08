@@ -11,9 +11,9 @@ per receiver.
 - 氛围灯 settings page and the flyout's ambient card. The card is always
   present; its head carries the desk-lamp glyph and the power action (关灯
   when lit, 开灯 when dark). The row carries the compact 封面/模板 priority
-  segment left of the chevron. The settings page puts the full
-  封面优先/模板优先 segment in the preview row, beside the 72-DIP preview and
-  its name, and its head keeps the HomePod 专属 tag. The tray menu has no
+  segment left of the chevron. The settings page puts a 颜色来源 row
+  (封面 / 模板) at its right, under the 72-DIP preview and its name, and its
+  head keeps the HomePod 专属 tag. The tray menu has no
   ambient item.
 - Choices: the media cover (default) plus six templates: 暖烬, 沙丘, 苔庭,
   潮汐, 兰夜, 月白. `internal/lamp` renders each palette as a deterministic
@@ -74,8 +74,8 @@ per receiver.
 
 设置 → 氛围灯, or the ambient card under the playback card in the flyout.
 The power glyph turns the top display off and on; the 封面/模板 segment in
-the flyout row, left of the chevron, and the 封面优先/模板优先 segment in the
-settings preview row choose the source. In cover priority the flyout has no
+the flyout row, left of the chevron, and the 颜色来源 segment (封面 / 模板)
+on the settings page choose the source. With 封面 chosen the flyout has no
 template list; choosing 模板 reveals the chevron; the six swatches stay
 collapsed until it is clicked.
 

@@ -165,7 +165,7 @@ func TestSettingsLampPrioritySegmentTurnsCoverOn(t *testing.T) {
 	a.cfg.Lamp = settings.LampSettings{Preset: "dune"}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
-	if err := tt.Click(locales.LampPriorityCover()); err != nil {
+	if err := tt.Click(locales.LampSourceCover()); err != nil {
 		t.Fatal(err)
 	}
 	if !a.lampCover || !a.snap.LampCover || !a.cfg.Lamp.Cover {
@@ -185,7 +185,7 @@ func TestSettingsLampPrioritySegmentTurnsCoverOff(t *testing.T) {
 	a.cfg.Lamp = settings.LampSettings{Cover: true, Preset: "dune"}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
-	if err := tt.Click(locales.LampPriorityTemplate()); err != nil {
+	if err := tt.Click(locales.LampSourceTemplate()); err != nil {
 		t.Fatal(err)
 	}
 	if a.lampCover || a.snap.LampCover || a.cfg.Lamp.Cover {
@@ -285,8 +285,8 @@ func TestSettingsLampPageOffRequiresTurningOn(t *testing.T) {
 	a.snap.LampCover = true
 	a.lampPreset = "dune"
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !tt.HasText("顶屏已熄灭；点击电源按钮后即可调整。") {
-		t.Fatalf("off hint is missing; texts: %q", tt.Texts())
+	if !tt.HasText(locales.SettingsLampTemplatesDesc()) {
+		t.Fatalf("template description is missing; texts: %q", tt.Texts())
 	}
 	a.chooseLampPreset("ember")
 	if !a.lampOff || a.lampPreset != "dune" {
@@ -337,7 +337,7 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 	}
 	a.page = pageLamp
 	tt = ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{"Ambient light", "HomePod only", "Cover first", "Template first", "Dune"} {
+	for _, want := range []string{"Ambient light", "HomePod only", "Color source", "Cover", "Template", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English lamp page is missing %q; texts: %q", want, tt.Texts())
 		}

@@ -189,9 +189,9 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageConnection, []string{"连接", "重连与验证策略。", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免声音在本机与接收器上重复播放；断开或退出时恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
-		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "封面", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "点击电源按钮熄灭顶屏"}},
+		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板。", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
 		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
-		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
+		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无", "默认", "媒体", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
@@ -1106,6 +1106,196 @@ func TestSettingsAudioPageScrollsAtMinimumHeight(t *testing.T) {
 	}
 	if after.Y >= before.Y {
 		t.Fatalf("the audio page did not scroll: sync row %.1f -> %.1f", before.Y, after.Y)
+	}
+}
+
+// TestAudioPageKeepsLatencyTextInsideItsCards pins the two preset layouts:
+// below latencyStackWidth the presets are full-width rows, at or above it three
+// cards share a row. In both, every name, value, and description stays inside
+// its radio; the fixed 99-DIP card used to let narrow descriptions spill into
+// the gap and under the custom tile.
+func TestAudioPageKeepsLatencyTextInsideItsCards(t *testing.T) {
+	withLocale(t, "en")
+	for _, width := range []int{640, latencyStackWidth, 720} {
+		a := previewApp()
+		a.page = pageAudio
+		a.latencyMode = settings.LatencyLow
+		tt := ui.NewTester(a.settingsView, width, 500)
+		tt.Frame()
+		custom, ok := tt.AccessByRole(ui.RoleRadio,
+			locales.SettingsLatencyCustom()+" · "+settings.LatencyText(700))
+		if !ok {
+			t.Fatalf("at %d DIP the custom row is missing: %q", width, tt.Texts())
+		}
+		for _, preset := range latencyPresets() {
+			card, ok := tt.AccessByRole(ui.RoleRadio, preset.name+" · "+preset.latency)
+			if !ok {
+				t.Fatalf("at %d DIP the %q card is missing: %q", width, preset.name, tt.Texts())
+			}
+			for _, text := range []string{preset.name, preset.latency, preset.desc} {
+				box, ok := tt.Find(text)
+				if !ok {
+					t.Fatalf("at %d DIP %q is missing from %q: %q", width, preset.name, text, tt.Texts())
+				}
+				if box.X < card.Bounds.X-0.5 || box.Y < card.Bounds.Y-0.5 ||
+					box.X+box.W > card.Bounds.X+card.Bounds.W+0.5 ||
+					box.Y+box.H > card.Bounds.Y+card.Bounds.H+0.5 {
+					t.Fatalf("at %d DIP, %q leaves its %q card: text (%.1f, %.1f, %.1f×%.1f), card (%.1f, %.1f, %.1f×%.1f)",
+						width, text, preset.name, box.X, box.Y, box.W, box.H,
+						card.Bounds.X, card.Bounds.Y, card.Bounds.W, card.Bounds.H)
+				}
+			}
+			if width < latencyStackWidth && card.Bounds.W+0.5 < custom.Bounds.W {
+				t.Fatalf("at %d DIP, %q is %.1f wide, not the custom row's %.1f: the presets did not stack",
+					width, preset.name, card.Bounds.W, custom.Bounds.W)
+			}
+			if width >= latencyStackWidth && card.Bounds.W*2 > custom.Bounds.W {
+				t.Fatalf("at %d DIP, %q is %.1f wide, not one of three cards: the presets did not share a row",
+					width, preset.name, card.Bounds.W)
+			}
+		}
+	}
+}
+
+// TestSettingsColumnCapsAndCenters pins the shared content column: the
+// default window keeps the width it always had, and a wide window stops the
+// header and the cards at 720 DIP and centers them instead of stretching every
+// row across the screen.
+func TestSettingsColumnCapsAndCenters(t *testing.T) {
+	withLocale(t, "en")
+	for _, tc := range []struct {
+		width   int
+		left    float32
+		customW float32
+	}{
+		{720, 210, 458},
+		{1440, 455, 688},
+	} {
+		a := previewApp()
+		a.page = pageAudio
+		tt := ui.NewTester(a.settingsView, tc.width, 900)
+		tt.Frame()
+		desc, ok := tt.Find(locales.PageAudioDesc())
+		if !ok {
+			t.Fatalf("at %d DIP the page description is missing: %q", tc.width, tt.Texts())
+		}
+		if abs32(desc.X-tc.left) > 1.5 {
+			t.Fatalf("at %d DIP the column starts at %.1f, want %.1f", tc.width, desc.X, tc.left)
+		}
+		custom, ok := tt.AccessByRole(ui.RoleRadio,
+			locales.SettingsLatencyCustom()+" · "+settings.LatencyText(700))
+		if !ok {
+			t.Fatalf("at %d DIP the custom row is missing: %q", tc.width, tt.Texts())
+		}
+		if abs32(custom.Bounds.W-tc.customW) > 1.5 {
+			t.Fatalf("at %d DIP the card is %.1f wide, want %.1f", tc.width, custom.Bounds.W, tc.customW)
+		}
+	}
+}
+
+// TestLampTemplateTilesKeepTheirSize pins the six template swatches to one
+// size at every window width; a narrow page wraps the strip instead of
+// shrinking the swatches.
+func TestLampTemplateTilesKeepTheirSize(t *testing.T) {
+	withLocale(t, "en")
+	for _, width := range []int{720, 1440} {
+		a := previewApp()
+		a.page = pageLamp
+		a.lampPreset = "moon"
+		tt := ui.NewTester(a.settingsView, width, 900)
+		tt.Frame()
+		for _, name := range []string{"Ember", "Dune", "Moss", "Tide", "Orchid", "Moon"} {
+			tile, ok := tt.AccessByRole(ui.RoleButton, name)
+			if !ok {
+				t.Fatalf("at %d DIP the %q template is missing: %q", width, name, tt.Texts())
+			}
+			if abs32(tile.Bounds.W-lampTileWidth) > 0.5 {
+				t.Fatalf("at %d DIP the %q template is %.1f wide, want %d",
+					width, name, tile.Bounds.W, lampTileWidth)
+			}
+		}
+	}
+	a := previewApp()
+	a.page = pageLamp
+	tt := ui.NewTester(a.settingsView, 640, 900)
+	tt.Frame()
+	first, ok := tt.AccessByRole(ui.RoleButton, "Ember")
+	if !ok {
+		t.Fatalf("the narrow Ember template is missing: %q", tt.Texts())
+	}
+	last, ok := tt.AccessByRole(ui.RoleButton, "Moon")
+	if !ok {
+		t.Fatalf("the narrow Moon template is missing: %q", tt.Texts())
+	}
+	if last.Bounds.Y <= first.Bounds.Y {
+		t.Fatalf("at 640 DIP the strip did not wrap: Ember y=%.1f Moon y=%.1f",
+			first.Bounds.Y, last.Bounds.Y)
+	}
+}
+
+// TestNowPlayingCoverOptionsSitInTheRow pins the cover control to the right of
+// its description on one row, with no separate title: the three options name
+// the cover themselves.
+func TestNowPlayingCoverOptionsSitInTheRow(t *testing.T) {
+	withLocale(t, "en")
+	a := previewApp()
+	a.page = pageNowPlaying
+	tt := ui.NewTester(a.settingsView, 720, 900)
+	tt.Frame()
+	desc, ok := tt.Find(locales.SettingsCoverDesc())
+	if !ok {
+		t.Fatalf("the cover description is missing: %q", tt.Texts())
+	}
+	none, ok := tt.Find(locales.SettingsCoverNone())
+	if !ok {
+		t.Fatalf("the cover options are missing: %q", tt.Texts())
+	}
+	if none.X <= desc.X+desc.W {
+		t.Fatalf("the cover options start at %.1f, not right of the description ending at %.1f",
+			none.X, desc.X+desc.W)
+	}
+	if none.Y+none.H/2 < desc.Y-20 || none.Y+none.H/2 > desc.Y+desc.H+20 {
+		t.Fatalf("the cover options sit at y=%.1f..%.1f, not on the description's row %.1f..%.1f",
+			none.Y, none.Y+none.H, desc.Y, desc.Y+desc.H)
+	}
+}
+
+// TestCaptureStatusRowKeepsItsTitle pins the capture status to the row's
+// right-hand column: the device name follows the hardware, so the value is
+// capped and ellipsized while the title keeps its width, and the full name is
+// in the tooltip.
+func TestCaptureStatusRowKeepsItsTitle(t *testing.T) {
+	withLocale(t, "en")
+	for _, tc := range []struct {
+		width    int
+		minTitle float32
+	}{
+		{640, 140},
+		{720, 180},
+		{1440, 300},
+	} {
+		a := previewApp()
+		a.page = pageCapture
+		a.snap.CaptureName = "Mi Monitor (NVIDIA High Definition Audio)"
+		a.snap.CaptureRate = 48000
+		tt := ui.NewTester(a.settingsView, tc.width, 900)
+		tt.Frame()
+		title, ok := tt.Find(locales.SettingsCaptureStatus())
+		if !ok {
+			t.Fatalf("at %d DIP the status title is missing: %q", tc.width, tt.Texts())
+		}
+		status, ok := tt.Find("Mi Monitor (NVIDIA High Definition Audio) · 48 kHz")
+		if !ok {
+			t.Fatalf("at %d DIP the capture status is missing: %q", tc.width, tt.Texts())
+		}
+		if title.W < tc.minTitle {
+			t.Fatalf("at %d DIP the status title is only %.1f wide, want at least %.0f",
+				tc.width, title.W, tc.minTitle)
+		}
+		if status.Y < title.Y-1 || status.Y > title.Y+40 {
+			t.Fatalf("at %d DIP the status starts at %.1f, not on the title's row at %.1f",
+				tc.width, status.Y, title.Y)
+		}
 	}
 }
 

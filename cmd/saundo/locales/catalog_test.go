@@ -124,10 +124,13 @@ func TestCatalogUniqueValues(t *testing.T) {
 		"updateAvailableTitle": true, "flyoutUpdateAvailable": true,
 		"updateAvailableMeta": true, "updateNotesMeta": true,
 		"settingsNavLamp": true, "settingsLampCardTitle": true, "flyoutLampSection": true,
-		"settingsLampTemplates": true, "lampPriorityTemplateShort": true,
-		"passwordLabel": true, "receiverFieldAuth": true,
+		"settingsLampTemplates": true, "lampPriorityTemplateShort": true, "lampSourceTemplate": true,
+		"lampSourceCover": true,
+		"passwordLabel":   true, "receiverFieldAuth": true,
 		"themeLight":            true,
 		"settingsLatencyStable": true, "settingsChannelStable": true,
+		// Both choices mean "none": no receiver authentication, no cover.
+		"receiverAuthNone": true, "settingsCoverNone": true,
 	}
 	for _, loc := range []string{"zh-CN", "en"} {
 		byValue := map[string][]string{}
