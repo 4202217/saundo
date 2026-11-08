@@ -234,6 +234,6 @@ Gotchas; never weaken the journey to make it pass.
 
 When the app changes shape (new window class, renamed page, moved control),
 update features/ and this file in the same change. `scripts/check-verify-map.sh`
-(part of `mingw32-make check`) turns stale assertions in these pages into a red
+(a one-pass Go scan, part of `mingw32-make check`) turns stale assertions in these pages into a red
 gate — fix the page, not the gate. `/maintain-verification-skill`
 is the maintenance loop for exactly that.
