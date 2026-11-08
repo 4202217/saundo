@@ -34,11 +34,11 @@ type Messages struct{ locale string }
 // source language.
 func In(locale string) Messages { return Messages{locale} }
 
-// AppName says "saundo"
+// AppName says "Saundo"
 // in the language the app shows.
 func AppName() string { return In(i18n.Locale()).AppName() }
 
-// AppName says "saundo"
+// AppName says "Saundo"
 // in the language of msgs.
 func (msgs Messages) AppName() string {
 	return Catalog.Format(msgs.locale, "appName", nil)
@@ -186,11 +186,11 @@ func (msgs Messages) AboutNoticesDesc() string {
 	return Catalog.Format(msgs.locale, "aboutNoticesDesc", nil)
 }
 
-// SettingsWindowTitle says "Settings · saundo"
+// SettingsWindowTitle says "Settings · Saundo"
 // in the language the app shows.
 func SettingsWindowTitle() string { return In(i18n.Locale()).SettingsWindowTitle() }
 
-// SettingsWindowTitle says "Settings · saundo"
+// SettingsWindowTitle says "Settings · Saundo"
 // in the language of msgs.
 func (msgs Messages) SettingsWindowTitle() string {
 	return Catalog.Format(msgs.locale, "settingsWindowTitle", nil)
@@ -236,21 +236,21 @@ func (msgs Messages) TrayDisconnect() string {
 	return Catalog.Format(msgs.locale, "trayDisconnect", nil)
 }
 
-// TrayQuit says "Quit saundo"
+// TrayQuit says "Quit Saundo"
 // in the language the app shows.
 func TrayQuit() string { return In(i18n.Locale()).TrayQuit() }
 
-// TrayQuit says "Quit saundo"
+// TrayQuit says "Quit Saundo"
 // in the language of msgs.
 func (msgs Messages) TrayQuit() string {
 	return Catalog.Format(msgs.locale, "trayQuit", nil)
 }
 
-// TrayTooltip says "saundo"
+// TrayTooltip says "Saundo"
 // in the language the app shows.
 func TrayTooltip() string { return In(i18n.Locale()).TrayTooltip() }
 
-// TrayTooltip says "saundo"
+// TrayTooltip says "Saundo"
 // in the language of msgs.
 func (msgs Messages) TrayTooltip() string {
 	return Catalog.Format(msgs.locale, "trayTooltip", nil)
@@ -1322,11 +1322,11 @@ func (msgs Messages) SettingsAbout() string {
 	return Catalog.Format(msgs.locale, "settingsAbout", nil)
 }
 
-// SettingsAboutBrand says "saundo"
+// SettingsAboutBrand says "Saundo"
 // in the language the app shows.
 func SettingsAboutBrand() string { return In(i18n.Locale()).SettingsAboutBrand() }
 
-// SettingsAboutBrand says "saundo"
+// SettingsAboutBrand says "Saundo"
 // in the language of msgs.
 func (msgs Messages) SettingsAboutBrand() string {
 	return Catalog.Format(msgs.locale, "settingsAboutBrand", nil)

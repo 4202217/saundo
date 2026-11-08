@@ -313,6 +313,9 @@ func (a *App) ready() {
 			Hidden:    true,
 			Content:   ui.View(a.view),
 		})
+		// A flyout names no title of its own; give it the app's, so window
+		// metadata and accessibility do not fall back to the executable name.
+		a.win.SetTitle(locales.AppName())
 	} else {
 		// Without a tray icon the app still needs a reachable window.
 		a.win = mygo.NewWindow(mygo.WindowOptions{
@@ -1046,14 +1049,21 @@ func deviceSubtitle(d device.Device) string {
 	return locales.DeviceAirPlay1(model)
 }
 
-// onLocaleChanged relabels the sentinel capture options and rebuilds the
-// tray menu. Both windows redraw in the new language on their own.
+// onLocaleChanged relabels the sentinel capture options, retitles the
+// windows, and rebuilds the tray menu. Both windows redraw in the new
+// language on their own.
 func (a *App) onLocaleChanged() {
 	if len(a.captureNames) > 0 {
 		a.captureNames[0] = locales.CaptureFollowSystem()
 	}
 	if len(a.appNames) > 0 {
 		a.appNames[0] = locales.CaptureAllSystem()
+	}
+	if a.win != nil {
+		a.win.SetTitle(locales.AppName())
+	}
+	if a.settingsWin != nil {
+		a.settingsWin.SetTitle(locales.SettingsWindowTitle())
 	}
 	a.syncCaptureChoice()
 	a.syncAppChoice()
