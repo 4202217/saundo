@@ -86,18 +86,10 @@ const (
 )
 
 const (
-	openCheckEvery  = 500 * time.Millisecond
 	waitTimeoutMs   = 100
-	retryDelayFirst = 200 * time.Millisecond
-	retryDelayMax   = 2 * time.Second
 	maxEndpoints    = 256
 	maxNameChars    = 4096
 	maxPacketFrames = 1 << 24
-)
-
-var (
-	errStopped              = errors.New("capture: stopped")
-	errDefaultDeviceChanged = errors.New("capture: the default render device changed")
 )
 
 // comCall calls method i of the COM interface obj. Pointers converted to

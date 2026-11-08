@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 
@@ -224,5 +225,18 @@ func TestBuildVersionStamp(t *testing.T) {
 		if got := buildVersion(); got != want {
 			t.Errorf("buildVersion(%q) = %q, want %q", stamp, got, want)
 		}
+	}
+}
+
+// TestUpdatesDisabledOnDarwin pins the platform gate: the mac build has no
+// feed of its own, so Enabled must read false there whatever the updater
+// state is. On darwin mygo.Updater is unconfigured in tests anyway, so the
+// assertion holds for either mygo answer.
+func TestUpdatesDisabledOnDarwin(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("the gate only bites on darwin")
+	}
+	if (mygoUpdates{}).Enabled() {
+		t.Fatal("updates enabled on darwin; a windows-only feed would offer this build a windows binary")
 	}
 }

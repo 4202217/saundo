@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-
 	"time"
 
 	"github.com/egoist/mygo"
@@ -307,6 +306,12 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 		settingRow(c, p, locales.SettingsTrayAnimation(), locales.SettingsTrayAnimationDesc(), func() {
 			toggle(c, p, &a.trayAnimation, locales.SettingsTrayAnimation(), func(v bool) { a.setTrayAnimation(v) })
 		})
+		if flyoutStyleSetting {
+			rowLine(c, p)
+			settingRow(c, p, locales.SettingsFlyoutPopover(), locales.SettingsFlyoutPopoverDesc(), func() {
+				toggle(c, p, &a.flyoutPopover, locales.SettingsFlyoutPopover(), func(v bool) { a.setFlyoutPopover(v) })
+			})
+		}
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsLanguage(), locales.SettingsLanguageDesc(), func() {
 			choice := a.languageLabel()

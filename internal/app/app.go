@@ -147,6 +147,7 @@ type App struct {
 	lampPreset          string
 	lampExpanded        bool
 	trayAnimation       bool
+	flyoutPopover       bool
 	autoUpdate          bool
 	beta                bool
 	showLog             bool
@@ -207,6 +208,7 @@ func Run() error {
 	a.reconnect = cfg.Reconnect
 	a.launchAtStart = cfg.LaunchAtStart
 	a.trayAnimation = cfg.TrayAnimation
+	a.flyoutPopover = cfg.FlyoutPopover
 	a.captureChoice = cfg.CaptureEndpointName
 	if a.captureChoice == "" {
 		a.captureChoice = locales.CaptureFollowSystem()
@@ -301,18 +303,7 @@ func (a *App) ready() {
 		})
 		// Discovery has not reported yet, so the flyout opens at the empty
 		// state's height and grows as devices and a media session arrive.
-		a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch, false)
-		a.win = mygo.NewFlyout(mygo.FlyoutOptions{
-			Tray:      a.tray,
-			Placement: mygo.PlacementBottom,
-			Gap:       6,
-			Width:     flyoutWidth,
-			Height:    a.flyoutH,
-			Focusable: true,
-			Shadow:    true,
-			Hidden:    true,
-			Content:   ui.View(a.view),
-		})
+		a.createFlyout()
 		// A flyout names no title of its own; give it the app's, so window
 		// metadata and accessibility do not fall back to the executable name.
 		a.win.SetTitle(locales.AppName())
@@ -328,23 +319,11 @@ func (a *App) ready() {
 			Content:   ui.View(a.view),
 		})
 	}
-	a.win.OnClose(func(e *mygo.CloseEvent) {
-		if a.quitting {
-			return
-		}
-		if a.tray == nil {
-			a.quitting = true
-			mygo.App.Quit()
-			return
-		}
-		e.PreventDefault()
-		a.win.Hide()
-	})
 	// The flyout's content rises in once per show; the window itself is the
 	// system's to animate. Hiding the flyout folds the template list, so the
 	// next open starts collapsed.
-	a.win.OnShow(func() { a.flyoutEntered = false })
-	a.win.OnHide(func() { a.collapseLampList() })
+	a.bindWindowLifecycle()
+
 	// Created before the engine starts, so its field stays immutable while
 	// engine callbacks read it from other goroutines.
 	a.settingsWin = a.newSettingsWindow()
@@ -739,6 +718,8 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	// (theme, update preferences, launch at login) cannot write a stale lamp
 	// choice back over the engine's.
 	a.cfg.Lamp = settings.LampSettings{Off: a.lampOff, Cover: a.lampCover, Preset: a.lampPreset}
+	a.flyoutPopover = snap.FlyoutPopover
+	a.cfg.FlyoutPopover = snap.FlyoutPopover
 	if a.trayAnimation != snap.TrayAnimation {
 		a.trayAnimation = snap.TrayAnimation
 		a.syncTrayAnimator()
@@ -858,7 +839,7 @@ func (a *App) showWindow() {
 	}
 	a.win.Show()
 	a.win.Focus()
-	mygo.App.Focus()
+	focusAppOnShow()
 }
 
 // toggleWindow is the tray icon's primary click: the panel opens next to the

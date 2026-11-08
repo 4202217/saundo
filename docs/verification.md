@@ -29,6 +29,13 @@ live state:
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
+- The macOS port: `-race` (needs a C toolchain), per-app capture (the
+  `Config.ProcessID` seam is ready), signed/notarized mac updates (the mac
+  updater is disabled), and the flyout style setting is macOS-only.
+- The Windows flyout shadow and tray focus after the focus seam split
+  (2026-11-09): code-level only, no Windows run.
+- A live macOS capture reconnect after the aggregate-liveness check
+  (2026-11-09).
 - Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
   a measured left/right offset on a physical pair.
 - Silence pauses longer than 60 s.
@@ -1405,3 +1412,106 @@ surviving conclusion, and the pin.
   21:01:07. `parseEntry` now derives the service from the instance suffix
   before trimming, so both directions resolve to the friendly name. Pinned
   by `TestParseEntryUsesTheAdvertisedService`.
+
+## 2026-11-08 — the macOS port
+
+darwin/arm64 ships from the same tree, `CGO_ENABLED=0`. Machine: a MacBook
+Air on macOS 27.3 (build 26C5035r); the operator streamed to a HomePod mini.
+The working notes live in the git-ignored `.audit/mac-port-feasibility.md`
+and `.audit/mac-experiments.md`; what survives here is the durable state.
+
+- **Build and gate.** `bash scripts/build.sh` produces a dev-signed
+  `bin/saundo.app` (14.4 MB) plus a dmg; the full gate (gofmt, catalog
+  check, `go vet`, `go tool mygo vet .`, `go test ./...`) is green — 21
+  packages, `internal/app` headless on darwin included.
+- **Live streaming.** Discovery, connect, and audio to the HomePod mini
+  verified by the operator with the darwin capture path (2026-11-07).
+- **Capture.** The Core Audio process tap aggregated with the default
+  output device feeds the ring: a probe read 337,408 frames of speech
+  (48 kHz stereo) over 8 s with zero errors, following the format the tap
+  reports. A tap-only aggregate refuses to start
+  (`kAudioHardwareIllegalOperationError`); the output device must be the
+  sub-device and clock master, with the tap in the aggregate's tap list.
+- **Now Playing.** MediaRemote returns empty data to third-party processes
+  on 27.3 — callbacks fire with media playing, payload empty (measured) —
+  so the session reads through the vendored adapter loaded inside
+  `/usr/bin/perl`, a platform binary MediaRemote still accepts. Title,
+  artist, album, position, duration, playing state, and artwork (110–196 KB
+  JPEG, base64 in the JSONL stream) all arrive; send 0/1/4/5 and seek
+  control the source app. One session only: no enumeration symbol exists
+  (13 candidates probed at runtime) — the system widget's multi-source list
+  rides mediaserverd's private XPC, so the card follows the current source
+  and the switcher hides. The perl loader rejects relative framework paths,
+  and takes the function and its parameter as separate argv entries.
+- **Session identity.** LaunchServices resolves the localized app name
+  ("Music"); `NSBundle localizedName` does not exist on this OS —
+  `NSFileManager displayNameAtPath:` is the working call. Icons render via
+  `NSWorkspace iconForFile:` and an ImageIO 128 px thumbnail to PNG.
+- **Credentials.** The Keychain master key + AES-256-GCM round-trips. A
+  rebuilt ad-hoc binary triggers one keychain ACL prompt per item; the
+  dev-signed build (a stable identity from `SAUNDO_MAC_SIGN_IDENTITY`)
+  ends them. Parallel test binaries hit the same
+  ACL; headless runs set `SAUNDO_CREDS_MASTER_KEY` and the creds package
+  decides keys from the environment instead.
+- **Signing and distribution.** Ad-hoc builds are Gatekeeper-rejected when
+  quarantined; recovery is System Settings → Privacy & Security → Open
+  Anyway, once per build cdhash (measured; the right-click Open bypass is
+  gone since Sequoia). `spctl -a` keeps printing `rejected` after the user
+  allows it. Locally built copies carry build provenance and never see the
+  flow. Signing the nested adapter framework prompts for the certificate
+  key once, separately from the credentials key.
+
+## 2026-11-09 — multi-platform review and gate
+
+Third-party review of the darwin port. The defects fixed in this pass:
+
+- **Packaging.** `mygo.json` listed `build/adapter` as a resource of every
+  platform. A clean Windows checkout therefore failed `mygo build` before
+  producing an exe, and the same break hit the Windows release job. The
+  adapter now stages in `cmd/saundo/resources/darwin-arm64/adapter` through
+  `scripts/build-adapter.sh`, a platform directory mygo ships only with
+  darwin/arm64. The bundle carries it at `Contents/Resources/adapter/`.
+- **Signing.** The committed `macos.signingIdentity` named one developer's
+  certificate, which `codesign` cannot find on CI or another Mac. The
+  identity is gone from `mygo.json`; `SAUNDO_MAC_SIGN_IDENTITY` overrides
+  the ad-hoc default locally, and CI plus the release pass `-sign -`.
+- **Cross-platform gate.** `scripts/check-platforms` builds and vets
+  windows/amd64 and darwin/arm64 on any host and rejects
+  `saundo/internal/darwin`, `purego`, and `golang.org/x/sys/windows`
+  imports in files the other build compiles. It runs in `make check`, the
+  CI `platforms` job, and the release gate. A local `.audit` probe it
+  caught proved the import check fires.
+- **Darwin ABI.** `AudioStreamBasicDescription` was 36 bytes against the
+  SDK's 40 and `AudioTimeStamp` 56 against 64. Both layouts are corrected
+  and pinned by `TestCoreAudioABI`; clang against the SDK measured
+  `ASBD=40 TS=64 BUF=16 LIST=24 SMPTE=24`.
+- **Now Playing.** Concurrent `Read` calls raced on the adapter child's
+  `cmd` and `exited`; `ensure` now holds the mutex, and the functional
+  test and transport commands time out after 5 s. A non-data adapter line
+  no longer clears the session (`TestParseStreamLineIgnoresNonDataEvents`).
+- **Capture.** The pump compares the default device id directly and checks
+  `DeviceRunningSomewhere` on the aggregate, so a device that goes away is
+  noticed, not only a default-device change. The tap description and its
+  UUID are released after use. `OutputDevices` no longer indexes an empty
+  device list. `DeviceForUID` no longer creates an autoreleased NSString
+  outside a pool.
+- **Windows behavior.** The flyout keeps `Shadow: true` in the rounded
+  style. `App.Focus()` is restored on Windows and Linux through
+  `focus_other.go` and skipped only on macOS. The flyout-style snapshot
+  sync no longer depends on the tray animation changing.
+
+**Checks run (2026-11-09, this tree).** `gofmt -l .` clean; `go build
+./...`, `go vet ./...`, `go tool mygo vet .`, `go test ./...` (21 packages
+ok), and `go test -race ./internal/nowplaying ./internal/capture
+./internal/darwin` pass; `go run ./scripts/check-platforms` reports both
+targets build and vet and imports stay behind their tags;
+`go tool mygo i18n check cmd/saundo` reports 315 messages; `bash
+scripts/check-verify-map.sh` passes; `make check` passes end to end. The
+Windows build ran with `cmd/saundo/resources` removed entirely, the
+clean-checkout case, and produced `saundo.exe`. The darwin build produced
+`saundo.app` plus `saundo-0.5.0-arm64.dmg`, with the adapter at
+`Contents/Resources/adapter/`.
+
+**Not verified here.** The review ran on macOS. The Windows flyout shadow
+and tray focus, and a live macOS reconnect after the aggregate-liveness
+check, still need a run on their platforms.

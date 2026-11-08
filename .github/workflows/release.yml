@@ -28,6 +28,8 @@ jobs:
         run: go tool mygo vet .
       - name: Tests
         run: go test -short ./...
+      - name: Platforms
+        run: go run ./scripts/check-platforms
 
   draft:
     needs: check
@@ -76,3 +78,55 @@ jobs:
       # Code signing is not configured yet. Add windows.certificate or
       # windows.signCommand to cmd/saundo/mygo.json and the certificate secrets
       # before publishing a public release.
+
+  check-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Catalogs
+        run: go tool mygo i18n check cmd/saundo
+      - name: Vet
+        run: go vet ./...
+      - name: UI vet
+        run: go tool mygo vet .
+      - name: Tests
+        env:
+          SAUNDO_CREDS_MASTER_KEY: "6b65797320617265206e6f7420736563726574732e2074657374206f6e6c792e"
+        run: go test -short ./...
+
+  build-macos:
+    needs: [check, check-macos, draft]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Stamp the version
+        working-directory: cmd/saundo
+        run: |
+          version=$(jq -r .version mygo.json)
+          echo "MYGO_LDFLAGS=-X saundo/internal/app.Version=$version" >> "$GITHUB_ENV"
+      - name: Adapter
+        run: bash scripts/build-adapter.sh
+      - name: Build
+        working-directory: cmd/saundo
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          sign="${MACOS_SIGN_IDENTITY:--}"
+          go tool mygo build -platform darwin/arm64 -skip-build-command -sign "$sign"
+      # The dmg ships as a manual download: the mac build disables the
+      # updater until a signed, notarized mac feed exists.
+      - name: Upload the dmg to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME"             cmd/saundo/build/darwin-arm64/saundo-*.dmg             --repo "$GITHUB_REPOSITORY"
