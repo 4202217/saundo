@@ -350,6 +350,40 @@ func TestUserDisconnectDoesNotReconnect(t *testing.T) {
 	}
 }
 
+// TestUserDisconnectClearsConnectionError pins the cancel path: ending a
+// failed or retrying session returns the UI to idle instead of leaving the
+// previous failure in the snapshot.
+func TestUserDisconnectClearsConnectionError(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.fake.launch(false, "Connection closed by the device")
+	if got := h.e.Snapshot().Error; got == "" {
+		t.Fatal("precondition: failure did not set an error")
+	}
+	h.e.handleCommand(command{kind: cmdDisconnect})
+	if got := h.e.Snapshot().Error; got != "" {
+		t.Fatalf("cancel kept the stale error %q", got)
+	}
+}
+
+// TestConnectClearsPreviousError pins the recovery path: a new connection
+// attempt starts from a clean snapshot, so the flyout leaves the error phase
+// instead of keeping the previous receiver's failure on screen.
+func TestConnectClearsPreviousError(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.fake.launch(false, "boom")
+	if got := h.e.Snapshot().Error; got == "" {
+		t.Fatal("precondition: failure did not set an error")
+	}
+	h.connect()
+	if got := h.e.Snapshot().Error; got != "" {
+		t.Fatalf("new connect kept the stale error %q", got)
+	}
+}
+
 // TestConnectClearsStalePINPrompt pins the stale-PIN fix: connecting again
 // while a pairing waits for a code must close the dialog instead of leaving
 // it on screen for a session that no longer exists.

@@ -835,6 +835,9 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdDisconnect:
 		e.autoTried = true
 		e.userDisconnect = true
+		// A cancel or a disconnect ends the attempt, so its failure is stale.
+		// Clear it before reconnectPendingOff publishes the idle snapshot.
+		e.lastError = ""
 		e.reconnectWanted = false
 		e.reconnectPendingOff()
 		if e.tr != nil && e.tr.Active() {
@@ -1002,6 +1005,9 @@ func (e *Engine) connect(d device.Device) {
 	// that needs a code raises PinRequired again on its own.
 	e.pinRequired = false
 	e.pinDevice = ""
+	// A new attempt starts clean. The previous receiver's failure must not
+	// keep the flyout in its error phase while this attempt runs.
+	e.lastError = ""
 	if d.IsStereoGroup() && (!d.Online || len(d.Members) != 2) {
 		e.lastError = "立体声组需要两台成员都在线"
 		e.publish()
