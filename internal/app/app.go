@@ -931,12 +931,10 @@ func (a *App) statusText() string {
 		return locales.StatusReconnecting()
 	}
 	switch a.snap.State {
-	case sender.StateConnecting:
+	case sender.StateConnecting, sender.StateHandshake:
 		return locales.StatusConnecting()
 	case sender.StatePairing:
 		return locales.StatusPairing()
-	case sender.StateHandshake:
-		return locales.StatusHandshaking()
 	case sender.StateStreaming:
 		if a.snap.ConnectedName != "" {
 			return locales.StatusStreamingTo(a.snap.ConnectedName)

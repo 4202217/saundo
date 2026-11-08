@@ -124,7 +124,7 @@ func (a *App) receiverDialogs(c *ui.Context, p palette) {
 }
 
 // dialogHead is the icon-plus-title head the shells share.
-func dialogHead(c *ui.Context, p palette, icon *ui.SVG, title, sub string, danger bool) {
+func dialogHead(c *ui.Context, p palette, icon *ui.SVG, title, sub string, danger bool, trailing func()) {
 	ui.Row(c).Gap(11).Children(func() {
 		bg, fg := p.accentSoft, p.accent
 		if danger {
@@ -137,6 +137,9 @@ func dialogHead(c *ui.Context, p palette, icon *ui.SVG, title, sub string, dange
 			ui.Text(c, title).FontSize(18).FontWeight(650)
 			ui.Text(c, sub).FontSize(12.5).TextColor(p.muted)
 		})
+		if trailing != nil {
+			trailing()
+		}
 	})
 }
 
@@ -160,7 +163,7 @@ func dialogFooter(c *ui.Context, p palette, left, right func()) {
 // fieldLabel is a small bold label above a field, with an optional hint.
 func fieldLabel(c *ui.Context, p palette, label, hint string) {
 	ui.Row(c).Gap(6).Margin(10, 0, 4, 0).AlignItems(ui.End).Children(func() {
-		ui.Text(c, label).FontSize(11).FontWeight(600).LetterSpacing(0.2).TextColor(p.muted)
+		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.2).TextColor(p.muted)
 		if hint != "" {
 			ui.Text(c, hint).FontSize(10.5).TextColor(p.faint).SingleLine().Ellipsis("…")
 		}
@@ -190,7 +193,7 @@ func (a *App) receiverAddEditDialog(c *ui.Context, p palette) {
 	}
 
 	ui.Column(c).Children(func() {
-		dialogHead(c, p, headIcon, title, sub, false)
+		dialogHead(c, p, headIcon, title, sub, false, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Gap(0).Children(func() {
 			ui.Row(c).Gap(10).Children(func() {
 				ui.Column(c).Grow(1.3).Children(func() {
@@ -343,7 +346,7 @@ func (a *App) receiverPasswordDialog(c *ui.Context, p palette) {
 	}
 	d := &a.receiverDraft
 	ui.Column(c).Children(func() {
-		dialogHead(c, p, iconKey, title, locales.ReceiverPasswordDialogSub(v.Name), false)
+		dialogHead(c, p, iconKey, title, locales.ReceiverPasswordDialogSub(v.Name), false, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Children(func() {
 			fieldLabel(c, p, locales.ReceiverPasswordNewLabel(), "")
 			dialogInput(c, p, &d.password, locales.ReceiverPasswordPlaceholderNew(), locales.ReceiverPasswordNewLabel()).Password()
@@ -387,7 +390,7 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 	model := receiverModelLabel(v)
 	ui.Column(c).Children(func() {
 		dialogHead(c, p, iconSlash, locales.ReceiverRemoveConfirmTitle(),
-			locales.ReceiverRemoveConfirmSub(v.Name, model), true)
+			locales.ReceiverRemoveConfirmSub(v.Name, model), true, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Gap(5).Children(func() {
 			ui.Text(c, locales.ReceiverRemoveHint1()).FontSize(11.5).TextColor(p.muted)
 			ui.Text(c, locales.ReceiverRemoveHint2()).FontSize(11.5).TextColor(p.muted)

@@ -41,7 +41,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
   by name, so it still produces one stable leader-first group.
 - One AP2 session per member with `groupUUID = tsid`; SETPEERS carries both members plus the sender; **the sender is the PTP grandmaster** (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
 - Capture fans out to one ring per member; both sessions must reach streaming before the group launches.
-- Verified (2026-10-31): both member sessions streamed through the sender-supplied master, a system tone caused zero drops, the flyout showed `正在播放到 HomePods`, and a 60 s silence suspend kept both sessions up and resumed audibly.
+- Verified (2026-10-31): both member sessions streamed through the sender-supplied master, a system tone caused zero drops, the flyout showed the streaming footer (then `正在播放到 HomePods`, now `正在通过 HomePods 播放`), and a 60 s silence suspend kept both sessions up and resumed audibly.
 - Ambient light on the pair (2026-11-07): `updateMRPlaybackState` reaches both members and state `2` darkens both. A state `1` on the follower can leave its renderer white; a new session restores it. The sender assumes playing on a fresh session (no redundant state `1`) and resends the artwork after a resume's state `1`; after a disconnect/reconnect and a resume, both members were normal. If a follower is already stuck white, reconnect.
 
 ## macOS AirPlay receiver (Require Password)

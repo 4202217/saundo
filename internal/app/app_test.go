@@ -94,8 +94,8 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
-		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
-		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
+		"声渡", "AIRPLAY 2", "接收器", "HomePods", "Apple TV", "HomePod mini",
+		"连接", "断开连接", "离线", "音量", "65%", "正在通过 HomePods 播放",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "诊断日志",
 		"氛围灯", "沙丘",
 	} {
@@ -116,7 +116,7 @@ func TestEnglishLocaleRenders(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
-		"saundo", "AIRPLAY 2", "Devices", "3 devices", "65%", "Streaming to HomePods",
+		"saundo", "AIRPLAY 2", "Receivers", "3 receivers", "65%", "Streaming to HomePods",
 		"Diagnostics",
 	} {
 		if !tt.HasText(want) {
@@ -171,8 +171,8 @@ func TestPasswordPromptRenders(t *testing.T) {
 	a.passwordOpen = true
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
-		"输入接收端密码", "输入 MacBook 的 AirPlay 接收密码。",
-		"密码保存在本机，只用于这台设备。", "连接", "取消",
+		"输入接收器密码", "输入 MacBook 的 AirPlay 密码。",
+		"密码保存在本机，只用于这台接收器。", "连接", "取消",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("password prompt is missing %q; texts: %q", want, tt.Texts())
@@ -185,14 +185,14 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "开机自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "连接时静音本机扬声器，断开或退出时恢复。"}},
-		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
-		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
-		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "顶屏灯光", "HomePod 专属", "HomePod 顶屏", "封面", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "按关灯熄灭顶屏"}},
-		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
-		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
-		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
+		{pageConnection, []string{"连接", "重连与验证策略。", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免声音在本机与接收器上重复播放；断开或退出时恢复。"}},
+		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
+		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "在面板中显示延迟切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
+		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "封面", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "点击电源按钮熄灭顶屏"}},
+		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
+		{pageNowPlaying, []string{"正在播放", "面板中的正在播放卡片、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
+		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
 	for _, tc := range cases {
@@ -314,8 +314,9 @@ func TestFlyoutKeepsPlaybackControlsOnly(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, moved := range []string{
-		"开机自动启动", "启动时自动连接上次设备", "断开后自动重连",
-		"严格验证接收器", "播放延迟", "接收端密码", "系统输出",
+		locales.SettingsLaunchAtStart(), locales.ReceiverAutoToggle(),
+		locales.SettingsReconnect(), locales.SettingsStrictAuth(),
+		locales.ReceiverPasswordTitle(), locales.SettingsSystemOutput(),
 	} {
 		if tt.HasText(moved) {
 			t.Fatalf("flyout still shows configuration %q; texts: %q", moved, tt.Texts())
@@ -526,7 +527,7 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	}
 	// The error bar takes its own height; it must not squeeze the device card
 	// or clip the playback card's last row.
-	if card, ok := tt.Find("设备列表"); !ok || card.H+1 < deviceCardHeight(len(a.snap.Devices)) {
+	if card, ok := tt.Find("接收器列表"); !ok || card.H+1 < deviceCardHeight(len(a.snap.Devices)) {
 		t.Fatalf("error state squeezes the device card to %.1f DIP", card.H)
 	}
 	if seg, ok := tt.Find("自定义"); !ok || seg.H+1 < 26 {
@@ -541,7 +542,7 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.selID = ""
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	for _, want := range []string{"0 台", "正在搜索附近的 AirPlay 设备…", "重新搜索"} {
+	for _, want := range []string{"暂无", "正在搜索附近的 AirPlay 接收器…", "重新搜索"} {
 		if !tt.HasText(want) {
 			t.Fatalf("empty state is missing %q; texts: %q", want, tt.Texts())
 		}
@@ -549,8 +550,8 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	noMedia := map[int]int{0: 365, 1: 282, 2: 338, 3: 394, 5: 394}
-	withMedia := map[int]int{0: 515, 1: 432, 2: 488, 3: 544, 5: 544}
+	noMedia := map[int]int{0: 368, 1: 285, 2: 341, 3: 397, 5: 397}
+	withMedia := map[int]int{0: 518, 1: 435, 2: 491, 3: 547, 5: 547}
 	for _, tc := range []struct {
 		media bool
 		want  map[int]int
@@ -573,7 +574,7 @@ func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 		a.snap.Devices = a.snap.Devices[:devices]
 		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 		tt.Frame()
-		card, ok := tt.Find("设备列表")
+		card, ok := tt.Find("接收器列表")
 		if !ok {
 			t.Fatalf("%d devices: the device card is missing", devices)
 		}
@@ -729,7 +730,7 @@ func TestPinDialogRenders(t *testing.T) {
 	a.pinOpen = true
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
-		"输入配对码", "在 Apple TV 的屏幕上查看配对码。", "配对码只用于本次配对。", "取消", "配对",
+		"输入配对码", "查看 Apple TV 上显示的配对码。", "仅用于本次配对。", "取消", "配对",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("PIN dialog is missing %q; texts: %q", want, tt.Texts())

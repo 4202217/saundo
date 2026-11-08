@@ -316,9 +316,8 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 func (a *App) nowPlayingPage(c *ui.Context, p palette) {
 	master := a.cfg.ShowNowPlayingPanel
 	pageCard(c, p, func() {
-		ui.Row(c).Padding(12, 14).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, locales.SettingsShowNowPlaying()).FontSize(15).FontWeight(600).Grow(1)
-			a.nowPlayingBadge(c, p)
+		cardHead(c, p, iconNote, locales.SettingsShowNowPlaying(), 15, 14, func() {
+			chip(c, p, locales.SettingsSystemMediaBadge(), chipNeutral)
 			toggle(c, p, &a.cfg.ShowNowPlayingPanel, locales.SettingsShowNowPlaying(), func(v bool) {
 				a.showNowPlayingPanel.Store(v)
 				a.persistNowPlaying()
@@ -339,12 +338,6 @@ func (a *App) nowPlayingPage(c *ui.Context, p palette) {
 	})
 }
 
-func (a *App) nowPlayingBadge(c *ui.Context, p palette) {
-	ui.Row(c).Height(22).Radius(11).Padding(0, 9).Border(1, p.line).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, locales.SettingsSystemMediaBadge()).FontSize(11.5).TextColor(p.muted).SingleLine()
-	})
-}
-
 // nowPlayingCoverRow is the three-way cover control: none, the default
 // placeholder, or the media's own artwork.
 func (a *App) nowPlayingCoverRow(c *ui.Context, p palette, enabled bool) {
@@ -358,39 +351,12 @@ func (a *App) nowPlayingCoverRow(c *ui.Context, p palette, enabled bool) {
 			ui.Text(c, locales.SettingsCoverDesc()).FontSize(11.5).TextColor(subColor).SingleLine().Ellipsis("…")
 		})
 		seg := a.coverModeIndex()
-		parts := ui.SegmentedBase(c, &seg, 3)
-		parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
-			Label(locales.SettingsCover()).Disabled(!enabled).Children(func() {
-			icons := []*ui.SVG{iconSlash, iconNote, iconImage}
-			names := []string{
-				locales.SettingsCoverNone(),
-				locales.SettingsCoverPlaceholder(),
-				locales.SettingsCoverMedia(),
-			}
-			for i := range names {
-				s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).Cursor(ui.CursorPointer).Label(names[i])
-				if i == seg {
-					if p.dark {
-						s.Background(p.pillHover)
-					} else {
-						s.Background(p.card)
-					}
-					s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
-				}
-				s.Children(func() {
-					ic := ui.Icon(c, icons[i]).Size(12, 12)
-					tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
-					if i == seg {
-						ic.TextColor(p.accent)
-						tx.TextColor(p.fg)
-					} else {
-						ic.TextColor(p.muted)
-						tx.TextColor(p.muted)
-					}
-				})
-			}
-		})
-		if parts.Track.Changed() {
+		items := []segmentItem{
+			{locales.SettingsCoverNone(), iconSlash},
+			{locales.SettingsCoverPlaceholder(), iconNote},
+			{locales.SettingsCoverMedia(), iconImage},
+		}
+		if segmented(c, p, &seg, items, 0, !enabled, locales.SettingsCover()).Changed() {
 			a.cfg.CoverMode = coverModeAt(seg)
 			a.persistNowPlaying()
 		}
@@ -479,11 +445,11 @@ func (a *App) updateSettingsCard(c *ui.Context, p palette) {
 	card.Children(func() {
 		ui.Column(c).Padding(12, 14).Gap(8).Children(func() {
 			ui.Row(c).Gap(10).Children(func() {
-				ui.Box(c).Size(34, 34).Radius(9).Center().Shrink(0).Background(p.accentSoft).Children(func() {
+				ui.Box(c).Size(34, 34).Radius(10).Center().Shrink(0).Background(p.accentSoft).Children(func() {
 					ui.Icon(c, iconDownload).Size(16, 16).TextColor(p.accent)
 				})
 				ui.Column(c).Grow(1).Gap(1).Children(func() {
-					ui.Text(c, a.updateCardTitle()).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
+					ui.Text(c, a.updateCardTitle()).FontSize(13).FontWeight(600).SingleLine().Ellipsis("…")
 					ui.Text(c, a.updateCardDesc()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 				})
 				a.updateCardPrimary(c, p)
@@ -501,7 +467,7 @@ func (a *App) updateSettingsCard(c *ui.Context, p palette) {
 					linkButton(c, p, locales.UpdateLater(), p.muted, func() { a.hideSettings() })
 				}
 			})
-			if a.upd.phase == updateDownloading || a.upd.phase == updateReady {
+			if a.upd.phase == updateDownloading {
 				updateProgressBar(c, p, float32(a.updateProgress()))
 				if a.upd.phase == updateDownloading {
 					ui.Row(c).Children(func() {
@@ -546,34 +512,21 @@ func (a *App) updateCardDesc() string {
 	case updateFailed:
 		return a.upd.err
 	}
-	return locales.UpdateAvailableMeta(a.currentVersion(), updateDate(a.upd.date))
+	return locales.UpdateAvailableMeta(a.currentVersionLabel(), updateDate(a.upd.date))
 }
 
 // updateCardPrimary is the card's one filled action.
 func (a *App) updateCardPrimary(c *ui.Context, p palette) {
 	switch a.upd.phase {
 	case updateDownloading:
-		quietSmall(c, p, locales.UpdateCancel(), func() { a.cancelInstall() })
+		linkButton(c, p, locales.UpdateCancel(), p.muted, func() { a.cancelInstall() })
 	case updateReady:
-		primarySmall(c, p, locales.UpdateRestartNow(), func() { a.relaunchIntoUpdate() })
+		cardAction(c, p, locales.UpdateRestartNow(), func() { a.relaunchIntoUpdate() })
 	case updateFailed:
-		primarySmall(c, p, locales.UpdateRetry(), func() { a.installUpdate() })
+		cardAction(c, p, locales.UpdateRetry(), func() { a.installUpdate() })
 	default:
-		primarySmall(c, p, locales.UpdateInstall(), func() { a.installUpdate() })
+		cardAction(c, p, locales.UpdateInstall(), func() { a.installUpdate() })
 	}
-}
-
-// primarySmall is the card's 30-DIP variant of the ink button.
-func primarySmall(c *ui.Context, p palette, label string, fn func()) {
-	b := ui.ButtonBase(c).Height(30).Radius(15).Padding(0, 14).Center().Cursor(ui.CursorPointer).Label(label)
-	b.Background(p.fg)
-	if b.Hovered() {
-		b.Background(p.fg.Mix(p.bg, 0.12))
-	}
-	b.OnClick(fn)
-	b.Children(func() {
-		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(p.bg).SingleLine()
-	})
 }
 
 // updateVersionRow shows the running version and the check's result in
@@ -594,7 +547,7 @@ func (a *App) updateVersionSub(c *ui.Context, p palette) {
 		return
 	}
 	ui.Row(c).Gap(5).Children(func() {
-		ui.Text(c, a.currentVersion()+" · "+a.channelLabel()).FontSize(11.5).TextColor(p.muted).SingleLine()
+		ui.Text(c, a.currentVersionLabel()+" · "+a.channelLabel()).FontSize(11.5).TextColor(p.muted).SingleLine()
 		switch {
 		case a.upd.phase == updateFailed && a.upd.up == nil:
 			ui.Text(c, locales.SettingsCheckFailed()+" · "+a.upd.err).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
@@ -702,11 +655,7 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 	card := ui.Column(c).Margin(12, 0, 0, 0).Radius(12).
 		Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
-		ui.Row(c).Height(40).Padding(0, 14).Gap(8).Children(func() {
-			ui.Box(c).Size(22, 22).Radius(6).Shrink(0).Background(p.accentSoft).Center().Children(func() {
-				ui.Icon(c, iconStopwatch).Size(13, 13).TextColor(p.accent)
-			})
-			ui.Text(c, locales.SettingsLatency()).FontSize(13).FontWeight(600).Grow(1)
+		cardHead(c, p, iconStopwatch, locales.SettingsLatency(), 13, 14, func() {
 			if a.latencyApplying {
 				ui.Spinner(c).Size(10, 10).TextColor(p.accent)
 			}
@@ -731,7 +680,7 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 			a.latencyCustomTile(c, p, &mode)
 		}).Label(locales.SettingsLatency())
 
-		ui.Text(c, locales.SettingsLatencyNote()).FontSize(11).TextColor(p.muted).
+		ui.Text(c, locales.SettingsLatencyNote()).FontSize(11.5).TextColor(p.muted).
 			Margin(6, 14, 8, 14).SingleLine().Ellipsis("…")
 	})
 
@@ -778,7 +727,7 @@ func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMo
 			if selected {
 				valueText.TextColor(p.accent).FontWeight(500)
 			}
-			ui.Text(c, desc).FontSize(11).TextColor(p.muted)
+			ui.Text(c, desc).FontSize(11.5).TextColor(p.muted)
 		})
 	})
 	if tile.Changed() {
@@ -811,10 +760,10 @@ func (a *App) latencyCustomTile(c *ui.Context, p palette, mode *settings.Latency
 			})
 			ui.Column(c).Grow(1).Gap(1).Children(func() {
 				ui.Text(c, locales.SettingsLatencyCustom()).FontSize(13).FontWeight(500).SingleLine()
-				ui.Text(c, locales.SettingsLatencyCustomDesc()).FontSize(11).TextColor(p.muted).
+				ui.Text(c, locales.SettingsLatencyCustomDesc()).FontSize(11.5).TextColor(p.muted).
 					SingleLine().Ellipsis("…")
 			})
-			val := ui.Text(c, settings.LatencyText(int(a.latencyCustom+0.5))).FontSize(12).TextColor(p.muted)
+			val := ui.Text(c, settings.LatencyText(int(a.latencyCustom+0.5))).FontSize(12.5).TextColor(p.muted)
 			if selected {
 				val.TextColor(p.accent).FontWeight(500)
 			}
@@ -873,7 +822,7 @@ func (a *App) capturePage(c *ui.Context, p palette) {
 					dot = p.green
 				}
 				ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(dot)
-				ui.Text(c, captureStatusText(a.snap)).FontSize(12).TextColor(p.muted).SingleLine()
+				ui.Text(c, captureStatusText(a.snap)).FontSize(12.5).TextColor(p.muted).SingleLine()
 			})
 		})
 	})
@@ -881,7 +830,7 @@ func (a *App) capturePage(c *ui.Context, p palette) {
 
 func (a *App) deviceSummary(c *ui.Context, p palette, d device.Device) {
 	ph := phaseOf(a.snap)
-	e := ui.Row(c).Height(54).Margin(12, 0, 0, 0).Padding(0, 14).Gap(10).
+	e := ui.Row(c).Height(56).Margin(12, 0, 0, 0).Padding(0, 14).Gap(10).
 		Radius(12).Background(p.card).Border(1, p.line)
 	e.Children(func() {
 		deviceGlyph(c, p, d, false)
@@ -895,7 +844,7 @@ func (a *App) deviceSummary(c *ui.Context, p palette, d device.Device) {
 		case phaseConnecting:
 			chip(c, p, locales.SummaryConnecting(), chipAccent)
 		case phaseError:
-			chip(c, p, locales.StatusConnectionFailed(), chipNeutral)
+			chip(c, p, locales.StatusConnectionFailed(), chipDanger)
 		default:
 			chip(c, p, locales.StatusDisconnected(), chipNeutral)
 		}

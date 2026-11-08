@@ -169,7 +169,7 @@ func TestLatencyPresetNormalizesAndCustomRoundTrips(t *testing.T) {
 }
 
 func TestLatencyText(t *testing.T) {
-	cases := map[int]string{20: "20 ms", 200: "200 ms", 700: "700 ms", 1000: "1 s", 1500: "1.5 s", 2000: "2 s"}
+	cases := map[int]string{20: "20 ms", 200: "200 ms", 700: "700 ms", 999: "999 ms", 1000: "1 s", 1500: "1.5 s", 2000: "2 s"}
 	for ms, want := range cases {
 		if got := LatencyText(ms); got != want {
 			t.Errorf("LatencyText(%d) = %q, want %q", ms, got, want)

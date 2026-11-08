@@ -66,13 +66,21 @@ func faceOf(s engine.Snapshot) string {
 	return "idle-open"
 }
 
-// sectionHead is the small label above a card.
-func sectionHead(c *ui.Context, p palette, label, note string) {
-	ui.Row(c).Padding(6, 2, 2, 2).Children(func() {
-		ui.Text(c, label).FontSize(11).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+// sectionHead is a flyout section header. All sections use it, so their labels
+// share one left edge. busy shows the latency spinner after the label; action
+// draws an optional trailing control.
+func sectionHead(c *ui.Context, p palette, label, note string, busy bool, action func()) {
+	ui.Row(c).WidthPercent(100).Padding(6, 2, 2, 2).Gap(4).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		if busy {
+			ui.Spinner(c).Size(10, 10).TextColor(p.accent)
+		}
 		ui.Spacer(c)
 		if note != "" {
 			ui.Text(c, note).FontSize(11.5).TextColor(p.muted).SingleLine()
+		}
+		if action != nil {
+			action()
 		}
 	})
 }
@@ -89,31 +97,36 @@ func iconButton(c *ui.Context, p palette, icon *ui.SVG, label string, size float
 	})
 }
 
-// textButton is a row action: an icon and a word, colored by its meaning. An
-// action without a handler is a status, not a button, so it takes no focus.
-func textButton(c *ui.Context, p palette, label string, icon *ui.SVG, color ui.Color, fn func()) {
+// rowAction is a row-level text action: a 26-DIP pill with an icon and a word.
+// An action without a handler is a status, not a button, so it takes no focus.
+func rowAction(c *ui.Context, p palette, key, label string, icon *ui.SVG, color ui.Color, fn func()) ui.Element {
 	content := func() {
 		if icon != nil {
-			ui.Icon(c, icon).Size(13, 13).TextColor(color)
+			ui.Icon(c, icon).Size(12, 12).TextColor(color)
 		}
-		ui.Text(c, label).FontSize(12).FontWeight(500).TextColor(color).SingleLine()
+		ui.Text(c, label).FontSize(11.5).FontWeight(500).TextColor(color).SingleLine()
 	}
 	if fn == nil {
-		ui.Row(c).Gap(4).Padding(4, 7).Radius(6).Shrink(0).Children(content)
-		return
+		return ui.Row(c).Height(26).Gap(5).Padding(0, 8).Radius(13).Shrink(0).Children(content)
 	}
-	b := ui.ButtonBase(c.Key("action:"+label)).Gap(4).Padding(4, 7).Radius(6).Shrink(0).
+	b := ui.ButtonBase(c.Key(key)).Height(26).Gap(5).Padding(0, 8).Radius(13).Shrink(0).
 		Cursor(ui.CursorPointer).Label(label)
 	b.OnClick(fn)
 	if b.Hovered() {
 		b.Background(p.pill)
 	}
 	b.Children(content)
+	return b
+}
+
+// textButton is the flyout's row action, keyed by its label.
+func textButton(c *ui.Context, p palette, label string, icon *ui.SVG, color ui.Color, fn func()) {
+	rowAction(c, p, "action:"+label, label, icon, color, fn)
 }
 
 // chipButton is the outlined pill that commits a field.
 func chipButton(c *ui.Context, p palette, label string, fn func()) {
-	b := ui.ButtonBase(c).Height(26).Radius(13).Padding(0, 10).Center().Cursor(ui.CursorPointer).Label(label)
+	b := ui.ButtonBase(c).Height(28).Radius(14).Padding(0, 10).Center().Cursor(ui.CursorPointer).Label(label)
 	b.Background(p.card).Border(1, p.line)
 	if b.Hovered() {
 		b.Background(p.pill)
@@ -137,11 +150,6 @@ func linkButton(c *ui.Context, p palette, label string, color ui.Color, fn func(
 	b.Children(func() {
 		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(color).SingleLine()
 	})
-}
-
-// quietSmall is the card's 30-DIP cancel action.
-func quietSmall(c *ui.Context, p palette, label string, fn func()) {
-	linkButton(c, p, label, p.muted, fn)
 }
 
 // primaryButton is the ink pill that confirms a dialog.
@@ -175,6 +183,7 @@ const (
 	chipNeutral chipTone = iota
 	chipOK
 	chipAccent
+	chipDanger
 )
 
 func chip(c *ui.Context, p palette, label string, tone chipTone) {
@@ -187,11 +196,149 @@ func chip(c *ui.Context, p palette, label string, tone chipTone) {
 	case chipAccent:
 		e.Background(p.accentSoft)
 		color = p.accent
+	case chipDanger:
+		e.Background(p.redSoft)
+		color = p.red
 	default:
 		e.Background(p.card).Border(1, p.line)
 	}
 	e.Children(func() {
 		ui.Text(c, label).FontSize(11.5).TextColor(color).SingleLine()
+	})
+}
+
+// inlineChip is the 20-DIP chip beside a row's name. dimmed greys it in the
+// hidden group.
+func inlineChip(c *ui.Context, p palette, label string, tone chipTone, dimmed bool) {
+	e := ui.Box(c).Height(20).Radius(10).Padding(0, 8).Center().Shrink(0)
+	color := p.fg2
+	switch {
+	case dimmed:
+		e.Background(p.pill)
+		color = p.muted
+	case tone == chipOK:
+		e.Background(p.greenSoft)
+		color = p.green
+	case tone == chipAccent:
+		e.Background(p.accentSoft)
+		color = p.accent
+	default:
+		e.Background(p.card).Border(1, p.line)
+	}
+	e.Children(func() {
+		ui.Text(c, label).FontSize(10.5).TextColor(color).SingleLine()
+	})
+}
+
+// countBadge is the small count beside a group's label.
+func countBadge(c *ui.Context, p palette, n int) {
+	ui.Box(c).Height(18).MinWidth(18).Radius(9).Padding(0, 6).Center().Shrink(0).
+		Background(p.pill).Children(func() {
+		ui.Textf(c, "%d", n).FontSize(10.5).TextColor(p.muted)
+	})
+}
+
+// cardAction is the 30-DIP filled action at a card's tail.
+func cardAction(c *ui.Context, p palette, label string, fn func()) {
+	b := ui.ButtonBase(c).Height(30).Radius(15).Padding(0, 14).Center().Cursor(ui.CursorPointer).Label(label)
+	b.Background(p.fg)
+	if b.Hovered() {
+		b.Background(p.fg.Mix(p.bg, 0.12))
+	}
+	b.OnClick(fn)
+	b.Children(func() {
+		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(p.bg).SingleLine()
+	})
+}
+
+// cardHead is a settings card's header: a fixed 22-DIP leading tile, the title,
+// and a trailing cluster. The tile stays even without an icon, so every card's
+// title starts at the same x. padX lets a card that already pads its body keep
+// one 14-DIP inset.
+func cardHead(c *ui.Context, p palette, icon *ui.SVG, title string, size, padX float32, trailing func()) {
+	ui.Row(c).Height(44).Padding(0, padX).Gap(8).AlignItems(ui.Center).Children(func() {
+		tile := ui.Box(c).Size(22, 22).Radius(6).Shrink(0).Center()
+		if icon != nil {
+			tile.Background(p.pill).Children(func() {
+				ui.Icon(c, icon).Size(13, 13).TextColor(p.ctl)
+			})
+		}
+		ui.Text(c, title).FontSize(size).FontWeight(600).Grow(1).SingleLine().Ellipsis("…")
+		if trailing != nil {
+			trailing()
+		}
+	})
+}
+
+type segmentItem struct {
+	label string
+	icon  *ui.SVG
+}
+
+// segmented is the shared 30-DIP segmented control. width 0 fills the parent.
+// dimmed greys every label and disables the track.
+func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width float32, dimmed bool, label string) ui.Element {
+	parts := ui.SegmentedBase(c, seg, len(items))
+	track := parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
+		Label(label).Disabled(dimmed)
+	if width > 0 {
+		track.Width(width)
+	}
+	track.Children(func() {
+		for i, item := range items {
+			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).
+				Cursor(ui.CursorPointer).Label(item.label)
+			if i == *seg {
+				if p.dark {
+					s.Background(p.pillHover)
+				} else {
+					s.Background(p.card)
+				}
+				s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
+			}
+			s.Children(func() {
+				var ic ui.Element
+				if item.icon != nil {
+					ic = ui.Icon(c, item.icon).Size(12, 12)
+				}
+				tx := ui.Text(c, item.label).FontSize(11.5).SingleLine()
+				switch {
+				case dimmed:
+					tx.TextColor(p.faint)
+					if item.icon != nil {
+						ic.TextColor(p.faint)
+					}
+				case i == *seg:
+					tx.TextColor(p.fg)
+					if item.icon != nil {
+						ic.TextColor(p.accent)
+					}
+				default:
+					tx.TextColor(p.muted)
+					if item.icon != nil {
+						ic.TextColor(p.muted)
+					}
+				}
+			})
+		}
+	})
+	return track
+}
+
+// emptyCopy is an empty state's text block. center is for the flyout's card;
+// a settings page uses the same type at the page's own inset.
+func emptyCopy(c *ui.Context, p palette, title, hint string, center bool) {
+	col := ui.Column(c).Gap(3)
+	if center {
+		col.AlignItems(ui.Center)
+	}
+	col.Children(func() {
+		t := ui.Text(c, title).FontSize(12.5).FontWeight(500).TextColor(p.fg2).SingleLine()
+		h := ui.Text(c, hint).FontSize(11.5).TextColor(p.muted)
+		if center {
+			t.TextAlign(ui.Center)
+			h.TextAlign(ui.Center)
+		}
 	})
 }
 
@@ -261,17 +408,17 @@ func rowLine(c *ui.Context, p palette) {
 
 // fieldInput is the 28px pill field of the settings pages.
 func fieldInput(c *ui.Context, p palette, value *string, placeholder, label string) ui.Element {
-	return ui.TextInput(c, value).Width(150).Height(28).Radius(7).PaddingX(9).FontSize(12).
+	return ui.TextInput(c, value).Width(150).Height(28).Radius(7).PaddingX(9).FontSize(12.5).
 		Placeholder(placeholder).Label(label).Border(1, p.pill)
 }
 
 func fieldSelect(c *ui.Context, p palette, value *string, options []string, label string) ui.Element {
-	return ui.Select(c, value, options).Width(150).Height(28).Radius(7).Padding(0, 9).FontSize(12).Label(label)
+	return ui.Select(c, value, options).Width(150).Height(28).Radius(7).Padding(0, 9).FontSize(12.5).Label(label)
 }
 
 // staticText is a read-only value at the end of a settings row.
 func staticText(c *ui.Context, p palette, text string) {
-	ui.Text(c, text).FontSize(12).TextColor(p.muted).SingleLine()
+	ui.Text(c, text).FontSize(12.5).TextColor(p.muted).SingleLine()
 }
 
 func boolFlag(v bool) float32 {

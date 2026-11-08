@@ -165,18 +165,6 @@ func (a *App) collapseLampList() {
 	a.fitFlyout()
 }
 
-// lampHead is the flyout's section head: the desk-lamp glyph, the label, the
-// receiver-family tag, and the power action. The card itself is permanent.
-func (a *App) lampHead(c *ui.Context, p palette) {
-	ui.Row(c).WidthPercent(100).Padding(6, 2, 2, 2).Gap(6).Children(func() {
-		ui.Icon(c, iconLamp).Size(14, 14).TextColor(p.muted)
-		ui.Text(c, locales.FlyoutLampSection()).FontSize(11).FontWeight(600).
-			LetterSpacing(0.55).TextColor(p.muted)
-		ui.Spacer(c)
-		a.lampPowerButton(c, p)
-	})
-}
-
 // lampPowerButton is the momentary 关灯/开灯 action. The color and the card
 // dim carry the state; there is no toggle.
 func (a *App) lampPowerButton(c *ui.Context, p palette) {
@@ -204,7 +192,7 @@ func (a *App) lampPowerButton(c *ui.Context, p palette) {
 // template priority and expanded.
 func (a *App) lampSection(c *ui.Context, p palette) {
 	ui.Column(c).Children(func() {
-		a.lampHead(c, p)
+		sectionHead(c, p, locales.FlyoutLampSection(), "", false, func() { a.lampPowerButton(c, p) })
 		card := ui.Column(c).Margin(2, 0, 0, 0).Radius(10).Background(p.card).Border(1, p.line).Clip()
 		card.Children(func() {
 			ui.Row(c).Height(lampRowHeight).Padding(0, 12).Gap(8).AlignItems(ui.Center).Children(func() {
@@ -337,10 +325,7 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 	on := !a.lampOff
 	pageCard(c, p, func() {
 		ui.Column(c).Padding(13, 14, 12, 14).Children(func() {
-			ui.Row(c).Gap(6).Children(func() {
-				ui.Icon(c, iconLamp).Size(14, 14).TextColor(p.muted)
-				ui.Text(c, locales.SettingsLampCardTitle()).FontSize(13).FontWeight(500)
-				ui.Spacer(c)
+			cardHead(c, p, iconLamp, locales.SettingsLampCardTitle(), 13, 0, func() {
 				chip(c, p, locales.SettingsLampHomePodOnly(), chipNeutral)
 				a.lampPowerButton(c, p)
 			})
@@ -350,18 +335,12 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 				if !on {
 					preview.Opacity(0.35)
 				}
-				ui.Column(c).Gap(2).Children(func() {
-					ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-						name := ui.Text(c, a.lampModeName()).FontSize(14).FontWeight(550)
-						if !on {
-							name.TextColor(p.faint)
-						}
-						a.lampStatusChip(c, p)
-					})
-					sub := ui.Text(c, locales.SettingsLampTop()).FontSize(10.5).TextColor(p.muted)
+				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+					name := ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(550)
 					if !on {
-						sub.TextColor(p.faint)
+						name.TextColor(p.faint)
 					}
+					a.lampStatusChip(c, p)
 				})
 				ui.Spacer(c)
 				a.lampPrioritySegment(c, p, false)
@@ -400,40 +379,14 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 	if !a.lampCover {
 		seg = 1
 	}
-	parts := ui.SegmentedBase(c, &seg, 2)
 	width := float32(176)
 	coverLabel, templateLabel := locales.LampPriorityCover(), locales.LampPriorityTemplate()
 	if compact {
 		width = 92
 		coverLabel, templateLabel = locales.LampPriorityCoverShort(), locales.LampPriorityTemplateShort()
 	}
-	parts.Track.Width(width).Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
-		Label(locales.LampPriority()).Disabled(a.lampOff).Children(func() {
-		names := []string{coverLabel, templateLabel}
-		for i := range names {
-			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Cursor(ui.CursorPointer).Label(names[i])
-			if i == seg {
-				if p.dark {
-					s.Background(p.pillHover)
-				} else {
-					s.Background(p.card)
-				}
-				s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
-			}
-			s.Children(func() {
-				tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
-				switch {
-				case a.lampOff:
-					tx.TextColor(p.faint)
-				case i == seg:
-					tx.TextColor(p.fg)
-				default:
-					tx.TextColor(p.muted)
-				}
-			})
-		}
-	})
-	if parts.Track.Changed() {
+	items := []segmentItem{{coverLabel, nil}, {templateLabel, nil}}
+	if segmented(c, p, &seg, items, width, a.lampOff, locales.LampPriority()).Changed() {
 		a.setLampCover(seg == 0)
 	}
 }

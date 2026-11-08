@@ -32,12 +32,7 @@ func (a *App) updateNotesDialog(c *ui.Context, p palette) {
 		panel.Width(600).Padding(18, 20, 18, 20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.notesEntered)
-		ui.Row(c).Gap(12).Children(func() {
-			ui.Column(c).Grow(1).Gap(3).Children(func() {
-				ui.Text(c, locales.UpdateNotesTitle(a.upd.version)).FontSize(17.5).FontWeight(650)
-				ui.Text(c, a.notesRangeMeta()).FontSize(12).TextColor(p.muted).
-					FontFeatures("tnum").SingleLine().Ellipsis("…")
-			})
+		dialogHead(c, p, iconDoc, locales.UpdateNotesTitle(a.upd.version), a.notesRangeMeta(), false, func() {
 			choice := locales.UpdateRangeSince()
 			if !a.notesRange {
 				choice = locales.UpdateRangeLatest()
@@ -153,10 +148,10 @@ func (a *App) notesFoldedRow(c *ui.Context, p palette, e releaseNote) {
 	row.OnClick(func() { a.notesExpanded[e.Version] = !open })
 	row.Children(func() {
 		ui.Text(c, e.Version).FontSize(12.5).FontWeight(600).FontFeatures("tnum")
-		ui.Text(c, updateDate(e.Date)).FontSize(11).TextColor(p.muted).FontFeatures("tnum")
+		ui.Text(c, updateDate(e.Date)).FontSize(11.5).TextColor(p.muted).FontFeatures("tnum")
 		ui.Spacer(c)
 		kind, n := summarizeNotes(e.Notes)
-		ui.Text(c, noteCountLabel(kind, n)).FontSize(11).TextColor(p.muted).SingleLine()
+		ui.Text(c, noteCountLabel(kind, n)).FontSize(11.5).TextColor(p.muted).SingleLine()
 		chevron := ui.Icon(c, iconChevron).Size(11, 11).TextColor(p.muted)
 		if open {
 			chevron.Rotate(0)

@@ -282,7 +282,7 @@ blocked; the UI reports a PTP timeout with this hint.
   `Events.VolumeChanged`, mirrors into the per-device memory, and the slider
   follows. Pinned by `TestReceiverVolumePollAdoptsHardwareChanges`.
 - **Latency UI.** The 音频 page's mode card offers 低延迟 200 ms, 标准 1.5 s,
-  稳定 2 s, and a custom 20–2000 ms value; the header switch 面板快捷切换
+  稳定 2 s, and a custom 20–2000 ms value; the header switch 在面板中显示延迟切换
   shows or hides the flyout's four-segment row. The playback head's ALAC line
   carries the resolved value, e.g.
   `ALAC · 44.1 kHz · PTP · 已同步 · 延迟 700 ms`. Preset changes restart a
@@ -347,8 +347,8 @@ blocked; the UI reports a PTP timeout with this hint.
   capture fanout left the group streaming with zero dropped samples. The run
   took 8.93 seconds from test start to disconnect.
 - **Real window.** The rebuilt app listed one `HomePods · 立体声组 · 2/2` row
-  and hid the two member rows. Clicking 连接 produced
-  `正在播放到 HomePods`, the 已连接 badge, and `ALAC · 44.1 kHz · 立体声 · PTP ·
+  and hid the two member rows. Clicking 连接 produced the streaming footer
+  (then `正在播放到 HomePods`, now `正在通过 HomePods 播放`), the 已连接 badge, and `ALAC · 44.1 kHz · 立体声 · PTP ·
   已同步`. A real system-audio tone played through the default WASAPI endpoint
   while the app was streaming; the status stayed `采集：Realtek Digital Output
   ... · 48000 Hz`, no capture error appeared, and 丢帧 stayed 0.
@@ -1032,7 +1032,8 @@ the collapsed pair row and `receivers.json` stored the escaped text.
 - **Pin.** `TestStereoGroupNameDecodesDNSEscapes` fails before the fix with
   `group name = "\\229\\141\\167\\229\\174\\164"` and passes after it.
 - **Live app (2026-11-06).** The rebuilt 0.4.2 app discovered the pair as
-  `卧室 · AudioAccessory5,1 · 立体声组 2/2`, showed `正在播放到 卧室`, and
+  `卧室 · AudioAccessory5,1 · 立体声组 2/2`, showed the streaming footer
+  (then `正在播放到 卧室`, now `正在通过 卧室 播放`), and
   rewrote the stored name to `卧室`. Flyout capture:
   `/tmp/saundo-verify/20261106-gpn-fix/flyout-after.png`.
 
@@ -1213,9 +1214,11 @@ app preview paints the same three colors.
 - **The change.** The playback card no longer draws the capture line
   (`采集 … · 48 kHz · 丢帧 0`, or its capture-error and not-running variants).
   The row cost 27.3 DIP, and the old 474-DIP base left the device card about
-  5 DIP clipped; the base is now 456, so the window is 394 DIP at three
-  device rows with no media card, 338 at two, 282 at one, and 365 empty. The
-  media card still adds 150, the latency row 44, and the ambient section 90.
+  5 DIP clipped; the base was 456 at that commit, so the window is 394 DIP at
+  three device rows with no media card, 338 at two, 282 at one, and 365
+  empty. The card padding change later moved the base to 459, making those
+  397, 341, 285, and 368. The media card still adds 150, the latency row 44,
+  and the ambient section 90.
 - **Error bar.** The connection error bar used to ride on the space the
   capture line gave up in the error state. It now adds its own 48 DIP
   (`errorBarHeight`) through `flyoutHeightForState`, so the device card and
@@ -1307,3 +1310,25 @@ surviving conclusion, and the pin.
   `DATA_DISCONTINUITY` and a successful capture clears a stale error
   (zero-error assertion in `TestLoopbackReceivesSamples`,
   `TestCaptureErrorClearsWhenCaptureRecovers`).
+
+## UI copy and layout sweep (2026-11-08)
+
+- **Copy gate.** `TestCatalogHasNoDeadKeys`, `TestCatalogBannedTerms`,
+  `TestCatalogUniqueValues`, and `TestLatencyText` pin the rules in
+  [ui-copy.md](ui-copy.md). The sweep deleted 16 dead keys and
+  `receiverDelayUnit`, and moved 313 messages to the terms in that page.
+- **Layout gate.** `SAUNDO_PREVIEW_DIR=... go test ./internal/app -run
+  TestRenderPreviews` renders the state matrix in both languages. The flyout
+  section heads share one left edge, the three settings card heads share the
+  44-DIP title inset, the English compact segment reads `Cover` / `Light`,
+  and the update page names a local build as `0.5.0 · 本地构建`.
+- **Live app (2026-11-08).** The rebuilt 0.5.0 app was driven through the tray
+  icon and the flyout gear. The tray tooltip read `声渡 · 正在通过 HomePods
+  播放 · 0.5.0 可用`; the update page showed `0.5.0 可用` with `当前版本 0.5.0
+  · 本地构建`. Captures:
+  `.audit/ui-review-evidence-live/flyout.png` and
+  `.audit/ui-review-evidence-live/settings-update-local.png`. The capture
+  helper is DPI-virtualized at 720×500, so the right edge is cropped; the
+  headless matrix is the full visual record.
+- **Height.** The card padding change moved the flyout base from 456 to 459;
+  `TestFlyoutHeightForDeviceRows` and `TestErrorStateShowsRetry` pin it.

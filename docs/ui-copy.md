@@ -1,0 +1,75 @@
+<!-- reviewed-through: 2026-11-08 -->
+
+# UI copy standard
+
+Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-CN.json`, plus any string built in code that reaches a surface. This page is the rulebook for writing and reviewing that copy. The catalogs are the source of truth. When code and this page disagree, code wins and this page is updated in the same commit.
+
+## One entity, one name
+
+| Concept | Chinese | English | Do not use |
+|---|---|---|---|
+| AirPlay receiver | 接收器 | receiver | 接收设备, 接收端, 设备 (except 播放设备 for a Windows audio endpoint) |
+| The flyout | 面板 | panel | 控制面板, 控制中心 |
+| Playback | 播放 | play | 推流, 串流 |
+| Capture | 采集 | capture | 录制 |
+| The Now Playing card | 正在播放卡片 | Now Playing card | 媒体卡 |
+| Ambient light | 氛围灯 | ambient light | 顶屏灯光 as the feature name |
+| The light's target | 顶屏 | top display | 屏幕 |
+
+The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays.
+
+## One state, one phrase
+
+| State | Long form | Short form |
+|---|---|---|
+| Connecting | 正在连接… / Connecting… | 连接中 / Connecting |
+| Reconnecting | 正在重连… / Reconnecting… | 重连中 / Reconnecting |
+| Streaming | 正在通过 {name} 播放 / Streaming to {name} | 正在播放 / Streaming |
+| Connected | 已连接 / Connected | 已连接 / Connected |
+| Disconnected | 未连接 / Not connected | 未连接 / Not connected |
+| Failed | 连接失败 / Connection failed | 连接失败 / Connection failed |
+| Update available | {version} 可用 / Version {version} is available | {version} 可用 / {version} available |
+| Update downloading | 正在下载 {version} / Downloading {version} | 正在下载 {percent}% / Downloading {percent}% |
+| Update ready | {version} 已下载 / {version} is ready | 待重启 / Update ready |
+| Update installing | 重启后完成安装。 / Restart to finish installing. | 重启以完成安装 / Restart to install |
+
+The long form goes in the footer, the sidebar, and a status line. The short form goes in a chip. Never invent a third wording for the same state.
+
+## Tone
+
+The interface speaks to the person using it, not about how it is built.
+
+- Do not mention reference implementations, backoff schedules, pairing proofs, signatures, or handshakes. Say what the user experiences.
+- A subtitle adds a fact. It never restates its title.
+- A dialog subtitle names the fields or the effect. It never repeats the row hint that opened it.
+- An action names its object. `检查更新` is an action. `立即检查` is a fragment.
+- Use `设置` for a first-time value and `更改` for an existing one. Use `启用` and `关闭` for switches. Do not use `打开` for a switch.
+
+## Units and format
+
+- Latency uses one formatter, `settings.LatencyText`. Below 1000 ms it prints `700 ms`. At or above 1000 ms it prints seconds with one decimal, `1.5 s`. Slider scale endpoints follow the same rule.
+- Volume prints as an integer percent.
+- Sample rates print as `44.1 kHz` or `48 kHz`.
+- Chinese copy uses full-width punctuation. A page description ends with `。`. English labels and menu items use sentence case, except product names.
+- The ellipsis is the single character `…`, with no space before it.
+- An IP address, a port, and a version number use their own digits and units. Do not localize them.
+
+## Allowed technical terms
+
+`ALAC`, `AirPlay`, `AirPlay 1`, `AirPlay 2`, `PTP`, `NTP`, `mDNS`, `DSP/DAC`, `IP`, `PIN`, `Windows`, `HomePod`, `Mac`.
+
+Every other protocol or implementation term needs a plain-language replacement before it reaches a surface. `auth-setup`, `handshake`, `pairing proof`, and `backoff` are not allowed.
+
+## Redundancy
+
+- The row hint and the dialog subtitle explain different things. The row says why the feature exists. The dialog says what to fill in.
+- A status line and its card title do not repeat the same sentence.
+- A chip may shorten a state. It may not rename it.
+
+## Review gates
+
+- `TestCatalogHasNoDeadKeys` fails when a catalog key has no caller.
+- `TestCatalogBannedTerms` fails when Chinese copy contains a banned synonym or an implementation term.
+- `TestLatencyText` pins the unit rule.
+
+A new UI string lands with its key, both languages, the surface that shows it, and the gate that covers its rule. Deleting a surface deletes its keys in the same change.
