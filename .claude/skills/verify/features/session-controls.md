@@ -1,7 +1,8 @@
 # Session controls
 
-The flyout's playback area: volume, latency segments, the Now Playing media
-card, capture status, and the diagnostics log card.
+The flyout's playback area: volume, latency segments, and the Now Playing
+media card. Capture status lives on the settings 采集 page, and the
+diagnostics log button is in the flyout footer.
 
 ## Sub-features
 
@@ -15,11 +16,12 @@ card, capture status, and the diagnostics log card.
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
   value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
-  (`receivers.go:44-45,155-167`). The 托盘面板中显示 switch that hides the
+  (`receivers.go:45-46,186-198`). The 托盘面板中显示 switch that hides the
   segment row lives in the settings window's 音频 page latency-card header,
   not in the flyout.
-- Now Playing media card: app name (未知应用 when SMTC names no app) with
-  the session-switch arrow; the card follows the system's current session,
+- Now Playing media card: a 16-DIP shell-resolved app icon and app name
+  (未知应用 only when the shell cannot resolve one) with the session-switch
+  arrow; the card follows the system's current session,
   and the arrow pins another until the current session changes; a
   fixed-52-DIP-tall poster whose width follows
   the cover's aspect ratio (a 16:9 thumbnail gets a wider poster; the card
@@ -28,30 +30,35 @@ card, capture status, and the diagnostics log card.
   transport controls (prev / play-pause / next) sit at the row's left as
   24-DIP circles in the session arrow's card style — card fill, muted
   12-DIP glyph, hover, 4 DIP apart, no filled primary — and call
-  `nowplaying.Control`. The row then shows elapsed, cover-field fill, thumb,
-  and remaining. A session with no timeline keeps the same row as an empty
-  track: no fill, thumb, times, or copy. Refreshed every 2 s from Windows
-  SMTC (`nowplaying.Read`); only controls the session reports enabled are
-  drawn. The cover falls back to a note tile when the thumbnail is absent;
-  the tile uses the card's own fill, so the first-artwork placeholder has no
-  light edge.
+  `nowplaying.Control`. The row then shows elapsed, cover-field fill (only
+  while 封面配色 is on), thumb, and remaining. A session with no timeline
+  keeps the same row as an empty track: no fill, thumb, times, or copy.
+  Refreshed every 2 s from the platform Now Playing source (SMTC on Windows,
+  the MediaRemote adapter on macOS; `nowplaying.Read`); only controls the
+  session reports enabled are drawn. The cover falls back to a note tile
+  when the thumbnail is absent; the tile uses the card's own fill, so the
+  first-artwork placeholder has no light edge.
   With no session at all the card is not drawn: the playback card keeps the
   volume and latency rows, and `fitFlyout` shrinks the flyout by the card's
-  150 DIP. The 正在播放 settings page gates the card: the display
-  master, the playback controls, the cover colors, and the audio level;
-  master off hides the card and shrinks the flyout. The
-  settings preview shows the live card, or a sample when nothing plays. There
-  is no receiver-push switch: changed tracks always forward as DMAP plus the
-  cover image while streaming, independent of the card's display setting.
-- Capture source: 采集设备 follows the Windows default or pins a specific
-  endpoint (a queued async restart supersedes the in-flight one). The
-  settings 采集状态 row names the endpoint and rate; the flyout does not.
+  150 DIP. The 正在播放 settings page controls the card: the 媒体卡片
+  header's 托盘面板中显示 switch, 封面 (无/默认/媒体), 播放控制, 封面配色,
+  and 音频电平. The switch only hides the flyout card and shortens the
+  flyout; the preview stays live and the option rows stay active. The
+  settings preview shows the live card, or a sample when nothing plays.
+  There is no receiver-push switch: changed tracks always forward as DMAP
+  plus the cover image while streaming, independent of the card's display
+  setting.
+- Capture source: 系统声音 follows the platform default output (WASAPI on
+  Windows, the Core Audio tap on macOS) or pins a specific endpoint (a
+  queued async restart supersedes the in-flight one). The settings 采集状态
+  row names the endpoint and rate; the flyout does not.
 - Silence suspend: after 2 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
-  (`silence.go:31-46`, resume `stream.go:76-98`).
-- Diagnostics card: the 诊断日志 card opens a log dialog whose 复制 button
-  puts the visible log on the clipboard (`flyout.go:449-481`).
+  (`engine.go:249,748-773`; the meter Push is `silence.go:33-52`; resume
+  `stream.go:76-98`).
+- Diagnostics card: the 诊断日志 footer button opens a log dialog whose 复制
+  button puts the visible log on the clipboard (`flyout.go:762-793`).
 
 ## How to get to it (user POV)
 
@@ -84,9 +91,9 @@ settle to five dots when the session pauses. Switch between a square cover
 and a 16:9 Chrome thumbnail and confirm the poster gets wider while the card
 height stays fixed. A session with no timeline (some browser video tabs)
 must show an empty progress track, not a status line or a fake fill. In the
-设置 → 正在播放 page, turn the master off: the preview greys, the rows disable,
-and the flyout card disappears and shortens; turn it on again and the card
-returns. Close
+设置 → 正在播放 page, turn 托盘面板中显示 off: the flyout card disappears
+and the flyout shortens, while the preview stays live and the option rows
+stay active; turn it on again and the card returns. Close
 every player and confirm the media card disappears entirely and the flyout
 shrinks; the volume and latency rows remain, with no empty card,
 status line, or reserved blank under the device card.
@@ -112,7 +119,9 @@ endpoint that is actually rendering.
   (`Engine.LevelFrame`); a bar that trails the beat by the latency is the
   design, not a bug. It only animates with a real flyout window; a headless
   tester shows one static frame.
-- SMTC app names are a fixed map; an unlisted AUMID shows 未知应用 while the
+- App names come from the Windows shell (the Applications folder, then the
+  running executable's version resource); the fixed map is only the last
+  fallback. Only an app the shell cannot resolve shows 未知应用 while the
   session's title and art still render. Do not treat that as a read failure.
 - A silent desktop proves nothing about audio content — WASAPI on a silent
   desktop still negotiates formats. Audible output is user-confirmed.

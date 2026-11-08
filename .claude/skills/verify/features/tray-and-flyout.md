@@ -9,17 +9,20 @@
   wave); eyes static.
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
-- Right click opens the menu: 显示面板, 设置…, 检查更新…, 断开连接 or
-  连接上次设备, 退出声渡. The menu is installed only for the duration of the
-  popup.
+- Right click opens the menu: 显示托盘面板, 设置…, 检查更新…, 断开连接 or
+  连接上次接收器, 退出声渡. The menu is installed only for the duration of
+  the popup.
 - Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
   height from the device rows (56 each, 141 empty state), the latency row
-  (44), the Now Playing card (150 while a session exists), and the ambient
-  section (90 collapsed, plus 53 when its preset grid expands); base 459
-  with no flexible spacer, so the playback card follows the device card.
-  The resize grows the flyout upward from the tray anchor (`flyout.go`),
-  pinned by `TestFlyoutHeightForDeviceRows`, `TestFlyoutKeepsPlaybackGap`,
-  and `TestFlyoutTargetHeightFitsPlayback`.
+  (44), the Now Playing card (150 while a session exists and
+  `showNowPlayingPanel` is on), and the ambient section (90 collapsed, plus
+  53 when its preset grid expands). The base constant is 459, but the
+  function subtracts the old 62-DIP media row and adds the 90-DIP lamp
+  section, so three device rows with no media measure 487. There is no
+  flexible spacer; the playback card follows the device card. The resize
+  grows the flyout upward from the tray anchor (`fitFlyout`,
+  `app.go:769-779`), pinned by `TestFlyoutHeightForDeviceRows`,
+  `TestFlyoutKeepsPlaybackGap`, and `TestFlyoutTargetHeightFitsPlayback`.
 - Ambient light card: a permanent 44-DIP row under the playback card, with
   a 32-DIP preview, the preset name, and a rotating chevron.
   Expanding shows a 10-per-row grid of 30-DIP swatches, up to four rows,
@@ -29,8 +32,10 @@
 - Faces: idle-open while disconnected, smile while connected but silent,
   stream while streaming, connect while connecting, error on failure; the
   flyout footer shares them (`faceOf`).
-- Silent start: login launch and `--tray` hide the panel; the tooltip
-  carries the status (`saundo · 正在通过 <name> 播放`).
+- Silent start: login launch and `--tray` hide the panel; the tooltip is
+  the localized brand plus the status while connecting or streaming
+  (`声渡 · 正在通过 <name> 播放` under zh-CN, `Saundo · Streaming to <name>`
+  under en).
 - Single instance: a second launch hands its command line over and exits 0.
 
 ## How to get to it (user POV)
@@ -47,9 +52,11 @@ powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/
 powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
 ```
 
-Find the icon through UI Automation: the overflow flyout exposes a `saundo`
-button; invoke it and watch the main window handle appear/vanish
-(`MyGoFlyoutShadow`). A second launch must exit 0 and leave one process —
+Find the icon through UI Automation: the overflow flyout names the button
+by its first tooltip, which is the localized brand (`声渡` under zh-CN,
+`Saundo` under en), not `saundo`. Invoke it and watch the main window handle
+appear/vanish (`MyGoFlyoutShadow`). A second launch must exit 0 and leave
+one process —
 checking `$?` after launching `bin/saundo.exe` documents the handover. Animation frames
 are pinned headless by `TestTrayAnimationFaces`; the toggle paths by
 `TestTrayAnimationDefaultsOnAndRoundTrips`.
@@ -60,13 +67,15 @@ saundo.exe process exists throughout.
 
 ## Gotchas
 
-- The tray icon does not encode connection status — judge by tooltip and
-  tray menu, not by the icon's face.
+- The tray icon face follows the phase (`faceOf`), so it does encode the
+  session state; the tooltip is still the authoritative text.
 - The flyout is frameless and layered: a plain screen grab can miss it;
   use PrintWindow (capture-window.ps1), and expect class
-  `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:17`) — a
+  `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`) — a
   capture reporting ~420 px (or a 1.25× multiple of it under DPI
-  virtualization) is correct; 480 was an old design value.
+  virtualization) is correct; 480 was an old design value. On macOS with
+  the tray-panel-as-popover style on, the window is a system popover, not
+  `MyGoFlyoutShadow` (`flyout_window.go`).
 - A flyout hidden at capture time is a normal state (app in tray), not a
   failure — the doctor lists window absence as OK.
 - `SetIcon` costs 0.5–0.8 ms per frame at 100 ms; do not "fix" explorer CPU

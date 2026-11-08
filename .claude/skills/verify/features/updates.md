@@ -1,12 +1,17 @@
 # Updates
 
+Windows-only today: the macOS build disables the updater (`platform_darwin.go`
+sets `updatesSupported=false`), renders "Updates aren't available in this
+build", hides check-now, and never starts the launch or 24 h checks. The
+surface returns when a signed, notarized mac feed exists.
+
 ## Sub-features
 
 - Update check against the public feed
   (`update-windows-amd64.json` on the releases URL, fetched without
-  credentials, 10 s after launch then every 24 h — `update.go:335`);
-  states: checking, up to date, available, downloading (with progress),
-  ready, failed.
+  credentials, 10 s after launch then every 24 h — `update.go:356-381`,
+  timer at `:362`, ticker at `:370`); states: checking, up to date,
+  available, downloading (with progress), ready, failed.
 - 更新 page in the settings window: channel (stable/beta), automatic check
   and download toggles, a check-now action, and the primary action button
   (Install / Restart now / Retry / Cancel by state).
@@ -24,8 +29,9 @@
 - Install downloads, verifies the signature, and swaps the files in place
   (the running exe is renamed aside — no installer process runs, the app
   keeps running). A separate 立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:332-352`) shares state
-  with the settings page; clicking it opens the 更新 page.
+- Update chip in the flyout **footer** (`flyout.go:668-702`, chip at
+  `:674-688`) shares state with the settings page; clicking it opens the
+  更新 page.
 
 ## How to get to it (user POV)
 
@@ -56,9 +62,11 @@ public feed still offers that release and the notes dialog lists it with
 the history since the build. Installing an update replaces the binary with
 that release; rebuild to return to a development stamp.
 
-Proven end state: the page shows the manifest version from the feed, the
+Headless coverage: the page shows the manifest version from the feed, the
 notes dialog opens with the release history in the app's language, and a
-failed check renders the failed state instead of hanging.
+failed check renders the failed state instead of hanging. The live page
+states, the release-history list, and install from the page are still owed;
+docs/verification.md keeps them in Currently pending.
 
 ## Gotchas
 
@@ -73,3 +81,5 @@ failed check renders the failed state instead of hanging.
   dialog reads the Chinese changelog.
 - Install does not close or restart the app by itself — the swap happens in
   place and the session continues until you click 立即重启.
+- On macOS the whole update surface is disabled until a signed, notarized
+  feed exists; the page says so and offers no check, install, or chip.
