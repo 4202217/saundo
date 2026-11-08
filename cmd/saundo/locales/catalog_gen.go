@@ -990,11 +990,11 @@ func (msgs Messages) PageCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "pageCaptureDesc", nil)
 }
 
-// PageNowPlayingDesc says "The panel's Now Playing card, cover colors, and audio level."
+// PageNowPlayingDesc says "The tray panel's media card, cover colors, and audio level."
 // in the language the app shows.
 func PageNowPlayingDesc() string { return In(i18n.Locale()).PageNowPlayingDesc() }
 
-// PageNowPlayingDesc says "The panel's Now Playing card, cover colors, and audio level."
+// PageNowPlayingDesc says "The tray panel's media card, cover colors, and audio level."
 // in the language of msgs.
 func (msgs Messages) PageNowPlayingDesc() string {
 	return Catalog.Format(msgs.locale, "pageNowPlayingDesc", nil)
@@ -1042,24 +1042,14 @@ func (msgs Messages) SettingsSenderNameDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSenderNameDesc", nil)
 }
 
-// SettingsShowNowPlaying says "Show Now Playing"
+// SettingsShowNowPlaying says "Media card"
 // in the language the app shows.
 func SettingsShowNowPlaying() string { return In(i18n.Locale()).SettingsShowNowPlaying() }
 
-// SettingsShowNowPlaying says "Show Now Playing"
+// SettingsShowNowPlaying says "Media card"
 // in the language of msgs.
 func (msgs Messages) SettingsShowNowPlaying() string {
 	return Catalog.Format(msgs.locale, "settingsShowNowPlaying", nil)
-}
-
-// SettingsSystemMediaBadge says "System media"
-// in the language the app shows.
-func SettingsSystemMediaBadge() string { return In(i18n.Locale()).SettingsSystemMediaBadge() }
-
-// SettingsSystemMediaBadge says "System media"
-// in the language of msgs.
-func (msgs Messages) SettingsSystemMediaBadge() string {
-	return Catalog.Format(msgs.locale, "settingsSystemMediaBadge", nil)
 }
 
 // SettingsPlaybackControls says "Playback controls"
@@ -1112,11 +1102,11 @@ func (msgs Messages) SettingsCover() string {
 	return Catalog.Format(msgs.locale, "settingsCover", nil)
 }
 
-// SettingsCoverDesc says "What the Now Playing card shows on its left."
+// SettingsCoverDesc says "What the media card shows on its left."
 // in the language the app shows.
 func SettingsCoverDesc() string { return In(i18n.Locale()).SettingsCoverDesc() }
 
-// SettingsCoverDesc says "What the Now Playing card shows on its left."
+// SettingsCoverDesc says "What the media card shows on its left."
 // in the language of msgs.
 func (msgs Messages) SettingsCoverDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverDesc", nil)
@@ -1522,11 +1512,11 @@ func (msgs Messages) ReceiverChipHidden() string {
 	return Catalog.Format(msgs.locale, "receiverChipHidden", nil)
 }
 
-// ReceiverEnableSwitch says "Show in the panel; off moves the row to the hidden group"
+// ReceiverEnableSwitch says "Show in the tray panel; off moves the row to the hidden group"
 // in the language the app shows.
 func ReceiverEnableSwitch() string { return In(i18n.Locale()).ReceiverEnableSwitch() }
 
-// ReceiverEnableSwitch says "Show in the panel; off moves the row to the hidden group"
+// ReceiverEnableSwitch says "Show in the tray panel; off moves the row to the hidden group"
 // in the language of msgs.
 func (msgs Messages) ReceiverEnableSwitch() string {
 	return Catalog.Format(msgs.locale, "receiverEnableSwitch", nil)
@@ -2044,16 +2034,6 @@ func (msgs Messages) SettingsLatency() string {
 	return Catalog.Format(msgs.locale, "settingsLatency", nil)
 }
 
-// SettingsLatencyPanelSwitch says "Show latency switch in panel"
-// in the language the app shows.
-func SettingsLatencyPanelSwitch() string { return In(i18n.Locale()).SettingsLatencyPanelSwitch() }
-
-// SettingsLatencyPanelSwitch says "Show latency switch in panel"
-// in the language of msgs.
-func (msgs Messages) SettingsLatencyPanelSwitch() string {
-	return Catalog.Format(msgs.locale, "settingsLatencyPanelSwitch", nil)
-}
-
 // SettingsLatencyLow says "Low latency"
 // in the language the app shows.
 func SettingsLatencyLow() string { return In(i18n.Locale()).SettingsLatencyLow() }
@@ -2124,21 +2104,21 @@ func (msgs Messages) SettingsLatencyCustom() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyCustom", nil)
 }
 
-// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms stability varies by receiver."
+// SettingsLatencyCustomDesc says "Manual 20–2000 ms."
 // in the language the app shows.
 func SettingsLatencyCustomDesc() string { return In(i18n.Locale()).SettingsLatencyCustomDesc() }
 
-// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms stability varies by receiver."
+// SettingsLatencyCustomDesc says "Manual 20–2000 ms."
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyCustomDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyCustomDesc", nil)
 }
 
-// SettingsLatencyNote says "Some receivers, such as the AirPlay receiver on a Mac, use their own fixed latency."
+// SettingsLatencyNote says "Some receivers, such as the AirPlay receiver on a Mac, use a fixed latency that this setting does not change. With a …"
 // in the language the app shows.
 func SettingsLatencyNote() string { return In(i18n.Locale()).SettingsLatencyNote() }
 
-// SettingsLatencyNote says "Some receivers, such as the AirPlay receiver on a Mac, use their own fixed latency."
+// SettingsLatencyNote says "Some receivers, such as the AirPlay receiver on a Mac, use a fixed latency that this setting does not change. With a …"
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyNote() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyNote", nil)
@@ -2254,11 +2234,11 @@ func (msgs Messages) SettingsMuteLocalDescFailed() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDescFailed", nil)
 }
 
-// SettingsMuteLocalNote says "Some drivers mute capture too; turn this off if audio stops."
+// SettingsMuteLocalNote says "With “Mute this PC while connected” on, some audio devices mute capture too. Turn that switch off if the receiver…"
 // in the language the app shows.
 func SettingsMuteLocalNote() string { return In(i18n.Locale()).SettingsMuteLocalNote() }
 
-// SettingsMuteLocalNote says "Some drivers mute capture too; turn this off if audio stops."
+// SettingsMuteLocalNote says "With “Mute this PC while connected” on, some audio devices mute capture too. Turn that switch off if the receiver…"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalNote() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalNote", nil)
@@ -2980,11 +2960,11 @@ func (msgs Messages) SettingsLampHintOff() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
 }
 
-// SettingsLampSoundGlowHint says "Enable Sound Glow in the HomePod settings; without it the top display stays white."
+// SettingsLampSoundGlowHint says "Enable Sound Glow in the Home app's HomePod settings; without it the top display only shows white light."
 // in the language the app shows.
 func SettingsLampSoundGlowHint() string { return In(i18n.Locale()).SettingsLampSoundGlowHint() }
 
-// SettingsLampSoundGlowHint says "Enable Sound Glow in the HomePod settings; without it the top display stays white."
+// SettingsLampSoundGlowHint says "Enable Sound Glow in the Home app's HomePod settings; without it the top display only shows white light."
 // in the language of msgs.
 func (msgs Messages) SettingsLampSoundGlowHint() string {
 	return Catalog.Format(msgs.locale, "settingsLampSoundGlowHint", nil)
@@ -3208,4 +3188,14 @@ func VersionLocalTag() string { return In(i18n.Locale()).VersionLocalTag() }
 // in the language of msgs.
 func (msgs Messages) VersionLocalTag() string {
 	return Catalog.Format(msgs.locale, "versionLocalTag", nil)
+}
+
+// SettingsShowInPanel says "Show in tray panel"
+// in the language the app shows.
+func SettingsShowInPanel() string { return In(i18n.Locale()).SettingsShowInPanel() }
+
+// SettingsShowInPanel says "Show in tray panel"
+// in the language of msgs.
+func (msgs Messages) SettingsShowInPanel() string {
+	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
 }

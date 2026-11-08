@@ -15,7 +15,7 @@ card, capture status, and the diagnostics log card.
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
   value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
-  (`receivers.go:44-45,155-167`). The 在面板中显示延迟切换 switch that hides the
+  (`receivers.go:44-45,155-167`). The 托盘面板中显示 switch that hides the
   segment row lives in the settings window's 音频 page latency-card header,
   not in the flyout.
 - Now Playing media card: app name (未知应用 when SMTC names no app) with

@@ -282,7 +282,7 @@ blocked; the UI reports a PTP timeout with this hint.
   `Events.VolumeChanged`, mirrors into the per-device memory, and the slider
   follows. Pinned by `TestReceiverVolumePollAdoptsHardwareChanges`.
 - **Latency UI.** The 音频 page's mode card offers 低延迟 200 ms, 标准 1.5 s,
-  稳定 2 s, and a custom 20–2000 ms value; the header switch 在面板中显示延迟切换
+  稳定 2 s, and a custom 20–2000 ms value; the header switch 托盘面板中显示
   shows or hides the flyout's four-segment row. The playback head's ALAC line
   carries the resolved value, e.g.
   `ALAC · 44.1 kHz · PTP · 已同步 · 延迟 700 ms`. Preset changes restart a
@@ -493,6 +493,9 @@ software stereo groups built from independent receivers.
   (`coverColors`), and 音频电平 (`audioLevel`). Master off greys the preview
   and disables every row; there is no closed placeholder. New keys in
   `settings.json` default on; a missing key reads its default.
+  **2026-11-08:** the card is 媒体卡片, its chip is 托盘面板中显示, and the
+  switch only hides the flyout card; the settings preview and the option rows
+  stay active.
   **2026-11-07:** the 在接收器上显示曲目信息 row was removed; the receiver
   push is unconditional and no longer depends on the card's display master.
 - **The cover mode.** The page's 封面 row is a three-way segmented control
@@ -1332,3 +1335,7 @@ surviving conclusion, and the pin.
   headless matrix is the full visual record.
 - **Height.** The card padding change moved the flyout base from 456 to 459;
   `TestFlyoutHeightForDeviceRows` and `TestErrorStateShowsRetry` pin it.
+- **Notes.** The connection, latency, and Sound Glow caveats sit under their
+  cards as `infoNote`: an info glyph in a 16-DIP slot and 11.5 px muted copy
+  that wraps instead of truncating. The lamp power hint stays inside the card
+  as plain text. `声音光晕` is Apple's official Chinese name for Sound Glow.

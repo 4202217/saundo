@@ -325,6 +325,22 @@ func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width fl
 	return track
 }
 
+// infoNote is a muted caveat with an info glyph. It sits under a card, where
+// the glyph marks something outside the card that can stop the feature. Each
+// line is one paragraph; the note wraps instead of truncating.
+func infoNote(c *ui.Context, p palette, lines ...string) {
+	ui.Row(c).Gap(6).AlignItems(ui.Start).Children(func() {
+		ui.Box(c).Size(16, 16).Shrink(0).Center().Children(func() {
+			ui.Icon(c, iconInfo).Size(13, 13).TextColor(p.muted)
+		})
+		ui.Column(c).Grow(1).Gap(3).Children(func() {
+			for _, line := range lines {
+				ui.Text(c, line).FontSize(11.5).TextColor(p.muted)
+			}
+		})
+	})
+}
+
 // emptyCopy is an empty state's text block. center is for the flyout's card;
 // a settings page uses the same type at the page's own inset.
 func emptyCopy(c *ui.Context, p palette, title, hint string, center bool) {

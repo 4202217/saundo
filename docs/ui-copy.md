@@ -9,10 +9,10 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | Concept | Chinese | English | Do not use |
 |---|---|---|---|
 | AirPlay receiver | 接收器 | receiver | 接收设备, 接收端, 设备 (except 播放设备 for a Windows audio endpoint) |
-| The flyout | 面板 | panel | 控制面板, 控制中心 |
+| The tray panel (flyout) | 托盘面板 | tray panel | 面板 (bare), 控制面板, 控制中心 |
 | Playback | 播放 | play | 推流, 串流 |
 | Capture | 采集 | capture | 录制 |
-| The Now Playing card | 正在播放卡片 | Now Playing card | 媒体卡 |
+| The media card | 媒体卡片 | media card | 媒体卡 (short form) |
 | Ambient light | 氛围灯 | ambient light | 顶屏灯光 as the feature name |
 | The light's target | 顶屏 | top display | 屏幕 |
 
@@ -65,6 +65,11 @@ Every other protocol or implementation term needs a plain-language replacement b
 - The row hint and the dialog subtitle explain different things. The row says why the feature exists. The dialog says what to fill in.
 - A status line and its card title do not repeat the same sentence.
 - A chip may shorten a state. It may not rename it.
+
+## Notes
+
+- A caveat about something outside the card sits under the card with an info glyph. It names the control or setting it concerns.
+- An interaction hint or a description stays inside the card as plain secondary text, without the glyph.
 
 ## Review gates
 

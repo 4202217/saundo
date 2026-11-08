@@ -324,7 +324,7 @@ func drawLamp(pt *ui.Painter, r ui.Rect, preset lamp.Preset, radius float32) {
 func (a *App) lampPage(c *ui.Context, p palette) {
 	on := !a.lampOff
 	pageCard(c, p, func() {
-		ui.Column(c).Padding(13, 14, 12, 14).Children(func() {
+		ui.Column(c).Padding(0, 14, 12, 14).Children(func() {
 			cardHead(c, p, iconLamp, locales.SettingsLampCardTitle(), 13, 0, func() {
 				chip(c, p, locales.SettingsLampHomePodOnly(), chipNeutral)
 				a.lampPowerButton(c, p)
@@ -366,9 +366,11 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 			if !on {
 				hint = locales.SettingsLampHintOff()
 			}
-			ui.Text(c, hint).FontSize(10.5).TextColor(p.muted).Margin(10, 0, 0, 0)
-			ui.Text(c, locales.SettingsLampSoundGlowHint()).FontSize(10.5).TextColor(p.muted).Margin(4, 0, 0, 0)
+			ui.Text(c, hint).FontSize(11.5).TextColor(p.muted).Margin(10, 0, 0, 0)
 		})
+	})
+	ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
+		infoNote(c, p, locales.SettingsLampSoundGlowHint())
 	})
 }
 
