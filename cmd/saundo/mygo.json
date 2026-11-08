@@ -5,6 +5,9 @@
   "slug": "saundo",
   "out": "build",
   "icon": "../../resources/icon.png",
+  "windows": {
+    "displayName": "Saundo"
+  },
   "i18n": {
     "dir": "locales",
     "source": "en"

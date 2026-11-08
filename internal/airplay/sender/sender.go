@@ -917,7 +917,7 @@ func (s *Sender) onHandshakeTimeout() {
 			return
 		}
 		if s.pairStage == pairAP2WaitPTP {
-			s.fail("PTP clock did not synchronize with the receiver. Allow saundo through Windows Firewall on the private network, and make sure UDP ports 319 and 320 are free.")
+			s.fail("PTP clock did not synchronize with the receiver. Allow Saundo through Windows Firewall on the private network, and make sure UDP ports 319 and 320 are free.")
 			return
 		}
 		s.fail("Timed out waiting for the device")
