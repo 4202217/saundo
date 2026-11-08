@@ -49,6 +49,7 @@ func (a *App) createFlyout() {
 		opts.Popover = true
 	} else {
 		opts.CornerRadius = 12
+		opts.Shadow = true // macOS follows the corners; Windows keeps its system shadow
 	}
 	a.win = mygo.NewFlyout(opts)
 	// A flyout names no title of its own; give it the app's, so window
