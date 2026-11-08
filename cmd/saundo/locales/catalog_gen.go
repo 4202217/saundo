@@ -156,11 +156,11 @@ func (msgs Messages) AboutLicense() string {
 	return Catalog.Format(msgs.locale, "aboutLicense", nil)
 }
 
-// AboutLicenseDesc says "GPL-3.0 · © 2026 4202217"
+// AboutLicenseDesc says "GPL-3.0-only · © 2026 4202217"
 // in the language the app shows.
 func AboutLicenseDesc() string { return In(i18n.Locale()).AboutLicenseDesc() }
 
-// AboutLicenseDesc says "GPL-3.0 · © 2026 4202217"
+// AboutLicenseDesc says "GPL-3.0-only · © 2026 4202217"
 // in the language of msgs.
 func (msgs Messages) AboutLicenseDesc() string {
 	return Catalog.Format(msgs.locale, "aboutLicenseDesc", nil)
@@ -196,11 +196,11 @@ func (msgs Messages) SettingsWindowTitle() string {
 	return Catalog.Format(msgs.locale, "settingsWindowTitle", nil)
 }
 
-// TrayShowPanel says "Show panel"
+// TrayShowPanel says "Show tray panel"
 // in the language the app shows.
 func TrayShowPanel() string { return In(i18n.Locale()).TrayShowPanel() }
 
-// TrayShowPanel says "Show panel"
+// TrayShowPanel says "Show tray panel"
 // in the language of msgs.
 func (msgs Messages) TrayShowPanel() string {
 	return Catalog.Format(msgs.locale, "trayShowPanel", nil)
@@ -1062,11 +1062,11 @@ func (msgs Messages) SettingsPlaybackControls() string {
 	return Catalog.Format(msgs.locale, "settingsPlaybackControls", nil)
 }
 
-// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next; only the buttons the player supports appear."
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next."
 // in the language the app shows.
 func SettingsPlaybackControlsDesc() string { return In(i18n.Locale()).SettingsPlaybackControlsDesc() }
 
-// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next; only the buttons the player supports appear."
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next."
 // in the language of msgs.
 func (msgs Messages) SettingsPlaybackControlsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsPlaybackControlsDesc", nil)
@@ -1082,11 +1082,11 @@ func (msgs Messages) SettingsCoverColors() string {
 	return Catalog.Format(msgs.locale, "settingsCoverColors", nil)
 }
 
-// SettingsCoverColorsDesc says "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors."
+// SettingsCoverColorsDesc says "Use the cover's colors for the progress bar and audio level."
 // in the language the app shows.
 func SettingsCoverColorsDesc() string { return In(i18n.Locale()).SettingsCoverColorsDesc() }
 
-// SettingsCoverColorsDesc says "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors."
+// SettingsCoverColorsDesc says "Use the cover's colors for the progress bar and audio level."
 // in the language of msgs.
 func (msgs Messages) SettingsCoverColorsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverColorsDesc", nil)
@@ -1382,11 +1382,11 @@ func (msgs Messages) SettingsReconnect() string {
 	return Catalog.Format(msgs.locale, "settingsReconnect", nil)
 }
 
-// SettingsReconnectDesc says "Retries at 1, 2, 5, 10, and 15 seconds, up to 5 attempts."
+// SettingsReconnectDesc says "Retries automatically a few times before giving up."
 // in the language the app shows.
 func SettingsReconnectDesc() string { return In(i18n.Locale()).SettingsReconnectDesc() }
 
-// SettingsReconnectDesc says "Retries at 1, 2, 5, 10, and 15 seconds, up to 5 attempts."
+// SettingsReconnectDesc says "Retries automatically a few times before giving up."
 // in the language of msgs.
 func (msgs Messages) SettingsReconnectDesc() string {
 	return Catalog.Format(msgs.locale, "settingsReconnectDesc", nil)
@@ -1402,11 +1402,11 @@ func (msgs Messages) SettingsStrictAuth() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuth", nil)
 }
 
-// SettingsStrictAuthDesc says "Disconnect when pairing verification or the signature fails."
+// SettingsStrictAuthDesc says "Disconnect when receiver verification fails."
 // in the language the app shows.
 func SettingsStrictAuthDesc() string { return In(i18n.Locale()).SettingsStrictAuthDesc() }
 
-// SettingsStrictAuthDesc says "Disconnect when pairing verification or the signature fails."
+// SettingsStrictAuthDesc says "Disconnect when receiver verification fails."
 // in the language of msgs.
 func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
@@ -1664,11 +1664,11 @@ func (msgs Messages) ReceiverRemoveConfirmSub(name string, model string) string 
 	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name, "model": model})
 }
 
-// ReceiverRemoveHint1 says "Removes it from settings and the panel; the receiver itself is not changed."
+// ReceiverRemoveHint1 says "Removes it from settings and the tray panel; the receiver itself is not changed."
 // in the language the app shows.
 func ReceiverRemoveHint1() string { return In(i18n.Locale()).ReceiverRemoveHint1() }
 
-// ReceiverRemoveHint1 says "Removes it from settings and the panel; the receiver itself is not changed."
+// ReceiverRemoveHint1 says "Removes it from settings and the tray panel; the receiver itself is not changed."
 // in the language of msgs.
 func (msgs Messages) ReceiverRemoveHint1() string {
 	return Catalog.Format(msgs.locale, "receiverRemoveHint1", nil)
@@ -2194,11 +2194,11 @@ func (msgs Messages) SettingsMuteLocal() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocal", nil)
 }
 
-// SettingsMuteLocalDesc says "Avoids hearing the same audio on this PC and the receiver; restored on disconnect or quit."
+// SettingsMuteLocalDesc says "Avoids double audio; restored on disconnect or quit."
 // in the language the app shows.
 func SettingsMuteLocalDesc() string { return In(i18n.Locale()).SettingsMuteLocalDesc() }
 
-// SettingsMuteLocalDesc says "Avoids hearing the same audio on this PC and the receiver; restored on disconnect or quit."
+// SettingsMuteLocalDesc says "Avoids double audio; restored on disconnect or quit."
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDesc() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDesc", nil)
@@ -3040,26 +3040,6 @@ func (msgs Messages) LampSourceTemplate() string {
 	return Catalog.Format(msgs.locale, "lampSourceTemplate", nil)
 }
 
-// LampPriorityCoverShort says "Cover"
-// in the language the app shows.
-func LampPriorityCoverShort() string { return In(i18n.Locale()).LampPriorityCoverShort() }
-
-// LampPriorityCoverShort says "Cover"
-// in the language of msgs.
-func (msgs Messages) LampPriorityCoverShort() string {
-	return Catalog.Format(msgs.locale, "lampPriorityCoverShort", nil)
-}
-
-// LampPriorityTemplateShort says "Light"
-// in the language the app shows.
-func LampPriorityTemplateShort() string { return In(i18n.Locale()).LampPriorityTemplateShort() }
-
-// LampPriorityTemplateShort says "Light"
-// in the language of msgs.
-func (msgs Messages) LampPriorityTemplateShort() string {
-	return Catalog.Format(msgs.locale, "lampPriorityTemplateShort", nil)
-}
-
 // LampPresetCover says "Cover"
 // in the language the app shows.
 func LampPresetCover() string { return In(i18n.Locale()).LampPresetCover() }
@@ -3200,21 +3180,21 @@ func (msgs Messages) SettingsShowInPanel() string {
 	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
 }
 
-// SettingsFlyoutPopover says "Flyout as popover"
+// SettingsFlyoutPopover says "Tray panel as popover"
 // in the language the app shows.
 func SettingsFlyoutPopover() string { return In(i18n.Locale()).SettingsFlyoutPopover() }
 
-// SettingsFlyoutPopover says "Flyout as popover"
+// SettingsFlyoutPopover says "Tray panel as popover"
 // in the language of msgs.
 func (msgs Messages) SettingsFlyoutPopover() string {
 	return Catalog.Format(msgs.locale, "settingsFlyoutPopover", nil)
 }
 
-// SettingsFlyoutPopoverDesc says "Show the tray flyout as a system popover with an arrow; off keeps the rounded flyout."
+// SettingsFlyoutPopoverDesc says "Show the tray panel as a system popover; off keeps the rounded style."
 // in the language the app shows.
 func SettingsFlyoutPopoverDesc() string { return In(i18n.Locale()).SettingsFlyoutPopoverDesc() }
 
-// SettingsFlyoutPopoverDesc says "Show the tray flyout as a system popover with an arrow; off keeps the rounded flyout."
+// SettingsFlyoutPopoverDesc says "Show the tray panel as a system popover; off keeps the rounded style."
 // in the language of msgs.
 func (msgs Messages) SettingsFlyoutPopoverDesc() string {
 	return Catalog.Format(msgs.locale, "settingsFlyoutPopoverDesc", nil)

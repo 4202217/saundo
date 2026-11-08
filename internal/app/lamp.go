@@ -390,12 +390,12 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 		seg = 1
 	}
 	width := float32(176)
-	coverLabel, templateLabel := locales.LampSourceCover(), locales.LampSourceTemplate()
 	if compact {
-		width = 92
-		coverLabel, templateLabel = locales.LampPriorityCoverShort(), locales.LampPriorityTemplateShort()
+		// The flyout row keeps the same two labels; 128 fits them beside the
+		// preview and the chevron.
+		width = 128
 	}
-	items := []segmentItem{{coverLabel, nil}, {templateLabel, nil}}
+	items := []segmentItem{{locales.LampSourceCover(), nil}, {locales.LampSourceTemplate(), nil}}
 	if segmented(c, p, &seg, items, width, a.lampOff, locales.LampPriority()).Changed() {
 		a.setLampCover(seg == 0)
 	}

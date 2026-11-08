@@ -381,7 +381,7 @@ func TestReceiverRemoveDialogRenders(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		"移除接收器？", "书房 AirPort Express",
-		"会从设置和面板中移除；接收器本身不受影响。",
+		"会从设置和托盘面板中移除；接收器本身不受影响。",
 		"移除",
 	} {
 		if !tt.HasText(want) {

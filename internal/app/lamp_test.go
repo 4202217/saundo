@@ -214,7 +214,7 @@ func TestFlyoutLampCoverHidesTheGrid(t *testing.T) {
 			t.Fatalf("cover priority still shows %q", hidden)
 		}
 	}
-	if err := tt.Click(locales.LampPriorityTemplateShort()); err != nil {
+	if err := tt.Click(locales.LampSourceTemplate()); err != nil {
 		t.Fatal(err)
 	}
 	if a.lampCover || a.lampExpanded {
@@ -330,7 +330,7 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	for _, want := range []string{"Ambient light", "Cover", "Light", "Dune"} {
+	for _, want := range []string{"Ambient light", "Cover", "Template", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English flyout is missing %q; texts: %q", want, tt.Texts())
 		}

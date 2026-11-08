@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-08 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # UI copy standard
 
