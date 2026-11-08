@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -66,41 +67,11 @@ func TestGeneratedJPEGsAre600Square(t *testing.T) {
 	}
 }
 
-// TestPresetPixelsFollowTheBlobs samples the first seeded blob's center. The
-// composition is deterministic per preset, and the center must leave the base.
-func TestPresetPixelsFollowTheBlobs(t *testing.T) {
-	p, ok := ByID("ember")
-	if !ok {
-		t.Fatal("ember is missing")
-	}
-	blobs := p.Blobs()
-	if len(blobs) == 0 {
-		t.Fatal("ember has no blobs")
-	}
-	data, err := JPEG("ember")
-	if err != nil {
-		t.Fatal(err)
-	}
-	img, err := jpeg.Decode(bytes.NewReader(data))
-	if err != nil {
-		t.Fatal(err)
-	}
-	b := blobs[0]
-	x, y := int(b.X/100*Size), int(b.Y/100*Size)
-	r, g, bl, _ := img.At(x, y).RGBA()
-	cr, cg, cb := r>>8, g>>8, bl>>8
-	if abs(int(cr)-int(p.Base.R)) < 12 && abs(int(cg)-int(p.Base.G)) < 12 && abs(int(cb)-int(p.Base.B)) < 12 {
-		t.Fatalf("blob center = #%02x%02x%02x, still the base", cr, cg, cb)
-	}
-}
-
-// TestPresetCompositionCovers pins the whole-tile coverage: most of a 10x10
-// sample grid must differ from the base, not just one centered circle.
-func TestPresetCompositionCovers(t *testing.T) {
+// TestPresetCarriersRecoverTheirPalette is the design's acceptance test: the
+// receiver clusters the carrier in Lab, so each carrier must yield the three
+// colors it was designed around.
+func TestPresetCarriersRecoverTheirPalette(t *testing.T) {
 	for _, p := range All() {
-		if len(p.Palette) == 0 {
-			continue
-		}
 		data, err := JPEG(p.ID)
 		if err != nil {
 			t.Fatalf("%s: %v", p.ID, err)
@@ -109,21 +80,53 @@ func TestPresetCompositionCovers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", p.ID, err)
 		}
-		changed := 0
-		for y := 0; y < Size; y += 60 {
-			for x := 0; x < Size; x += 60 {
-				r, g, b, _ := img.At(x, y).RGBA()
-				if abs(int(r>>8)-int(p.Base.R)) > 10 ||
-					abs(int(g>>8)-int(p.Base.G)) > 10 ||
-					abs(int(b>>8)-int(p.Base.B)) > 10 {
-					changed++
+		got, ok := CoverPreset(img)
+		if !ok {
+			t.Fatalf("%s: CoverPreset returned no palette", p.ID)
+		}
+		for _, want := range p.Colors {
+			best := math.Inf(1)
+			for _, c := range got.Colors {
+				if d := labDistance(want, c); d < best {
+					best = d
+				}
+			}
+			if best > 12 {
+				t.Errorf("%s: %v is %.1f away from the recovered palette %v", p.ID, want, best, got.Colors)
+			}
+		}
+	}
+}
+
+// TestPresetColorsAreDistinct keeps each template from collapsing into the
+// one-hue-family result the old dark base and blended blobs produced. The
+// old dune collapse's closest pair was ΔE 7.1; the golden dune sits at 14.5
+// and above.
+func TestPresetColorsAreDistinct(t *testing.T) {
+	for _, p := range All() {
+		for i := 0; i < len(p.Colors); i++ {
+			for j := i + 1; j < len(p.Colors); j++ {
+				if d := labDistance(p.Colors[i], p.Colors[j]); d < 12 {
+					t.Errorf("%s: %v and %v are only %.1f apart", p.ID, p.Colors[i], p.Colors[j], d)
 				}
 			}
 		}
-		if changed < 50 {
-			t.Fatalf("%s: %d/100 samples differ from the base, want at least 50", p.ID, changed)
+	}
+}
+
+func TestPresetWeightsSumToOne(t *testing.T) {
+	for _, p := range All() {
+		sum := p.Weights[0] + p.Weights[1] + p.Weights[2]
+		if math.Abs(sum-1) > 1e-6 {
+			t.Errorf("%s weights sum to %v", p.ID, sum)
 		}
 	}
+}
+
+func labDistance(a, b color.RGBA) float64 {
+	l1, a1, b1 := rgbToLab(a.R, a.G, a.B)
+	l2, a2, b2 := rgbToLab(b.R, b.G, b.B)
+	return math.Sqrt((l1-l2)*(l1-l2) + (a1-a2)*(a1-a2) + (b1-b2)*(b1-b2))
 }
 
 func TestGeneratorCachesPerPreset(t *testing.T) {
@@ -173,11 +176,11 @@ func TestCoverPresetClustersTheCover(t *testing.T) {
 	if !ok {
 		t.Fatal("CoverPreset returned no palette")
 	}
-	if p.ID != "cover" || len(p.Palette) < 3 {
-		t.Fatalf("preset = %+v, want cover with three colors", p)
+	if p.ID != "cover" {
+		t.Fatalf("preset = %+v, want cover", p)
 	}
 	var red, green, blue bool
-	for _, c := range p.Palette {
+	for _, c := range p.Colors {
 		switch {
 		case c.R > c.G+40 && c.R > c.B+40:
 			red = true
@@ -188,7 +191,7 @@ func TestCoverPresetClustersTheCover(t *testing.T) {
 		}
 	}
 	if !red || !green || !blue {
-		t.Fatalf("palette = %v, want red, green and blue", p.Palette)
+		t.Fatalf("palette = %v, want red, green and blue", p.Colors)
 	}
 	if p.Base.R > 80 || p.Base.G > 80 || p.Base.B > 80 {
 		t.Fatalf("base = %v, want a dark background", p.Base)
@@ -238,11 +241,4 @@ func TestPresetsRenderDistinctImages(t *testing.T) {
 		}
 		seen[sum] = p.ID
 	}
-}
-
-func abs(v int) int {
-	if v < 0 {
-		return -v
-	}
-	return v
 }

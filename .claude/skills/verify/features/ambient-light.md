@@ -16,20 +16,27 @@ per receiver.
   its name, and its head keeps the HomePod 专属 tag. The tray menu has no
   ambient item.
 - Choices: the media cover (default) plus six templates: 暖烬, 沙丘, 苔庭,
-  潮汐, 兰夜, 月白. `internal/lamp` renders the six palettes as deterministic
-  600×600 JPEGs and caches each one. The cover has no rendered image.
+  潮汐, 兰夜, 月白. `internal/lamp` renders each palette as a deterministic
+  600×600 carrier of three flat color fields and caches it; the receiver's
+  Lab k-means reduces the carrier back to the three colors. The cover has no
+  rendered image.
 - The preview follows what the top display follows. Cover priority runs the
   cover through the same Lab k-means the receiver uses for `MediaColors`
   (`lamp.CoverPreset`) and paints the three-color glow. With no cover yet it
   paints a neutral cover tile with the media glyph; the receiver's own
   fresh-session placeholder is a white center on a dark ring and is not
-  previewed. Template priority paints the selected template.
+  previewed. Template priority paints the selected template's three-color
+  glow; the carrier itself is not shown.
 - In cover priority the flyout row shows the preview, the current source and
   the segment: no chevron and no template list. Choosing 模板 shows the
   chevron; the six swatches stay collapsed until it is clicked. Picking a
   template keeps template priority and leaves the flyout list open. Hiding
   the flyout folds the list, so the next open starts collapsed. The settings
   page keeps the six templates visible in both priorities.
+- While the light is off the preview dims to 35% like the templates, the name
+  and a 已关灯 chip mark the state, the priority segment and the templates
+  are disabled, and only 开灯 works. Turning the light on restores the
+  current choice and leaves the template list collapsed.
 - A template leaves as one `SET_PARAMETER image/jpeg` cover on the encrypted
   control channel. It is sent when the choice changes and when a stream
   starts; the artwork POST command is not used.
@@ -77,13 +84,13 @@ collapsed until it is clicked.
 Headless UI:
 
 ```bash
-go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampPickingWhileOffTurnsOn|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffShowsHintAndPickingTurnsOn|TestLampSurfacesInEnglish' -v ./internal/app/
+go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish' -v ./internal/app/
 ```
 
 Renderer, cover palette, and settings:
 
 ```bash
-go test -run 'TestPresetsMatchCatalog|TestGeneratedJPEGsAre600Square|TestPresetPixelsFollowTheBlobs|TestGeneratorCachesPerPreset|TestCoverPresetClustersTheCover|TestCoverPresetRejectsEmptyImages|TestCoverPresetIsDeterministic' -v ./internal/lamp/
+go test -run 'TestPresetsMatchCatalog|TestGeneratedJPEGsAre600Square|TestPresetCarriersRecoverTheirPalette|TestPresetColorsAreDistinct|TestPresetWeightsSumToOne|TestGeneratorCachesPerPreset|TestCoverPresetClustersTheCover|TestCoverPresetRejectsEmptyImages|TestCoverPresetIsDeterministic' -v ./internal/lamp/
 go test -run 'TestTopDisplayCapable' -v ./internal/airplay/device/
 go test -run 'TestLampDefaultsOnAndCover|TestLampOldFileLoadsDefaults|TestLampLegacyEnabledInvertsToOff|TestLampOldMediaPresetTurnsCoverOn|TestLampOldTemplatePresetTurnsCoverOff|TestLampRoundTrips' -v ./internal/settings/
 ```
@@ -109,9 +116,12 @@ Live, with a HomePod at software 27.2 or later and Sound Glow on:
    cover again.
 4. Pause the track. The light stays on the current cover.
 5. Press 关灯. The top goes dark; the card stays and the glyph shows 开灯.
-6. Press 开灯. The top shows the current cover or template again.
-7. With the light off, pick another template in the settings page. The light
-   turns on with it and the priority becomes template.
+   The preview dims like the templates, the segment and templates disable,
+   and the chip reads 已关灯. A template cannot be picked while off.
+6. Press 开灯. The top shows the current cover or template again; only now can
+   the segment and templates be changed.
+7. With the light on, pick another template in the settings page. The
+   priority becomes template.
 8. Restart the app while the light is off. It stays off; 开灯 restores it.
 9. Repeat with a stereo pair: each capable member repaints and goes dark.
 
@@ -136,7 +146,9 @@ Proven end state: the priority segment and the six templates share one
 global choice; cover priority hides the flyout chevron and template list;
 template priority shows the chevron and expands the list only on click; the
 preview follows the cover's extracted
-palette; the app preview shows a media-glyph tile when there is no cover;
+palette; each template carrier yields its three designed colors under the
+receiver's k-means, and the template preview paints those three colors, not
+the carrier; the app preview shows a media-glyph tile when there is no cover;
 the receiver's fresh session shows its white-center placeholder; after a
 template, the last light survives clearing the slot; the power action
 darkens and restores the display without stopping the stream; the choice
@@ -158,8 +170,12 @@ and the off state survive a settings-window close/reopen and an app restart.
 - The cover preview is local. The receiver runs its own Lab k-means and its
   own audio-driven Sound Glow; the preview mirrors the palette, not the live
   LED frames.
+- The template carrier is not a picture. It is three flat color fields; the
+  app preview paints the three colors the receiver extracts, not the carrier.
 - The flyout list stays open after a template pick; hiding the flyout folds
   it, so the next open starts collapsed.
+- The light must be on before the priority segment or a template changes. The
+  off preview dims like the templates, and the off chip reads 已关灯.
 - The 6,1 and first-generation HomePod are outside `TopDisplayCapable` until
   they are verified. An unknown model or version stays off.
 - A stereo pair's simultaneous repaint is not yet verified; a member that is

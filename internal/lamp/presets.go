@@ -1,6 +1,7 @@
-// Package lamp renders the ambient-light palette images a HomePod shows on
-// its top display: six named palettes scattered into a seeded composition.
-// Cover mode is not rendered here; it reuses the media cover.
+// Package lamp renders the ambient-light carrier images a HomePod clusters
+// for its top display: six named three-color palettes. The receiver never
+// shows the image; it runs a Lab k-means over it and drives the LEDs from the
+// three colors. Cover mode is not rendered here; it reuses the media cover.
 package lamp
 
 import "image/color"
@@ -21,13 +22,16 @@ type Blob struct {
 	Alpha  float64
 }
 
-// Preset is one ambient-light palette. The ID is the persisted value and
-// never changes with the interface language. The seed makes the scatter
-// stable for the preset without turning the six compositions into a template.
+// Preset is one ambient-light palette. The receiver never displays the
+// carrier image: it clusters it in Lab and drives the LEDs from the three
+// colors, so Colors and Weights are the design. Base and Seed only shape the
+// local preview glow. The ID is the persisted value and never changes with
+// the interface language.
 type Preset struct {
 	ID      string
+	Colors  [3]color.RGBA
+	Weights [3]float64
 	Base    color.RGBA
-	Palette []color.RGBA
 	Seed    uint32
 }
 
@@ -35,72 +39,74 @@ const blobCount = 6
 
 var presets = []Preset{
 	{
-		ID:   "ember",
-		Base: rgb(0x14, 0x08, 0x06),
-		Palette: []color.RGBA{
-			rgb(0xff, 0x6a, 0x00), rgb(0xff, 0xc2, 0x47),
-			rgb(0xb2, 0x3a, 0x5e), rgb(0xff, 0x3d, 0x1f),
+		ID: "ember",
+		Colors: [3]color.RGBA{
+			rgb(0xff, 0x5a, 0x1f), rgb(0xff, 0xc0, 0x20), rgb(0xb3, 0x26, 0x1e),
 		},
-		Seed: 11,
+		Weights: [3]float64{0.45, 0.30, 0.25},
+		Base:    scaleColor(rgb(0xff, 0x5a, 0x1f), 0.20),
+		Seed:    11,
 	},
 	{
-		ID:   "dune",
-		Base: rgb(0x1e, 0x17, 0x10),
-		Palette: []color.RGBA{
-			rgb(0xe7, 0xb3, 0x6a), rgb(0x6f, 0x86, 0xb8),
-			rgb(0xff, 0x9a, 0x62), rgb(0xf2, 0xdf, 0xb8),
+		ID: "dune",
+		Colors: [3]color.RGBA{
+			rgb(0xc0, 0x8a, 0x00), rgb(0xc4, 0x7a, 0x1e), rgb(0x7a, 0x3f, 0x14),
 		},
-		Seed: 23,
+		Weights: [3]float64{0.45, 0.30, 0.25},
+		Base:    scaleColor(rgb(0xc0, 0x8a, 0x00), 0.20),
+		Seed:    23,
 	},
 	{
-		ID:   "moss",
-		Base: rgb(0x0a, 0x17, 0x10),
-		Palette: []color.RGBA{
-			rgb(0x78, 0xb8, 0x6a), rgb(0xd8, 0xd9, 0x6a),
-			rgb(0x2f, 0x7f, 0x86), rgb(0xb8, 0xe6, 0xc8),
+		ID: "moss",
+		Colors: [3]color.RGBA{
+			rgb(0x4e, 0x8a, 0x42), rgb(0xb8, 0xd4, 0x2e), rgb(0x2f, 0x7f, 0x86),
 		},
-		Seed: 37,
+		Weights: [3]float64{0.45, 0.30, 0.25},
+		Base:    scaleColor(rgb(0x4e, 0x8a, 0x42), 0.20),
+		Seed:    37,
 	},
 	{
-		ID:   "tide",
-		Base: rgb(0x05, 0x17, 0x24),
-		Palette: []color.RGBA{
-			rgb(0x1f, 0x7f, 0xd4), rgb(0x62, 0xe0, 0xd8),
-			rgb(0xff, 0x7e, 0x8a), rgb(0x8f, 0xd8, 0xff),
+		ID: "tide",
+		Colors: [3]color.RGBA{
+			rgb(0x2e, 0x7f, 0xd0), rgb(0x3f, 0xc9, 0xc0), rgb(0x4f, 0xd1, 0x8a),
 		},
-		Seed: 41,
+		Weights: [3]float64{0.45, 0.30, 0.25},
+		Base:    scaleColor(rgb(0x2e, 0x7f, 0xd0), 0.20),
+		Seed:    41,
 	},
 	{
-		ID:   "orchid",
-		Base: rgb(0x14, 0x0a, 0x20),
-		Palette: []color.RGBA{
-			rgb(0xb4, 0x4d, 0xe0), rgb(0xf0, 0xb8, 0xff),
-			rgb(0x4a, 0x6b, 0xff), rgb(0x9b, 0x5c, 0xd6),
+		ID: "orchid",
+		Colors: [3]color.RGBA{
+			rgb(0xa8, 0x3e, 0xd0), rgb(0x4a, 0x5f, 0xe0), rgb(0xc8, 0x5a, 0x9e),
 		},
-		Seed: 53,
+		Weights: [3]float64{0.45, 0.30, 0.25},
+		Base:    scaleColor(rgb(0xa8, 0x3e, 0xd0), 0.20),
+		Seed:    53,
 	},
 	{
-		ID:   "moon",
-		Base: rgb(0x0e, 0x16, 0x20),
-		Palette: []color.RGBA{
-			rgb(0xe8, 0xee, 0xf8), rgb(0x8f, 0xa6, 0xc8),
-			rgb(0xf0, 0xd9, 0xa8), rgb(0xff, 0xff, 0xff),
+		ID: "moon",
+		Colors: [3]color.RGBA{
+			rgb(0xc4, 0xd6, 0xee), rgb(0x6e, 0x84, 0xa8), rgb(0xe0, 0xc4, 0x8a),
 		},
-		Seed: 67,
+		Weights: [3]float64{0.45, 0.35, 0.20},
+		Base:    scaleColor(rgb(0xc4, 0xd6, 0xee), 0.20),
+		Seed:    67,
 	},
 }
 
-// Blobs returns the preset's six seeded highlights. The same preset always
-// produces the same composition; different presets scatter differently.
+// Blobs returns the preset's six seeded highlights for the local preview. The
+// same preset always produces the same composition; different presets scatter
+// differently. The carrier image does not use these; the receiver's own
+// renderer drives the light from the three colors and its audio envelope.
 func (p Preset) Blobs() []Blob {
-	if len(p.Palette) == 0 {
+	if p.Colors == ([3]color.RGBA{}) {
 		return nil
 	}
 	rand := mulberry32(p.Seed)
 	out := make([]Blob, blobCount)
 	for i := range out {
 		out[i] = Blob{
-			Color:  p.Palette[i%len(p.Palette)],
+			Color:  p.Colors[i%len(p.Colors)],
 			X:      4 + rand()*92,
 			Y:      4 + rand()*92,
 			Radius: 58 + rand()*55,

@@ -34,7 +34,7 @@ func TestFlyoutLampCardStaysWhenOff(t *testing.T) {
 		t.Fatal("the power action did not turn the light off")
 	}
 	tt = ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false))
-	for _, want := range []string{"氛围灯", "沙丘"} {
+	for _, want := range []string{"氛围灯", "沙丘", "已关灯"} {
 		if !tt.HasText(want) {
 			t.Fatalf("flyout lost %q when the light turned off; texts: %q", want, tt.Texts())
 		}
@@ -96,32 +96,65 @@ func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	}
 }
 
-// TestFlyoutLampPickingWhileOffTurnsOn pins the one-step action: the dimmed
-// grid stays clickable, and choosing a mode turns the light back on.
-func TestFlyoutLampPickingWhileOffTurnsOn(t *testing.T) {
+// TestFlyoutLampOffRequiresTurningOn pins the off rule: the grid is hidden,
+// the segment and templates are disabled, and only 开灯 restores the light.
+func TestFlyoutLampOffRequiresTurningOn(t *testing.T) {
 	a := previewApp()
 	a.lampOff = true
 	a.snap.LampOff = true
-	a.lampExpanded = true
+	a.lampCover = false
+	a.snap.LampCover = false
+	a.lampPreset = "dune"
+	a.lampExpanded = false
 
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
-	for _, want := range []string{"氛围灯", "暖烬", "月白"} {
+	for _, want := range []string{"氛围灯", "沙丘", "已关灯"} {
 		if !tt.HasText(want) {
-			t.Fatalf("flyout lost %q while the light is off; texts: %q", want, tt.Texts())
+			t.Fatalf("flyout is missing %q while off; texts: %q", want, tt.Texts())
 		}
 	}
+	if _, ok := tt.Find("暖烬"); ok {
+		t.Fatal("the template grid is visible while the light is off")
+	}
+	a.setLampCover(true)
+	a.chooseLampPreset("ember")
+	if !a.lampOff || a.lampCover || a.lampPreset != "dune" {
+		t.Fatalf("off state changed: off=%v cover=%v preset=%q", a.lampOff, a.lampCover, a.lampPreset)
+	}
+	if err := tt.Click(locales.LampTurnOn()); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampOff {
+		t.Fatal("turning on did not restore the light")
+	}
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	if err := tt.Click("展开配色"); err != nil {
+		t.Fatal(err)
+	}
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
 	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
-	if a.lampOff || a.snap.LampOff {
-		t.Fatal("picking a preset while off did not turn the light on")
+	if a.lampOff || a.lampPreset != "ember" {
+		t.Fatalf("preset after turning on = %q/%v, want ember on", a.lampPreset, a.lampOff)
 	}
-	if a.lampPreset != "ember" || a.snap.LampPreset != "ember" {
-		t.Fatalf("preset = %q/%q, want ember", a.lampPreset, a.snap.LampPreset)
-	}
-	if !a.lampExpanded {
-		t.Fatal("picking a template collapsed the list")
+}
+
+// TestLampOffIgnoresPriorityAndPreset pins the guards behind the disabled
+// controls: neither the segment nor a template changes the off state.
+func TestLampOffIgnoresPriorityAndPreset(t *testing.T) {
+	a := previewApp()
+	a.lampOff = true
+	a.snap.LampOff = true
+	a.lampCover = true
+	a.lampPreset = "dune"
+	a.setLampCover(false)
+	a.chooseLampPreset("ember")
+	if !a.lampOff || !a.lampCover || a.lampPreset != "dune" {
+		t.Fatalf("off state changed: off=%v cover=%v preset=%q", a.lampOff, a.lampCover, a.lampPreset)
 	}
 }
 
@@ -243,24 +276,36 @@ func TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff(t *testing.T) {
 	}
 }
 
-func TestSettingsLampPageOffShowsHintAndPickingTurnsOn(t *testing.T) {
+func TestSettingsLampPageOffRequiresTurningOn(t *testing.T) {
 	a := previewApp()
 	a.page = pageLamp
 	a.lampOff = true
 	a.snap.LampOff = true
+	a.lampCover = true
+	a.snap.LampCover = true
+	a.lampPreset = "dune"
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !tt.HasText("顶屏已熄灭；按开灯恢复当前选择。") {
+	if !tt.HasText("顶屏已熄灭；先按开灯才能调整。") {
 		t.Fatalf("off hint is missing; texts: %q", tt.Texts())
 	}
+	a.chooseLampPreset("ember")
+	if !a.lampOff || a.lampPreset != "dune" {
+		t.Fatalf("picking a template while off changed the light: off=%v preset=%q", a.lampOff, a.lampPreset)
+	}
+	tt.Frame()
+	if err := tt.Click(locales.LampTurnOn()); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampOff || a.snap.LampOff {
+		t.Fatal("turning on did not restore the light")
+	}
+	tt = ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
 	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
-	if a.lampOff || a.snap.LampOff {
-		t.Fatal("picking a preset while off did not turn the light on")
-	}
-	if a.lampPreset != "ember" {
-		t.Fatalf("preset = %q, want ember", a.lampPreset)
+	if a.lampOff || a.lampPreset != "ember" {
+		t.Fatalf("preset after turning on = %q/%v, want ember on", a.lampPreset, a.lampOff)
 	}
 }
 

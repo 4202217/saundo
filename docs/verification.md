@@ -896,7 +896,7 @@ development PC with a real HomePod stereo pair on the LAN.
   flyout's always-visible ambient card read one snapshot; neither gates on
   connection, and the tray menu gained no item.
 - **Pinned by.** `TestPresetsMatchCatalog`, `TestGeneratedJPEGsAre600Square`,
-  `TestPresetPixelsFollowTheBlobs`, `TestGeneratorCachesPerPreset`,
+  `TestGeneratorCachesPerPreset`,
   `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOnAndCover`,
   `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToCover`,
   `TestLampOldMediaPresetTurnsCoverOn`, `TestLampOldTemplatePresetTurnsCoverOff`,
@@ -913,7 +913,9 @@ development PC with a real HomePod stereo pair on the LAN.
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`, `TestSettingsLampPrioritySegmentTurnsCoverOn`,
   `TestSettingsLampPrioritySegmentTurnsCoverOff`, `TestFlyoutLampCoverHidesTheGrid`,
-  `TestFlyoutCloseCollapsesLampList`,
+  `TestFlyoutCloseCollapsesLampList`, `TestFlyoutLampOffRequiresTurningOn`,
+  `TestLampOffIgnoresPriorityAndPreset`,
+  `TestSettingsLampPageOffRequiresTurningOn`,
   `TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff`, and the app lamp
   tests named in ui.md.
 - **Live on AudioAccessory5,1.** A temporary gate allowed the user's 5,1
@@ -1145,6 +1147,30 @@ cover, then sent `updateMRPlaybackState` 2 → 1 → 2 → 1 through
 - **Still unverified.** Audible audio during state `2` (the probe was muted),
   the command on the 6,1 and first-generation HomePod, and both members of a
   stereo pair.
+
+## Ambient light, three-color template carriers (2026-11-08)
+
+The six templates are no longer dark-base pictures with four blended colors.
+The receiver clusters the artwork in Lab and drives the LEDs from three
+colors, so a blended image collapsed to three near neighbours of one hue
+family; dune's gold, blue, coral, and cream became three warm grays. Each
+preset is now three Lab-separated colors with area weights (45/30/25), and
+its 600×600 carrier is three flat color fields with a narrow feather. The
+app preview paints the same three colors.
+
+- **Pinned by.** `TestPresetCarriersRecoverTheirPalette` renders each
+  carrier, decodes it, runs the same `CoverPreset` Lab k-means, and requires
+  every designed color within ΔE 12. `TestPresetColorsAreDistinct` keeps
+  each template's three colors at least ΔE 12 apart; the golden dune's
+  closest pair is ΔE 14.5, and the old collapse's closest pair was ΔE 7.1.
+  `TestPresetWeightsSumToOne` pins the carrier areas.
+- **Live observation (2026-11-08).** The first all-gold dune (`#E0B000`,
+  `#C47A1E`, `#F0C050`) read white on the top display; the pale gold was the
+  white source. The final dune (`#C08A00` with zero blue, `#C47A1E`,
+  `#7A3F14`) read as dark gold, and the user approved the six palettes by
+  eye.
+- **Not verified live.** The receiver's exact cluster count and sampling are
+  not reversed.
 
 ## Release 0.5.0 pre-release check (2026-11-07)
 
