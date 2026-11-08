@@ -858,7 +858,9 @@ func (a *App) showWindow() {
 	}
 	a.win.Show()
 	a.win.Focus()
-	mygo.App.Focus()
+	// No App.Focus here: activating the app would drag every visible app
+	// window (an open settings page included) to the front. The flyout
+	// panel is nonactivating and takes key on its own.
 }
 
 // toggleWindow is the tray icon's primary click: the panel opens next to the
