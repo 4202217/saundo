@@ -1379,3 +1379,29 @@ surviving conclusion, and the pin.
   cards as `infoNote`: an info glyph in a 16-DIP slot and 11.5 px muted copy
   that wraps instead of truncating. The lamp power hint stays inside the card
   as plain text. `声音光晕` is Apple's official Chinese name for Sound Glow.
+
+## Connection recovery and discovery names (2026-11-08)
+
+- **Sticky failure after a dead member.** A stereo-group member closed the
+  control channel during setup (`session failed: HomePod L：Connection closed
+  by the device`, `saundo.log` 21:19:58 and 21:44:04). The engine kept
+  `lastError` and `selectedID` after the attempt, so the flyout stayed in
+  `phaseError`: the failed row offered 重试 and every other online row
+  rendered a faint 连接 with no handler. `cmdDisconnect` and `connect` now
+  clear the error when an attempt ends, and `actionFor` keeps other online
+  receivers connectable in the error phase. Pinned by
+  `TestUserDisconnectClearsConnectionError`,
+  `TestConnectClearsPreviousError`, and
+  `TestRowActionKeepsOtherReceiversConnectable`.
+- **Cancel showed the previous failure.** `phaseOf` reports the reconnect
+  wait before the error, so the stale banner was hidden until a cancel
+  returned the state to idle. The cancel now clears the error before
+  publishing the idle snapshot; the UI returns to 未连接. The headless error
+  frame is `flyout-error-zh.png` in the session evidence.
+- **Service name leaked into the display name.** hashicorp/mdns reports
+  SRV/TXT/A records from both AirPlay services to either browse. Parsing an
+  `_airplay` entry under the `_raop` label kept `._airplay._tcp` in the name,
+  seen live as `"HomePod R._airplay._tcp"` at `saundo.log` 21:01:05 and
+  21:01:07. `parseEntry` now derives the service from the instance suffix
+  before trimming, so both directions resolve to the friendly name. Pinned
+  by `TestParseEntryUsesTheAdvertisedService`.
