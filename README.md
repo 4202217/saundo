@@ -17,7 +17,7 @@ HomePod, HomePod mini, Mac, and Apple TV: everything the Mac or PC plays, one tr
 <br>
 
 <p align="center">
-  <img src="docs/screenshots/flyout-stream-light-en.png" width="290" alt="The saundo tray flyout: receiver list, volume, Now Playing">
+  <img src="docs/screenshots/flyout-stream-light-en.png" width="290" alt="The Saundo tray panel: receiver list, volume, media card">
   &nbsp;&nbsp;&nbsp;
   <img src="docs/screenshots/settings-connection-light-en.png" width="470" alt="The settings window: connection page">
 </p>
@@ -47,7 +47,7 @@ mingw32-make check  # gofmt gate, go vet, mygo UI vet, go test — the acceptanc
 mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-setup-*.exe) through mygo, then restarts the running app
 ```
 
-<sub>The installer is not code-signed yet, so SmartScreen warns. Building from source needs Go 1.27+ (the toolchain [mygo](https://github.com/egoist/mygo) requires) and `mingw32-make` from MinGW-w64; then run `bin/saundo-setup-*.exe`.</sub>
+<sub>The installer is not code-signed yet, so SmartScreen warns. Building from source needs Go 1.27+ (the toolchain [mygo](https://github.com/egoist/mygo) requires) and `mingw32-make` from MinGW-w64; then run `bin/saundo-setup-*.exe`. On macOS, `make check` and `make build` run the same gate and produce `bin/saundo.app`; cmake builds the Now Playing adapter.</sub>
 
 **2 · Connect**. The app lives in the tray: a left click opens the panel, a right click opens the menu. Pick a receiver and connect; one that requires a password asks once and remembers it.
 
@@ -57,19 +57,19 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 
 ## What it does
 
-- **System audio capture** — WASAPI loopback of the default output, a fixed endpoint, or a single application.
+- **System audio capture** — WASAPI loopback on Windows or a Core Audio process tap on macOS: the default output, a fixed endpoint, or (on Windows) a single application.
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock (the sender is the PTP master for stereo pairs), encrypted control and event channels, retransmit on request.
 - **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
-- **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own DPAPI-stored password. A directed unicast pass finds receivers that miss multicast, and both surfaces list only the receivers you can use right now.
-- **Now Playing card** — the flyout shows the system media session with its cover, title, artist, the transport controls the session reports, and a live five-band meter; switch between open sessions. The Now Playing settings page controls the card, the cover mode, cover colors, and the audio level. The receiver track-info push is always on.
-- **Ambient light** — on by default. The power action on the flyout card turns a HomePod's top display off and on; a 封面/模板 priority segment follows the media cover (the default) or one of six custom three-color templates. The preview mirrors the cover's extracted three-color palette and uses a media-glyph tile when there is no cover; the receiver's own fresh session shows a white-center placeholder. A pause keeps the current light. Turning it off disables the priority and template controls until it is on again. Choose it in the Ambient light settings page or the flyout's ambient card.
+- **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own OS-secured password (DPAPI on Windows, the Keychain on macOS). A directed unicast pass finds receivers that miss multicast, and both surfaces list only the receivers you can use right now.
+- **Media card** — the tray panel shows the system media session with its app name and icon, cover, title, artist, the transport controls the session reports, and a live five-band meter; switch between open sessions. The Now Playing settings page controls the media card, the cover mode, cover colors, and the audio level. The receiver track-info push is always on.
+- **Ambient light** — on by default. The power action on the tray panel card turns a HomePod's top display off and on; a Cover/Template priority segment follows the media cover (the default) or one of six custom three-color templates. The preview mirrors the cover's extracted three-color palette and uses a media-glyph tile when there is no cover; the receiver's own fresh session shows a white-center placeholder. A pause keeps the current light. Turning it off disables the priority and template controls until it is on again. Choose it in the Ambient light settings page or the tray panel's ambient card.
 - **Mute the local output** — a connection switch, on by default, mutes the local output while a session streams and restores it on disconnect, with a guard file that recovers the state after a crash.
 - **Appearance** — follow the system, light, or dark.
-- **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the flyout or the audio page. A live change restarts the stream with a spinner.
+- **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the tray panel or the audio page. A live change restarts the stream with a spinner.
 - **A tray that shows the state** — the smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
-- **Updates in the app** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The flyout chip and the tray tooltip point to it.
-- **English and Simplified Chinese** — the interface follows the Windows language by default, with a language setting and a localized update page and notes dialog.
-- **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are DPAPI-encrypted.
+- **Updates in the app (Windows)** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The tray panel's update chip and the tray tooltip point to it. The macOS build ships as a dmg and keeps its updater off until a signed mac feed exists.
+- **English and Simplified Chinese** — the interface follows the system language by default, with a language setting and a localized update page and notes dialog.
+- **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are protected by the OS secret store (DPAPI on Windows, the Keychain on macOS).
 - **Stays out of the way** — suspends the stream after 2 s of digital silence and resumes cleanly, auto-reconnects with backoff, and follows volume changes made on the receiver.
 
 ## Receiver support
@@ -86,7 +86,7 @@ How each family advertises, pairs, and behaves: [docs/devices.md](docs/devices.m
 
 ## How it fits together
 
-The tray flyout talks to a UI-agnostic engine, which drives a sans-i/o sender state machine over encrypted RTSP. WASAPI loopback feeds a resampler and a ring buffer; a PTP follower (or master, for stereo pairs) keeps every stream on the receiver's clock. Design decisions and risks: [docs/architecture.md](docs/architecture.md). The wire-level protocol: [docs/protocol.md](docs/protocol.md). The code map: [docs/implementation.md](docs/implementation.md).
+The tray panel talks to a UI-agnostic engine, which drives a sans-i/o sender state machine over encrypted RTSP. WASAPI loopback (Windows) or the Core Audio process tap (macOS) feeds a resampler and a ring buffer; a PTP follower (or master, for stereo pairs) keeps every stream on the receiver's clock. Design decisions and risks: [docs/architecture.md](docs/architecture.md). The wire-level protocol: [docs/protocol.md](docs/protocol.md). The code map and platform seams: [docs/implementation.md](docs/implementation.md) and [docs/platforms.md](docs/platforms.md).
 
 ## Documentation
 
@@ -95,6 +95,7 @@ The tray flyout talks to a UI-agnostic engine, which drives a sans-i/o sender st
 - [docs/devices.md](docs/devices.md) — per-receiver profiles: how each family advertises, pairs, and behaves
 - [docs/ui.md](docs/ui.md) — the UI design language: tokens, widgets, motion, windows
 - [docs/implementation.md](docs/implementation.md) — the code map: runtime model, packages, flows, build
+- [docs/platforms.md](docs/platforms.md) — the Windows/macOS seams, feature parity, packaging
 - [docs/verification.md](docs/verification.md) — automated checks, live-test recipes, the evidence log
 - [docs/releasing.md](docs/releasing.md) — the release checklist, signing keys, and rollback
 - [SECURITY.md](SECURITY.md) — vulnerability reporting
@@ -105,7 +106,7 @@ The tray flyout talks to a UI-agnostic engine, which drives a sans-i/o sender st
 - [airplay2-sender-cpp](https://github.com/akustikrausch/airplay2-sender-cpp) — primary blueprint (Apache-2.0)
 - [pyatv](https://github.com/postlund/pyatv) — RAOP transport semantics (MIT)
 - [AirFlash](https://github.com/Ding-Kyoma/AirFlash) — WASAPI and PTP code reference, ported under the GPLv3 option
-- [magpie](https://github.com/yetone/magpie) — tray flyout and settings design reference
+- [magpie](https://github.com/yetone/magpie) — tray panel and settings design reference
 
 ## License
 

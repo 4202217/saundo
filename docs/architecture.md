@@ -1,12 +1,12 @@
-<!-- reviewed-through: 2026-11-06 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # saundo Architecture and Technology Selection
 
-This page carries the stable design layer: goals, technology decisions, the system shape, design rationale, and risks. The wire-level protocol lives in [protocol.md](protocol.md), receiver profiles in [devices.md](devices.md), the code map in [implementation.md](implementation.md), the UI design language in [ui.md](ui.md), and verification evidence in [verification.md](verification.md).
+This page carries the stable design layer: goals, technology decisions, the system shape, design rationale, and risks. The wire-level protocol lives in [protocol.md](protocol.md), receiver profiles in [devices.md](devices.md), the code map and platform seams in [implementation.md](implementation.md) and [platforms.md](platforms.md), the UI design language in [ui.md](ui.md), and verification evidence in [verification.md](verification.md).
 
 ## 0. Goals and scope
 
-Build a Windows desktop application that streams Windows system audio over AirPlay 2 in real time to HomePod, HomePod mini, Apple TV, and macOS AirPlay receivers.
+Build a desktop application for Windows and macOS that streams the system audio over AirPlay 2 in real time to HomePod, HomePod mini, Apple TV, and macOS AirPlay receivers.
 
 Constraints:
 
@@ -14,7 +14,7 @@ Constraints:
 - AirPlay audio only. No AirPlay video, no FairPlay.
 - Distributed under GPL-3.0-only. Apache-2.0, MIT, and GPL reference code may be read and ported, including the AirFlash Rust engine.
 - Correctness and verifiability over speed.
-- mygo native UI. WASAPI loopback for capture.
+- mygo native UI. WASAPI loopback on Windows and a Core Audio process tap on macOS; the seams are in [platforms.md](platforms.md).
 
 Not targets:
 
@@ -28,7 +28,7 @@ Multi-room stereo pairs, application-level capture, and an AirPlay 1 fallback ar
 | Layer | Choice | License | Notes |
 |---|---|---|---|
 | Language | Go 1.27+ | BSD-3-Clause | Pure Go, `CGO_ENABLED=0` |
-| UI | mygo native UI | MIT | D3D11 rendering, tray and installer |
+| UI | mygo native UI | MIT | Native rendering, tray, windows, installer and dmg |
 | Primary reference | airplay2-sender-cpp | Apache-2.0 | About 7k lines, sans-i/o, verified against Apple TV, HomePod, and macOS in its shipping product |
 | Secondary reference | pyatv | MIT | RAOP transport semantics, HAP pairing, test vectors |
 | Code reference | AirFlash Rust engine | GPLv3+ | WASAPI capture, PTP, HomePod OS 27, HAP/RTP/session; ported under the GPLv3 option |
@@ -38,9 +38,9 @@ Multi-room stereo pairs, application-level capture, and an AirPlay 1 fallback ar
 | bplist | In-house | Standard library | Only the types used by AirPlay SETUP |
 | Audio codec | In-house uncompressed ALAC | Standard library | No full ALAC encoder needed |
 | Discovery | hashicorp/mdns | MIT | Actively maintained; Windows DNS-SD fallback |
-| Capture | In-house WASAPI binding | Standard library | Reference AirFlash `wasapi.rs` and mygo's WASAPI output |
+| Capture | In-house WASAPI and Core Audio bindings | Standard library | WASAPI loopback on Windows; Core Audio process tap on macOS. Reference AirFlash `wasapi.rs` and mygo's WASAPI output |
 | Timing | NTP + PTP follower | Standard library | NTP for Apple TV and macOS; PTP follower for HomePod software 27, which keeps its own grandmaster |
-| Credentials | Windows DPAPI | OS API | Through syscall |
+| Credentials | DPAPI on Windows, Keychain on macOS | OS API | DPAPI through syscall; Keychain through purego |
 
 Rejected:
 
@@ -132,6 +132,8 @@ GPLv3+ (dual-licensed with a commercial option), last commit 2026-10-29. It uses
 Cross-cutting: Settings (JSON), Receiver registry (JSON), Credentials (DPAPI), Diagnostics (logs and metrics)
 ```
 
+The diagram shows the Windows leaves. macOS replaces WASAPI with the Core Audio process tap, DPAPI with the Keychain, and the NSIS installer with a dmg; the sender, engine, and UI above the seams are the same.
+
 There are three concurrency roles:
 
 - The mygo UI main thread.
@@ -164,9 +166,9 @@ advertises feature bit 41 and its model starts with `AudioAccessory` or `Mac`.
 The sender talks to it through a narrow `PTPClock` interface, so NTP stays the
 path for Apple TV.
 
-**No old Go libraries.** SRP, TLV8, bplist, ALAC, and WASAPI are implemented in-house or ported from C++/Rust. Only discovery uses hashicorp/mdns, for the multicast browse, plus miekg/dns for a directed query to the ARP neighbor table and remembered receiver addresses when multicast does not reach the PC. This avoids dependence on unmaintained go-wca and zeroconf.
+**No old Go libraries.** SRP, TLV8, bplist, ALAC, WASAPI, and Core Audio are implemented in-house or ported from C++/Rust. Only discovery uses hashicorp/mdns, for the multicast browse, plus miekg/dns for a directed query to the ARP neighbor table and remembered receiver addresses when multicast does not reach the machine. This avoids dependence on unmaintained go-wca and zeroconf.
 
-**DPAPI for credentials.** Long-term keys never touch disk in plaintext. Logs never contain PINs, long-term keys, or session keys.
+**OS secret stores for credentials.** Long-term keys never touch disk in plaintext: DPAPI on Windows, the login Keychain on macOS, where a 32-byte master key encrypts the credential JSON with AES-256-GCM. Logs never contain PINs, long-term keys, or session keys.
 
 **Minimal 200 OK.** Event-channel response headers are strictly minimal. This is a failure mode the C++ blueprint already hit.
 
@@ -183,6 +185,8 @@ path for Apple TV.
 **ALAC frame format.** Receivers require ALAC; PCM produces silence. Follow the C++ bit layout and byte-compare with the fake receiver.
 
 **WASAPI capture.** A pure-Go COM binding needs careful lifetime handling and default-device switching. Reference AirFlash's `wasapi.rs` and mygo's WASAPI output.
+
+**Core Audio capture and macOS privacy.** The process tap needs TCC audio-capture consent keyed to the app bundle, and macOS 15+ drops mDNS, RTSP, and PTP until Local Network is allowed. A tap-only aggregate device refuses to start; the output device must be a sub-device and the clock master. The distribution is ad-hoc signed until a Developer ID exists, so a quarantined download needs the user's Open Anyway approval once per cdhash. See [platforms.md](platforms.md).
 
 **mDNS and firewall.** Windows Firewall, multiple NICs, and VPNs all affect discovery. The multicast browse is primary; when a receiver's multicast does not reach the PC, a directed query on UDP 5353 to addresses in the ARP neighbor table and the remembered receiver list still resolves it.
 

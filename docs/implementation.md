@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-08 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # Implementation overview
 
@@ -33,12 +33,13 @@ through bounded channels:
   bind/send/close) and `Host`, the Go net implementation that pushes
   connection events, received packets, and ticks back in through one
   `Events` channel.
-- **The capture goroutine** owns WASAPI (COM-initialized), converts and
-  resamples, and writes the ring buffer or the stereo fanout. It never
-  touches the network.
+- **The capture goroutine** owns the platform capture leaf (WASAPI on
+  Windows, the Core Audio tap on macOS), converts and resamples, and writes
+  the ring buffer or the stereo fanout. It never touches the network.
 
-The app also polls Windows SMTC every two seconds (`internal/nowplaying`) for
-the Now Playing card and its transport buttons. Capture blocks are measured
+The app also polls the platform Now Playing source every two seconds
+(`internal/nowplaying`): SMTC on Windows, the MediaRemote adapter on macOS.
+It feeds the Now Playing card and its transport buttons. Capture blocks are measured
 into level and five-band frames (`internal/audio/analyze`) on the capture
 goroutine; `Engine.LevelFrame` reads them back with the presentation delay so
 the card's meter follows the audio being heard. The bands gate energy below
@@ -176,19 +177,19 @@ mode.
 
 ## On-disk state
 
-All under `%APPDATA%\saundo\`:
+All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saundo/` on macOS:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the flyout style (`flyoutPopover`, macOS), the language and appearance choices, the Now Playing panel options, the local-output mute, and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
-- `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
-  `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.
+- `credentials.dat` — protected credential JSON keyed by receiver
+  `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM.
 - `mute-guard.json` — written before the engine mutes the local render
   endpoint and removed after it releases it. The connection mute is temporary
   and never outlives the session; a crash or forced kill leaves the guard for
   the next launch to release the endpoint (`internal/engine/mute.go`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.
 - The first run after the airgoplay rename copies `settings.json` and
-  `credentials.dat` from `%APPDATA%\airgoplay` (`internal/app/migrate.go`).
+  `credentials.dat` from `%APPDATA%\airgoplay` on Windows (`internal/app/migrate.go`).
   The same startup runs the receiver migration: plaintext passwords move
   into DPAPI (a password already in DPAPI wins), and the old auto-connect
   flag plus `lastDeviceId` seed one auto-connect entry. Both steps are
@@ -196,11 +197,17 @@ All under `%APPDATA%\saundo\`:
 
 ## Build and packaging
 
-`mingw32-make build` runs `scripts/build.sh`: `mygo build -platform windows/amd64`
-with `MYGO_LDFLAGS` stamping `saundo/internal/app.Version` from
-`git describe`, the icon and manifest embedded from
-`cmd/saundo/mygo.json`. The app reports the stamp to the updater, so a local
-build past a release sorts below it and still offers that release; `VERSION`
-overrides the stamp. The script stops the running app, copies
-`saundo.exe` (GUI subsystem) and the NSIS `saundo-setup-*.exe` into
-`bin/`, and starts the new build.
+`mingw32-make build` on Windows and `make build` on macOS run
+`scripts/build.sh`, which branches on `uname -s`. Both run `mygo build` with
+`MYGO_LDFLAGS` stamping `saundo/internal/app.Version` from `git describe`,
+the icon and manifest embedded from `cmd/saundo/mygo.json`. The app reports
+the stamp to the updater, so a local build past a release sorts below it and
+still offers that release; `VERSION` overrides the stamp. The Windows branch
+builds `windows/amd64`, stops the running app, copies `saundo.exe` (GUI
+subsystem) and the NSIS `saundo-setup-*.exe` into `bin/`, and starts the new
+build; `--fast` skips the installer. The macOS branch builds `darwin/arm64`,
+stages the MediaRemote adapter, signs ad hoc unless `SAUNDO_MAC_SIGN_IDENTITY`
+names an identity, replaces `bin/saundo.app`, and opens it.
+`mingw32-make platforms` (or `go run ./scripts/check-platforms`) builds and
+vets both targets on either host and rejects platform imports outside tagged
+files; it runs inside `make check` and in CI.

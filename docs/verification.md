@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-08 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # Verification
 
@@ -32,8 +32,12 @@ live state:
 - The macOS port: `-race` (needs a C toolchain), per-app capture (the
   `Config.ProcessID` seam is ready), signed/notarized mac updates (the mac
   updater is disabled), and the flyout style setting is macOS-only.
-- The Windows flyout shadow and tray focus after the focus seam split
-  (2026-11-09): code-level only, no Windows run.
+- The Windows tray focus after the focus seam split (2026-11-09): the
+  flyout shadow and the locale-driven titles were confirmed by a live run;
+  the focus call itself was not exercised.
+- The Now Playing card's app icon drawing in the live flyout (2026-11-09):
+  the shell identity resolved live, but no session was on screen at capture
+  time. `TestNowPlayingHeadShowsAppIconWhenAvailable` covers the card.
 - A live macOS capture reconnect after the aggregate-liveness check
   (2026-11-09).
 - Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
@@ -1515,3 +1519,68 @@ clean-checkout case, and produced `saundo.exe`. The darwin build produced
 **Not verified here.** The review ran on macOS. The Windows flyout shadow
 and tray focus, and a live macOS reconnect after the aggregate-liveness
 check, still need a run on their platforms.
+
+## 2026-11-09 — Windows side of the darwin port
+
+Live run on Windows 11 Pro for Workstations (build 26300),
+`bin/saundo.exe` 0.5.0 built from the merged tree, streaming to a HomePods
+stereo pair. This covers the Windows half of the multi-platform review
+above.
+
+- **Gate and build.** `mingw32-make check` passes end to end: gofmt clean,
+  315 catalog messages, `go vet`, `go tool mygo vet .`, `go test ./...`
+  (all packages ok), the verify-map scan, and `check-platforms`
+  (windows/amd64 and darwin/arm64 build and vet, and platform imports stay
+  behind their tags). A second `go test -count=1` over `nowplaying`,
+  `capture`, `app`, `engine`, and `discovery` passed without cache.
+  `mingw32-make build` produced `saundo.exe` and the 0.5.0 installer; the
+  app relaunched and rejoined its session.
+- **Shell app identity.** `TestSMTCLiveSessions` read `MyGo Music.exe` as
+  MyGo Music with a 4,614-byte 64×64 PNG icon in 0.28 s, the Start-menu
+  enumeration included; `TestSMTCInfoLive` read "Snow" by 露崎春女. The
+  headless `TestNowPlayingHeadShowsAppIconWhenAvailable` pins the card's
+  icon slot.
+- **Flyout.** A DPI-aware PrintWindow capture shows the Windows 11 flyout
+  with its system shadow and rounded corners, no macOS popover. The window
+  was `MyGoFlyoutShadow|Saundo` and the settings window
+  `MyGoWindow|Settings · Saundo`; after the settings language selector
+  stored follow-system, the flyout title changed to 声渡 at once, and the
+  same `onLocaleChanged` sets the settings title. `capture-window.ps1` is
+  DPI-unaware on this 1.75× display: it returns the top-left 420×625 DIP
+  region of the 735×1094 physical window, which reads as a clipped
+  screenshot, not a layout defect. Use a DPI-aware capture for evidence.
+- **Not driven live.** The Now Playing card's icon drawing (the media
+  session ended before a clean capture of the card), the settings page's
+  new layout, per-app capture, the tray animation, and tray focus. Audible
+  output was not confirmed; the log shows an active RTSP session with
+  `audio resumed`/`audio idle` across the run.
+- **Maintainer pre-release test (2026-11-09).** The v0.6.0-beta.1 release
+  request is the maintainer's confirmation that the build was tested on
+  their own PC.
+- **UI review (2026-11-09).** The release gate rendered the 196-frame matrix
+  (zh-CN and en, light and dark) at
+  `.audit/ui-review-0.6.0-beta.1/frames/` and fixed 15 findings: three
+  English subtitles that ellipsized at the 720 default window, the compact
+  lamp segment's second English name for Template, bare panel in the tray
+  menu and the remove dialog, Flyout/浮窗 in the macOS-only style setting,
+  the Chinese audio-level term, two Chinese descriptions that kept clauses
+  the English dropped, the signature and backoff wording, the About license
+  label, a stale catalog allowlist entry, and the macOS popover subtitle's
+  length. The catalog gates now ban the old strings. Two independent
+  reviewers on different model families checked the fixes; the second
+  verdict is clean. The macOS-only General row is not renderable on
+  Windows; the reviewer measured the shortened subtitle at 354.5 DIP
+  against the 415-DIP column at the 720 default. It still ellipsizes at the
+  640 minimum, like other single-line settings subtitles.
+- **Verification map (2026-11-09).** All six feature pages were audited
+  from source after the port and corrected in their own commit: the update
+  page is Windows-only, offline receivers are dropped rather than shown,
+  the flyout ALAC line carries latency rather than the stereo tag, the
+  media switch only hides the flyout card, the ambient off state ignores
+  the segment and templates, the tray menu and window titles use the new
+  copy, and the settings capture path is class plus pid. The live pass
+  covered the doctor, the mDNS browse (HomePods and MacBook Air found with
+  clean names), the fake-receiver protocol suite, and a live flyout
+  capture. Connect/disconnect, settings switches, ambient-light actions,
+  and update install were not driven because the operator's session was
+  streaming; the headless matrix and protocol tests cover those paths.
