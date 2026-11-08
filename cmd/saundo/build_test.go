@@ -24,6 +24,20 @@ func TestBuildTargetProducesGUIBinary(t *testing.T) {
 	}
 }
 
+// TestBuildTargetProducesDarwinApp guards the macOS build branch: the .app
+// bundle is what TCC attributes the audio-capture permission to, so a build
+// that produced a bare binary would lose the capture prompt and the tray.
+func TestBuildTargetProducesDarwinApp(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "scripts", "build.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "-platform darwin/arm64") || !strings.Contains(text, "bin/saundo.app") {
+		t.Fatal("the build target must produce bin/saundo.app via mygo build -platform darwin/arm64")
+	}
+}
+
 // TestMyGoIconPathExists guards the embedded app icon. mygo resolves a
 // relative icon path against the directory of mygo.json, and this project
 // keeps resources/ at the repository root, not under cmd/saundo.
