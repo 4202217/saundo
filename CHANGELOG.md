@@ -5,6 +5,56 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.6.0-beta.1 - 2026-11-09
+
+### Added
+
+- macOS support on Apple Silicon (macOS 14.4+). System audio is captured
+  with a Core Audio process tap, credentials use the login Keychain, the
+  media card reads the system media session through a bundled MediaRemote
+  adapter, and the build ships as an app bundle and a dmg. The mac build is
+  ad-hoc signed and its updater stays off until a signed, notarized feed
+  exists.
+- The media card names the app playing and shows its icon, resolved from
+  the Windows shell's Applications folder, then the running executable's
+  version resource. An app without an icon shows the name alone.
+- The media card follows the system's current media session. The switch
+  arrow pins another open session until a different one becomes current.
+- The flyout style setting (macOS only): a system popover or the rounded
+  flyout.
+
+### Changed
+
+- The app is named Saundo in the interface, the window titles, the
+  installer, and the About page.
+- The Now Playing settings page is the Media card page. Its switch reads
+  Show in tray panel and only hides the card in the tray panel; the
+  preview and the option rows stay active. The cover options read None,
+  Default, and Media.
+- The Ambient light page has a Color source row (Cover or Template), and
+  its six template swatches keep one size and wrap on a narrow page.
+- The settings content column caps at 720 DIP and centers on a wide
+  window. The Audio page stacks the three latency presets as full-width
+  rows below 714 DIP, so no name, value, or description is cut. Caveats
+  sit under their cards as info notes.
+- The tray menu item reads Show tray panel, and receiver copy replaces
+  device copy throughout.
+- The About page names the license GPL-3.0-only.
+- The Windows update feed stays on; the mac build disables its updater.
+
+### Fixed
+
+- After a failed session, the other online receivers stay connectable
+  instead of showing a disabled Connect.
+- Cancelling a connection clears the previous failure instead of leaving
+  a stale banner.
+- A receiver discovered through the other AirPlay service no longer keeps
+  the service suffix in its name.
+- The lamp preview follows the session the app pushes to the receiver,
+  not the card's arrow selection, so the preview and the top display
+  cannot disagree.
+- The window title follows a language change.
+
 ## 0.5.0 - 2026-11-07
 
 ### Added
