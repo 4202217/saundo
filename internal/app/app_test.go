@@ -483,6 +483,51 @@ func TestSettingsPreviewMeterFollowsLivePlaybackOnly(t *testing.T) {
 	}
 }
 
+func TestNowPlayingHeadShowsAppIconWhenAvailable(t *testing.T) {
+	icon := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	for i := range icon.Pix {
+		icon.Pix[i] = 0xff
+	}
+	var pngBytes bytes.Buffer
+	if err := png.Encode(&pngBytes, icon); err != nil {
+		t.Fatal(err)
+	}
+	titleX := func(iconBytes []byte) (float32, *App) {
+		a := previewApp()
+		a.nowSnap = nowplaying.Snapshot{Sessions: []nowplaying.Session{{
+			AUMID: "icon.session", AppName: "Icon App", Title: "夜曲", Artist: "周杰伦",
+			Status: nowplaying.StatusPlaying, Playing: true, AppIcon: iconBytes,
+		}}, Current: 0}
+		a.nowMediaAUMID = "icon.session"
+		a.refreshNowAppIcon()
+		a.flyoutEntered = true
+		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+		tt.Frame()
+		name, ok := tt.Find("Icon App")
+		if !ok {
+			t.Fatalf("app name missing; texts: %q", tt.Texts())
+		}
+		return name.X, a
+	}
+	with, a := titleX(pngBytes.Bytes())
+	if a.nowIcon == nil {
+		t.Fatal("the valid icon did not decode")
+	}
+	without, _ := titleX(nil)
+	if with <= without {
+		t.Fatalf("app name x with icon=%.1f, without=%.1f, want the icon to lead it", with, without)
+	}
+
+	// A broken icon is dropped and leaves the name alone.
+	broken, a := titleX([]byte{0x89, 'P', 'N', 'G'})
+	if a.nowIcon != nil {
+		t.Fatal("a broken icon decoded")
+	}
+	if broken != without {
+		t.Fatalf("broken icon shifted the name: %.1f vs %.1f", broken, without)
+	}
+}
+
 func TestCoverFieldCompressesLightness(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
 	for y := 0; y < 64; y++ {

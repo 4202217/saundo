@@ -37,6 +37,7 @@ func (s PlaybackStatus) String() string {
 type Session struct {
 	AUMID       string
 	AppName     string
+	AppIcon     []byte
 	Title       string
 	Subtitle    string
 	Artist      string

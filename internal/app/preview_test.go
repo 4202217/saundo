@@ -65,6 +65,28 @@ func sampleCoverImage() image.Image {
 	return img
 }
 
+// sampleAppIcon is a generated rounded icon, so the preview shows the app
+// icon path without borrowing a real app's mark.
+func sampleAppIcon() image.Image {
+	img := image.NewRGBA(image.Rect(0, 0, 32, 32))
+	for y := 0; y < 32; y++ {
+		for x := 0; x < 32; x++ {
+			dx, dy := float64(x)-15.5, float64(y)-15.5
+			if dx*dx+dy*dy > 15.5*15.5 {
+				continue
+			}
+			t := float64(x+y) / 62
+			img.SetRGBA(x, y, color.RGBA{
+				R: uint8(91 + (54-91)*t),
+				G: uint8(108 + (197-108)*t),
+				B: uint8(255 + (176-255)*t),
+				A: 255,
+			})
+		}
+	}
+	return img
+}
+
 // sampleLevel is a fixed meter frame: previews must not depend on the
 // machine's audio or on the capture engine.
 func sampleLevel() analyze.Frame {
@@ -182,6 +204,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	stream.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
 	cover := sampleCoverImage()
 	stream.nowArt = ui.NewBitmap(cover)
+	stream.nowIcon = ui.NewBitmap(sampleAppIcon())
 	stream.nowFieldLight = coverField(cover, false)
 	stream.nowFieldDark = coverField(cover, true)
 	stream.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
@@ -305,6 +328,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	nowSettings.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
 	nowCover := sampleCoverImage()
 	nowSettings.nowArt = ui.NewBitmap(nowCover)
+	nowSettings.nowIcon = ui.NewBitmap(sampleAppIcon())
 	nowSettings.nowFieldLight = coverField(nowCover, false)
 	nowSettings.nowFieldDark = coverField(nowCover, true)
 	nowSettings.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
@@ -327,6 +351,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	coverFly.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
 	coverCover := sampleCoverImage()
 	coverFly.nowArt = ui.NewBitmap(coverCover)
+	coverFly.nowIcon = ui.NewBitmap(sampleAppIcon())
 	coverFly.nowFieldLight = coverField(coverCover, false)
 	coverFly.nowFieldDark = coverField(coverCover, true)
 	coverFly.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
