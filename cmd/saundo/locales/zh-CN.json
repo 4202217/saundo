@@ -131,7 +131,7 @@
   "settingsAudioLevelDesc": "显示随播放变化的五段音量电平；系统关闭动画效果时保持静止。",
   "settingsSave": "保存",
   "settingsLaunchAtStart": "登录时自动启动",
-  "settingsLaunchAtStartDesc": "登录 Windows 后在托盘中静默运行",
+  "settingsLaunchAtStartDesc": "登录后在托盘中静默运行",
   "settingsTrayAnimation": "托盘动画",
   "settingsTrayAnimationDesc": "连接或播放时播放托盘动画；系统关闭动画效果时自动停用",
   "settingsLanguage": "语言",
@@ -140,7 +140,7 @@
   "languageEnglish": "English",
   "languageChinese": "简体中文",
   "settingsTheme": "外观",
-  "settingsThemeDesc": "跟随 Windows，或固定使用浅色或深色",
+  "settingsThemeDesc": "跟随系统，或固定使用浅色或深色",
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
   "themeDark": "深色",
@@ -254,7 +254,7 @@
   "settingsMuteLocalDescFailed": "无法静音本机输出；请检查音频设备。",
   "settingsMuteLocalNote": "开启“连接后静音本机输出”后，部分音频设备会让采集到的声音也静音。接收器没有声音时，请关闭这个开关。",
   "settingsSystemOutput": "系统声音",
-  "settingsSystemOutputDesc": "采集 Windows 默认输出设备的声音",
+  "settingsSystemOutputDesc": "采集系统默认输出设备的声音",
   "settingsAppCapture": "按应用采集",
   "settingsAppCaptureDesc": "只播放所选应用的声音",
   "settingsCaptureStatus": "采集状态",
@@ -452,5 +452,7 @@
   "flyoutLampCollapse": "收起配色",
   "receiverEmptyTitle": "暂无接收器",
   "versionLocalTag": "本地构建",
-  "settingsShowInPanel": "托盘面板中显示"
+  "settingsShowInPanel": "托盘面板中显示",
+  "settingsFlyoutPopover": "浮窗气泡样式",
+  "settingsFlyoutPopoverDesc": "以系统气泡样式显示托盘浮窗（自带圆角、箭头与动画）；关闭时使用圆角浮窗。"
 }

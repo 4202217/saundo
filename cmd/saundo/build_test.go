@@ -24,6 +24,50 @@ func TestBuildTargetProducesGUIBinary(t *testing.T) {
 	}
 }
 
+// TestBuildTargetProducesDarwinApp guards the macOS build branch: the .app
+// bundle is what TCC attributes the audio-capture permission to, so a build
+// that produced a bare binary would lose the capture prompt and the tray.
+func TestBuildTargetProducesDarwinApp(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "scripts", "build.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "-platform darwin/arm64") || !strings.Contains(text, "bin/saundo.app") {
+		t.Fatal("the build target must produce bin/saundo.app via mygo build -platform darwin/arm64")
+	}
+	if !strings.Contains(text, "build-adapter.sh") || !strings.Contains(text, "SAUNDO_MAC_SIGN_IDENTITY") {
+		t.Fatal("the darwin build must stage the adapter and take signing from SAUNDO_MAC_SIGN_IDENTITY")
+	}
+}
+
+// TestMyGoConfigHasNoPlatformBlindResources guards the Windows build on a
+// clean checkout. A resource outside a platform directory is required by
+// every platform's mygo build, but the MediaRemote adapter exists only after
+// a macOS build. A committed signing identity names one developer's
+// certificate and fails codesign on CI and other Macs.
+func TestMyGoConfigHasNoPlatformBlindResources(t *testing.T) {
+	data, err := os.ReadFile("mygo.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Resources []string `json:"resources"`
+		MacOS     struct {
+			SigningIdentity string `json:"signingIdentity"`
+		} `json:"macos"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Resources) != 0 {
+		t.Fatalf("mygo.json resources %v are required by every platform; ship them from cmd/saundo/resources/<goos>-<goarch>/ instead", cfg.Resources)
+	}
+	if cfg.MacOS.SigningIdentity != "" {
+		t.Fatalf("mygo.json commits signing identity %q; pass -sign or SAUNDO_MAC_SIGN_IDENTITY instead", cfg.MacOS.SigningIdentity)
+	}
+}
+
 // TestMyGoIconPathExists guards the embedded app icon. mygo resolves a
 // relative icon path against the directory of mygo.json, and this project
 // keeps resources/ at the repository root, not under cmd/saundo.

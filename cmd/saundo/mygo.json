@@ -8,6 +8,13 @@
   "windows": {
     "displayName": "Saundo"
   },
+  "macos": {
+    "minimumSystemVersion": "14.4",
+    "infoPlist": {
+      "CFBundleDisplayName": "Saundo",
+      "NSAudioCaptureUsageDescription": "saundo captures this Mac's system audio and streams it to AirPlay speakers."
+    }
+  },
   "i18n": {
     "dir": "locales",
     "source": "en"

@@ -4,7 +4,7 @@ Operating guide for coding agents working in this repository. Read this file bef
 
 ## Project
 
-saundo is a Windows-only AirPlay 2 audio sender written in pure Go. It captures Windows system audio and streams it to HomePod, HomePod mini, Apple TV, and macOS AirPlay receivers.
+saundo is an AirPlay 2 audio sender for Windows and macOS written in pure Go. It captures the system audio and streams it to HomePod, HomePod mini, Apple TV, and Mac receivers.
 
 Scope:
 
@@ -23,15 +23,17 @@ Scope:
 - `docs/ui-copy.md`: the copy standard — terminology, state wording, units, punctuation.
 - `docs/verification.md`: automated checks, live-test recipes, and the evidence log.
 - `README.md`: the project overview for readers.
+- `.claude/skills/multiplatform/SKILL.md`: the working checklist for a change that crosses a platform seam.
 
 If the architecture document conflicts with the reference implementation or real-device behavior, follow the C++ reference and the device, then update the document.
 
 ## Commands
 
-Make targets (run from Git Bash with `mingw32-make`; `make` is not on PATH):
+Make targets (Windows: Git Bash with `mingw32-make`; macOS: `make`, with cmake installed for the Now Playing adapter):
 
 ```bash
-mingw32-make check  # gofmt gate + go vet + mygo UI vet + go test — the milestone gate
+mingw32-make check  # gofmt gate + go vet + mygo UI vet + go test + cross-platform gate — the milestone gate
+mingw32-make platforms  # build + vet windows/amd64 and darwin/arm64 on either host, reject leaked platform imports
 mingw32-make test   # go test ./...
 mingw32-make race   # go test -race ./... (needs a C toolchain for the race detector)
 mingw32-make vet    # go vet ./...
@@ -67,8 +69,8 @@ Run `mingw32-make check` (or all four commands) before declaring a milestone com
   in the session SETUP, send SETPEERS, wait for the clock to be ready, and use
   the 28-byte PTP sync packet. Keep timing behind the sender's `PTPClock`
   interface.
-- Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI binding yourself.
-- Store credentials with DPAPI. Never log PINs, long-term keys, or session keys.
+- Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI and Core Audio bindings yourself. Now Playing on macOS reads through the vendored MediaRemote adapter (`native/mediaremote-adapter`), never from a third-party process directly.
+- Store credentials with the OS secret store: DPAPI on Windows, the login-Keychain master key with AES-256-GCM on macOS (`internal/darwin`). Never log PINs, long-term keys, or session keys.
 
 ## Code standards
 
@@ -96,7 +98,9 @@ Reporting:
 ## Testing and workflow
 
 - When real-device behavior differs, capture logs and packets first, then change code, and record the finding in `docs/verification.md` plus the matching profile in `docs/devices.md` or `docs/protocol.md` — in the same commit.
-- After every code change, run `mingw32-make build` (`./scripts/build.sh` when mingw32-make is absent) so the local binary matches the tree. It stops the running app, replaces `bin/saundo.exe`, and relaunches it.
+- After every code change, run the host build: `mingw32-make build` on Windows, `make build` on macOS (`./scripts/build.sh` when make is absent). It stops the running app, replaces the binary or app bundle, and relaunches it.
+- Run the cross-platform gate before committing: `make platforms` (or `go run ./scripts/check-platforms`). It builds and vets windows/amd64 and darwin/arm64 on either host and fails when an OS-specific import leaks into shared code. `make check` includes it.
+- macOS signing takes `SAUNDO_MAC_SIGN_IDENTITY` or `-sign`; no certificate is committed. CI and the release sign ad hoc until a Developer ID exists.
 - Ask the user only for genuine product decisions. Proceed on reversible engineering work.
 - Do not commit unless the user explicitly asks.
 - Keep all documentation in English.

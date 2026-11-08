@@ -44,3 +44,50 @@ jobs:
       - name: Build
         working-directory: cmd/saundo
         run: go tool mygo build -platform windows/amd64 -skip-installer
+
+  check-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Format
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Catalogs
+        run: go tool mygo i18n check cmd/saundo
+      - name: Vet
+        run: go vet ./...
+      - name: UI vet
+        run: go tool mygo vet .
+      - name: Tests
+        env:
+          # Headless runs cannot answer a keychain prompt; the creds tests
+          # then decide keys from this variable instead of the Keychain.
+          SAUNDO_CREDS_MASTER_KEY: "6b65797320617265206e6f7420736563726574732e2074657374206f6e6c792e"
+        run: go test -short ./...
+      - name: Verify map
+        run: bash scripts/check-verify-map.sh
+      - name: Adapter
+        run: bash scripts/build-adapter.sh
+      - name: Build
+        working-directory: cmd/saundo
+        run: go tool mygo build -platform darwin/arm64 -skip-build-command -sign -
+
+  platforms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Cross-platform gate
+        run: go run ./scripts/check-platforms
