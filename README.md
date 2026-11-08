@@ -4,11 +4,11 @@
 
 # saundo · 声渡
 
-### Stream all Windows audio to AirPlay 2 receivers — from the tray, in pure Go.
+### Stream all your Mac's or PC's audio to AirPlay 2 receivers — from the tray, in pure Go.
 
 **声渡 (Shēngdù) — "ferry the sound": 声, sound; 渡, to ferry across.**<br>
 **saundo** is サウンド, the Japanese katakana rendering of "sound".<br>
-HomePod, HomePod mini, Mac, and Apple TV: everything the PC plays, one tray click away.
+HomePod, HomePod mini, Mac, and Apple TV: everything the Mac or PC plays, one tray click away.
 
 [![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/saundo) 
 
@@ -28,15 +28,15 @@ HomePod, HomePod mini, Mac, and Apple TV: everything the PC plays, one tray clic
 
 ## Is saundo for you?
 
-saundo captures whatever Windows is playing — WASAPI loopback, no per-app setup — and streams it as uncompressed ALAC over AirPlay 2 to HomePod, HomePod mini, Mac receivers, and Apple TV. One tray icon, one binary, no WebView:
+saundo captures whatever the system is playing — WASAPI loopback on Windows, a Core Audio process tap on macOS — and streams it as uncompressed ALAC over AirPlay 2 to HomePod, HomePod mini, Mac receivers, and Apple TV. One tray icon, one binary, no WebView:
 
-- You play audio on Windows and want it on a HomePod or a Mac on the same network.
+- You play audio on your Mac or PC and want it on a HomePod on the same network.
 - You want **all** system audio — a browser, a game, a player — not one app's stream.
 - You prefer a native tray app over a web view.
 
 Not for you if you need video or screen mirroring (this is audio only), or if your receiver requires Apple FairPlay — some TVs do. saundo detects that class of receiver and fails fast instead of connecting silently.
 
-Runs on Windows 10 and 11; the interface ships in English and Simplified Chinese and follows the system language by default.
+Runs on Windows 10 and 11 and on macOS 14.4+ (Apple Silicon); the interface ships in English and Simplified Chinese and follows the system language by default. macOS builds ship unsigned as a dmg: the first launch goes through System Settings → Privacy & Security → Open Anyway — see [docs/platforms.md](docs/platforms.md).
 
 ## Quick start
 
@@ -51,9 +51,9 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 
 **2 · Connect**. The app lives in the tray: a left click opens the panel, a right click opens the menu. Pick a receiver and connect; one that requires a password asks once and remembers it.
 
-**3 · Play**. Play anything on the PC. The sound follows, and the volume slider drives the receiver's own volume.
+**3 · Play**. Play anything on the Mac or PC. The sound follows, and the volume slider drives the receiver's own volume.
 
-<sub>Windows Firewall prompts on first launch — allow it on private networks: discovery (mDNS) and PTP timing both need inbound UDP.</sub>
+<sub>Windows Firewall prompts on first launch — allow it on private networks: discovery (mDNS) and PTP timing both need inbound UDP. On macOS, allow the app under Privacy & Security → Local Network for the same reason.</sub>
 
 ## What it does
 
@@ -61,10 +61,10 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock (the sender is the PTP master for stereo pairs), encrypted control and event channels, retransmit on request.
 - **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
 - **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own DPAPI-stored password. A directed unicast pass finds receivers that miss multicast, and both surfaces list only the receivers you can use right now.
-- **Now Playing card** — the flyout shows the Windows media session with its cover, title, artist, the transport controls the session reports, and a live five-band meter; switch between open sessions. The Now Playing settings page controls the card, the cover mode, cover colors, and the audio level. The receiver track-info push is always on.
+- **Now Playing card** — the flyout shows the system media session with its cover, title, artist, the transport controls the session reports, and a live five-band meter; switch between open sessions. The Now Playing settings page controls the card, the cover mode, cover colors, and the audio level. The receiver track-info push is always on.
 - **Ambient light** — on by default. The power action on the flyout card turns a HomePod's top display off and on; a 封面/模板 priority segment follows the media cover (the default) or one of six custom three-color templates. The preview mirrors the cover's extracted three-color palette and uses a media-glyph tile when there is no cover; the receiver's own fresh session shows a white-center placeholder. A pause keeps the current light. Turning it off disables the priority and template controls until it is on again. Choose it in the Ambient light settings page or the flyout's ambient card.
-- **Mute the PC output** — a connection switch, on by default, mutes the local render endpoint while a session streams and restores it on disconnect, with a guard file that recovers the state after a crash.
-- **Appearance** — follow Windows, light, or dark.
+- **Mute the local output** — a connection switch, on by default, mutes the local output while a session streams and restores it on disconnect, with a guard file that recovers the state after a crash.
+- **Appearance** — follow the system, light, or dark.
 - **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the flyout or the audio page. A live change restarts the stream with a spinner.
 - **A tray that shows the state** — the smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
 - **Updates in the app** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The flyout chip and the tray tooltip point to it.

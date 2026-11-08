@@ -28,6 +28,9 @@ live state:
   coverage.
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
+- The macOS port: `-race` (needs a C toolchain), per-app capture (the
+  `Config.ProcessID` seam is ready), signed/notarized mac updates (the mac
+  updater is disabled), and the flyout style setting is macOS-only
   mid-pair, and software stereo groups built from independent receivers.
 - Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
   a measured left/right offset on a physical pair.
@@ -1405,3 +1408,51 @@ surviving conclusion, and the pin.
   21:01:07. `parseEntry` now derives the service from the instance suffix
   before trimming, so both directions resolve to the friendly name. Pinned
   by `TestParseEntryUsesTheAdvertisedService`.
+
+## 2026-11-08 — the macOS port
+
+darwin/arm64 ships from the same tree, `CGO_ENABLED=0`. Machine: a MacBook
+Air on macOS 27.3 (build 26C5035r); the operator streamed to a HomePod mini.
+The working notes live in the git-ignored `.audit/mac-port-feasibility.md`
+and `.audit/mac-experiments.md`; what survives here is the durable state.
+
+- **Build and gate.** `bash scripts/build.sh` produces a dev-signed
+  `bin/saundo.app` (14.4 MB) plus a dmg; the full gate (gofmt, catalog
+  check, `go vet`, `go tool mygo vet .`, `go test ./...`) is green — 21
+  packages, `internal/app` headless on darwin included.
+- **Live streaming.** Discovery, connect, and audio to the HomePod mini
+  verified by the operator with the darwin capture path (2026-11-07).
+- **Capture.** The Core Audio process tap aggregated with the default
+  output device feeds the ring: a probe read 337,408 frames of speech
+  (48 kHz stereo) over 8 s with zero errors, following the format the tap
+  reports. A tap-only aggregate refuses to start
+  (`kAudioHardwareIllegalOperationError`); the output device must be the
+  sub-device and clock master, with the tap in the aggregate's tap list.
+- **Now Playing.** MediaRemote returns empty data to third-party processes
+  on 27.3 — callbacks fire with media playing, payload empty (measured) —
+  so the session reads through the vendored adapter loaded inside
+  `/usr/bin/perl`, a platform binary MediaRemote still accepts. Title,
+  artist, album, position, duration, playing state, and artwork (110–196 KB
+  JPEG, base64 in the JSONL stream) all arrive; send 0/1/4/5 and seek
+  control the source app. One session only: no enumeration symbol exists
+  (13 candidates probed at runtime) — the system widget's multi-source list
+  rides mediaserverd's private XPC, so the card follows the current source
+  and the switcher hides. The perl loader rejects relative framework paths,
+  and takes the function and its parameter as separate argv entries.
+- **Session identity.** LaunchServices resolves the localized app name
+  ("Music"); `NSBundle localizedName` does not exist on this OS —
+  `NSFileManager displayNameAtPath:` is the working call. Icons render via
+  `NSWorkspace iconForFile:` and an ImageIO 128 px thumbnail to PNG.
+- **Credentials.** The Keychain master key + AES-256-GCM round-trips. A
+  rebuilt ad-hoc binary triggers one keychain ACL prompt per item; the
+  dev-signed build (stable identity via `mygo.json`
+  `macos.signingIdentity`) ends them. Parallel test binaries hit the same
+  ACL; headless runs set `SAUNDO_CREDS_MASTER_KEY` and the creds package
+  decides keys from the environment instead.
+- **Signing and distribution.** Ad-hoc builds are Gatekeeper-rejected when
+  quarantined; recovery is System Settings → Privacy & Security → Open
+  Anyway, once per build cdhash (measured; the right-click Open bypass is
+  gone since Sequoia). `spctl -a` keeps printing `rejected` after the user
+  allows it. Locally built copies carry build provenance and never see the
+  flow. Signing the nested adapter framework prompts for the certificate
+  key once, separately from the credentials key.

@@ -4,7 +4,7 @@ Operating guide for coding agents working in this repository. Read this file bef
 
 ## Project
 
-saundo is a Windows-only AirPlay 2 audio sender written in pure Go. It captures Windows system audio and streams it to HomePod, HomePod mini, Apple TV, and macOS AirPlay receivers.
+saundo is an AirPlay 2 audio sender for Windows and macOS written in pure Go. It captures the system audio and streams it to HomePod, HomePod mini, Apple TV, and Mac receivers.
 
 Scope:
 
@@ -28,7 +28,7 @@ If the architecture document conflicts with the reference implementation or real
 
 ## Commands
 
-Make targets (run from Git Bash with `mingw32-make`; `make` is not on PATH):
+Make targets (Windows: Git Bash with `mingw32-make`; macOS: `make`, with cmake installed for the Now Playing adapter):
 
 ```bash
 mingw32-make check  # gofmt gate + go vet + mygo UI vet + go test — the milestone gate
@@ -67,8 +67,8 @@ Run `mingw32-make check` (or all four commands) before declaring a milestone com
   in the session SETUP, send SETPEERS, wait for the clock to be ready, and use
   the 28-byte PTP sync packet. Keep timing behind the sender's `PTPClock`
   interface.
-- Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI binding yourself.
-- Store credentials with DPAPI. Never log PINs, long-term keys, or session keys.
+- Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI and Core Audio bindings yourself. Now Playing on macOS reads through the vendored MediaRemote adapter (`native/mediaremote-adapter`), never from a third-party process directly.
+- Store credentials with the OS secret store: DPAPI on Windows, the login-Keychain master key with AES-256-GCM on macOS (`internal/darwin`). Never log PINs, long-term keys, or session keys.
 
 ## Code standards
 
