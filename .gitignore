@@ -14,3 +14,9 @@ mygo-update.key
 # OS and editor files
 .DS_Store
 Thumbs.db
+
+# The macOS MediaRemote adapter, assembled by scripts/build.sh (see docs/platforms.md).
+cmd/saundo/build/adapter/
+
+# The vendored adapter's CMake build output.
+native/mediaremote-adapter/build/
