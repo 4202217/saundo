@@ -12,10 +12,12 @@ package nowplaying
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,11 +63,11 @@ type Track struct {
 	Album  string
 }
 
-// adapter holds one streaming adapter child and its latest payload.
+// adapter holds one streaming adapter child and its latest payload. mu
+// guards payload, cmd and exited; ensure and the reader both touch them.
 type adapter struct {
 	mu             sync.Mutex
 	payload        *streamPayload
-	updatedAt      time.Time
 	cmd            *exec.Cmd
 	exited         time.Time
 	functionalTest error
@@ -132,7 +134,9 @@ func (a *adapter) functional() error {
 			a.functionalTest = err
 			return
 		}
-		cmd := exec.Command("/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, "test")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, "test")
 		if err := cmd.Run(); err != nil {
 			a.functionalTest = fmt.Errorf("nowplaying: MediaRemote adapter is not functional here: %w", err)
 		}
@@ -142,6 +146,8 @@ func (a *adapter) functional() error {
 
 // ensure starts the stream child if none is running and a respawn is due.
 func (a *adapter) ensure() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if a.cmd != nil {
 		return
 	}
@@ -162,46 +168,50 @@ func (a *adapter) ensure() {
 		return
 	}
 	a.cmd = cmd
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		scanner.Buffer(make([]byte, 0, 4<<20), 32<<20) // artwork payloads get large
-		for scanner.Scan() {
-			p, err := parseStreamLine(scanner.Bytes())
-			if err != nil {
-				continue // a malformed line is dropped, the stream goes on
-			}
-			a.mu.Lock()
-			a.payload = p
-			a.updatedAt = time.Now()
-			a.mu.Unlock()
-		}
-		_ = cmd.Wait()
-		a.mu.Lock()
-		a.cmd = nil
-		a.exited = time.Now()
-		a.mu.Unlock()
-	}()
+	go a.read(cmd, stdout)
 }
 
-// parseStreamLine decodes one adapter stdout line into a payload. A nil
-// payload (with a nil error) means "no session right now"; the adapter
-// emits an empty payload object between sessions.
-func parseStreamLine(line []byte) (*streamPayload, error) {
+// read drains the child's stdout. A data line replaces the payload; a
+// non-data line leaves the current session alone. A malformed line is
+// dropped and the stream goes on.
+func (a *adapter) read(cmd *exec.Cmd, stdout io.ReadCloser) {
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 4<<20), 32<<20) // artwork payloads get large
+	for scanner.Scan() {
+		p, isData, err := parseStreamLine(scanner.Bytes())
+		if err != nil || !isData {
+			continue
+		}
+		a.mu.Lock()
+		a.payload = p
+		a.mu.Unlock()
+	}
+	_ = cmd.Wait()
+	a.mu.Lock()
+	a.cmd = nil
+	a.exited = time.Now()
+	a.mu.Unlock()
+}
+
+// parseStreamLine decodes one adapter stdout line. isData reports whether
+// the line carried session state at all; a data event with a nil payload
+// means "no session right now", which the adapter emits between sessions.
+func parseStreamLine(line []byte) (p *streamPayload, isData bool, err error) {
 	var ev streamEvent
 	if err := json.Unmarshal(line, &ev); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if ev.Type != "data" {
-		return nil, nil
+		return nil, false, nil
 	}
-	var p streamPayload
-	if err := json.Unmarshal(ev.Payload, &p); err != nil {
-		return nil, err
+	var payload streamPayload
+	if err := json.Unmarshal(ev.Payload, &payload); err != nil {
+		return nil, true, err
 	}
-	if p.Title == "" && !p.Playing && p.Duration == 0 {
-		return nil, nil // an empty payload is "no session"
+	if payload.Title == "" && !payload.Playing && payload.Duration == 0 {
+		return nil, true, nil // an empty payload is "no session"
 	}
-	return &p, nil
+	return &payload, true, nil
 }
 
 // latest returns the newest payload, or nil when nothing is playing.
@@ -315,8 +325,10 @@ func Control(aumid string, action Action, position time.Duration) error {
 		return fmt.Errorf("nowplaying: unsupported action %d", int(action))
 	}
 	// The adapter takes the function and its parameter as separate argv
-	// entries.
-	cmd := exec.Command("/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, fn, param)
+	// entries. A hung MediaRemote call must not hang the UI.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, fn, param)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("nowplaying: adapter %s %s failed: %v: %s", fn, param, err, out)
 	}

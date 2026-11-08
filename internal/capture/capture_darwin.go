@@ -166,6 +166,9 @@ func openStream(s *Source) (strm *stream, err error) {
 	if terr != nil {
 		return nil, terr
 	}
+	// The description is an owned Objective-C object; the tap copies what it
+	// needs during the create call.
+	defer darwin.Send(tapDesc, "release")
 	if strm.tapID, err = darwin.CreateProcessTap(tapDesc); err != nil {
 		return nil, err
 	}
@@ -236,12 +239,17 @@ func (st *stream) pump(s *Source, follow bool) error {
 			return errStopped
 		default:
 		}
-		if follow && !time.Now().Before(nextCheck) {
+		if !time.Now().Before(nextCheck) {
 			nextCheck = time.Now().Add(openCheckEvery)
-			if _, uid, _, err := darwin.DefaultOutputDevice(); err == nil {
-				if dev, derr := darwin.DeviceForUID(uid); derr == nil && dev != st.outputID {
+			if follow {
+				if id, _, _, err := darwin.DefaultOutputDevice(); err == nil && id != st.outputID {
 					return errDefaultDeviceChanged
 				}
+			}
+			// A stopped aggregate means the device went away. A silent one
+			// keeps running, so quiet audio does not trigger this.
+			if running, err := darwin.DeviceRunningSomewhere(st.aggID); err == nil && !running {
+				return errors.New("capture: the aggregate device stopped")
 			}
 		}
 	}
@@ -294,6 +302,7 @@ func newGlobalTapDescription() (desc darwin.ID, err error) {
 			return
 		}
 		darwin.Send(desc, "setUUID:", uintptr(uuid))
+		darwin.Send(uuid, "release") // the description retains its copy
 	})
 	return desc, err
 }

@@ -45,13 +45,29 @@ func (l *AudioBufferList) Buffer(i int) AudioBuffer {
 	return *(*AudioBuffer)(unsafe.Add(unsafe.Pointer(l), 8+i*audioBufferStride))
 }
 
-// AudioTimeStamp mirrors the C struct.
+// SMPTETime mirrors the C struct.
+type SMPTETime struct {
+	Subframes       int16
+	SubframeDivisor int16
+	Counter         uint32
+	Type            uint32
+	Flags           uint32
+	Hours           int16
+	Minutes         int16
+	Seconds         int16
+	Frames          int16
+}
+
+// AudioTimeStamp mirrors the C struct. The IOProc signature carries pointers
+// to it, so the layout matters even though this tree reads no field yet.
 type AudioTimeStamp struct {
-	SampleTime float64
-	HostTime   uint64
-	Flags      uint32
-	_          uint32
-	Reserved   [4]uint64
+	SampleTime    float64
+	HostTime      uint64
+	RateScalar    float64
+	WordClockTime uint64
+	SMPTETime     SMPTETime
+	Flags         uint32
+	Reserved      uint32
 }
 
 // AudioStreamBasicDescription mirrors the C struct.
@@ -64,6 +80,7 @@ type AudioStreamBasicDescription struct {
 	BytesPerFrame    uint32
 	ChannelsPerFrame uint32
 	BitsPerChannel   uint32
+	Reserved         uint32
 }
 
 // PCM format flags of an AudioStreamBasicDescription.
@@ -296,6 +313,9 @@ func OutputDevices() ([]DeviceInfo, error) {
 		return nil, err
 	}
 	ids := make([]uint32, int(size)/4)
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	if err := GetProperty(AudioObjectSystemObject, addr, unsafe.Pointer(&ids[0]), &size); err != nil {
 		return nil, err
 	}
@@ -320,13 +340,19 @@ func DeviceForUID(uid string) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	str := NSString(uid)
-	qual := unsafe.Pointer(&str)
-	addr := PropertyAddress(PropTranslateUIDToDevice, ScopeGlobal)
 	var dev uint32
-	size := uint32(4)
-	if st := k.getProp(AudioObjectSystemObject, &addr, uint32(unsafe.Sizeof(str)), qual, &size, unsafe.Pointer(&dev)); st != 0 {
-		return 0, StatusError("AudioObjectGetPropertyData(TranslateUIDToDevice)", st)
+	var getErr error
+	WithPool(func() {
+		str := NSString(uid)
+		qual := unsafe.Pointer(&str)
+		addr := PropertyAddress(PropTranslateUIDToDevice, ScopeGlobal)
+		size := uint32(4)
+		if st := k.getProp(AudioObjectSystemObject, &addr, uint32(unsafe.Sizeof(str)), qual, &size, unsafe.Pointer(&dev)); st != 0 {
+			getErr = StatusError("AudioObjectGetPropertyData(TranslateUIDToDevice)", st)
+		}
+	})
+	if getErr != nil {
+		return 0, getErr
 	}
 	if dev == 0 {
 		return 0, fmt.Errorf("coreaudio: no device for UID %q", uid)

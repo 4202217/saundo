@@ -37,13 +37,13 @@ func fixtureLines(t *testing.T) [][]byte {
 func TestParseStreamLineMapsTheSession(t *testing.T) {
 	lines := fixtureLines(t)
 
-	if p, err := parseStreamLine(lines[0]); err != nil || p != nil {
-		t.Fatalf("empty payload = %v, %v; want nil, nil", p, err)
+	if p, isData, err := parseStreamLine(lines[0]); err != nil || !isData || p != nil {
+		t.Fatalf("empty payload = %v, %v, %v; want nil, true, nil", p, isData, err)
 	}
 
-	p, err := parseStreamLine(lines[1])
-	if err != nil || p == nil {
-		t.Fatalf("session payload = %v, %v; want a payload", p, err)
+	p, isData, err := parseStreamLine(lines[1])
+	if err != nil || !isData || p == nil {
+		t.Fatalf("session payload = %v, %v, %v; want a data payload", p, isData, err)
 	}
 	if p.Title != "Janice STFU" || p.Artist != "Drake" || p.Album != "ICEMAN" {
 		t.Fatalf("metadata = %q %q %q", p.Title, p.Artist, p.Album)
@@ -71,12 +71,21 @@ func TestParseStreamLineMapsTheSession(t *testing.T) {
 	}
 
 	// A paused payload keeps the session and flips the status.
-	p2, err := parseStreamLine(lines[2])
-	if err != nil || p2 == nil {
-		t.Fatalf("paused payload = %v, %v; want a payload", p2, err)
+	p2, isData, err := parseStreamLine(lines[2])
+	if err != nil || !isData || p2 == nil {
+		t.Fatalf("paused payload = %v, %v, %v; want a data payload", p2, isData, err)
 	}
 	s2 := sessionFromPayload(p2)
 	if s2.Status != StatusPaused || s2.Playing {
 		t.Fatalf("paused session = %v playing=%v", s2.Status, s2.Playing)
+	}
+}
+
+// TestParseStreamLineIgnoresNonDataEvents keeps a status or error line from
+// clearing the current session.
+func TestParseStreamLineIgnoresNonDataEvents(t *testing.T) {
+	p, isData, err := parseStreamLine([]byte(`{"type":"error","payload":{}}`))
+	if err != nil || isData || p != nil {
+		t.Fatalf("non-data = %v, %v, %v; want nil, false, nil", p, isData, err)
 	}
 }
