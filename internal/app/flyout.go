@@ -234,17 +234,49 @@ func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
 	})
 }
 
-func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, active bool) {
+// rowActionKind is the control a receiver row offers. It is a pure function
+// of the session phase, the row's active flag, and reachability, so the
+// flyout and its test agree on when a row can start a connection.
+type rowActionKind uint8
+
+const (
+	actionConnect rowActionKind = iota
+	actionConnectDisabled
+	actionCancel
+	actionRetry
+	actionDisconnect
+	actionOffline
+)
+
+func actionFor(ph phase, active, online bool) rowActionKind {
 	switch {
 	case active && ph == phaseConnecting:
-		textButton(c, p, locales.ActionCancel(), nil, p.ctl, func() { a.disconnect() })
+		return actionCancel
 	case active && ph == phaseError:
-		textButton(c, p, locales.ActionRetry(), iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
+		return actionRetry
 	case active:
+		return actionDisconnect
+	case !online:
+		return actionOffline
+	case ph == phaseConnecting || ph == phaseStreaming:
+		// One session at a time. A failed session leaves the engine idle, so
+		// only the error phase keeps the other rows connectable.
+		return actionConnectDisabled
+	}
+	return actionConnect
+}
+
+func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, active bool) {
+	switch actionFor(ph, active, d.Online) {
+	case actionCancel:
+		textButton(c, p, locales.ActionCancel(), nil, p.ctl, func() { a.disconnect() })
+	case actionRetry:
+		textButton(c, p, locales.ActionRetry(), iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
+	case actionDisconnect:
 		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.disconnect() })
-	case !d.Online:
+	case actionOffline:
 		textButton(c, p, locales.ActionOffline(), iconSlash, p.muted, nil)
-	case ph != phaseIdle:
+	case actionConnectDisabled:
 		textButton(c, p, locales.ActionConnect(), iconLink, p.faint, nil)
 	default:
 		textButton(c, p, locales.ActionConnect(), iconLink, p.accent, func() { a.connectDevice(d.ID) })
