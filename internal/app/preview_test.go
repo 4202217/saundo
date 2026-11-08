@@ -410,6 +410,33 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-audio-compact-dark", customSettings.settingsView, 720, 420, true)
 	saveScrolled("settings-audio-compact-scrolled-light", customSettings.settingsView, 720, 420, false, 80)
 	saveScrolled("settings-audio-compact-scrolled-dark", customSettings.settingsView, 720, 420, true, 80)
+	// The minimum window keeps the three presets as rows, so the names and
+	// descriptions stay inside their cards.
+	narrowAudio := fixture()
+	narrowAudio.page = pageAudio
+	save("settings-audio-640-light", narrowAudio.settingsView, 640, 500, false)
+	save("settings-audio-640-dark", narrowAudio.settingsView, 640, 500, true)
+
+	// The three feature pages at a wide window: the content column stops at
+	// 720 DIP and centers instead of stretching the cards.
+	wideAudio := fixture()
+	wideAudio.page = pageAudio
+	save("settings-audio-1440-light", wideAudio.settingsView, 1440, 900, false)
+	wideLamp := fixture()
+	wideLamp.page = pageLamp
+	wideLamp.lampPreset = "moon"
+	save("settings-lamp-1440-light", wideLamp.settingsView, 1440, 900, false)
+	wideNow := fixture()
+	wideNow.page = pageNowPlaying
+	wideNow.nowSnap = sampleSnapshot(locale)
+	wideNow.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	save("settings-nowplaying-1440-light", wideNow.settingsView, 1440, 900, false)
+	// A long capture device name: the status gets its own line under the
+	// title instead of squeezing it into an ellipsis.
+	longCapture := fixture()
+	longCapture.page = pageCapture
+	longCapture.snap.CaptureName = "Mi Monitor (NVIDIA High Definition Audio)"
+	save("settings-capture-long-light", longCapture.settingsView, 720, 500, false)
 
 	lampOff := fixture()
 	lampOff.page = pageLamp

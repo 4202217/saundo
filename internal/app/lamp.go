@@ -23,6 +23,9 @@ const (
 	lampSwatchGapY    = 8
 	lampGridPadding   = 22
 	lampRowsVisible   = 4
+	// lampTileWidth keeps the settings page's six template swatches the same
+	// size at every window width; a narrow page wraps the strip instead.
+	lampTileWidth = 68
 )
 
 // lampPresetName is the localized name of a preset ID.
@@ -324,35 +327,46 @@ func drawLamp(pt *ui.Painter, r ui.Rect, preset lamp.Preset, radius float32) {
 func (a *App) lampPage(c *ui.Context, p palette) {
 	on := !a.lampOff
 	pageCard(c, p, func() {
-		ui.Column(c).Padding(0, 14, 12, 14).Children(func() {
-			cardHead(c, p, iconLamp, locales.SettingsLampCardTitle(), 13, 0, func() {
-				chip(c, p, locales.SettingsLampHomePodOnly(), chipNeutral)
-				a.lampPowerButton(c, p)
-			})
+		cardHead(c, p, iconLamp, locales.SettingsLampCardTitle(), 13, 14, func() {
+			chip(c, p, locales.SettingsLampHomePodOnly(), chipNeutral)
+			a.lampPowerButton(c, p)
+		})
 
-			ui.Row(c).Gap(14).Margin(12, 0, 0, 0).AlignItems(ui.Center).Children(func() {
-				preview := a.lampPreview(c, p, 16).Size(72, 72).Shrink(0)
+		ui.Row(c).Gap(14).Margin(12, 0, 0, 0).Padding(0, 14, 12, 14).
+			AlignItems(ui.Center).Children(func() {
+			preview := a.lampPreview(c, p, 16).Size(72, 72).Shrink(0)
+			if !on {
+				preview.Opacity(0.35)
+			}
+			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+				name := ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(550)
 				if !on {
-					preview.Opacity(0.35)
+					name.TextColor(p.faint)
 				}
-				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					name := ui.Text(c, a.lampModeName()).FontSize(13).FontWeight(550)
-					if !on {
-						name.TextColor(p.faint)
-					}
-					a.lampStatusChip(c, p)
-				})
-				ui.Spacer(c)
-				a.lampPrioritySegment(c, p, false)
+				a.lampStatusChip(c, p)
 			})
+		})
 
-			label := ui.Text(c, locales.SettingsLampTemplates()).FontSize(10.5).FontWeight(600).
-				LetterSpacing(0.55).TextColor(p.muted).Margin(12, 0, 0, 0)
+		rowLine(c, p)
+		titleColor := p.fg
+		if !on {
+			titleColor = p.faint
+		}
+		settingRowColors(c, p, locales.LampPriority(), locales.LampPriorityDesc(), titleColor, p.muted, func() {
+			a.lampPrioritySegment(c, p, false)
+		})
+		rowLine(c, p)
+
+		ui.Column(c).Padding(12, 14, 12, 14).Children(func() {
+			label := ui.Text(c, locales.SettingsLampTemplates()).FontSize(13).FontWeight(500)
 			if !on {
 				label.TextColor(p.faint)
 			}
+			ui.Text(c, locales.SettingsLampTemplatesDesc()).FontSize(11.5).TextColor(p.muted).Margin(2, 0, 0, 0)
 
-			strip := ui.Row(c).Gap(8).Margin(8, 0, 0, 0)
+			// The six swatches keep one size whatever the window does; a
+			// narrow one wraps the strip instead of shrinking the swatches.
+			strip := ui.Row(c).Wrap().Gap(8).Margin(8, 0, 0, 0)
 			if !on {
 				strip.Opacity(0.35)
 			}
@@ -361,12 +375,6 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 					a.lampTile(c, p, preset.ID)
 				}
 			})
-
-			hint := locales.SettingsLampHintOn()
-			if !on {
-				hint = locales.SettingsLampHintOff()
-			}
-			ui.Text(c, hint).FontSize(11.5).TextColor(p.muted).Margin(10, 0, 0, 0)
 		})
 	})
 	ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
@@ -382,7 +390,7 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 		seg = 1
 	}
 	width := float32(176)
-	coverLabel, templateLabel := locales.LampPriorityCover(), locales.LampPriorityTemplate()
+	coverLabel, templateLabel := locales.LampSourceCover(), locales.LampSourceTemplate()
 	if compact {
 		width = 92
 		coverLabel, templateLabel = locales.LampPriorityCoverShort(), locales.LampPriorityTemplateShort()
@@ -396,7 +404,7 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 func (a *App) lampTile(c *ui.Context, p palette, id string) {
 	selected := id == a.lampPreset
 	name := lampPresetName(id)
-	tile := ui.ButtonBase(c).Grow(1).Column().Height(64).Padding(5).Radius(9).
+	tile := ui.ButtonBase(c).Width(lampTileWidth).Shrink(0).Column().Height(64).Padding(5).Radius(9).
 		Gap(5).AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
 		Disabled(a.lampOff).Label(name).Border(1, p.line).Background(p.card)
 	if selected {

@@ -1,8 +1,10 @@
 # Settings window
 
-A separate `mygo.NewWindow` (`settings_window.go:82-108`): 720 DIP wide
-(min 640×420), hidden title bar, created hidden at startup before the
-engine starts. Title is localized: `设置 · 声渡` under zh-CN,
+A separate `mygo.NewWindow` (`settings_window.go:94`): a 720×500 page
+area (the window frame adds a few DIPs; min 640×420), hidden title bar,
+created hidden at startup before the engine starts. The title, cards, and
+notes share one content column capped at 720 DIP and centered on a wider
+window; the scroll gutter stays at the window edge. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · saundo` under en — match windows by class `MyGoWindow` + pid,
 or `-TitleLike` the active locale's brand string, never a hardcoded title.
 Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
@@ -32,23 +34,29 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 托盘面板中显示
   header switch that shows or hides the flyout's latency segment row, and
-  read-only format/sync rows.
+  read-only format/sync rows. Below 714 DIP the three presets stack as
+  full-width rows in the custom tile's shape; at every width they take the
+  height their wrapped description needs, so no text leaves its card.
 - 氛围灯 page: the top-display card with the HomePod 专属 tag and the power
-  action, a 72-DIP preview of the current preset with its localized name, the
-  封面优先/模板优先 segment, six template tiles (暖烬, 沙丘, 苔庭, 潮汐, 兰夜,
-  月白), the on/off hint, and the Sound Glow reminder. Off dims the preview to
+  action, a 72-DIP preview of the current preset with its localized name, a
+  颜色来源 row (封面 / 模板) whose segment sits at its right, a 模板 block
+  whose six fixed 68-DIP tiles (暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白) wrap on a
+  narrow page, its 六组预设灯光颜色 description, and the Sound Glow reminder. Off dims the preview to
   35% and disables the grid. The page and the flyout's ambient card read the
   same global choice; see [ambient-light.md](ambient-light.md).
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and per-app
-  capture (application list built from window titles + audio sessions).
+  capture (application list built from window titles + audio sessions). Both
+  pickers are 220 DIP wide, for device and app names. The status keeps the
+  row's right-hand column, capped at 55% and ellipsized so a long device name
+  cannot squeeze the title; the full name is in its tooltip.
 - 正在播放 page: one card. The header is the 媒体卡片 title with the
   托盘面板中显示 chip and the display switch (`showNowPlayingPanel`, on);
   below it a preview of the real media card (the live session, or a sample
   card when nothing plays); a live session's meter animates at 30 fps, and the
-  sample's stays still. Then come the rows 封面 (a three-way latency-style
-  segmented control: 无封面 / 默认封面 / 媒体封面, default media; persists
-  as `coverMode`), 播放控制 (`playbackControls`), 封面配色 (`coverColors`),
-  and 音频电平 (`audioLevel`). The receiver track info is always pushed; there
+  sample's stays still. Then a 封面 row whose three-way segmented control
+  sits at its right (无 / 默认 / 媒体, default media; persists as
+  `coverMode`), then 播放控制 (`playbackControls`), 封面配色
+  (`coverColors`), and 音频电平 (`audioLevel`). The receiver track info is always pushed; there
   is no row and no setting. The display switch only hides the flyout card; the
   preview and every row stay active. New
   `settings.json` keys default on; missing keys read their defaults; changes

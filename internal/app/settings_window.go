@@ -93,13 +93,17 @@ func (a *App) hideSettings() {
 // reveals it. Closing it hides it, and the app keeps running in the tray.
 func (a *App) newSettingsWindow() *mygo.Window {
 	w := mygo.NewWindow(mygo.WindowOptions{
-		Title:     locales.SettingsWindowTitle(),
-		Width:     720,
-		Height:    500,
-		MinWidth:  640,
-		MinHeight: 420,
-		Hidden:    true,
-		StateKey:  "settings",
+		Title: locales.SettingsWindowTitle(),
+		// The design's 720×500 is the page area the view lays out in; the
+		// window frame adds a few DIPs around it. The layout's narrow branch
+		// reads that area, not the window, so the two must agree.
+		Width:          720,
+		Height:         500,
+		UseContentSize: true,
+		MinWidth:       640,
+		MinHeight:      420,
+		Hidden:         true,
+		StateKey:       "settings",
 		// Fills the window before the first frame paints, so a dark window
 		// does not flash white as it opens.
 		BackgroundColor: "light-dark(#f4f4f6, #1a1a1e)",
@@ -199,24 +203,35 @@ func (a *App) sidebarItem(c *ui.Context, p palette, page settingsPage, icon *ui.
 	})
 }
 
+// settingsColumnWidth caps the settings page's content column: on a wide
+// window the title, cards, and notes stop at 720 DIP and center, so rows keep
+// their rhythm instead of stretching. The default 720 window's column is 489,
+// so the cap engages only above it.
+const settingsColumnWidth = 720
+
 func (a *App) settingsBody(c *ui.Context, p palette) {
 	title, desc := pageCopy(a.page)
 	// The body runs to the window edge so the overlay scrollbar sits there;
 	// the header and cards keep their 20 DIP right margin, giving the bar a
-	// gutter it cannot draw over.
+	// gutter it cannot draw over. Both the header and the scrolling content
+	// are capped to the same column and centered, so a wide window grows the
+	// margins instead of stretching every row.
 	body := ui.Column(c).Grow(1).FillHeight().Padding(14, 0, 10, 20)
 	enterPose(c, body, &a.settingsEntered)
 	body.Children(func() {
 		ui.Column(c).Padding(0, 20, 0, 0).Children(func() {
-			ui.Text(c, title).FontSize(18).FontWeight(650)
-			ui.Text(c, desc).FontSize(13).TextColor(p.muted).Margin(4, 0, 0, 0)
-			ui.Box(c).Height(1).Background(p.line).Margin(10, 0, 0, 0)
+			ui.Column(c).WidthPercent(100).MaxWidth(settingsColumnWidth).Margin(0, ui.Auto).Children(func() {
+				ui.Text(c, title).FontSize(18).FontWeight(650)
+				ui.Text(c, desc).FontSize(13).TextColor(p.muted).Margin(4, 0, 0, 0)
+				ui.Box(c).Height(1).Background(p.line).Margin(10, 0, 0, 0)
+			})
 		})
 		// The page body scrolls under the fixed title and divider so a short
 		// window (the 420 DIP minimum) reaches the whole latency card and the
 		// read-only rows.
 		ui.Scroll(c).Grow(1).Padding(4, 20, 0, 0).Children(func() {
-			content := ui.Column(c).Key(a.page).Shrink(0).Transition(ui.ElementTransition{
+			content := ui.Column(c).Key(a.page).Shrink(0).WidthPercent(100).
+				MaxWidth(settingsColumnWidth).Margin(0, ui.Auto).Transition(ui.ElementTransition{
 				Duration: 160 * time.Millisecond,
 				Enter:    &ui.Motion{X: -6, Opacity: 0},
 				Exit:     &ui.Motion{X: 6, Opacity: 0},
@@ -338,20 +353,17 @@ func (a *App) nowPlayingPage(c *ui.Context, p palette) {
 }
 
 // nowPlayingCoverRow is the three-way cover control: none, the default
-// placeholder, or the media's own artwork.
+// placeholder, or the media's own artwork. The options read 无 / 默认 / 媒体
+// under the 封面 title, so the whole choice fits the row's right-hand column.
 func (a *App) nowPlayingCoverRow(c *ui.Context, p palette) {
-	ui.Column(c).Padding(10, 14).Gap(8).Children(func() {
-		ui.Column(c).Gap(2).Children(func() {
-			ui.Text(c, locales.SettingsCover()).FontSize(13).FontWeight(500).TextColor(p.fg).SingleLine()
-			ui.Text(c, locales.SettingsCoverDesc()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-		})
+	settingRow(c, p, locales.SettingsCover(), locales.SettingsCoverDesc(), func() {
 		seg := a.coverModeIndex()
 		items := []segmentItem{
 			{locales.SettingsCoverNone(), iconSlash},
 			{locales.SettingsCoverPlaceholder(), iconNote},
 			{locales.SettingsCoverMedia(), iconImage},
 		}
-		if segmented(c, p, &seg, items, 0, false, locales.SettingsCover()).Changed() {
+		if segmented(c, p, &seg, items, 200, false, locales.SettingsCover()).Changed() {
 			a.cfg.CoverMode = coverModeAt(seg)
 			a.persistNowPlaying()
 		}
@@ -655,18 +667,19 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 			})
 		})
 
+		width, _ := c.Size()
 		ui.RadioGroup(c, func() {
-			ui.Row(c).Padding(0, 14).Gap(8).Children(func() {
-				a.latencyModeTile(c, p, &mode, settings.LatencyLow, iconLatencyLow,
-					locales.SettingsLatencyLow(), settings.LatencyText(settings.LatencyLowMS),
-					locales.SettingsLatencyLowDesc())
-				a.latencyModeTile(c, p, &mode, settings.LatencyStandard, iconLatencyStandard,
-					locales.SettingsLatencyStandard(), settings.LatencyText(settings.LatencyStandardMS),
-					locales.SettingsLatencyStandardDesc())
-				a.latencyModeTile(c, p, &mode, settings.LatencyStable, iconLatencyStable,
-					locales.SettingsLatencyStable(), settings.LatencyText(settings.LatencyStableMS),
-					locales.SettingsLatencyStableDesc())
-			})
+			if width > 0 && width < latencyStackWidth {
+				for _, preset := range latencyPresets() {
+					a.latencyStackRow(c, p, &mode, preset)
+				}
+			} else {
+				ui.Row(c).Padding(0, 14).Gap(8).Children(func() {
+					for _, preset := range latencyPresets() {
+						a.latencyModeTile(c, p, &mode, preset)
+					}
+				})
+			}
 			a.latencyCustomTile(c, p, &mode)
 		}).Label(locales.SettingsLatency())
 	})
@@ -689,15 +702,72 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 	})
 }
 
-// latencyModeTile is one of the three preset cards. The whole card is a radio
-// so the group keeps keyboard and assistive access.
-func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMode,
-	value settings.LatencyMode, icon *ui.SVG, name, latency, desc string) {
+// latencyStackWidth is the narrowest window whose three preset cards fit one
+// row: at the 720 default each card is 148 wide and its name box 72, exactly
+// the width of "Low latency". A narrower settings window stacks the presets as
+// full-width rows, so no name or description is cut.
+const latencyStackWidth = 714
+
+// latencyPreset is one of the three named latency choices.
+type latencyPreset struct {
+	value               settings.LatencyMode
+	icon                *ui.SVG
+	name, latency, desc string
+}
+
+func latencyPresets() []latencyPreset {
+	return []latencyPreset{
+		{settings.LatencyLow, iconLatencyLow,
+			locales.SettingsLatencyLow(), settings.LatencyText(settings.LatencyLowMS),
+			locales.SettingsLatencyLowDesc()},
+		{settings.LatencyStandard, iconLatencyStandard,
+			locales.SettingsLatencyStandard(), settings.LatencyText(settings.LatencyStandardMS),
+			locales.SettingsLatencyStandardDesc()},
+		{settings.LatencyStable, iconLatencyStable,
+			locales.SettingsLatencyStable(), settings.LatencyText(settings.LatencyStableMS),
+			locales.SettingsLatencyStableDesc()},
+	}
+}
+
+// latencyChoiceRow is one full-width latency choice: the leading icon, the
+// name and description, the latency value, and the check ring. The custom
+// tile builds its header with it, and a narrow window builds each preset with
+// it. The description wraps instead of clipping, so the row grows with it.
+func latencyChoiceRow(c *ui.Context, p palette, mode *settings.LatencyMode,
+	value settings.LatencyMode, icon *ui.SVG, name, latency, desc string) ui.Element {
 	selected := *mode == value
-	tile := ui.RadioBase(c, mode, value).
-		Grow(1).Height(99).Padding(10).Radius(10).Gap(0).
+	row := ui.RadioBase(c, mode, value).
+		MinHeight(52).Padding(10, 12).Gap(10).AlignItems(ui.Center).Justify(ui.Start).
+		Cursor(ui.CursorPointer).Label(name + " · " + latency)
+	row.Children(func() {
+		ui.Box(c).Size(28, 28).Radius(8).Shrink(0).Center().Background(p.card).Children(func() {
+			iv := ui.Icon(c, icon).Size(16, 16).TextColor(p.muted)
+			if selected {
+				iv.TextColor(p.accent)
+			}
+		})
+		ui.Column(c).Grow(1).Gap(1).Children(func() {
+			ui.Text(c, name).FontSize(13).FontWeight(500).SingleLine()
+			ui.Text(c, desc).FontSize(11.5).TextColor(p.muted)
+		})
+		val := ui.Text(c, latency).FontSize(12.5).TextColor(p.muted)
+		if selected {
+			val.TextColor(p.accent).FontWeight(500)
+		}
+		checkDot(c, p, selected)
+	})
+	return row
+}
+
+// latencyModeTile is one of the three preset cards. The whole card is a radio
+// so the group keeps keyboard and assistive access. Its height follows its
+// content, so a wrapped description grows the card instead of leaving it.
+func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMode, preset latencyPreset) {
+	selected := *mode == preset.value
+	tile := ui.RadioBase(c, mode, preset.value).
+		Grow(1).MinHeight(99).Padding(10).Radius(10).Gap(0).
 		AlignItems(ui.Start).Justify(ui.Start).Cursor(ui.CursorPointer).
-		Label(name+" · "+latency).Border(1, p.line).Background(p.pill)
+		Label(preset.name+" · "+preset.latency).Border(1, p.line).Background(p.pill)
 	if selected {
 		tile.Background(p.accentSoft).BorderColor(p.accent)
 	}
@@ -705,23 +775,38 @@ func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMo
 		ui.Column(c).Grow(1).Gap(0).Children(func() {
 			ui.Row(c).Gap(6).Children(func() {
 				ui.Box(c).Size(28, 28).Radius(8).Shrink(0).Center().Background(p.card).Children(func() {
-					iv := ui.Icon(c, icon).Size(16, 16).TextColor(p.muted)
+					iv := ui.Icon(c, preset.icon).Size(16, 16).TextColor(p.muted)
 					if selected {
 						iv.TextColor(p.accent)
 					}
 				})
-				ui.Text(c, name).FontSize(12.5).FontWeight(500).Grow(1).SingleLine()
+				ui.Text(c, preset.name).FontSize(12.5).FontWeight(500).Grow(1).SingleLine()
 				checkDot(c, p, selected)
 			})
-			valueText := ui.Text(c, latency).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 2, 0)
+			valueText := ui.Text(c, preset.latency).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 2, 0)
 			if selected {
 				valueText.TextColor(p.accent).FontWeight(500)
 			}
-			ui.Text(c, desc).FontSize(11.5).TextColor(p.muted)
+			ui.Text(c, preset.desc).FontSize(11.5).TextColor(p.muted)
 		})
 	})
 	if tile.Changed() {
-		a.setLatencyMode(*mode)
+		a.setLatencyMode(preset.value)
+	}
+}
+
+// latencyStackRow is a preset as a full-width row, the custom tile's shape,
+// for a window too narrow for three cards.
+func (a *App) latencyStackRow(c *ui.Context, p palette, mode *settings.LatencyMode, preset latencyPreset) {
+	selected := *mode == preset.value
+	row := latencyChoiceRow(c, p, mode, preset.value, preset.icon,
+		preset.name, preset.latency, preset.desc).
+		Margin(0, 14, 0, 14).Radius(10).Border(1, p.line).Background(p.pill)
+	if selected {
+		row.Background(p.accentSoft).BorderColor(p.accent)
+	}
+	if row.Changed() {
+		a.setLatencyMode(preset.value)
 	}
 }
 
@@ -729,6 +814,7 @@ func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMo
 // while custom is the selected mode.
 func (a *App) latencyCustomTile(c *ui.Context, p palette, mode *settings.LatencyMode) {
 	selected := *mode == settings.LatencyCustom
+	latency := settings.LatencyText(int(a.latencyCustom + 0.5))
 	// The radio group already spaces its children by 8 DIP; a top margin here
 	// would double that gap above the custom tile.
 	outer := ui.Column(c).Margin(0, 14, 8, 14).Radius(10).Clip().
@@ -737,28 +823,8 @@ func (a *App) latencyCustomTile(c *ui.Context, p palette, mode *settings.Latency
 		outer.Background(p.accentSoft).BorderColor(p.accent)
 	}
 	outer.Children(func() {
-		top := ui.RadioBase(c, mode, settings.LatencyCustom).
-			Height(52).Padding(10, 12).Gap(10).AlignItems(ui.Center).Justify(ui.Start).
-			Cursor(ui.CursorPointer).
-			Label(locales.SettingsLatencyCustom() + " · " + settings.LatencyText(int(a.latencyCustom+0.5)))
-		top.Children(func() {
-			ui.Box(c).Size(28, 28).Radius(8).Shrink(0).Center().Background(p.card).Children(func() {
-				iv := ui.Icon(c, iconSliders).Size(16, 16).TextColor(p.muted)
-				if selected {
-					iv.TextColor(p.accent)
-				}
-			})
-			ui.Column(c).Grow(1).Gap(1).Children(func() {
-				ui.Text(c, locales.SettingsLatencyCustom()).FontSize(13).FontWeight(500).SingleLine()
-				ui.Text(c, locales.SettingsLatencyCustomDesc()).FontSize(11.5).TextColor(p.muted).
-					SingleLine().Ellipsis("…")
-			})
-			val := ui.Text(c, settings.LatencyText(int(a.latencyCustom+0.5))).FontSize(12.5).TextColor(p.muted)
-			if selected {
-				val.TextColor(p.accent).FontWeight(500)
-			}
-			checkDot(c, p, selected)
-		})
+		top := latencyChoiceRow(c, p, mode, settings.LatencyCustom, iconSliders,
+			locales.SettingsLatencyCustom(), latency, locales.SettingsLatencyCustomDesc())
 		if top.Changed() {
 			a.setLatencyMode(settings.LatencyCustom)
 		}
@@ -788,22 +854,30 @@ func checkDot(c *ui.Context, p palette, selected bool) {
 	}
 }
 
+// captureSelectWidth holds a device or app name in the capture pickers; the
+// shared 150-DIP field is too narrow for the longer names.
+const captureSelectWidth = 220
+
 func (a *App) capturePage(c *ui.Context, p palette) {
 	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsSystemOutput(), locales.SettingsSystemOutputDesc(), func() {
-			if fieldSelect(c, p, &a.captureChoice, a.captureNames, locales.SettingsSystemOutput()).Changed() {
+			if fieldSelect(c, p, &a.captureChoice, a.captureNames, locales.SettingsSystemOutput()).Width(captureSelectWidth).Changed() {
 				a.applyCaptureEndpoint()
 			}
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsAppCapture(), locales.SettingsAppCaptureDesc(), func() {
-			if fieldSelect(c, p, &a.appChoice, a.appNames, locales.SettingsAppCapture()).Changed() {
+			if fieldSelect(c, p, &a.appChoice, a.appNames, locales.SettingsAppCapture()).Width(captureSelectWidth).Changed() {
 				a.applyCaptureProcess()
 			}
 		})
 		rowLine(c, p)
+		// The status names the capture device, so its length follows the
+		// device. It keeps the row's right-hand column, capped so the title
+		// keeps its width; the full name is in the tooltip.
 		settingRow(c, p, locales.SettingsCaptureStatus(), locales.SettingsCaptureStatusDesc(), func() {
-			ui.Row(c).Gap(6).Shrink(0).Children(func() {
+			status := captureStatusText(a.snap)
+			ui.Row(c).Gap(6).Shrink(0).MaxWidthPercent(55).AlignItems(ui.Center).Children(func() {
 				dot := p.faint
 				switch {
 				case a.snap.CaptureError != "":
@@ -812,7 +886,7 @@ func (a *App) capturePage(c *ui.Context, p palette) {
 					dot = p.green
 				}
 				ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(dot)
-				ui.Text(c, captureStatusText(a.snap)).FontSize(12.5).TextColor(p.muted).SingleLine()
+				ui.Text(c, status).FontSize(12.5).TextColor(p.muted).SingleLine().Ellipsis("…").Tooltip(status)
 			})
 		})
 	})

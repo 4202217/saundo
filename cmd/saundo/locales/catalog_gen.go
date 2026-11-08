@@ -1112,31 +1112,31 @@ func (msgs Messages) SettingsCoverDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverDesc", nil)
 }
 
-// SettingsCoverNone says "No cover"
+// SettingsCoverNone says "None"
 // in the language the app shows.
 func SettingsCoverNone() string { return In(i18n.Locale()).SettingsCoverNone() }
 
-// SettingsCoverNone says "No cover"
+// SettingsCoverNone says "None"
 // in the language of msgs.
 func (msgs Messages) SettingsCoverNone() string {
 	return Catalog.Format(msgs.locale, "settingsCoverNone", nil)
 }
 
-// SettingsCoverPlaceholder says "Default cover"
+// SettingsCoverPlaceholder says "Default"
 // in the language the app shows.
 func SettingsCoverPlaceholder() string { return In(i18n.Locale()).SettingsCoverPlaceholder() }
 
-// SettingsCoverPlaceholder says "Default cover"
+// SettingsCoverPlaceholder says "Default"
 // in the language of msgs.
 func (msgs Messages) SettingsCoverPlaceholder() string {
 	return Catalog.Format(msgs.locale, "settingsCoverPlaceholder", nil)
 }
 
-// SettingsCoverMedia says "Media cover"
+// SettingsCoverMedia says "Media"
 // in the language the app shows.
 func SettingsCoverMedia() string { return In(i18n.Locale()).SettingsCoverMedia() }
 
-// SettingsCoverMedia says "Media cover"
+// SettingsCoverMedia says "Media"
 // in the language of msgs.
 func (msgs Messages) SettingsCoverMedia() string {
 	return Catalog.Format(msgs.locale, "settingsCoverMedia", nil)
@@ -2930,6 +2930,16 @@ func (msgs Messages) SettingsLampTemplates() string {
 	return Catalog.Format(msgs.locale, "settingsLampTemplates", nil)
 }
 
+// SettingsLampTemplatesDesc says "Six preset light colors; click to switch."
+// in the language the app shows.
+func SettingsLampTemplatesDesc() string { return In(i18n.Locale()).SettingsLampTemplatesDesc() }
+
+// SettingsLampTemplatesDesc says "Six preset light colors; click to switch."
+// in the language of msgs.
+func (msgs Messages) SettingsLampTemplatesDesc() string {
+	return Catalog.Format(msgs.locale, "settingsLampTemplatesDesc", nil)
+}
+
 // SettingsLampHomePodOnly says "HomePod only"
 // in the language the app shows.
 func SettingsLampHomePodOnly() string { return In(i18n.Locale()).SettingsLampHomePodOnly() }
@@ -2938,26 +2948,6 @@ func SettingsLampHomePodOnly() string { return In(i18n.Locale()).SettingsLampHom
 // in the language of msgs.
 func (msgs Messages) SettingsLampHomePodOnly() string {
 	return Catalog.Format(msgs.locale, "settingsLampHomePodOnly", nil)
-}
-
-// SettingsLampHintOn says "Click the power button to turn the top display off; click it again to restore the current choice."
-// in the language the app shows.
-func SettingsLampHintOn() string { return In(i18n.Locale()).SettingsLampHintOn() }
-
-// SettingsLampHintOn says "Click the power button to turn the top display off; click it again to restore the current choice."
-// in the language of msgs.
-func (msgs Messages) SettingsLampHintOn() string {
-	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
-}
-
-// SettingsLampHintOff says "The top display is off; click the power button before changing the light."
-// in the language the app shows.
-func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
-
-// SettingsLampHintOff says "The top display is off; click the power button before changing the light."
-// in the language of msgs.
-func (msgs Messages) SettingsLampHintOff() string {
-	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
 }
 
 // SettingsLampSoundGlowHint says "Enable Sound Glow in the Home app's HomePod settings; without it the top display only shows white light."
@@ -3010,34 +3000,44 @@ func (msgs Messages) LampNoMedia() string {
 	return Catalog.Format(msgs.locale, "lampNoMedia", nil)
 }
 
-// LampPriority says "Priority"
+// LampPriority says "Color source"
 // in the language the app shows.
 func LampPriority() string { return In(i18n.Locale()).LampPriority() }
 
-// LampPriority says "Priority"
+// LampPriority says "Color source"
 // in the language of msgs.
 func (msgs Messages) LampPriority() string {
 	return Catalog.Format(msgs.locale, "lampPriority", nil)
 }
 
-// LampPriorityCover says "Cover first"
+// LampPriorityDesc says "Follows the cover, or uses a fixed template."
 // in the language the app shows.
-func LampPriorityCover() string { return In(i18n.Locale()).LampPriorityCover() }
+func LampPriorityDesc() string { return In(i18n.Locale()).LampPriorityDesc() }
 
-// LampPriorityCover says "Cover first"
+// LampPriorityDesc says "Follows the cover, or uses a fixed template."
 // in the language of msgs.
-func (msgs Messages) LampPriorityCover() string {
-	return Catalog.Format(msgs.locale, "lampPriorityCover", nil)
+func (msgs Messages) LampPriorityDesc() string {
+	return Catalog.Format(msgs.locale, "lampPriorityDesc", nil)
 }
 
-// LampPriorityTemplate says "Template first"
+// LampSourceCover says "Cover"
 // in the language the app shows.
-func LampPriorityTemplate() string { return In(i18n.Locale()).LampPriorityTemplate() }
+func LampSourceCover() string { return In(i18n.Locale()).LampSourceCover() }
 
-// LampPriorityTemplate says "Template first"
+// LampSourceCover says "Cover"
 // in the language of msgs.
-func (msgs Messages) LampPriorityTemplate() string {
-	return Catalog.Format(msgs.locale, "lampPriorityTemplate", nil)
+func (msgs Messages) LampSourceCover() string {
+	return Catalog.Format(msgs.locale, "lampSourceCover", nil)
+}
+
+// LampSourceTemplate says "Template"
+// in the language the app shows.
+func LampSourceTemplate() string { return In(i18n.Locale()).LampSourceTemplate() }
+
+// LampSourceTemplate says "Template"
+// in the language of msgs.
+func (msgs Messages) LampSourceTemplate() string {
+	return Catalog.Format(msgs.locale, "lampSourceTemplate", nil)
 }
 
 // LampPriorityCoverShort says "Cover"

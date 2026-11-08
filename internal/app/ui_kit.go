@@ -407,12 +407,17 @@ func settingRow(c *ui.Context, p palette, title, sub string, control func()) {
 }
 
 // settingRowColors is settingRow with the two text colors chosen by the
-// caller, for a row that sits in the greyed hidden group.
+// caller, for a row that sits in the greyed hidden group. An empty title or
+// subtitle leaves that line out, for rows a wide control labels by itself.
 func settingRowColors(c *ui.Context, p palette, title, sub string, titleColor, subColor ui.Color, control func()) {
 	ui.Row(c).MinHeight(56).Padding(8, 14).Gap(12).Children(func() {
 		ui.Column(c).Grow(1).Gap(2).Children(func() {
-			ui.Text(c, title).FontSize(13).FontWeight(500).TextColor(titleColor).SingleLine().Ellipsis("…")
-			ui.Text(c, sub).FontSize(11.5).TextColor(subColor).SingleLine().Ellipsis("…")
+			if title != "" {
+				ui.Text(c, title).FontSize(13).FontWeight(500).TextColor(titleColor).SingleLine().Ellipsis("…")
+			}
+			if sub != "" {
+				ui.Text(c, sub).FontSize(11.5).TextColor(subColor).SingleLine().Ellipsis("…")
+			}
 		})
 		control()
 	})
