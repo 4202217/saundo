@@ -579,6 +579,33 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	}
 }
 
+// TestRowActionKeepsOtherReceiversConnectable pins the failed-session escape:
+// the failed row keeps retry, but the engine is idle after a failure, so the
+// other online rows must offer a working connect action.
+func TestRowActionKeepsOtherReceiversConnectable(t *testing.T) {
+	cases := []struct {
+		name   string
+		ph     phase
+		active bool
+		online bool
+		want   rowActionKind
+	}{
+		{"failed row retries", phaseError, true, true, actionRetry},
+		{"other row connects after failure", phaseError, false, true, actionConnect},
+		{"connecting keeps other rows disabled", phaseConnecting, false, true, actionConnectDisabled},
+		{"streaming keeps other rows disabled", phaseStreaming, false, true, actionConnectDisabled},
+		{"offline row stays offline", phaseError, false, false, actionOffline},
+		{"idle row connects", phaseIdle, false, true, actionConnect},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := actionFor(tc.ph, tc.active, tc.online); got != tc.want {
+				t.Fatalf("actionFor(%v, %v, %v) = %v, want %v", tc.ph, tc.active, tc.online, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestEmptyStateOffersSearch(t *testing.T) {
 	a := previewApp()
 	a.snap.Devices = nil
