@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"strings"
 	"time"
 
@@ -57,7 +56,7 @@ func (mygoUpdates) Enabled() bool {
 	// The darwin build is ad-hoc signed and the release feed carries
 	// Windows assets, so an update here would install a Windows binary.
 	// Re-enable with a signed, notarized mac feed.
-	return runtime.GOOS != "darwin" && mygo.Updater.Enabled()
+	return updatesSupported && mygo.Updater.Enabled()
 }
 
 func (mygoUpdates) Check(ctx context.Context) (*mygo.Update, error) {

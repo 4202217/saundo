@@ -718,9 +718,10 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	// (theme, update preferences, launch at login) cannot write a stale lamp
 	// choice back over the engine's.
 	a.cfg.Lamp = settings.LampSettings{Off: a.lampOff, Cover: a.lampCover, Preset: a.lampPreset}
+	a.flyoutPopover = snap.FlyoutPopover
+	a.cfg.FlyoutPopover = snap.FlyoutPopover
 	if a.trayAnimation != snap.TrayAnimation {
 		a.trayAnimation = snap.TrayAnimation
-		a.flyoutPopover = snap.FlyoutPopover
 		a.syncTrayAnimator()
 	}
 	a.latency = float64(snap.LatencyMS)
@@ -838,9 +839,7 @@ func (a *App) showWindow() {
 	}
 	a.win.Show()
 	a.win.Focus()
-	// No App.Focus here: activating the app would drag every visible app
-	// window (an open settings page included) to the front. The flyout
-	// panel is nonactivating and takes key on its own.
+	focusAppOnShow()
 }
 
 // toggleWindow is the tray icon's primary click: the panel opens next to the
