@@ -1152,11 +1152,11 @@ func (msgs Messages) SettingsAudioLevel() string {
 	return Catalog.Format(msgs.locale, "settingsAudioLevel", nil)
 }
 
-// SettingsAudioLevelDesc says "The five-band audio level follows playback; it stays still when Windows animation effects are off."
+// SettingsAudioLevelDesc says "The five-band audio level follows playback."
 // in the language the app shows.
 func SettingsAudioLevelDesc() string { return In(i18n.Locale()).SettingsAudioLevelDesc() }
 
-// SettingsAudioLevelDesc says "The five-band audio level follows playback; it stays still when Windows animation effects are off."
+// SettingsAudioLevelDesc says "The five-band audio level follows playback."
 // in the language of msgs.
 func (msgs Messages) SettingsAudioLevelDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAudioLevelDesc", nil)
@@ -1182,11 +1182,11 @@ func (msgs Messages) SettingsLaunchAtStart() string {
 	return Catalog.Format(msgs.locale, "settingsLaunchAtStart", nil)
 }
 
-// SettingsLaunchAtStartDesc says "Stay quietly in the tray after you sign in to Windows"
+// SettingsLaunchAtStartDesc says "Stay quietly in the tray after you sign in"
 // in the language the app shows.
 func SettingsLaunchAtStartDesc() string { return In(i18n.Locale()).SettingsLaunchAtStartDesc() }
 
-// SettingsLaunchAtStartDesc says "Stay quietly in the tray after you sign in to Windows"
+// SettingsLaunchAtStartDesc says "Stay quietly in the tray after you sign in"
 // in the language of msgs.
 func (msgs Messages) SettingsLaunchAtStartDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLaunchAtStartDesc", nil)
@@ -1202,11 +1202,11 @@ func (msgs Messages) SettingsTrayAnimation() string {
 	return Catalog.Format(msgs.locale, "settingsTrayAnimation", nil)
 }
 
-// SettingsTrayAnimationDesc says "Animate the tray icon while connecting or playing; off when Windows animation effects are disabled"
+// SettingsTrayAnimationDesc says "Animate the tray icon while connecting or playing"
 // in the language the app shows.
 func SettingsTrayAnimationDesc() string { return In(i18n.Locale()).SettingsTrayAnimationDesc() }
 
-// SettingsTrayAnimationDesc says "Animate the tray icon while connecting or playing; off when Windows animation effects are disabled"
+// SettingsTrayAnimationDesc says "Animate the tray icon while connecting or playing"
 // in the language of msgs.
 func (msgs Messages) SettingsTrayAnimationDesc() string {
 	return Catalog.Format(msgs.locale, "settingsTrayAnimationDesc", nil)
@@ -1272,11 +1272,11 @@ func (msgs Messages) SettingsTheme() string {
 	return Catalog.Format(msgs.locale, "settingsTheme", nil)
 }
 
-// SettingsThemeDesc says "Follow Windows, or keep the interface light or dark"
+// SettingsThemeDesc says "Follow the system, or keep the interface light or dark"
 // in the language the app shows.
 func SettingsThemeDesc() string { return In(i18n.Locale()).SettingsThemeDesc() }
 
-// SettingsThemeDesc says "Follow Windows, or keep the interface light or dark"
+// SettingsThemeDesc says "Follow the system, or keep the interface light or dark"
 // in the language of msgs.
 func (msgs Messages) SettingsThemeDesc() string {
 	return Catalog.Format(msgs.locale, "settingsThemeDesc", nil)
@@ -2254,11 +2254,11 @@ func (msgs Messages) SettingsSystemOutput() string {
 	return Catalog.Format(msgs.locale, "settingsSystemOutput", nil)
 }
 
-// SettingsSystemOutputDesc says "Capture the Windows default output device"
+// SettingsSystemOutputDesc says "Capture the system's default output device"
 // in the language the app shows.
 func SettingsSystemOutputDesc() string { return In(i18n.Locale()).SettingsSystemOutputDesc() }
 
-// SettingsSystemOutputDesc says "Capture the Windows default output device"
+// SettingsSystemOutputDesc says "Capture the system's default output device"
 // in the language of msgs.
 func (msgs Messages) SettingsSystemOutputDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSystemOutputDesc", nil)
@@ -3198,4 +3198,24 @@ func SettingsShowInPanel() string { return In(i18n.Locale()).SettingsShowInPanel
 // in the language of msgs.
 func (msgs Messages) SettingsShowInPanel() string {
 	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
+}
+
+// SettingsFlyoutPopover says "Flyout as popover"
+// in the language the app shows.
+func SettingsFlyoutPopover() string { return In(i18n.Locale()).SettingsFlyoutPopover() }
+
+// SettingsFlyoutPopover says "Flyout as popover"
+// in the language of msgs.
+func (msgs Messages) SettingsFlyoutPopover() string {
+	return Catalog.Format(msgs.locale, "settingsFlyoutPopover", nil)
+}
+
+// SettingsFlyoutPopoverDesc says "Show the tray flyout as a system popover with an arrow; off keeps the rounded flyout."
+// in the language the app shows.
+func SettingsFlyoutPopoverDesc() string { return In(i18n.Locale()).SettingsFlyoutPopoverDesc() }
+
+// SettingsFlyoutPopoverDesc says "Show the tray flyout as a system popover with an arrow; off keeps the rounded flyout."
+// in the language of msgs.
+func (msgs Messages) SettingsFlyoutPopoverDesc() string {
+	return Catalog.Format(msgs.locale, "settingsFlyoutPopoverDesc", nil)
 }
