@@ -1,13 +1,15 @@
-// Package lamp renders the ambient-light images a HomePod shows on its top
-// display: the default reset plus six named palettes scattered into a seeded
-// composition.
+// Package lamp renders the ambient-light palette images a HomePod shows on
+// its top display: six named palettes scattered into a seeded composition.
+// Cover mode is not rendered here; it reuses the media cover.
 package lamp
 
 import "image/color"
 
-// DefaultID is the preset the settings fall back to, and the one an unknown
-// or empty ID normalizes to. The origin preset is the black default reset.
-const DefaultID = "origin"
+const (
+	// DefaultID is the template the settings fall back to, and the one an
+	// unknown or empty ID normalizes to.
+	DefaultID = "dune"
+)
 
 // Blob is one radial highlight. X and Y are percentages of the image's width
 // and height from its top-left corner; Radius is a percentage of the width;
@@ -32,12 +34,6 @@ type Preset struct {
 const blobCount = 6
 
 var presets = []Preset{
-	{
-		ID:   "origin",
-		Base: rgb(0x00, 0x00, 0x00),
-		// No palette: the solid black reset the HomePod shows as its
-		// default white state.
-	},
 	{
 		ID:   "ember",
 		Base: rgb(0x14, 0x08, 0x06),
@@ -129,7 +125,7 @@ func mulberry32(seed uint32) func() float64 {
 
 func rgb(r, g, b uint8) color.RGBA { return color.RGBA{R: r, G: g, B: b, A: 0xff} }
 
-// All returns the presets in display order.
+// All returns the six rendered palettes in display order.
 func All() []Preset {
 	out := make([]Preset, len(presets))
 	copy(out, presets)
@@ -146,7 +142,8 @@ func ByID(id string) (Preset, bool) {
 	return Preset{}, false
 }
 
-// Normalize maps an unknown or empty preset to the default.
+// Normalize maps an unknown or empty preset to the default template. The old
+// media/origin values are handled by the settings migration, not here.
 func Normalize(id string) string {
 	if _, ok := ByID(id); ok {
 		return id

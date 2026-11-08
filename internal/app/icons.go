@@ -49,7 +49,7 @@ var (
 
 	iconSliders = iconSVG(`<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></g><g fill="currentColor"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg>`)
 	iconWave    = iconSVG(`<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 8v4M8 5v10M12 8v4M16 6v8"/></g></svg>`)
-	iconLamp    = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a6.5 6.5 0 0 1 3.6 11.9c-.7.5-1.1 1.2-1.1 2v.6h-5v-.6c0-.8-.4-1.5-1.1-2A6.5 6.5 0 0 1 12 3.5Z"/><path d="M10 21h4"/></g></svg>`)
+	iconLamp    = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 3.5h9.6l-1.7 6.4H8.9L7.2 3.5Z"/><path d="M12 9.9v7.6"/><path d="M8 17.5h8"/><path d="M9.5 20.5h5"/></g></svg>`)
 
 	iconLatencyLow      = iconSVG(`<svg viewBox="0 0 24 24"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg>`)
 	iconLatencyStandard = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>`)

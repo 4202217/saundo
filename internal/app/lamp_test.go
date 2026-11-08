@@ -11,43 +11,57 @@ import (
 	"saundo/internal/settings"
 )
 
-func TestFlyoutLampCardVisibleWhenOn(t *testing.T) {
+// TestFlyoutLampCardStaysWhenOff pins the permanent card and the power
+// action: the card never disappears; the power glyph turns the light off and
+// on.
+func TestFlyoutLampCardStaysWhenOff(t *testing.T) {
 	a := previewApp()
 	a.snap.Devices = nil
 	a.snap.SelectedID = ""
 	a.snap.State = 0
 	a.selID = ""
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, true))
-	for _, want := range []string{"氛围灯", "HomePod 专属", "沙丘"} {
+	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false))
+	for _, want := range []string{"氛围灯", "沙丘"} {
 		if !tt.HasText(want) {
 			t.Fatalf("flyout is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
 
-	a.setLampEnabled(false)
+	if err := tt.Click(locales.LampTurnOff()); err != nil {
+		t.Fatal(err)
+	}
+	if !a.lampOff || !a.snap.LampOff || !a.cfg.Lamp.Off {
+		t.Fatal("the power action did not turn the light off")
+	}
 	tt = ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false))
-	for _, gone := range []string{"氛围灯", "HomePod 专属", "沙丘"} {
-		if tt.HasText(gone) {
-			t.Fatalf("flyout still shows %q while the setting is off", gone)
+	for _, want := range []string{"氛围灯", "沙丘"} {
+		if !tt.HasText(want) {
+			t.Fatalf("flyout lost %q when the light turned off; texts: %q", want, tt.Texts())
 		}
+	}
+	if err := tt.Click(locales.LampTurnOn()); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampOff || a.snap.LampOff || a.cfg.Lamp.Off {
+		t.Fatal("the power action did not turn the light back on")
 	}
 }
 
-func TestSettingsLampSwitchHidesFlyout(t *testing.T) {
+func TestSettingsLampPowerTurnsTheLightOff(t *testing.T) {
 	a := previewApp()
 	a.page = pageLamp
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
-	if err := tt.Click(locales.LampToggle()); err != nil {
+	if err := tt.Click(locales.LampTurnOff()); err != nil {
 		t.Fatal(err)
 	}
-	if a.lampEnabled || a.snap.LampEnabled || a.cfg.Lamp.Enabled {
-		t.Fatal("the switch did not turn the lamp off")
+	if !a.lampOff || !a.snap.LampOff || !a.cfg.Lamp.Off {
+		t.Fatal("the power action did not turn the light off")
 	}
 	fly := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false))
 	fly.Frame()
-	if fly.HasText("氛围灯") {
-		t.Fatal("the flyout still shows the ambient card after the switch turned it off")
+	if !fly.HasText("氛围灯") {
+		t.Fatal("the flyout lost the ambient card after the light turned off")
 	}
 }
 
@@ -66,7 +80,7 @@ func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	}
 	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
-	for _, want := range []string{"默认", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"} {
+	for _, want := range []string{"暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"} {
 		if _, ok := tt.Find(want); !ok {
 			t.Fatalf("expanded grid is missing %q", want)
 		}
@@ -77,43 +91,183 @@ func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	if a.lampPreset != "ember" || a.snap.LampPreset != "ember" {
 		t.Fatalf("preset = %q/%q, want ember", a.lampPreset, a.snap.LampPreset)
 	}
-}
-
-func TestFlyoutLampOffHidesSection(t *testing.T) {
-	a := previewApp()
-	a.lampEnabled = false
-	a.snap.LampEnabled = false
-	a.lampExpanded = true
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, true, false))
-	tt.Frame()
-	for _, gone := range []string{"氛围灯", "暖烬", "月白"} {
-		if tt.HasText(gone) {
-			t.Fatalf("flyout still shows %q while the setting is off", gone)
-		}
+	if !a.lampExpanded {
+		t.Fatal("picking a template collapsed the list")
 	}
 }
 
-func TestSettingsLampPageOffShowsHintAndDisablesPresets(t *testing.T) {
+// TestFlyoutLampPickingWhileOffTurnsOn pins the one-step action: the dimmed
+// grid stays clickable, and choosing a mode turns the light back on.
+func TestFlyoutLampPickingWhileOffTurnsOn(t *testing.T) {
+	a := previewApp()
+	a.lampOff = true
+	a.snap.LampOff = true
+	a.lampExpanded = true
+
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	for _, want := range []string{"氛围灯", "暖烬", "月白"} {
+		if !tt.HasText(want) {
+			t.Fatalf("flyout lost %q while the light is off; texts: %q", want, tt.Texts())
+		}
+	}
+	if err := tt.Click("暖烬"); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampOff || a.snap.LampOff {
+		t.Fatal("picking a preset while off did not turn the light on")
+	}
+	if a.lampPreset != "ember" || a.snap.LampPreset != "ember" {
+		t.Fatalf("preset = %q/%q, want ember", a.lampPreset, a.snap.LampPreset)
+	}
+	if !a.lampExpanded {
+		t.Fatal("picking a template collapsed the list")
+	}
+}
+
+// TestSettingsLampPrioritySegmentTurnsCoverOn pins the settings segment.
+func TestSettingsLampPrioritySegmentTurnsCoverOn(t *testing.T) {
 	a := previewApp()
 	a.page = pageLamp
-	a.lampEnabled = false
-	a.snap.LampEnabled = false
+	a.cfg.Lamp = settings.LampSettings{Preset: "dune"}
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !tt.HasText("飞出窗口不显示氛围灯配置") {
+	tt.Frame()
+	if err := tt.Click(locales.LampPriorityCover()); err != nil {
+		t.Fatal(err)
+	}
+	if !a.lampCover || !a.snap.LampCover || !a.cfg.Lamp.Cover {
+		t.Fatal("the priority segment did not choose the cover")
+	}
+	if a.lampOff {
+		t.Fatal("the priority segment left the light off")
+	}
+}
+
+// TestSettingsLampPrioritySegmentTurnsCoverOff pins the other side.
+func TestSettingsLampPrioritySegmentTurnsCoverOff(t *testing.T) {
+	a := previewApp()
+	a.page = pageLamp
+	a.lampCover = true
+	a.snap.LampCover = true
+	a.cfg.Lamp = settings.LampSettings{Cover: true, Preset: "dune"}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	if err := tt.Click(locales.LampPriorityTemplate()); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampCover || a.snap.LampCover || a.cfg.Lamp.Cover {
+		t.Fatal("the priority segment did not choose the template")
+	}
+	if a.lampExpanded {
+		t.Fatal("choosing the template expanded the list by default")
+	}
+	if a.lampPreset != "dune" {
+		t.Fatalf("the template changed to %q", a.lampPreset)
+	}
+}
+
+// TestFlyoutLampCoverHidesTheGrid pins the flyout: cover priority hides the
+// chevron and the template list; choosing the template shows them.
+func TestFlyoutLampCoverHidesTheGrid(t *testing.T) {
+	a := previewApp()
+	a.lampCover = true
+	a.snap.LampCover = true
+	a.cfg.Lamp = settings.LampSettings{Cover: true, Preset: "dune"}
+	a.lampExpanded = true
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	for _, hidden := range []string{"暖烬", "展开配色", "收起配色"} {
+		if _, ok := tt.Find(hidden); ok {
+			t.Fatalf("cover priority still shows %q", hidden)
+		}
+	}
+	if err := tt.Click(locales.LampPriorityTemplateShort()); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampCover || a.lampExpanded {
+		t.Fatal("choosing the template did not switch priority and stay collapsed")
+	}
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	if _, ok := tt.Find("暖烬"); ok {
+		t.Fatal("the template list expanded by default")
+	}
+	if err := tt.Click("展开配色"); err != nil {
+		t.Fatal(err)
+	}
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	if _, ok := tt.Find("暖烬"); !ok {
+		t.Fatalf("expanding did not show the template list; texts: %q", tt.Texts())
+	}
+	if err := tt.Click("暖烬"); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampCover || a.lampPreset != "ember" {
+		t.Fatalf("picking a template = cover:%v/%q, want template ember", a.lampCover, a.lampPreset)
+	}
+	if !a.lampExpanded {
+		t.Fatal("picking a template collapsed the list")
+	}
+}
+
+// TestFlyoutCloseCollapsesLampList pins the hide behavior: the template
+// list folds when the flyout hides, so the next open starts collapsed.
+func TestFlyoutCloseCollapsesLampList(t *testing.T) {
+	a := previewApp()
+	a.lampExpanded = true
+	a.collapseLampList()
+	if a.lampExpanded {
+		t.Fatal("closing the flyout left the template list expanded")
+	}
+}
+
+// TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff pins direct
+// manipulation on the settings page, where the templates stay visible.
+func TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff(t *testing.T) {
+	a := previewApp()
+	a.page = pageLamp
+	a.lampCover = true
+	a.snap.LampCover = true
+	a.cfg.Lamp = settings.LampSettings{Cover: true, Preset: "dune"}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	if err := tt.Click("暖烬"); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampCover || a.snap.LampCover || a.cfg.Lamp.Cover {
+		t.Fatal("picking a template did not turn cover off")
+	}
+	if a.lampPreset != "ember" {
+		t.Fatalf("preset = %q, want ember", a.lampPreset)
+	}
+}
+
+func TestSettingsLampPageOffShowsHintAndPickingTurnsOn(t *testing.T) {
+	a := previewApp()
+	a.page = pageLamp
+	a.lampOff = true
+	a.snap.LampOff = true
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText("顶屏已熄灭；按开灯恢复当前选择。") {
 		t.Fatalf("off hint is missing; texts: %q", tt.Texts())
 	}
 	tt.Frame()
 	if err := tt.Click("暖烬"); err != nil {
 		t.Fatal(err)
 	}
-	if a.lampPreset != "dune" {
-		t.Fatalf("preset changed while off: %q", a.lampPreset)
+	if a.lampOff || a.snap.LampOff {
+		t.Fatal("picking a preset while off did not turn the light on")
+	}
+	if a.lampPreset != "ember" {
+		t.Fatalf("preset = %q, want ember", a.lampPreset)
 	}
 }
 
 func TestSettingsLampPageChoosesPreset(t *testing.T) {
 	a := previewApp()
 	a.page = pageLamp
+	a.lampExpanded = true
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
 	if err := tt.Click("暖烬"); err != nil {
@@ -122,20 +276,23 @@ func TestSettingsLampPageChoosesPreset(t *testing.T) {
 	if a.lampPreset != "ember" || a.snap.LampPreset != "ember" {
 		t.Fatalf("preset = %q/%q, want ember", a.lampPreset, a.snap.LampPreset)
 	}
+	if !a.lampExpanded {
+		t.Fatal("picking a template collapsed the list")
+	}
 }
 
 func TestLampSurfacesInEnglish(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	for _, want := range []string{"Ambient light", "HomePod only", "Dune"} {
+	for _, want := range []string{"Ambient light", "Cover", "Template", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English flyout is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
 	a.page = pageLamp
 	tt = ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{"Ambient light", "Enable ambient light", "HomePod only", "HomePod top display", "Dune"} {
+	for _, want := range []string{"Ambient light", "Top display light", "HomePod only", "HomePod top display", "Cover first", "Template first", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English lamp page is missing %q; texts: %q", want, tt.Texts())
 		}
@@ -148,11 +305,11 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 func TestAppSaveKeepsEngineLamp(t *testing.T) {
 	a := previewApp()
 	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
-	a.apply(engine.Snapshot{LampEnabled: true, LampPreset: "ember"})
+	a.apply(engine.Snapshot{LampOff: false, LampPreset: "ember"})
 	a.cfg.LaunchAtStart = true
 	a.saveSettings()
 	got := a.sets.Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "ember" {
-		t.Fatalf("app save wrote lamp %+v, want on + ember", got.Lamp)
+	if got.Lamp.Off || got.Lamp.Preset != "ember" {
+		t.Fatalf("app save wrote lamp %+v, want light on + ember", got.Lamp)
 	}
 }

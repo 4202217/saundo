@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-07 -->
+<!-- reviewed-through: 2026-11-08 -->
 
 # Verification
 
@@ -62,14 +62,22 @@ live state:
   orchid) each repainted the top display with no `/artwork/command`. The
   POST trigger and `TCPArtwork` channel are removed. A black image lands on
   the default white because the firmware lifts black to a full channel. A
-  true LED-off has no AirPlay command; only the on-device
-  SoundBoardServices XPC (`setLEDContents:`, `disable_leds`) drives the
-  LEDs, and it is entitlement-gated.
-- Ambient light, off behavior: whether the receiver returns to its native top
-  display when the sender stops pushing, or keeps the last light. Off now
-  sends the origin image as the fallback; when the receiver track-info push
-  is on, its cover keeps the slot instead. The receiver side of that
-  precedence is unverified.
+  true LED-off is the `updateMRPlaybackState` command (2026-11-07, see the
+  playback-state section); the on-device SoundBoardServices XPC
+  (`setLEDContents:`, `disable_leds`) remains a local-only path.
+- Ambient light, off behavior: the manual 关灯 sends state `2` and turns the
+  top display dark while the RTP stream stays up; 开灯 sends `1` and restores
+  the current image. A media pause keeps the current light; there is no
+  per-media playback-state change. Whether audible audio keeps playing (the
+  probe ran muted), the behavior on other models, and the stereo pair are
+  still unverified.
+- Ambient light, no-media placeholder: a muted stereo pair `AudioAccessory5,1`
+  27.3 probe on 2026-11-07 (`TestLivePlaceholderReturn`) sent a tide template,
+  cleared the artwork slot, cycled state `2`→`1`, and sent a new item without
+  artwork. The user observed blue and dark, with no white center. Clearing the
+  sender's slot only stops future sends; the receiver keeps the last image.
+  The white-center placeholder appears only on a fresh session with no
+  artwork. The sender has no artwork-clear command.
 - Ambient light, capability matrix: HomePod 2, HomePod 1, HomePod mini, and a
   receiver below software 27.2. `TopDisplayCapable` holds every unknown and
   the mini back (false) until these runs exist.
@@ -293,7 +301,7 @@ blocked; the UI reports a PTP timeout with this hint.
   GetCurrentSession → GetMediaPropertiesAsync, all awaited by polling
   IAsyncInfo status, no event delegates). The app polls every two seconds
   when 推送正在播放 is on and forwards title/artist/album to the receiver;
-  forwarding is pinned by `TestNowPlayingCommandForwardsWhenEnabled` and
+  forwarding is pinned by `TestNowPlayingCommandForwards` and
   `TestNowPlayingRidesAsDMAP`. A real Chrome Media Session was later read live;
   see the Now Playing display section below.
 - **Silent tray start.** `mygo.App.WasOpenedAtLogin()` hides the window at
@@ -354,20 +362,19 @@ software stereo groups built from independent receivers.
 
 ## Now Playing display (2026-10-31)
 
-- **The toggle did nothing after startup.** `pollNowPlaying` read
-  `a.cfg.ShowNowPlaying`, a settings copy loaded once when the app started. The
-  switch only updated the engine, so enabling 推送正在播放 after launch never
-  let the poller run. The poller now reads `snap.ShowNowPlaying` and the
-  streaming state from the live engine snapshot.
+- **The toggle did nothing after startup.** `pollNowPlaying` read a settings
+  copy loaded once when the app started; the switch only updated the engine,
+  so enabling the push after launch never let the poller run. The poller now
+  reads the streaming state from the live engine snapshot. **2026-11-07:** the
+  push became unconditional, so there is no switch left to go stale.
 - **The current track is visible.** The playback card now has a 正在播放 row.
-  It updates every two seconds even with pushing off, shows
-  `title · artist`, falls back to 未检测到媒体, and has the 推送 switch beside
-  it. The duplicate switch in the settings card was removed. Pinned by
-  `TestNowPlayingCardShowsTrack`.
-- **Push behavior.** A changed track is sent only while the toggle is on and a
-  session is streaming; a new stream resets the sent marker and resends the
-  current track after reconnect. Pinned by
-  `TestRefreshNowPlayingPushesOnlyWhenEnabled`.
+  It updates every two seconds, shows `title · artist`, and falls back to
+  未检测到媒体. The 推送 switches it once carried were removed on 2026-11-07.
+  Pinned by `TestNowPlayingCardShowsTrack`.
+- **Push behavior.** A changed track is sent whenever a session is streaming;
+  the old toggle was removed on 2026-11-07. A new stream resets the sent
+  marker and resends the current track after reconnect. Pinned by
+  `TestRefreshNowPlayingPushesWhileStreaming`.
 - **Live SMTC read.** A muted Chrome window using the Media Session API created
   a real system media session. The rebuilt app displayed
   `SMTC 测试曲目 · 测试歌手`; when the browser switched to the user's other
@@ -483,11 +490,11 @@ software stereo groups built from independent receivers.
   and 更新. It has one card: the display master (`showNowPlayingPanel`, on)
   with the 系统媒体 badge, a preview of the real Now Playing card (the live session, or a sample Apple Music / 夜航 / 白鲸电台 card when nothing plays), and
   the rows 播放控制 (`playbackControls`), 封面配色
-  (`coverColors`), 音频电平 (`audioLevel`), and last
-  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting, on);
-  the receiver push is last because it leaves the panel untouched. Master off greys the preview
+  (`coverColors`), and 音频电平 (`audioLevel`). Master off greys the preview
   and disables every row; there is no closed placeholder. New keys in
   `settings.json` default on; a missing key reads its default.
+  **2026-11-07:** the 在接收器上显示曲目信息 row was removed; the receiver
+  push is unconditional and no longer depends on the card's display master.
 - **The cover mode.** The page's 封面 row is a three-way segmented control
   in the latency switch's style: 无封面 (`none`), 默认封面 (`placeholder`),
   and 媒体封面 (`media`, default). The card omits the poster for none, shows
@@ -502,7 +509,8 @@ software stereo groups built from independent receivers.
   the flyout shrinks exactly like the no-media state. The playback controls
   setting removes the transport; cover colors off draws the progress fill and
   meter in the default ink; audio level off removes the five bands. The
-  receiver push is effective only as `showNowPlaying && showNowPlayingPanel`.
+  receiver push is unconditional: the app sends the track and cover whenever
+  a session streams.
   The settings preview uses the same card body in preview mode, dimmed at 45%
   opacity and read-only; it falls back to a fixed sample so no-media users still
   see the card. The sample strings are `settingsNowPlayingSampleTitle` /
@@ -525,7 +533,7 @@ software stereo groups built from independent receivers.
   sent again in the same session, and turning the switch back on resends the
   current track instead of waiting for the next.
   `TestNowPlayingCoverRidesAsImage`,
-  `TestNowPlayingCommandForwardsWhenEnabled`, and
+  `TestNowPlayingCommandForwards`, and
   `TestRefreshNowPlayingPushesArtworkChanges` pin the path. Live check
   2026-11-07: the MacBook Air (`Mac14,2`) AirPlay receiver showed the pushed
   SMTC cover in its Now Playing UI (user-confirmed). The HomePod pair has no
@@ -889,18 +897,25 @@ development PC with a real HomePod stereo pair on the LAN.
   connection, and the tray menu gained no item.
 - **Pinned by.** `TestPresetsMatchCatalog`, `TestGeneratedJPEGsAre600Square`,
   `TestPresetPixelsFollowTheBlobs`, `TestGeneratorCachesPerPreset`,
-  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOnAndOrigin`,
-  `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToOrigin`,
-  `TestLampRoundTrips`, `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
+  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOnAndCover`,
+  `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToCover`,
+  `TestLampOldMediaPresetTurnsCoverOn`, `TestLampOldTemplatePresetTurnsCoverOff`,
+  `TestLampRoundTrips`, `TestCoverPresetClustersTheCover`,
+  `TestCoverPresetRejectsEmptyImages`, `TestCoverPresetIsDeterministic`,
+  `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
   `TestMergeKeepsOSVersion`, `TestSetLampArtworkSendsCover`,
   `TestSetLampArtworkWaitsForStreaming`, `TestSetLampArtworkDuplicateIsNoOp`,
   `TestSetLampArtworkDoesNotTouchDMAPText`, `TestSetLampArtworkClearSendsNothing`,
-  `TestLampToggleAppliesAndPersists`, `TestLampAppliedWhenStreamingStarts`,
-  `TestLampUnknownPresetFallsBackToOrigin`, `TestLampSkipsIncapableReceivers`,
+  `TestLampOffOnAppliesAndPersists`, `TestLampAppliedWhenStreamingStarts`,
+  `TestLampUnknownPresetFallsBackToDefault`,
+  `TestLampCoverKeepsPlayingOnPause`, `TestLampSkipsIncapableReceivers`,
   `TestLampTogglingTwiceLogsTheSkipOnce`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
-  `TestGroupArtworkSkipsIncapableMember`, and the app lamp tests named in
-  ui.md.
+  `TestGroupArtworkSkipsIncapableMember`, `TestSettingsLampPrioritySegmentTurnsCoverOn`,
+  `TestSettingsLampPrioritySegmentTurnsCoverOff`, `TestFlyoutLampCoverHidesTheGrid`,
+  `TestFlyoutCloseCollapsesLampList`,
+  `TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff`, and the app lamp
+  tests named in ui.md.
 - **Live on AudioAccessory5,1.** A temporary gate allowed the user's 5,1
   stereo pair. After Sound Glow was enabled in the HomePod settings, the same
   pair displayed the lagoon and dawn lights. The working request is the HTTP
@@ -932,10 +947,11 @@ muted to volume 0 so no test made sound.
   `TestSetLampArtworkSendsCover`, `TestSetLampArtworkWaitsForStreaming`,
   `TestSetLampArtworkDuplicateIsNoOp`, `TestSetLampArtworkDoesNotTouchDMAPText`, and
   `TestSetLampArtworkClearSendsNothing`.
-- **Default reset, no LED-off.** The first preset `origin` is a solid black
-  JPEG. On HomePod 27.2 the firmware lifts black to a full channel for its
-  color stops, so the top display lands on the default white, not an
-  LED-off. The off switch sends the same image. A true LED-off has no
+- **Default reset, no LED-off (historical).** The first preset `origin` was
+  a solid black JPEG. On HomePod 27.2 the firmware lifts black to a full
+  channel for its color stops, so the top display landed on the default
+  white, not an LED-off. Removed on 2026-11-07; off is now the playback
+  state. The off switch sends the same image. A true LED-off has no
   AirPlay command; only the on-device SoundBoardServices XPC
   (`setLEDContents:`, `disable_leds`) drives the LEDs, and it is
   entitlement-gated.
@@ -1089,17 +1105,46 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   `TestSetLampArtworkSendsCover`, `TestSetLampArtworkWaitsForStreaming`,
   `TestSetLampArtworkDuplicateIsNoOp`, `TestSetLampArtworkDoesNotTouchDMAPText`, and
   `TestSetLampArtworkClearSendsNothing`.
-- **One cover slot (2026-11-07).** The sender now stores the media cover and
-  the ambient image separately and elects one: the light while on, otherwise
-  the receiver track-info cover, with the origin image as the fallback. A new
-  media cover updates the Now Playing text without displacing the light, and
-  turning the light off hands the slot back to the media cover when one
-  exists. Pinned by `TestMediaCoverWinsWhenLampIsOff` and
-  `TestLampCoverWinsWhileOn`; the receiver-side result of the precedence is
-  still pending.
+- **One cover slot; off is a state (2026-11-07).** The sender stores the
+  media cover and the ambient image separately. A template owns the artwork
+  slot; cover priority hands it to the media cover; off sends the paused
+  playback state and leaves the slot alone. A new media cover updates the Now
+  Playing text without displacing a template. Pinned by
+  `TestMediaCoverWinsWhenLampIsOff`, `TestLampCoverWinsWhileOn`,
+  `TestLampCoverKeepsPlayingOnPause`, and `TestSetPlaybackStateSendsCommand`.
+  The origin preset is gone; off no longer uses an image. Cover priority is a
+  separate flag (`lamp.cover`); the six templates are the only presets.
 - **Still unverified.** The receiver-side precedence between the light and
   the receiver track-info cover, the 6,1 and first-generation HomePod, and a
   stereo pair's simultaneous repaint.
+
+## Ambient light, playback-state off (2026-11-07)
+
+HomePod mini (`AudioAccessory5,1`, 27.2), muted. The sender connected, held a
+silent RTP stream (empty ring, receiver volume 0), sent the tide palette
+cover, then sent `updateMRPlaybackState` 2 → 1 → 2 → 1 through
+`POST /command` with a binary plist body:
+`{type: "updateMRPlaybackState", params: {mrPlaybackState: <n>}}`.
+
+- **The display went blue → off → blue → off.** The user watched the top
+  display through the four steps; the probe made no sound.
+- **The stream stayed up.** `framesSent` rose from 1,502,688 at the first
+  pause to 2,384,800 at the end, `State()` stayed `streaming`, and no close
+  event arrived. Every `POST /command` returned `200 OK`.
+- **Mechanism.** The AirPlayReceiver applies `mrPlaybackState` to the main
+  session; MediaRemote's `isPlaying` changes; `NowPlayingCap` clears
+  `currentLEDEffect`; `SoundBoardFramework.MediaRenderer` stops the Sound
+  Glow renderer. The command is independent of the artwork slot, so no black
+  or white image is needed for off. The ambient model uses it two ways: the
+  manual 关灯 sends `2`, and 开灯 sends `1`; a media pause keeps the current
+  light.
+- **Pinned by.** `TestLivePlaybackState`, gated by
+  `SAUNDO_PLAYBACK_STATE_TEST=1`. The test asserts the session stays up and
+  logs each state change; the visual result is a user observation, not a
+  test assertion.
+- **Still unverified.** Audible audio during state `2` (the probe was muted),
+  the command on the 6,1 and first-generation HomePod, and both members of a
+  stereo pair.
 
 ## Release 0.5.0 pre-release check (2026-11-07)
 
@@ -1120,9 +1165,10 @@ HomePod R (`AudioAccessory5,1`, 27.2), muted, lamp app built with
   listed file. The manifest is version 0.5.0 with a signature, the English
   notes, and the mygo 0.8.0 line. The installer is unsigned, so SmartScreen
   warns. This supersedes run 42264388577 and its assets.
-- **Defaults (2026-11-07).** The local-output mute, ambient light, and
-  receiver track-info switches default on. `TestDefaultsEnableMuteAndReceiverPush`,
-  `TestLampDefaultsOnAndOrigin`, and `TestLampOldFileLoadsDefaults` pin this.
+- **Defaults (2026-11-07).** The local-output mute and ambient light default
+  on; the receiver track info is always pushed and has no switch.
+  `TestDefaultsEnableLocalMute`, `TestLampDefaultsOnAndCover`, and
+  `TestLampOldFileLoadsDefaults` pin this.
 - **CI gate and final draft (2026-11-07).** The defaults release commit
   `d1f6e76`'s workflow passed check, draft, and build (run 42339224999);
   the CI check job is the release gate because this machine's engine test

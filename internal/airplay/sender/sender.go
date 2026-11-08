@@ -331,6 +331,10 @@ type Sender struct {
 	// cover is a no-op while a reconnect resends it.
 	sentCover     []byte
 	sentCoverMIME string
+	// playbackState is the MediaRemote state the light follows (1 playing,
+	// 2 paused); playbackStateSent is the last state delivered this session.
+	playbackState     int
+	playbackStateSent int
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -538,6 +542,10 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.port = port
 	s.sentCover = s.sentCover[:0]
 	s.sentCoverMIME = ""
+	// A new session starts playing; a paused state is sent explicitly. This
+	// keeps the old image-only path for the first light and avoids a state 1
+	// command that some receivers answer by dropping the artwork.
+	s.playbackStateSent = playbackPlaying
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true

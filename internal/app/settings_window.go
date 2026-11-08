@@ -336,15 +336,6 @@ func (a *App) nowPlayingPage(c *ui.Context, p palette) {
 		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsAudioLevel(), locales.SettingsAudioLevelDesc(),
 			&a.cfg.AudioLevel, master, func(bool) { a.persistNowPlaying() })
-		rowLine(c, p)
-		// The receiver push is the card's last row: it leaves the panel
-		// untouched, so it sits apart from the panel's display options.
-		a.nowPlayingOptionRow(c, p, locales.SettingsTrackInfoOnReceiver(), locales.SettingsTrackInfoOnReceiverDesc(),
-			&a.showNowPlaying, master, func(v bool) {
-				if a.eng != nil {
-					a.eng.SetShowNowPlaying(v)
-				}
-			})
 	})
 }
 

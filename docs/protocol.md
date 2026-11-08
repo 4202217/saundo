@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-07 -->
+<!-- reviewed-through: 2026-11-08 -->
 
 # AirPlay 2 wire protocol
 
@@ -238,8 +238,20 @@ Content-Length: <n>
 
 - When the sender has no track metadata, it first sends a minimal DMAP item (`mlit` containing `minm` = `saundo`) so the cover has a Now Playing item to attach to.
 - The image is a 600×600 sRGB JPEG at quality ~0.9; the receiver downscales and softens it for the top display.
-- The sender pushes on light change and on stream start. The first preset `origin` is a solid black 600×600 JPEG; the HomePod's color-stop normalization lifts black to a full channel, so it lands on the default white rather than an LED-off. The off switch sends the same image. A true LED-off has no AirPlay command; only the on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) drives the LEDs directly, and it is entitlement-gated.
-- A song's own cover competes for the same slot. The ambient light wins while it is on; while it is off, the receiver track-info cover wins when that setting is on, and the origin image is the fallback. Media-follow needs no separate mode: the device colors from whatever cover arrives.
+- The ambient light has a permanent card, a power action, and a 封面/模板 priority segment. Cover priority (the default) hands the artwork slot to the media cover; template priority chooses one of six rendered templates, pushed on choice change and on stream start. The manual 关灯 sends the paused playback state, and the top display goes dark; no image is involved. A media pause keeps the current light; a new cover (a track change) updates it. With cover priority on and no media cover, the sender sends no image and the receiver keeps its last light; a fresh session with no artwork shows the device's white-center placeholder. In the flyout, cover priority hides the chevron and the template list; template priority shows the chevron and expands the list only on click. The sender has no artwork-clear command.
+- A true LED-off is a playback-state command, not an image. `POST /command` on the encrypted control channel with a binary plist body sets MediaRemote's playback state:
+
+  ```
+  POST /command RTSP/1.0
+  Session: <session>
+  Content-Type: application/x-apple-binary-plist
+  Content-Length: <n>
+
+  {type: "updateMRPlaybackState", params: {mrPlaybackState: 2}}
+  ```
+
+  `mrPlaybackState` is `1` playing and `2` paused. The receiver's AirPlay command processor applies it to the main session; `NowPlayingCap` observes the MediaRemote `isPlaying` change and clears the LED effect, so `SoundBoardFramework.MediaRenderer` stops the Sound Glow and the top display goes dark. The command does not stop the RTP stream. Measured on a muted HomePod mini `AudioAccessory5,1` 27.2 on 2026-11-07: a tide palette cover lit the display, state 2 turned it off, state 1 lit it again, state 2 turned it off again, with `framesSent` rising 1.50M → 2.38M and no session close. On a stereo pair the state reaches both members; a state `1` on the follower can leave its renderer white, and only a new session restores it, so a sender should avoid a redundant state `1` and resend the artwork after a resume. The on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) remains a local-only path, but it is no longer the only way to turn the LEDs off.
+- A song's own cover competes for the artwork slot: a template owns it; cover priority hands it to the receiver track-info cover. The playback state is independent of that slot: with state 2 the display is dark whatever image is attached, and state 1 restores the current image. Clearing the sender's slot only stops future sends; the receiver keeps the last image.
 - The setting cannot be discovered over the protocol; `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
-Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the receiver muted, raw JPEG `/artwork/command` POSTs returned `400 Bad Request`; a binary-plist POST returned `200 OK` but did not replace the cover. On 2026-11-07, three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon, orchid) each repainted the top display with no `/artwork/command`; the POST trigger and the separate `TCPArtwork` channel were removed.
+Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the receiver muted, raw JPEG `/artwork/command` POSTs returned `400 Bad Request`; a binary-plist POST returned `200 OK` but did not replace the cover. On 2026-11-07, three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon, orchid) each repainted the top display with no `/artwork/command`; the POST trigger and the separate `TCPArtwork` channel were removed. Later on 2026-11-07, the `updateMRPlaybackState` command turned the display off and back on while the stream stayed up (see above). A stereo pair `AudioAccessory5,1` 27.3 probe on 2026-11-07 confirmed that clearing the artwork slot, a state 2→1 cycle, and a new item without artwork all keep the last image; the white-center placeholder appears only on a fresh session with no artwork.

@@ -2,13 +2,15 @@ package lamp
 
 import (
 	"bytes"
+	"image"
+	"image/color"
 	"image/jpeg"
-	"slices"
+	"reflect"
 	"testing"
 )
 
 func TestPresetsMatchCatalog(t *testing.T) {
-	want := []string{"origin", "ember", "dune", "moss", "tide", "orchid", "moon"}
+	want := []string{"ember", "dune", "moss", "tide", "orchid", "moon"}
 	all := All()
 	if len(all) != len(want) {
 		t.Fatalf("presets = %d, want %d", len(all), len(want))
@@ -25,13 +27,16 @@ func TestPresetsMatchCatalog(t *testing.T) {
 		}
 		seen[p.ID] = true
 	}
-	if !slices.Contains(want, DefaultID) {
-		t.Errorf("DefaultID %q is not a preset", DefaultID)
+	if DefaultID != "dune" {
+		t.Errorf("DefaultID = %q, want dune", DefaultID)
+	}
+	if _, ok := ByID("media"); ok {
+		t.Error("media must not be a rendered preset")
 	}
 }
 
 func TestNormalizeUnknownAndEmpty(t *testing.T) {
-	for _, id := range []string{"", "bogus", "Sand", " sand "} {
+	for _, id := range []string{"", "bogus", "Sand", " sand ", "origin", "media"} {
 		if got := Normalize(id); got != DefaultID {
 			t.Errorf("Normalize(%q) = %q, want %q", id, got, DefaultID)
 		}
@@ -121,22 +126,6 @@ func TestPresetCompositionCovers(t *testing.T) {
 	}
 }
 
-// TestOffIsDark pins the black image the engine sends when the light is off.
-func TestOffIsDark(t *testing.T) {
-	data := Off()
-	if len(data) == 0 {
-		t.Fatal("Off returned no image")
-	}
-	img, err := jpeg.Decode(bytes.NewReader(data))
-	if err != nil {
-		t.Fatal(err)
-	}
-	r, g, b, _ := img.At(Size/2, Size/2).RGBA()
-	if r>>8 > 0x10 || g>>8 > 0x10 || b>>8 > 0x10 {
-		t.Fatalf("off center = #%02x%02x%02x, want black", r>>8, g>>8, b>>8)
-	}
-}
-
 func TestGeneratorCachesPerPreset(t *testing.T) {
 	g := NewGenerator()
 	first, err := g.JPEG("tide")
@@ -153,19 +142,85 @@ func TestGeneratorCachesPerPreset(t *testing.T) {
 	if &first[0] != &second[0] {
 		t.Fatal("cached image was copied instead of reused")
 	}
-	unknown, err := g.JPEG("unknown")
-	if err != nil {
+	if _, err := g.JPEG("unknown"); err != nil {
 		t.Fatal(err)
 	}
-	direct, err := g.JPEG(DefaultID)
-	if err != nil {
+	if _, err := g.JPEG("unknown"); err != nil {
 		t.Fatal(err)
 	}
 	if g.builds != 2 {
-		t.Fatalf("builds = %d after unknown preset, want 2", g.builds)
+		t.Fatalf("builds = %d after the default render, want 2", g.builds)
 	}
-	if !bytes.Equal(unknown, direct) {
-		t.Fatal("unknown preset did not resolve to the default")
+}
+
+func TestCoverPresetClustersTheCover(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 60, 60))
+	for y := 0; y < 60; y++ {
+		for x := 0; x < 60; x++ {
+			var c color.RGBA
+			switch {
+			case x < 20:
+				c = color.RGBA{R: 255, A: 255}
+			case x < 40:
+				c = color.RGBA{G: 255, A: 255}
+			default:
+				c = color.RGBA{B: 255, A: 255}
+			}
+			img.SetRGBA(x, y, c)
+		}
+	}
+	p, ok := CoverPreset(img)
+	if !ok {
+		t.Fatal("CoverPreset returned no palette")
+	}
+	if p.ID != "cover" || len(p.Palette) < 3 {
+		t.Fatalf("preset = %+v, want cover with three colors", p)
+	}
+	var red, green, blue bool
+	for _, c := range p.Palette {
+		switch {
+		case c.R > c.G+40 && c.R > c.B+40:
+			red = true
+		case c.G > c.R+40 && c.G > c.B+40:
+			green = true
+		case c.B > c.R+40 && c.B > c.G+40:
+			blue = true
+		}
+	}
+	if !red || !green || !blue {
+		t.Fatalf("palette = %v, want red, green and blue", p.Palette)
+	}
+	if p.Base.R > 80 || p.Base.G > 80 || p.Base.B > 80 {
+		t.Fatalf("base = %v, want a dark background", p.Base)
+	}
+}
+
+func TestCoverPresetRejectsEmptyImages(t *testing.T) {
+	if _, ok := CoverPreset(nil); ok {
+		t.Fatal("nil image produced a palette")
+	}
+	if _, ok := CoverPreset(image.NewRGBA(image.Rect(0, 0, 0, 0))); ok {
+		t.Fatal("empty image produced a palette")
+	}
+}
+
+func TestCoverPresetIsDeterministic(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 40, 40))
+	for y := 0; y < 40; y++ {
+		for x := 0; x < 40; x++ {
+			img.SetRGBA(x, y, color.RGBA{R: uint8(40 + x*4), G: uint8(80 + y*3), B: 140, A: 255})
+		}
+	}
+	first, ok := CoverPreset(img)
+	if !ok {
+		t.Fatal("first call returned no palette")
+	}
+	second, ok := CoverPreset(img)
+	if !ok {
+		t.Fatal("second call returned no palette")
+	}
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("palette changed between calls: %+v vs %+v", first, second)
 	}
 }
 

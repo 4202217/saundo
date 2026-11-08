@@ -31,8 +31,8 @@ func NewGenerator() *Generator {
 var shared = NewGenerator()
 
 // JPEG returns the encoded 600x600 image for a preset, normalizing an
-// unknown or empty ID to the default. The bytes are shared and must not be
-// modified.
+// unknown or empty ID to the default template. The bytes are shared and must
+// not be modified.
 func JPEG(preset string) ([]byte, error) {
 	return shared.JPEG(preset)
 }
@@ -86,14 +86,4 @@ func render(p Preset) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// Off returns the solid black JPEG of the origin preset. The HomePod
-// normalizes black to white, so this is the default restore, not an LED-off.
-func Off() []byte {
-	data, err := JPEG("origin")
-	if err != nil {
-		return nil
-	}
-	return data
 }

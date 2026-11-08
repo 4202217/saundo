@@ -17,6 +17,7 @@ import (
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
+	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
 	"saundo/internal/settings"
 )
@@ -184,7 +185,6 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	stream.nowFieldLight = coverField(cover, false)
 	stream.nowFieldDark = coverField(cover, true)
 	stream.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
-	stream.snap.ShowNowPlaying = true
 
 	save("flyout-stream-light", stream.view, flyoutWidth, visibleFlyoutHeight(stream), false)
 	save("flyout-stream-dark", stream.view, flyoutWidth, visibleFlyoutHeight(stream), true)
@@ -207,7 +207,6 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	}
 	unknown.nowMediaAUMID = "Unknown.Player"
 	unknown.levelFrame = func(time.Duration) analyze.Frame { return sampleLevel() }
-	unknown.snap.ShowNowPlaying = true
 	save("flyout-nowplaying-unknown-light", unknown.view, flyoutWidth, visibleFlyoutHeight(unknown), false)
 	save("flyout-nowplaying-unknown-dark", unknown.view, flyoutWidth, visibleFlyoutHeight(unknown), true)
 
@@ -414,10 +413,16 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 
 	lampOff := fixture()
 	lampOff.page = pageLamp
-	lampOff.lampEnabled = false
-	lampOff.snap.LampEnabled = false
+	lampOff.lampOff = true
+	lampOff.snap.LampOff = true
 	save("settings-lamp-off-light", lampOff.settingsView, 720, 500, false)
 	save("settings-lamp-off-dark", lampOff.settingsView, 720, 500, true)
+
+	lampCollapsed := fixture()
+	save("flyout-lamp-collapsed-light", lampCollapsed.view, flyoutWidth,
+		visibleFlyoutHeight(lampCollapsed), false)
+	save("flyout-lamp-collapsed-dark", lampCollapsed.view, flyoutWidth,
+		visibleFlyoutHeight(lampCollapsed), true)
 
 	lampFly := fixture()
 	lampFly.lampExpanded = true
@@ -425,25 +430,46 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		visibleFlyoutHeight(lampFly), false)
 	save("flyout-lamp-expanded-dark", lampFly.view, flyoutWidth,
 		visibleFlyoutHeight(lampFly), true)
-	lampFly.lampEnabled = false
-	lampFly.snap.LampEnabled = false
+	lampFly.lampOff = true
+	lampFly.snap.LampOff = true
 	save("flyout-lamp-off-light", lampFly.view, flyoutWidth,
 		visibleFlyoutHeight(lampFly), false)
 
-	origin := fixture()
-	origin.page = pageLamp
-	origin.lampPreset = "origin"
-	origin.snap.LampPreset = "origin"
-	save("settings-lamp-origin-light", origin.settingsView, 720, 500, false)
-	save("settings-lamp-origin-dark", origin.settingsView, 720, 500, true)
-	originFly := fixture()
-	originFly.lampPreset = "origin"
-	originFly.snap.LampPreset = "origin"
-	originFly.lampExpanded = true
-	save("flyout-lamp-origin-light", originFly.view, flyoutWidth,
-		visibleFlyoutHeight(lampFly), false)
-	save("flyout-lamp-origin-dark", originFly.view, flyoutWidth,
-		visibleFlyoutHeight(lampFly), true)
+	coverImg := sampleCoverImage()
+	coverChoice := fixture()
+	coverChoice.page = pageLamp
+	coverChoice.lampCover = true
+	coverChoice.snap.LampCover = true
+	coverChoice.nowArt = ui.NewBitmap(coverImg)
+	coverChoice.nowFieldLight = coverField(coverImg, false)
+	coverChoice.nowFieldDark = coverField(coverImg, true)
+	coverChoice.nowLamp, coverChoice.nowLampOK = lamp.CoverPreset(coverImg)
+	save("settings-lamp-cover-light", coverChoice.settingsView, 720, 500, false)
+	save("settings-lamp-cover-dark", coverChoice.settingsView, 720, 500, true)
+	coverLampFly := fixture()
+	coverLampFly.lampCover = true
+	coverLampFly.snap.LampCover = true
+	coverLampFly.nowArt = ui.NewBitmap(coverImg)
+	coverLampFly.nowFieldLight = coverField(coverImg, false)
+	coverLampFly.nowFieldDark = coverField(coverImg, true)
+	coverLampFly.nowLamp, coverLampFly.nowLampOK = lamp.CoverPreset(coverImg)
+	coverLampFly.lampExpanded = true
+	save("flyout-lamp-cover-light", coverLampFly.view, flyoutWidth,
+		visibleFlyoutHeight(coverLampFly), false)
+	save("flyout-lamp-cover-dark", coverLampFly.view, flyoutWidth,
+		visibleFlyoutHeight(coverLampFly), true)
+
+	noMedia := fixture()
+	noMedia.page = pageLamp
+	noMedia.lampCover = true
+	noMedia.snap.LampCover = true
+	save("settings-lamp-nomedia-light", noMedia.settingsView, 720, 500, false)
+	save("settings-lamp-nomedia-dark", noMedia.settingsView, 720, 500, true)
+	noMediaFly := fixture()
+	noMediaFly.lampCover = true
+	noMediaFly.snap.LampCover = true
+	save("flyout-lamp-nomedia-light", noMediaFly.view, flyoutWidth,
+		visibleFlyoutHeight(noMediaFly), false)
 
 	pin := fixture()
 	pin.snap.PinRequired = true

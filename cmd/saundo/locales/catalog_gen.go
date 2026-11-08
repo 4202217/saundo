@@ -1152,28 +1152,6 @@ func (msgs Messages) SettingsPlaybackControlsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsPlaybackControlsDesc", nil)
 }
 
-// SettingsTrackInfoOnReceiver says "Show track info on the receiver"
-// in the language the app shows.
-func SettingsTrackInfoOnReceiver() string { return In(i18n.Locale()).SettingsTrackInfoOnReceiver() }
-
-// SettingsTrackInfoOnReceiver says "Show track info on the receiver"
-// in the language of msgs.
-func (msgs Messages) SettingsTrackInfoOnReceiver() string {
-	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiver", nil)
-}
-
-// SettingsTrackInfoOnReceiverDesc says "Send the title, artist, album, and cover to the receiver; this only changes the receiver's display, not the panel."
-// in the language the app shows.
-func SettingsTrackInfoOnReceiverDesc() string {
-	return In(i18n.Locale()).SettingsTrackInfoOnReceiverDesc()
-}
-
-// SettingsTrackInfoOnReceiverDesc says "Send the title, artist, album, and cover to the receiver; this only changes the receiver's display, not the panel."
-// in the language of msgs.
-func (msgs Messages) SettingsTrackInfoOnReceiverDesc() string {
-	return Catalog.Format(msgs.locale, "settingsTrackInfoOnReceiverDesc", nil)
-}
-
 // SettingsCoverColors says "Cover colors"
 // in the language the app shows.
 func SettingsCoverColors() string { return In(i18n.Locale()).SettingsCoverColors() }
@@ -3174,14 +3152,24 @@ func (msgs Messages) PageLampDesc() string {
 	return Catalog.Format(msgs.locale, "pageLampDesc", nil)
 }
 
-// SettingsLampEnable says "Enable ambient light"
+// SettingsLampCardTitle says "Top display light"
 // in the language the app shows.
-func SettingsLampEnable() string { return In(i18n.Locale()).SettingsLampEnable() }
+func SettingsLampCardTitle() string { return In(i18n.Locale()).SettingsLampCardTitle() }
 
-// SettingsLampEnable says "Enable ambient light"
+// SettingsLampCardTitle says "Top display light"
 // in the language of msgs.
-func (msgs Messages) SettingsLampEnable() string {
-	return Catalog.Format(msgs.locale, "settingsLampEnable", nil)
+func (msgs Messages) SettingsLampCardTitle() string {
+	return Catalog.Format(msgs.locale, "settingsLampCardTitle", nil)
+}
+
+// SettingsLampTemplates says "Custom templates"
+// in the language the app shows.
+func SettingsLampTemplates() string { return In(i18n.Locale()).SettingsLampTemplates() }
+
+// SettingsLampTemplates says "Custom templates"
+// in the language of msgs.
+func (msgs Messages) SettingsLampTemplates() string {
+	return Catalog.Format(msgs.locale, "settingsLampTemplates", nil)
 }
 
 // SettingsLampHomePodOnly says "HomePod only"
@@ -3204,21 +3192,21 @@ func (msgs Messages) SettingsLampTop() string {
 	return Catalog.Format(msgs.locale, "settingsLampTop", nil)
 }
 
-// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover."
+// SettingsLampHintOn says "Turn off darkens the top display; turn on restores the current choice."
 // in the language the app shows.
 func SettingsLampHintOn() string { return In(i18n.Locale()).SettingsLampHintOn() }
 
-// SettingsLampHintOn says "Shows the ambient-light controls in the popover. Off returns the top display to the default or the receiver cover."
+// SettingsLampHintOn says "Turn off darkens the top display; turn on restores the current choice."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOn() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
 }
 
-// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to sho…"
+// SettingsLampHintOff says "The top display is dark; turn on restores the current choice."
 // in the language the app shows.
 func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
 
-// SettingsLampHintOff says "Off hides the ambient-light controls and returns the top display to the default or the receiver cover. Turn on to sho…"
+// SettingsLampHintOff says "The top display is dark; turn on restores the current choice."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOff() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
@@ -3234,24 +3222,84 @@ func (msgs Messages) SettingsLampSoundGlowHint() string {
 	return Catalog.Format(msgs.locale, "settingsLampSoundGlowHint", nil)
 }
 
-// LampToggle says "Ambient light switch"
+// LampTurnOff says "Turn off"
 // in the language the app shows.
-func LampToggle() string { return In(i18n.Locale()).LampToggle() }
+func LampTurnOff() string { return In(i18n.Locale()).LampTurnOff() }
 
-// LampToggle says "Ambient light switch"
+// LampTurnOff says "Turn off"
 // in the language of msgs.
-func (msgs Messages) LampToggle() string {
-	return Catalog.Format(msgs.locale, "lampToggle", nil)
+func (msgs Messages) LampTurnOff() string {
+	return Catalog.Format(msgs.locale, "lampTurnOff", nil)
 }
 
-// LampPresetOrigin says "Default"
+// LampTurnOn says "Turn on"
 // in the language the app shows.
-func LampPresetOrigin() string { return In(i18n.Locale()).LampPresetOrigin() }
+func LampTurnOn() string { return In(i18n.Locale()).LampTurnOn() }
 
-// LampPresetOrigin says "Default"
+// LampTurnOn says "Turn on"
 // in the language of msgs.
-func (msgs Messages) LampPresetOrigin() string {
-	return Catalog.Format(msgs.locale, "lampPresetOrigin", nil)
+func (msgs Messages) LampTurnOn() string {
+	return Catalog.Format(msgs.locale, "lampTurnOn", nil)
+}
+
+// LampPriority says "Priority"
+// in the language the app shows.
+func LampPriority() string { return In(i18n.Locale()).LampPriority() }
+
+// LampPriority says "Priority"
+// in the language of msgs.
+func (msgs Messages) LampPriority() string {
+	return Catalog.Format(msgs.locale, "lampPriority", nil)
+}
+
+// LampPriorityCover says "Cover first"
+// in the language the app shows.
+func LampPriorityCover() string { return In(i18n.Locale()).LampPriorityCover() }
+
+// LampPriorityCover says "Cover first"
+// in the language of msgs.
+func (msgs Messages) LampPriorityCover() string {
+	return Catalog.Format(msgs.locale, "lampPriorityCover", nil)
+}
+
+// LampPriorityTemplate says "Template first"
+// in the language the app shows.
+func LampPriorityTemplate() string { return In(i18n.Locale()).LampPriorityTemplate() }
+
+// LampPriorityTemplate says "Template first"
+// in the language of msgs.
+func (msgs Messages) LampPriorityTemplate() string {
+	return Catalog.Format(msgs.locale, "lampPriorityTemplate", nil)
+}
+
+// LampPriorityCoverShort says "Cover"
+// in the language the app shows.
+func LampPriorityCoverShort() string { return In(i18n.Locale()).LampPriorityCoverShort() }
+
+// LampPriorityCoverShort says "Cover"
+// in the language of msgs.
+func (msgs Messages) LampPriorityCoverShort() string {
+	return Catalog.Format(msgs.locale, "lampPriorityCoverShort", nil)
+}
+
+// LampPriorityTemplateShort says "Template"
+// in the language the app shows.
+func LampPriorityTemplateShort() string { return In(i18n.Locale()).LampPriorityTemplateShort() }
+
+// LampPriorityTemplateShort says "Template"
+// in the language of msgs.
+func (msgs Messages) LampPriorityTemplateShort() string {
+	return Catalog.Format(msgs.locale, "lampPriorityTemplateShort", nil)
+}
+
+// LampPresetCover says "Cover"
+// in the language the app shows.
+func LampPresetCover() string { return In(i18n.Locale()).LampPresetCover() }
+
+// LampPresetCover says "Cover"
+// in the language of msgs.
+func (msgs Messages) LampPresetCover() string {
+	return Catalog.Format(msgs.locale, "lampPresetCover", nil)
 }
 
 // LampPresetEmber says "Ember"
@@ -3322,16 +3370,6 @@ func FlyoutLampSection() string { return In(i18n.Locale()).FlyoutLampSection() }
 // in the language of msgs.
 func (msgs Messages) FlyoutLampSection() string {
 	return Catalog.Format(msgs.locale, "flyoutLampSection", nil)
-}
-
-// FlyoutLampHomePodOnly says "HomePod only"
-// in the language the app shows.
-func FlyoutLampHomePodOnly() string { return In(i18n.Locale()).FlyoutLampHomePodOnly() }
-
-// FlyoutLampHomePodOnly says "HomePod only"
-// in the language of msgs.
-func (msgs Messages) FlyoutLampHomePodOnly() string {
-	return Catalog.Format(msgs.locale, "flyoutLampHomePodOnly", nil)
 }
 
 // FlyoutLampColors says "Colors"

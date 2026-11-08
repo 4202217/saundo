@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-07 -->
+<!-- reviewed-through: 2026-11-08 -->
 
 # Implementation overview
 
@@ -48,10 +48,11 @@ tone leave the bars steady and quiet passages compress instead of filling
 them.
 
 The receiver push carries the same track's title, artist, album, and SMTC
-thumbnail as a DMAP `SET_PARAMETER` followed by an image `SET_PARAMETER`;
-the app keys each push on the text plus an FNV-1a hash of the cover bytes,
-so a thumbnail that arrives or changes after the text is sent again in the
-same session.
+thumbnail as a DMAP `SET_PARAMETER` followed by an image `SET_PARAMETER`
+whenever a session is streaming; there is no switch, and the card's display
+setting does not gate it. The app keys each push on the text plus an FNV-1a
+hash of the cover bytes, so a thumbnail that arrives or changes after the
+text is sent again in the same session.
 
 ## Package map
 
@@ -72,10 +73,10 @@ same session.
 | `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON (`dpapi_windows.go`) |
 | `internal/airplay/device` | Receiver description, auth enum, and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
-| `internal/lamp` | Ambient-light preset registry, the seeded six-blob palette renderer, the origin default reset, and a lazy per-preset 600×600 JPEG cache |
+| `internal/lamp` | Six seeded palette templates, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette 600×600 JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) and transport commands (Windows/other build split) |
-| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`), the receiver push (`showNowPlaying`), the local-output mute (`muteLocalOnConnect`), and the ambient light (`lamp.enabled`) all default on |
+| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`), the local-output mute (`muteLocalOnConnect`), and the ambient light (`lamp.off`, `lamp.cover`, `lamp.preset`) all default on, with cover priority and the dune template; the receiver push is unconditional |
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
@@ -83,17 +84,18 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetShowNowPlaying`, `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, and the receiver-management commands
+`SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
-app-only latency mode fields in the engine settings copy. `SetLamp` saves the
-global `lamp.enabled`/`lamp.preset` choice, applies it to a live session, and
-is reapplied when a session starts streaming. The snapshot carries both
-lists: `Devices` (the flyout, with hidden receivers filtered out while the
-active session's row stays) and `Receivers` (every row with its settings, no
-secrets — only whether a password exists); it also carries `LampEnabled` and
-`LampPreset`, which both lamp surfaces read.
+app-only latency mode fields in the engine settings copy. `SetLamp(off, cover,
+preset)` saves the global `lamp.off`/`lamp.cover`/`lamp.preset` choice, applies
+it to a live session, and is reapplied when a session starts streaming. The
+snapshot carries both lists: `Devices` (the flyout, with hidden receivers
+filtered out while the active session's row stays) and `Receivers` (every row
+with its settings, no secrets — only whether a password exists); it also
+carries `LampOff`, `LampCover`, and `LampPreset`, which both lamp surfaces
+read.
 
 The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
@@ -141,19 +143,25 @@ mode.
 5. While streaming: feedback every 2 s, receiver-volume polling, sync
    packets, and event-channel replies run on the sender's timers; after 2 s
    of digital silence the engine suspends the pacer until the next audible
-   block. The engine reapplies the ambient light once the session streams.
-   The sender keeps one cover slot: the ambient image while the light is on,
-   otherwise the receiver track-info cover, with the origin image as the
-   fallback, and it resends the effective cover at every stream start, so a
-   reconnect does not lose the top display. The cover leaves as a Now
-   Playing image on the encrypted control channel (`SET_PARAMETER
-   image/jpeg`); there is no separate artwork HTTP connection.
+   block. The engine reapplies the ambient light once the session streams:
+   the manual 关灯 sends the paused playback state; cover priority hands the
+   slot to the media cover and keeps the display lit, and a template owns the
+   slot with its image. A media pause keeps the current light. With cover
+   priority on and no media cover, the sender stops sending an image and the
+   receiver keeps its last light; a fresh session with no artwork shows the
+   device's own white-center placeholder. The sender keeps one artwork slot:
+   a template owns it or cover priority hands it to the media cover; off is a
+   playback state independent of the slot. It resends the effective cover
+   and state at every stream start, so a reconnect does not lose the top
+   display. The cover leaves as a Now Playing image on the encrypted control
+   channel (`SET_PARAMETER image/jpeg`); there is no separate artwork HTTP
+   connection.
 
 ## On-disk state
 
 All under `%APPDATA%\saundo\`:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options and receiver track-info push, the local-output mute, and the global ambient-light choice (`lamp.enabled`, `lamp.preset`). The mute, the receiver push, and the light default on; the light's preset defaults to `origin`, and an unknown preset is normalized to `origin` on load. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — DPAPI-protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace.

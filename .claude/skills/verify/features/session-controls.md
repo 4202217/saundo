@@ -36,11 +36,11 @@ card, capture status, and the diagnostics log card.
   With no session at all the card is not drawn: the playback card keeps the
   volume, latency, and capture lines, and `fitFlyout` shrinks the flyout by
   the card's 150 DIP. The 正在播放 settings page gates the card: the display
-  master, the playback controls, the receiver track info, the cover colors,
-  and the audio level; master off hides the card and shrinks the flyout, and
-  the receiver track info is effective only while the master is on. The
-  settings preview shows the live card, or a sample when nothing plays. The 推送 switch is gone; changed tracks still forward
-  as DMAP plus the cover image when the engine's `showNowPlaying` setting is on.
+  master, the playback controls, the cover colors, and the audio level;
+  master off hides the card and shrinks the flyout. The
+  settings preview shows the live card, or a sample when nothing plays. There
+  is no receiver-push switch: changed tracks always forward as DMAP plus the
+  cover image while streaming, independent of the card's display setting.
 - Capture line: `采集 {endpoint}` with the rate formatted as kHz
   (`48 kHz`); 采集设备 follows the Windows default or pins a specific
   endpoint (a queued async restart supersedes the in-flight one); 丢帧

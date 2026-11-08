@@ -48,14 +48,11 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   and the sample's stays still. Then come the rows 封面 (a three-way
   latency-style segmented control: 无封面 / 默认封面 / 媒体封面, default
   media; persists as `coverMode`), 播放控制 (`playbackControls`),
-  封面配色 (`coverColors`), 音频电平 (`audioLevel`), and last
-  在接收器上显示曲目信息 (`showNowPlaying`, the existing engine setting,
-  on); the receiver push is last because it leaves the panel untouched.
-  Master off greys the
-  preview at 45% and disables every row; the dependent values stay. The
-  receiver row is effective only while the master is on. New `settings.json`
-  keys default on; missing keys read their defaults; changes save immediately
-  and resize the flyout.
+  封面配色 (`coverColors`), and 音频电平 (`audioLevel`). The receiver track
+  info is always pushed; there is no row and no setting. Master off greys the
+  preview at 45% and disables every row; the dependent values stay. New
+  `settings.json` keys default on; missing keys read their defaults; changes
+  save immediately and resize the flyout.
 - 更新 page: update states, channel (stable/beta), release-history list —
   see [updates.md](updates.md).
 - 关于 page: the identity card shows the app's smile mark and the version
@@ -79,7 +76,7 @@ go test -run 'TestSettingsPagesRender|TestConnectionPageMuteLocalStates|TestMute
 Settings defaults:
 
 ```bash
-go test -run 'TestDefaultsEnableMuteAndReceiverPush|TestLampDefaultsOnAndOrigin|TestLampOldFileLoadsDefaults' -v ./internal/settings/
+go test -run 'TestDefaultsEnableLocalMute|TestLampDefaultsOnAndCover|TestLampOldFileLoadsDefaults' -v ./internal/settings/
 ```
 
 Live engine path for the mute (mutes the receiver first, drives the engine
@@ -122,7 +119,7 @@ change in the flyout).
 - The 正在播放 master off is not the same as no media: the media card is
   hidden either way and the flyout shrinks the same amount, but the settings
   page still shows the greyed preview and the retained option values.
-- The receiver track info only reaches the receiver while both the master and
-  the receiver row are on.
+- The receiver track info is always pushed while streaming; the card's
+  display master does not gate it.
 - Passwords never render back — dots only (`receivers_page.go:528-531`). A
   page showing a stored password verbatim is a bug.

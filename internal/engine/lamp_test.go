@@ -31,7 +31,14 @@ func lastArtworkOn(f *fakeTransport) bool {
 	return f.artworkOn[len(f.artworkOn)-1]
 }
 
-func TestLampToggleAppliesAndPersists(t *testing.T) {
+func lastPlayback(f *fakeTransport) (bool, bool) {
+	if len(f.playback) == 0 {
+		return false, false
+	}
+	return f.playback[len(f.playback)-1], true
+}
+
+func TestLampOffOnAppliesAndPersists(t *testing.T) {
 	h := newHarness(t)
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.connect()
@@ -40,28 +47,31 @@ func TestLampToggleAppliesAndPersists(t *testing.T) {
 		return []byte("jpeg:" + preset), nil
 	}
 
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
 	snap := h.e.Snapshot()
-	if !snap.LampEnabled || snap.LampPreset != "tide" {
-		t.Fatalf("snapshot lamp = %v/%q, want on/tide", snap.LampEnabled, snap.LampPreset)
+	if snap.LampOff || snap.LampPreset != "tide" {
+		t.Fatalf("snapshot lamp = off:%v/%q, want on/tide", snap.LampOff, snap.LampPreset)
 	}
 	data, mime := lastArtwork(h.fake)
 	if !bytes.Equal(data, []byte("jpeg:tide")) || mime != "image/jpeg" || !lastArtworkOn(h.fake) {
 		t.Fatalf("transport got %q %q on=%v, want jpeg:tide image/jpeg on", data, mime, lastArtworkOn(h.fake))
 	}
-
-	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
-	if h.e.Snapshot().LampEnabled {
-		t.Fatal("snapshot stayed on after the switch turned off")
+	if playing, ok := lastPlayback(h.fake); !ok || !playing {
+		t.Fatalf("template playback = %v/%v, want playing", playing, ok)
 	}
-	data, mime = lastArtwork(h.fake)
-	if !bytes.Equal(data, lamp.Off()) || mime != "image/jpeg" || lastArtworkOn(h.fake) {
-		t.Fatalf("off artwork = %d bytes %q on=%v, want the black off image/jpeg", len(data), mime, lastArtworkOn(h.fake))
+
+	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
+	snap = h.e.Snapshot()
+	if !snap.LampOff || snap.LampPreset != "tide" {
+		t.Fatalf("snapshot lamp = off:%v/%q, want off/tide", snap.LampOff, snap.LampPreset)
+	}
+	if playing, ok := lastPlayback(h.fake); !ok || playing {
+		t.Fatalf("off playback = %v/%v, want paused", playing, ok)
 	}
 
 	h.flushSettings()
 	got := h.e.sets.Load()
-	if got.Lamp.Enabled || got.Lamp.Preset != "tide" {
+	if !got.Lamp.Off || got.Lamp.Preset != "tide" {
 		t.Fatalf("persisted lamp = %+v, want off + tide", got.Lamp)
 	}
 }
@@ -73,37 +83,87 @@ func TestLampAppliedWhenStreamingStarts(t *testing.T) {
 	h.e.lampJPEG = func(preset string) ([]byte, error) {
 		return []byte("jpeg:" + preset), nil
 	}
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "ember"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "ember"})
 	h.fake.artwork = nil
 	h.fake.artworkMIME = nil
 	h.fake.artworkOn = nil
+	h.fake.playback = nil
 
 	h.launch()
 	data, mime := lastArtwork(h.fake)
 	if !bytes.Equal(data, []byte("jpeg:ember")) || mime != "image/jpeg" || !lastArtworkOn(h.fake) {
 		t.Fatalf("launch artwork = %q %q on=%v, want jpeg:ember image/jpeg on", data, mime, lastArtworkOn(h.fake))
 	}
+	if playing, ok := lastPlayback(h.fake); !ok || !playing {
+		t.Fatalf("launch playback = %v/%v, want playing", playing, ok)
+	}
 }
 
-func TestLampUnknownPresetFallsBackToOrigin(t *testing.T) {
+func TestLampUnknownPresetFallsBackToDefault(t *testing.T) {
 	h := newHarness(t)
-	h.e.setsValue.Lamp.Enabled = false
+	h.e.lampJPEG = func(preset string) ([]byte, error) {
+		return []byte("jpeg:" + preset), nil
+	}
+	// The harness may already have cached the real default image; force the
+	// stub to render the normalized default preset.
+	h.e.lampImage = nil
+	h.e.lampImagePreset = ""
+	h.e.setDevices([]device.Device{capableLampDevice()})
+	h.connect()
+	h.launch()
+	h.fake.artwork = nil
+	h.fake.artworkMIME = nil
+	h.fake.artworkOn = nil
+	h.fake.playback = nil
+
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "bogus"})
+
+	snap := h.e.Snapshot()
+	if snap.LampCover || snap.LampPreset != lamp.DefaultID {
+		t.Fatalf("snapshot lamp = cover:%v/%q, want template %q", snap.LampCover, snap.LampPreset, lamp.DefaultID)
+	}
+	data, mime := lastArtwork(h.fake)
+	if !bytes.Equal(data, []byte("jpeg:"+lamp.DefaultID)) || mime != "image/jpeg" || !lastArtworkOn(h.fake) {
+		t.Fatalf("template = %q %q on=%v, want the default template", data, mime, lastArtworkOn(h.fake))
+	}
+	if playing, ok := lastPlayback(h.fake); !ok || !playing {
+		t.Fatalf("template with no media = %v/%v, want playing", playing, ok)
+	}
+	if n := countLogLines(h, "unknown"); n != 1 {
+		t.Fatalf("unknown-preset log lines = %d, want 1", n)
+	}
+}
+
+// TestLampCoverKeepsPlayingOnPause pins the rule change: a media pause no
+// longer touches the playback state; only the manual 关灯 does.
+func TestLampCoverKeepsPlayingOnPause(t *testing.T) {
+	h := newHarness(t)
 	h.e.lampJPEG = func(preset string) ([]byte, error) {
 		return []byte("jpeg:" + preset), nil
 	}
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.connect()
 	h.launch()
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "bogus"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "dune", lampCover: true})
+	snap := h.e.Snapshot()
+	if !snap.LampCover || snap.LampPreset != "dune" {
+		t.Fatalf("snapshot lamp = cover:%v/%q, want cover + dune", snap.LampCover, snap.LampPreset)
+	}
+	if playing, ok := lastPlayback(h.fake); !ok || !playing {
+		t.Fatalf("cover = %v/%v, want playing", playing, ok)
+	}
+	if data, _ := lastArtwork(h.fake); data != nil || lastArtworkOn(h.fake) {
+		t.Fatalf("cover sent a lamp image: %q on=%v", data, lastArtworkOn(h.fake))
+	}
 
-	if got := h.e.Snapshot().LampPreset; got != "origin" {
-		t.Fatalf("preset = %q, want origin", got)
+	h.fake.playback = nil
+	h.e.handleCommand(command{kind: cmdNowPlaying, text: "夜曲", name: "周杰伦",
+		cover: []byte{0xff, 0xd8, 0xff, 0xd9}, coverMIME: "image/jpeg"})
+	if len(h.fake.playback) != 0 {
+		t.Fatalf("a media update touched the playback state: %v", h.fake.playback)
 	}
-	if data, _ := lastArtwork(h.fake); !bytes.Equal(data, []byte("jpeg:origin")) {
-		t.Fatalf("artwork = %q, want jpeg:origin", data)
-	}
-	if n := countLogLines(h, "unknown"); n != 1 {
-		t.Fatalf("unknown-preset log lines = %d, want 1", n)
+	if !bytes.Equal(h.fake.nowCover, []byte{0xff, 0xd8, 0xff, 0xd9}) {
+		t.Fatalf("media cover not forwarded: %q", h.fake.nowCover)
 	}
 }
 
@@ -128,17 +188,21 @@ func TestLampSkipsIncapableReceivers(t *testing.T) {
 			h.launch()
 			h.fake.artwork = nil
 			h.fake.artworkMIME = nil
+			h.fake.playback = nil
 			h.e.lampJPEG = func(preset string) ([]byte, error) {
 				return []byte("jpeg:" + preset), nil
 			}
-			h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
+			h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
 
 			snap := h.e.Snapshot()
-			if !snap.LampEnabled || snap.LampPreset != "tide" {
-				t.Fatalf("setting did not survive the skip: %v/%q", snap.LampEnabled, snap.LampPreset)
+			if snap.LampOff || snap.LampPreset != "tide" {
+				t.Fatalf("setting did not survive the skip: off:%v/%q", snap.LampOff, snap.LampPreset)
 			}
 			if len(h.fake.artwork) != 0 {
 				t.Fatalf("sent artwork to an incapable receiver: %q", h.fake.artwork)
+			}
+			if len(h.fake.playback) != 0 {
+				t.Fatalf("sent playback state to an incapable receiver: %v", h.fake.playback)
 			}
 			if n := countLogLines(h, "does not support"); n != 1 {
 				t.Fatalf("skip log lines = %d, want 1", n)
@@ -157,8 +221,8 @@ func TestLampTogglingTwiceLogsTheSkipOnce(t *testing.T) {
 	}})
 	h.connect()
 	h.launch()
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "tide"})
-	h.e.handleCommand(command{kind: cmdLamp, value: 1, text: "ember"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "tide"})
+	h.e.handleCommand(command{kind: cmdLamp, value: 0, text: "ember"})
 	if n := countLogLines(h, "does not support"); n != 1 {
 		t.Fatalf("skip log lines = %d, want 1", n)
 	}
