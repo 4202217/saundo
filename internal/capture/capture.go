@@ -5,10 +5,23 @@
 package capture
 
 import (
+	"errors"
 	"sync"
 	"time"
 
 	"saundo/internal/audio/ring"
+)
+
+// Timing and error shapes shared by the per-platform capture loops.
+const (
+	openCheckEvery  = 500 * time.Millisecond
+	retryDelayFirst = 200 * time.Millisecond
+	retryDelayMax   = 2 * time.Second
+)
+
+var (
+	errStopped              = errors.New("capture: stopped")
+	errDefaultDeviceChanged = errors.New("capture: the default render device changed")
 )
 
 // Endpoint identifies one active render device.
