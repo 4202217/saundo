@@ -18,6 +18,7 @@ Stop and report when any of these is true:
 - The working tree is dirty.
 - The docs audit has an open item.
 - The verification skill audit reports a product defect.
+- The UI review skill reports an unresolved P0 or terminology finding.
 - `cmd/saundo/mygo.json` and the tag disagree.
 - `mingw32-make check` fails.
 - The local build or its update manifest is wrong.
@@ -33,13 +34,15 @@ Do not tag, push, or publish around a failed check. Do not rotate `MYGO_UPDATER_
 
 Use the version from the release request as `v<version>`. Without one, pick the next semver from the unreleased changelog (features minor, fixes patch), state it in your first line, and proceed. The range is every commit since the last release tag. The version in `cmd/saundo/mygo.json` must match the tag. A beta uses `0.4.2-beta.1`. A stable release uses `0.4.2`.
 
-## 2. Docs audit and changelogs
+## 2. Docs audit, UI review, and changelogs
 
 Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release commit.
 
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
 - `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
+
+Run the UI review skill (`/ui-review`) before you write the changelogs. It inventories the copy, renders the preview matrix, and lists copy and layout findings by severity. Resolve every P0 and every terminology finding. Land the fixes as their own commit before the release commit; the changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the UI review outcome in `docs/verification.md`.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
 
@@ -170,4 +173,4 @@ For rollback, signing, and GPL compliance, follow `docs/releasing.md`. Do not ro
 
 ## Report
 
-State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, and the verification skill outcome. If you stopped, name the failing gate and the file or command that proves it.
+State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the verification skill outcome, the UI review outcome (clean, changed, blocked), and the preview matrix path. If you stopped, name the failing gate and the file or command that proves it.
