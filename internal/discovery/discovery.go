@@ -299,7 +299,13 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 	}
 	txt := parseTXT(e.InfoFields)
 	id := txt["deviceid"]
-	name := trimServiceSuffix(unescapeDNS(e.Name), service)
+	// hashicorp/mdns reports records from every answer and extra section to
+	// whichever browse is listening, so an `_airplay` entry can arrive while
+	// parsing `_raop` (and the reverse). The instance name says which service
+	// the entry belongs to; the query that delivered it does not.
+	rawName := unescapeDNS(e.Name)
+	service = serviceForName(rawName, service)
+	name := trimServiceSuffix(rawName, service)
 	if service == raopService {
 		// The RAOP instance is "<MAC>@<friendly name>". The MAC is the same
 		// deviceid the AirPlay service advertises, so it joins the two
@@ -387,11 +393,47 @@ func unescapeDNS(s string) string {
 
 func isASCIIDigit(c byte) bool { return c >= '0' && c <= '9' }
 
+// serviceForName returns the AirPlay service an advertisement belongs to,
+// falling back to the queried service when the instance name carries no
+// known suffix.
+func serviceForName(name, fallback string) string {
+	for _, service := range []string{raopService, airplayService} {
+		for _, suffix := range serviceSuffixes(service) {
+			if _, ok := trimSuffixFold(name, suffix); ok {
+				return service
+			}
+		}
+	}
+	return fallback
+}
+
+func serviceSuffixes(service string) []string {
+	return []string{"." + service + ".local.", "." + service + ".local", "." + service}
+}
+
 func trimServiceSuffix(name, service string) string {
-	name = strings.TrimSuffix(name, "."+service+".local.")
-	name = strings.TrimSuffix(name, "."+service+".local")
-	name = strings.TrimSuffix(name, ".local.")
+	for _, suffix := range serviceSuffixes(service) {
+		if trimmed, ok := trimSuffixFold(name, suffix); ok {
+			name = trimmed
+			break
+		}
+	}
+	for _, suffix := range []string{".local.", ".local"} {
+		if trimmed, ok := trimSuffixFold(name, suffix); ok {
+			name = trimmed
+			break
+		}
+	}
 	return strings.TrimSpace(name)
+}
+
+// trimSuffixFold removes suffix from s when the tail matches without regard
+// to DNS name case.
+func trimSuffixFold(s, suffix string) (string, bool) {
+	if len(s) < len(suffix) || !strings.EqualFold(s[len(s)-len(suffix):], suffix) {
+		return s, false
+	}
+	return s[:len(s)-len(suffix)], true
 }
 
 func idOrInstance(id, instance string) string {

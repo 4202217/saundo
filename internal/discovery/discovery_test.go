@@ -78,6 +78,54 @@ func TestParseOSVersionTXT(t *testing.T) {
 	}
 }
 
+// TestParseEntryUsesTheAdvertisedService pins the name leak: hashicorp/mdns
+// delivers records from both AirPlay services to either browse, so the
+// instance name must be trimmed by the service it belongs to, not by the
+// query that happened to receive it.
+func TestParseEntryUsesTheAdvertisedService(t *testing.T) {
+	t.Run("airplay name in the raop browse", func(t *testing.T) {
+		d, ok := parseEntry(&mdns.ServiceEntry{
+			Name:   "MacBook Air._airplay._tcp.local.",
+			AddrV4: net.IPv4(192, 168, 1, 40),
+			Port:   7000,
+			InfoFields: []string{
+				"deviceid=11:22:33:44:55:66",
+				"model=Mac14,2",
+				"features=0x4A7FCA00,0x3C354B00",
+			},
+		}, raopService)
+		if !ok {
+			t.Fatal("entry rejected")
+		}
+		if d.Name != "MacBook Air" {
+			t.Fatalf("name = %q, want MacBook Air", d.Name)
+		}
+		if !d.AirPlay2 {
+			t.Fatal("airplay advertisement parsed as a raop device")
+		}
+	})
+	t.Run("raop name in the airplay browse", func(t *testing.T) {
+		d, ok := parseEntry(&mdns.ServiceEntry{
+			Name:   "AABBCCDDEEFF@MacBook Air._raop._tcp.local.",
+			AddrV4: net.IPv4(192, 168, 1, 40),
+			Port:   5000,
+			InfoFields: []string{
+				"deviceid=AA:BB:CC:DD:EE:FF",
+				"am=Mac14,2",
+			},
+		}, airplayService)
+		if !ok {
+			t.Fatal("entry rejected")
+		}
+		if d.Name != "MacBook Air" {
+			t.Fatalf("name = %q, want MacBook Air", d.Name)
+		}
+		if d.AirPlay2 {
+			t.Fatal("raop advertisement parsed as an airplay device")
+		}
+	})
+}
+
 // TestMergeKeepsOSVersion covers the two advertisements: the AirPlay record
 // carries osvers while the RAOP record does not, and the merged device keeps
 // it.
