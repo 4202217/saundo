@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 // Package nowplaying reads the system "now playing" session. Only Windows
 // implements it; other platforms report unsupported.
