@@ -116,31 +116,6 @@
       }
     }
   },
-  "flyoutCaptureError": "Capture error: {error}",
-  "@flyoutCaptureError": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "flyoutCaptureNotRunning": "Capture is not running",
-  "flyoutCapture": "Capture {name}",
-  "@flyoutCapture": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "flyoutDropped": "{n, plural, =0 {no drops} one {# dropped} other {# dropped}}",
-  "@flyoutDropped": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
   "flyoutNowPlayingNoMedia": "No media detected",
   "flyoutNowPlayingSessionFailed": "Could not read the system media session",
   "flyoutNowPlayingSession": "System media session",

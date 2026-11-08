@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/egoist/mygo"
@@ -37,7 +36,7 @@ func TestMain(m *testing.M) {
 // visibleFlyoutHeight is the height a tester should use for this App's
 // current devices, latency row, and media card.
 func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded)
+	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown())
 }
 
 func withLocale(t *testing.T, tag string) {
@@ -132,24 +131,6 @@ func TestPseudoLocaleRenders(t *testing.T) {
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if len(tt.Texts()) == 0 {
 		t.Fatal("pseudo-locale view rendered no text")
-	}
-}
-
-func TestCaptureMetaHidesDropsWhenIdle(t *testing.T) {
-	s := engine.Snapshot{
-		CaptureRunning: true,
-		CaptureName:    "Speakers",
-		CaptureRate:    48000,
-		DroppedSamples: 1234,
-		State:          sender.StateIdle,
-	}
-	drops := locales.FlyoutDropped(1234)
-	if got := captureMeta(s); strings.Contains(got, drops) {
-		t.Fatalf("idle capture line shows drops: %q", got)
-	}
-	s.State = sender.StateStreaming
-	if got := captureMeta(s); !strings.Contains(got, drops) {
-		t.Fatalf("streaming capture line lacks drops: %q", got)
 	}
 }
 
@@ -543,6 +524,14 @@ func TestErrorStateShowsRetry(t *testing.T) {
 			t.Fatalf("error state is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
+	// The error bar takes its own height; it must not squeeze the device card
+	// or clip the playback card's last row.
+	if card, ok := tt.Find("设备列表"); !ok || card.H+1 < deviceCardHeight(len(a.snap.Devices)) {
+		t.Fatalf("error state squeezes the device card to %.1f DIP", card.H)
+	}
+	if seg, ok := tt.Find("自定义"); !ok || seg.H+1 < 26 {
+		t.Fatalf("error state clips the latency row to %.1f DIP", seg.H)
+	}
 }
 
 func TestEmptyStateOffersSearch(t *testing.T) {
@@ -560,8 +549,8 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	noMedia := map[int]int{0: 383, 1: 300, 2: 356, 3: 412, 5: 412}
-	withMedia := map[int]int{0: 533, 1: 450, 2: 506, 3: 562, 5: 562}
+	noMedia := map[int]int{0: 365, 1: 282, 2: 338, 3: 394, 5: 394}
+	withMedia := map[int]int{0: 515, 1: 432, 2: 488, 3: 544, 5: 544}
 	for _, tc := range []struct {
 		media bool
 		want  map[int]int
@@ -605,22 +594,22 @@ func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 }
 
 func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
-	const capture = "采集 Speakers · 48 kHz · 丢帧 0"
+	const lastRow = "自定义"
 	find := func(devices int) ui.Rect {
 		a := previewApp()
 		a.snap.Devices = a.snap.Devices[:devices]
 		tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 		tt.Frame()
-		r, ok := tt.Find(capture)
+		r, ok := tt.Find(lastRow)
 		if !ok {
-			t.Fatalf("%d devices: the capture line is missing", devices)
+			t.Fatalf("%d devices: the latency row is missing", devices)
 		}
 		return r
 	}
 	full := find(deviceRows).H
 	for devices := 0; devices < deviceRows; devices++ {
 		if got := find(devices).H; got+1 < full {
-			t.Fatalf("%d devices: the capture line is clipped to %.1f DIP, want %.1f", devices, got, full)
+			t.Fatalf("%d devices: the latency row is clipped to %.1f DIP, want %.1f", devices, got, full)
 		}
 	}
 }

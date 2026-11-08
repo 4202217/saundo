@@ -578,46 +578,6 @@ func (msgs Messages) FlyoutVolumeValue(v float64) string {
 	return Catalog.Format(msgs.locale, "flyoutVolumeValue", map[string]any{"v": v})
 }
 
-// FlyoutCaptureError says "Capture error: {error}"
-// in the language the app shows.
-func FlyoutCaptureError(error string) string { return In(i18n.Locale()).FlyoutCaptureError(error) }
-
-// FlyoutCaptureError says "Capture error: {error}"
-// in the language of msgs.
-func (msgs Messages) FlyoutCaptureError(error string) string {
-	return Catalog.Format(msgs.locale, "flyoutCaptureError", map[string]any{"error": error})
-}
-
-// FlyoutCaptureNotRunning says "Capture is not running"
-// in the language the app shows.
-func FlyoutCaptureNotRunning() string { return In(i18n.Locale()).FlyoutCaptureNotRunning() }
-
-// FlyoutCaptureNotRunning says "Capture is not running"
-// in the language of msgs.
-func (msgs Messages) FlyoutCaptureNotRunning() string {
-	return Catalog.Format(msgs.locale, "flyoutCaptureNotRunning", nil)
-}
-
-// FlyoutCapture says "Capture {name}"
-// in the language the app shows.
-func FlyoutCapture(name string) string { return In(i18n.Locale()).FlyoutCapture(name) }
-
-// FlyoutCapture says "Capture {name}"
-// in the language of msgs.
-func (msgs Messages) FlyoutCapture(name string) string {
-	return Catalog.Format(msgs.locale, "flyoutCapture", map[string]any{"name": name})
-}
-
-// FlyoutDropped says "{n, plural, =0 {no drops} one {# dropped} other {# dropped}}"
-// in the language the app shows.
-func FlyoutDropped(n int) string { return In(i18n.Locale()).FlyoutDropped(n) }
-
-// FlyoutDropped says "{n, plural, =0 {no drops} one {# dropped} other {# dropped}}"
-// in the language of msgs.
-func (msgs Messages) FlyoutDropped(n int) string {
-	return Catalog.Format(msgs.locale, "flyoutDropped", map[string]any{"n": n})
-}
-
 // FlyoutNowPlayingNoMedia says "No media detected"
 // in the language the app shows.
 func FlyoutNowPlayingNoMedia() string { return In(i18n.Locale()).FlyoutNowPlayingNoMedia() }
