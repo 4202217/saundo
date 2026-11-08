@@ -34,17 +34,16 @@ card, capture status, and the diagnostics log card.
   the tile uses the card's own fill, so the first-artwork placeholder has no
   light edge.
   With no session at all the card is not drawn: the playback card keeps the
-  volume, latency, and capture lines, and `fitFlyout` shrinks the flyout by
-  the card's 150 DIP. The 正在播放 settings page gates the card: the display
+  volume and latency rows, and `fitFlyout` shrinks the flyout by the card's
+  150 DIP. The 正在播放 settings page gates the card: the display
   master, the playback controls, the cover colors, and the audio level;
   master off hides the card and shrinks the flyout. The
   settings preview shows the live card, or a sample when nothing plays. There
   is no receiver-push switch: changed tracks always forward as DMAP plus the
   cover image while streaming, independent of the card's display setting.
-- Capture line: `采集 {endpoint}` with the rate formatted as kHz
-  (`48 kHz`); 采集设备 follows the Windows default or pins a specific
-  endpoint (a queued async restart supersedes the in-flight one); 丢帧
-  shows only while streaming (zero while idle).
+- Capture source: 采集设备 follows the Windows default or pins a specific
+  endpoint (a queued async restart supersedes the in-flight one). The
+  settings 采集状态 row names the endpoint and rate; the flyout does not.
 - Silence suspend: after 2 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
@@ -61,7 +60,7 @@ Open the flyout from the tray icon. All controls are on the playback card.
 Headless UI drives the real view functions:
 
 ```bash
-go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderStandsOutFromTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingArtworkRefreshes|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestCoverFieldCompressesLightness|TestCaptureMetaHidesDropsWhenIdle' -v ./internal/app/
+go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|TestAudioModeTileSelects|TestNowPlayingCardShowsTrack|TestNowPlayingCardHidesWithoutMedia|TestNowPlayingPlaceholderStandsOutFromTheCard|TestNowPlayingCardControlsSendActions|TestNowPlayingArtworkRefreshes|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestCoverFieldCompressesLightness' -v ./internal/app/
 go test -run 'TestMeterLevelBandsAndDelay|TestMeterGatesNoiseBelowTheFloor|TestMeterQuietToneKeepsBarsLow|TestFollowIgnoresSubBarChanges' -v ./internal/audio/analyze/
 go test -run 'TestSilenceMeterFeedsTheLevelMeter' -v ./internal/engine/
 SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/
@@ -72,8 +71,9 @@ Live app: connect (see discovery-and-connect), then move the slider and
 confirm `SET_PARAMETER volume` answered 200 in the log; switch latency and
 confirm one `streaming to` restart with the new `延迟` value on the ALAC
 line; play a real 440 Hz WAV through the default device (Windows `Add-Type`
-with `System.Media.SoundPlayer`, or any player) and confirm the capture line
-and 丢帧 stay at 0. Start a media session in Chrome or Apple Music and
+with `System.Media.SoundPlayer`, or any player) and confirm the stream stays
+up with no drop warning in the diagnostics log. Start a media session in
+Chrome or Apple Music and
 confirm the card picks up its app name, title, artist, cover, progress, and
 available controls within two polls; use the transport controls in the
 progress row, pressing play/pause only when changing the user's playback is
@@ -86,12 +86,12 @@ must show an empty progress track, not a status line or a fake fill. In the
 and the flyout card disappears and shortens; turn it on again and the card
 returns. Close
 every player and confirm the media card disappears entirely and the flyout
-shrinks; the volume, latency, and capture lines remain, with no empty card,
+shrinks; the volume and latency rows remain, with no empty card,
 status line, or reserved blank under the device card.
 
 Proven end state: the ALAC line carries the selected latency, the slider
-matches the receiver's own volume, and the capture line names the endpoint
-that is actually rendering.
+matches the receiver's own volume, and the settings 采集状态 names the
+endpoint that is actually rendering.
 
 ## Gotchas
 

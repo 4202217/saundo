@@ -416,7 +416,7 @@ software stereo groups built from independent receivers.
   未知应用 / Unknown app. A session with no timeline keeps the same progress
   row as an empty track — no fill, thumb, times, or copy — so the card
   height does not change. With no session at all the card is not drawn: the
-  playback card keeps the volume, latency, and capture lines, `fitFlyout`
+  playback card keeps the volume and latency rows, `fitFlyout`
   drops the card's 150 DIP, and the 62-DIP spacer that used to separate the
   device card from the playback card is gone. The tester pins the hidden card
   in `TestNowPlayingCardHidesWithoutMedia`, and the height cases in
@@ -727,8 +727,9 @@ software stereo groups built from independent receivers.
 - **Tests.** `TestFlyoutHeightForDeviceRows` pins the four heights.
   `TestFlyoutKeepsPlaybackGap` renders each count at its target height and
   requires the gap from the device card to the 播放 head to stay within 1 DIP.
-  `TestFlyoutTargetHeightFitsPlayback` checks the capture line is not clipped
-  at the shorter heights. The empty and one-device previews now render at
+  `TestFlyoutTargetHeightFitsPlayback` checks the playback card's last row,
+  the latency segment, is not clipped at the shorter heights. The empty and
+  one-device previews now render at
   their target heights.
 - **Checks run.** `gofmt -l .` and `go vet ./...` printed nothing;
   `go test ./...` passed every package. PNG renders at 500, 444, 388, and
@@ -797,7 +798,7 @@ Audio streamed normally. Four issues surfaced:
   for the last click; the custom slider waits 500 ms. Rapid low → standard →
   stable therefore sends one restart with the final mode. While that restart
   runs, the app holds the last streaming snapshot for up to 3 s, so the device
-  row, footer, capture line, and tray keep their streaming face; a spinner
+  row, footer, and tray keep their streaming face; a spinner
   follows the 播放 label so the line never shifts. Errors and user disconnects
   end the hold at once. The debounce is UI timing and is not pinned by a
   timing test; the selection and `ApplyLatency` restart paths are tested.
@@ -1206,6 +1207,37 @@ app preview paints the same three colors.
   The installer is unsigned, so SmartScreen warns.
 - **Publish gate.** The maintainer's real-device test of the draft is still
   pending; publishing is not authorized yet.
+
+## Flyout capture line removed (2026-11-08)
+
+- **The change.** The playback card no longer draws the capture line
+  (`采集 … · 48 kHz · 丢帧 0`, or its capture-error and not-running variants).
+  The row cost 27.3 DIP, and the old 474-DIP base left the device card about
+  5 DIP clipped; the base is now 456, so the window is 394 DIP at three
+  device rows with no media card, 338 at two, 282 at one, and 365 empty. The
+  media card still adds 150, the latency row 44, and the ambient section 90.
+- **Error bar.** The connection error bar used to ride on the space the
+  capture line gave up in the error state. It now adds its own 48 DIP
+  (`errorBarHeight`) through `flyoutHeightForState`, so the device card and
+  the latency row stay unclipped. Minimum unclipped windows with the latency
+  row on and no media were measured at 499/416/472/528 DIP for 0–3 devices;
+  the error bar adds exactly 48 in every case.
+- **Tests.** `TestFlyoutTargetHeightFitsPlayback` now holds the latency row
+  as the playback card's last-row canary instead of the capture line;
+  `TestErrorStateShowsRetry` asserts the error bar does not squeeze the
+  device card or clip that row; `TestFlyoutHeightForDeviceRows` pins the new
+  heights. `TestCaptureMetaHidesDropsWhenIdle` and `captureMeta` are gone.
+- **Capture status.** The settings 采集状态 row still names the endpoint and
+  rate (`formatRate` stays there); the flyout shows neither, and the verify
+  map's capture-line assertions and the flyout mockup template are updated.
+- **Checks run.** `mingw32-make check` passed: the gofmt gate printed
+  nothing, `go tool mygo i18n check cmd/saundo` reported 331 messages in en
+  and zh-CN, `go vet ./...` and `go tool mygo vet .` printed nothing,
+  `go test ./...` passed every package, and `check-verify-map.sh` printed
+  `map ok`. PNG renders at the stream, idle, error, and empty states showed
+  no capture line and no clipped card. `mingw32-make build` rebuilt
+  `bin/saundo.exe` and relaunched it; the live flyout was hidden while the
+  user streamed, so the in-app visual check is left to the user.
 
 ## Failure modes and meanings
 

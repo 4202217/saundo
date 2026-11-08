@@ -12,7 +12,6 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
-	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
 	"saundo/internal/lamp"
@@ -21,11 +20,14 @@ import (
 )
 
 const (
-	// flyoutHeight is the height with three device rows, no latency row, and
-	// no media card; the no-media panel is compact and the media card adds
-	// its own height when a session exists.
+	// flyoutHeight is the height with three device rows, no latency row, no
+	// media card, and no error bar; the no-media panel is compact and the
+	// media card adds its own height when a session exists.
 	flyoutWidth  = 420
-	flyoutHeight = 474
+	flyoutHeight = 456
+
+	// errorBarHeight is the connection error bar under the device card.
+	errorBarHeight = 48
 
 	// The media card fills the space the old 62-DIP Now Playing row used, and
 	// adds its own height when shown.
@@ -67,11 +69,14 @@ func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool) int {
 	return h
 }
 
-// flyoutHeightForState adds the template grid while the ambient card is in
-// template priority and expanded. The window is anchored by its bottom edge,
-// so this grows it upward.
-func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampCover, lampExpanded bool) int {
+// flyoutHeightForState adds the error bar and the template grid while they
+// are shown. The window is anchored by its bottom edge, so this grows it
+// upward.
+func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampCover, lampExpanded, errorBar bool) int {
 	h := flyoutHeightFor(n, showLatencySwitch, hasMedia)
+	if errorBar {
+		h += errorBarHeight
+	}
 	if !lampCover && lampExpanded {
 		h += lampGridHeight(len(lamp.All()))
 	}
@@ -115,11 +120,17 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 	devices := a.snap.Devices
 	sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)))
 	a.deviceCard(c, p, devices)
-	if phaseOf(a.snap) == phaseError && a.snap.Error != "" {
+	if a.errorBarShown() {
 		ui.Row(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).Background(p.redSoft).Children(func() {
 			ui.Text(c, locales.FlyoutConnectFailed(a.snap.Error)).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
 		})
 	}
+}
+
+// errorBarShown reports whether the device section carries the connection
+// error bar.
+func (a *App) errorBarShown() bool {
+	return phaseOf(a.snap) == phaseError && a.snap.Error != ""
 }
 
 func (a *App) deviceCard(c *ui.Context, p palette, devices []device.Device) {
@@ -279,13 +290,6 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 			rowLine(c, p)
 		}
 		a.nowPlayingCard(c, p)
-		// The error bar already cost the room the capture line took.
-		if phaseOf(a.snap) != phaseError {
-			rowLine(c, p)
-			ui.Row(c).Padding(5, 12, 6, 12).Children(func() {
-				ui.Text(c, captureMeta(a.snap)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-			})
-		}
 	})
 }
 
@@ -749,29 +753,6 @@ func (a *App) currentDevice() (device.Device, bool) {
 		}
 	}
 	return device.Device{}, false
-}
-
-func captureMeta(s engine.Snapshot) string {
-	if s.CaptureError != "" {
-		return locales.FlyoutCaptureError(s.CaptureError)
-	}
-	if !s.CaptureRunning {
-		return locales.FlyoutCaptureNotRunning()
-	}
-	name := s.CaptureName
-	if name == "" {
-		name = locales.CaptureSystemDefault()
-	}
-	out := locales.FlyoutCapture(name)
-	if s.CaptureRate > 0 {
-		out += " · " + formatRate(s.CaptureRate)
-	}
-	// Drops before a stream are expected: no sink drains the ring, so the
-	// figure is meaningful only while streaming.
-	if s.State == sender.StateStreaming {
-		out += " · " + locales.FlyoutDropped(int(s.DroppedSamples))
-	}
-	return out
 }
 
 func formatRate(rate int) string {

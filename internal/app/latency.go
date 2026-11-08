@@ -22,8 +22,8 @@ const (
 )
 
 // apply takes an engine snapshot, holding it while a latency change is
-// applying so the device row, footer, capture line, and tray keep their
-// streaming face. The latency row and ALAC line still update at once.
+// applying so the device row, footer, and tray keep their streaming face.
+// The latency row and ALAC line still update at once.
 func (a *App) apply(snap engine.Snapshot) {
 	if a.latencyApplying && a.holdLatencyApply(snap) {
 		return

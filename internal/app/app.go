@@ -709,7 +709,7 @@ func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded)
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown())
 	if h == a.flyoutH {
 		return
 	}

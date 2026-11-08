@@ -267,7 +267,6 @@
   }
   .switch.on { background: var(--fg); }
   .switch.on::after { transform: translateX(13px); background: var(--bg); }
-  .capture { padding: 5px 12px 6px 12px; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .flyout-foot {
     height: 34px; flex: none; display: flex; align-items: center; gap: 6px;
@@ -354,7 +353,6 @@ const COPY = {
     searchAgain: '重新搜索',
     noMedia: '未检测到媒体', mediaSession: '系统媒体会话',
     track: '夜航', trackSub: '白鲸电台 · 远洋信号',
-    capture: '采集 扬声器 · 48 kHz', captureStreaming: '采集 扬声器 · 48 kHz · 无丢帧',
     latencyNote: '延迟 200 ms', format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步',
     statusIdle: '未连接', statusStreaming: '正在播放到 客厅 HomePod', statusError: '连接失败',
     errorBar: '连接失败: 请求超时',
@@ -369,7 +367,6 @@ const COPY = {
     searchAgain: 'Search again',
     noMedia: 'No media detected', mediaSession: 'System media session',
     track: 'Night Ferry', trackSub: 'Signal Coast · Open Water',
-    capture: 'Capture Speakers · 48 kHz', captureStreaming: 'Capture Speakers · 48 kHz · no drops',
     latencyNote: 'Latency 200 ms', format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced',
     statusIdle: 'Not connected', statusStreaming: 'Streaming to 客厅 HomePod', statusError: 'Connection failed',
     errorBar: 'Connection failed: request timed out',
@@ -413,10 +410,10 @@ function notesHTML() {
       '<li><b>空闲</b> Three devices, none connected; the footer is muted.</li>' +
       '<li><b>播放</b> The first row is selected; the footer face and the ALAC line name the stream.</li>' +
       '<li><b>空态</b> No devices; the 140 high search card; the window is 470 high.</li>' +
-      '<li><b>失败</b> The error bar replaces the capture line; the row action is Retry.</li>' +
+      '<li><b>失败</b> The error bar adds its own row under the device card; the row action is Retry.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
-      '<li>500 at three rows, 56 less per missing row, 470 empty, +44 with the latency row.</li>' +
+      '<li>394 at three rows, 56 less per missing row, 365 empty, +44 with the latency row, +150 with the media card, +48 with the error bar.</li>' +
       '<li>The device row is 56 high; the empty card is 140; the playback card never moves.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
@@ -518,9 +515,6 @@ function playbackSectionHTML() {
     '<span class="now-sub">' + esc(streaming ? t('trackSub') : t('mediaSession')) + '</span></span>' +
     '<span class="now-push">' + esc(t('push')) + '<span class="switch on"></span></span>' +
   '</div>';
-  if (state.view !== 'error') {
-    card += '<div class="line"></div><div class="capture">' + esc(streaming ? t('captureStreaming') : t('capture')) + '</div>';
-  }
   card += '</div>';
   return head + card;
 }
