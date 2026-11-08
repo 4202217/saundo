@@ -38,6 +38,7 @@ mingw32-make vet    # go vet ./...
 mingw32-make uivet  # go tool mygo vet . (native UI lifetime checks)
 mingw32-make fmt    # gofmt -w .
 mingw32-make build  # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe, so a commit past a release sorts below it and the updater still offers that release; scripts/build.sh then stops the running app and starts the new build
+mingw32-make build-fast  # the same build without the NSIS installer, for the development loop
 ```
 
 Without mingw32-make, run the commands directly:

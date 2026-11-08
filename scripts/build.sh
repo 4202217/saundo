@@ -3,8 +3,16 @@
 #
 # A running saundo.exe locks bin/saundo.exe on Windows, so the build stops
 # the app before the copy and waits for the handle to go, then launches the
-# new binary. `mingw32-make build` runs this script.
+# new binary. `mingw32-make build` runs this script; `--fast` skips the NSIS
+# installer for the development loop.
 set -u
+
+fast=0
+case "${1:-}" in
+	--fast) fast=1 ;;
+	"") ;;
+	*) echo "usage: $0 [--fast]" >&2; exit 2 ;;
+esac
 
 cd "$(dirname "$0")/.."
 
@@ -16,10 +24,14 @@ VERSION="${VERSION#v}"
 GO="${GO:-go}"
 
 set -e
+build_args=(-platform windows/amd64 -skip-build-command)
+if [ "$fast" -eq 1 ]; then
+	build_args+=(-skip-installer)
+fi
 (
 	cd cmd/saundo
 	CGO_ENABLED=0 MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
-		"$GO" tool mygo build -platform windows/amd64 -skip-build-command
+		"$GO" tool mygo build "${build_args[@]}"
 )
 set +e
 
@@ -38,7 +50,9 @@ if [ "$copied" -ne 1 ]; then
 	exit 1
 fi
 
-cp cmd/saundo/build/windows-amd64/saundo-setup-*.exe bin/ 2>/dev/null
+if [ "$fast" -eq 0 ]; then
+	cp cmd/saundo/build/windows-amd64/saundo-setup-*.exe bin/ 2>/dev/null
+fi
 
 cd bin
 cmd //c start "" saundo.exe

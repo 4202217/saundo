@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,30 @@ func TestRenderPreviews(t *testing.T) {
 		renderPreviews(t, dir, tc.locale, tc.suffix)
 	}
 	testLocale = "zh-CN"
+}
+
+// previewWanted filters the matrix by SAUNDO_PREVIEW_ONLY, a comma-separated
+// list of name prefixes such as settings-audio,flyout, so a UI change renders
+// only the pages it touched. An empty or unset value renders everything.
+func previewWanted() func(string) bool {
+	only := strings.TrimSpace(os.Getenv("SAUNDO_PREVIEW_ONLY"))
+	if only == "" {
+		return func(string) bool { return true }
+	}
+	var prefixes []string
+	for _, p := range strings.Split(only, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			prefixes = append(prefixes, p)
+		}
+	}
+	return func(name string) bool {
+		for _, p := range prefixes {
+			if strings.HasPrefix(name, p) {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // sampleTrack is a fictional track, so no real listening shows in a preview.
@@ -126,7 +151,11 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	oldVersion := Version
 	Version = "0.4.2-5-g1e8e94c-dirty"
 	defer func() { Version = oldVersion }()
+	wanted := previewWanted()
 	save := func(name string, view func(*ui.Context), w, h int, dark bool) {
+		if !wanted(name) {
+			return
+		}
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
 		tt.SetLocale(locale)
@@ -145,6 +174,9 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	// saveScrolled shows the page scrolled with the pointer over it, so the
 	// scrollbar and the fixed title divider are visible.
 	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool, dy float32) {
+		if !wanted(name) {
+			return
+		}
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
 		tt.SetLocale(locale)
@@ -165,6 +197,9 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	// frames writes the first frame and two more as the motion runs, to
 	// check an enter animation instead of its end state.
 	frames := func(name string, view func(*ui.Context), w, h int) {
+		if !wanted(name) {
+			return
+		}
 		tt := ui.NewTester(view, w, h)
 		tt.SetScale(2)
 		tt.SetLocale(locale)
@@ -572,22 +607,24 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	mac.selID = ""
 	save("flyout-mac", mac.view, flyoutWidth, visibleFlyoutHeight(mac), false)
 
-	hover := fixture()
-	tt := ui.NewTester(hover.view, flyoutWidth, visibleFlyoutHeight(hover))
-	tt.SetScale(2)
-	tt.SetLocale(locale)
-	tt.Advance(400 * time.Millisecond)
-	tt.Frame()
-	tt.Move(200, 99)
-	tt.Frame()
-	f, err := os.Create(filepath.Join(dir, "flyout-hover-"+suffix+".png"))
-	if err != nil {
-		t.Fatal(err)
+	if wanted("flyout-hover") {
+		hover := fixture()
+		tt := ui.NewTester(hover.view, flyoutWidth, visibleFlyoutHeight(hover))
+		tt.SetScale(2)
+		tt.SetLocale(locale)
+		tt.Advance(400 * time.Millisecond)
+		tt.Frame()
+		tt.Move(200, 99)
+		tt.Frame()
+		f, err := os.Create(filepath.Join(dir, "flyout-hover-"+suffix+".png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := png.Encode(f, tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+		f.Close()
 	}
-	if err := png.Encode(f, tt.Image()); err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
 
 	upd := fixture()
 	upd.cfg = settings.Default()
