@@ -28,6 +28,8 @@ jobs:
         run: go tool mygo vet .
       - name: Tests
         run: go test -short ./...
+      - name: Platforms
+        run: go run ./scripts/check-platforms
 
   draft:
     needs: check
@@ -112,9 +114,15 @@ jobs:
         run: |
           version=$(jq -r .version mygo.json)
           echo "MYGO_LDFLAGS=-X saundo/internal/app.Version=$version" >> "$GITHUB_ENV"
+      - name: Adapter
+        run: bash scripts/build-adapter.sh
       - name: Build
         working-directory: cmd/saundo
-        run: go tool mygo build -platform darwin/arm64 -skip-build-command
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          sign="${MACOS_SIGN_IDENTITY:--}"
+          go tool mygo build -platform darwin/arm64 -skip-build-command -sign "$sign"
       # The dmg ships as a manual download: the mac build disables the
       # updater until a signed, notarized mac feed exists.
       - name: Upload the dmg to the draft release

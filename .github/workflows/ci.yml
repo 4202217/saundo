@@ -74,7 +74,20 @@ jobs:
           SAUNDO_CREDS_MASTER_KEY: "6b65797320617265206e6f7420736563726574732e2074657374206f6e6c792e"
         run: go test -short ./...
       - name: Verify map
-        run: scripts/check-verify-map.sh
+        run: bash scripts/check-verify-map.sh
+      - name: Adapter
+        run: bash scripts/build-adapter.sh
       - name: Build
         working-directory: cmd/saundo
-        run: go tool mygo build -platform darwin/arm64 -skip-build-command
+        run: go tool mygo build -platform darwin/arm64 -skip-build-command -sign -
+
+  platforms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Cross-platform gate
+        run: go run ./scripts/check-platforms

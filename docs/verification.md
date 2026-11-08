@@ -28,10 +28,14 @@ live state:
   coverage.
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
+  mid-pair, and software stereo groups built from independent receivers.
 - The macOS port: `-race` (needs a C toolchain), per-app capture (the
   `Config.ProcessID` seam is ready), signed/notarized mac updates (the mac
-  updater is disabled), and the flyout style setting is macOS-only
-  mid-pair, and software stereo groups built from independent receivers.
+  updater is disabled), and the flyout style setting is macOS-only.
+- The Windows flyout shadow and tray focus after the focus seam split
+  (2026-11-09): code-level only, no Windows run.
+- A live macOS capture reconnect after the aggregate-liveness check
+  (2026-11-09).
 - Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
   a measured left/right offset on a physical pair.
 - Silence pauses longer than 60 s.
@@ -1445,8 +1449,8 @@ and `.audit/mac-experiments.md`; what survives here is the durable state.
   `NSWorkspace iconForFile:` and an ImageIO 128 px thumbnail to PNG.
 - **Credentials.** The Keychain master key + AES-256-GCM round-trips. A
   rebuilt ad-hoc binary triggers one keychain ACL prompt per item; the
-  dev-signed build (stable identity via `mygo.json`
-  `macos.signingIdentity`) ends them. Parallel test binaries hit the same
+  dev-signed build (a stable identity from `SAUNDO_MAC_SIGN_IDENTITY`)
+  ends them. Parallel test binaries hit the same
   ACL; headless runs set `SAUNDO_CREDS_MASTER_KEY` and the creds package
   decides keys from the environment instead.
 - **Signing and distribution.** Ad-hoc builds are Gatekeeper-rejected when
@@ -1456,3 +1460,58 @@ and `.audit/mac-experiments.md`; what survives here is the durable state.
   allows it. Locally built copies carry build provenance and never see the
   flow. Signing the nested adapter framework prompts for the certificate
   key once, separately from the credentials key.
+
+## 2026-11-09 — multi-platform review and gate
+
+Third-party review of the darwin port. The defects fixed in this pass:
+
+- **Packaging.** `mygo.json` listed `build/adapter` as a resource of every
+  platform. A clean Windows checkout therefore failed `mygo build` before
+  producing an exe, and the same break hit the Windows release job. The
+  adapter now stages in `cmd/saundo/resources/darwin-arm64/adapter` through
+  `scripts/build-adapter.sh`, a platform directory mygo ships only with
+  darwin/arm64. The bundle carries it at `Contents/Resources/adapter/`.
+- **Signing.** The committed `macos.signingIdentity` named one developer's
+  certificate, which `codesign` cannot find on CI or another Mac. The
+  identity is gone from `mygo.json`; `SAUNDO_MAC_SIGN_IDENTITY` overrides
+  the ad-hoc default locally, and CI plus the release pass `-sign -`.
+- **Cross-platform gate.** `scripts/check-platforms` builds and vets
+  windows/amd64 and darwin/arm64 on any host and rejects
+  `saundo/internal/darwin`, `purego`, and `golang.org/x/sys/windows`
+  imports in files the other build compiles. It runs in `make check`, the
+  CI `platforms` job, and the release gate. A local `.audit` probe it
+  caught proved the import check fires.
+- **Darwin ABI.** `AudioStreamBasicDescription` was 36 bytes against the
+  SDK's 40 and `AudioTimeStamp` 56 against 64. Both layouts are corrected
+  and pinned by `TestCoreAudioABI`; clang against the SDK measured
+  `ASBD=40 TS=64 BUF=16 LIST=24 SMPTE=24`.
+- **Now Playing.** Concurrent `Read` calls raced on the adapter child's
+  `cmd` and `exited`; `ensure` now holds the mutex, and the functional
+  test and transport commands time out after 5 s. A non-data adapter line
+  no longer clears the session (`TestParseStreamLineIgnoresNonDataEvents`).
+- **Capture.** The pump compares the default device id directly and checks
+  `DeviceRunningSomewhere` on the aggregate, so a device that goes away is
+  noticed, not only a default-device change. The tap description and its
+  UUID are released after use. `OutputDevices` no longer indexes an empty
+  device list. `DeviceForUID` no longer creates an autoreleased NSString
+  outside a pool.
+- **Windows behavior.** The flyout keeps `Shadow: true` in the rounded
+  style. `App.Focus()` is restored on Windows and Linux through
+  `focus_other.go` and skipped only on macOS. The flyout-style snapshot
+  sync no longer depends on the tray animation changing.
+
+**Checks run (2026-11-09, this tree).** `gofmt -l .` clean; `go build
+./...`, `go vet ./...`, `go tool mygo vet .`, `go test ./...` (21 packages
+ok), and `go test -race ./internal/nowplaying ./internal/capture
+./internal/darwin` pass; `go run ./scripts/check-platforms` reports both
+targets build and vet and imports stay behind their tags;
+`go tool mygo i18n check cmd/saundo` reports 315 messages; `bash
+scripts/check-verify-map.sh` passes; `make check` passes end to end. The
+Windows build ran with `cmd/saundo/resources` removed entirely, the
+clean-checkout case, and produced `saundo.exe`. The darwin build produced
+`saundo.app` plus `saundo-0.5.0-arm64.dmg`, with the adapter at
+`Contents/Resources/adapter/`.
+
+**Not verified here.** The review ran on macOS. The Windows flyout shadow
+and tray focus, and a live macOS reconnect after the aggregate-liveness
+check, still need a run on their platforms.

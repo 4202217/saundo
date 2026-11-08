@@ -14,14 +14,14 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
 
-.PHONY: build build-fast test race vet uivet i18n fmt check
+.PHONY: build build-fast test race vet uivet i18n fmt check platforms
 
 build:
-	GO="$(GO)" VERSION="$(VERSION)" ./scripts/build.sh
+	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh
 
 # The same binary without the NSIS installer, for the development loop.
 build-fast:
-	GO="$(GO)" VERSION="$(VERSION)" ./scripts/build.sh --fast
+	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh --fast
 
 test:
 	$(GO) test ./...
@@ -45,7 +45,12 @@ i18n:
 fmt:
 	$(GOFMT) -w .
 
+# Build and vet windows/amd64 and darwin/arm64 on any host, and reject
+# OS-specific imports outside platform-tagged files.
+platforms:
+	$(GO) run ./scripts/check-platforms
+
 check:
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map && $(GO) run ./scripts/check-platforms

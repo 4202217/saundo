@@ -30,16 +30,17 @@ case "$(uname -s)" in
 Darwin)
 	# The Now Playing adapter: an Objective-C framework the app's resources
 	# carry, loaded at runtime through /usr/bin/perl (see docs/platforms.md).
+	# It lands in the darwin/arm64 platform resource directory, so no other
+	# platform's build needs it. A committed signing identity would name one
+	# developer's certificate; pass one for a stable local identity, else
+	# sign ad hoc.
 	set -e
-	cmake -S native/mediaremote-adapter -B cmd/saundo/build/adapter-build -DCMAKE_BUILD_TYPE=Release
-	cmake --build cmd/saundo/build/adapter-build
-	mkdir -p cmd/saundo/build/adapter/bin
-	cp native/mediaremote-adapter/bin/mediaremote-adapter.pl cmd/saundo/build/adapter/bin/
-	cp -R cmd/saundo/build/adapter-build/MediaRemoteAdapter.framework cmd/saundo/build/adapter/
+	bash scripts/build-adapter.sh
+	sign="${SAUNDO_MAC_SIGN_IDENTITY:--}"
 	(
 		cd cmd/saundo
 		CGO_ENABLED=0 MYGO_LDFLAGS="-X saundo/internal/app.Version=$VERSION" \
-			"$GO" tool mygo build -platform darwin/arm64 -skip-build-command
+			"$GO" tool mygo build -platform darwin/arm64 -skip-build-command -sign "$sign"
 	)
 	set +e
 
