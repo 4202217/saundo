@@ -172,7 +172,7 @@ func Read() (Snapshot, error) {
 
 func readSession(session uintptr) Session {
 	out := Session{AUMID: callStringProperty(session, sessionSourceAUMID)}
-	out.AppName = appName(out.AUMID)
+	out.AppName, out.AppIcon = resolveAppIdentity(out.AUMID)
 	if op := callObjectProperty(session, sessionTryGetMediaPropertiesAsync); op != 0 {
 		if props, err := await(op, 3*time.Second); err == nil && props != 0 {
 			out.Title = callStringProperty(props, mediaPropsTitle)
@@ -358,9 +358,37 @@ func appName(aumid string) string {
 	case strings.HasPrefix(aumid, "Microsoft.ZuneMusic"), strings.HasPrefix(aumid, "Microsoft.Media.Player"):
 		return "Media Player"
 	}
-	// An unknown app is left empty so the card can name it in the user's
-	// language instead of showing a package identifier fragment.
+	// An unpackaged player registers its executable as the AUMID, e.g.
+	// "MyGo Music.exe"; its stem is the name the app gives itself.
+	if name := exeStem(aumid); name != "" {
+		return name
+	}
+	// A packaged app's AUMID is "<package family>!<app id>"; an unknown one
+	// is left empty so the card can name it in the user's language instead
+	// of showing a package identifier fragment.
 	return ""
+}
+
+// exeFile returns the executable file name of a .exe AUMID, or "" when the
+// AUMID is not a path to an executable.
+func exeFile(aumid string) string {
+	name := aumid
+	if i := strings.LastIndexAny(name, `\/`); i >= 0 {
+		name = name[i+1:]
+	}
+	if len(name) <= 4 || !strings.EqualFold(name[len(name)-4:], ".exe") {
+		return ""
+	}
+	return name
+}
+
+// exeStem returns the executable name without its directory or .exe suffix.
+func exeStem(aumid string) string {
+	name := exeFile(aumid)
+	if name == "" {
+		return ""
+	}
+	return strings.TrimSpace(name[:len(name)-4])
 }
 
 func sniffImage(b []byte) string {

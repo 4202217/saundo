@@ -120,6 +120,8 @@ type App struct {
 	nowMediaAUMID  string
 	nowArt         *ui.Bitmap
 	nowArtKey      string
+	nowIcon        *ui.Bitmap
+	nowIconKey     string
 	nowFieldLight  *image.RGBA
 	nowFieldDark   *image.RGBA
 	nowLamp        lamp.Preset
@@ -499,6 +501,7 @@ func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
 		a.nowMediaAUMID = snap.Sessions[snapIndex(snap)].AUMID
 	}
 	a.refreshNowArtwork()
+	a.refreshNowAppIcon()
 	a.fitFlyout()
 }
 
@@ -567,6 +570,33 @@ func (a *App) refreshNowArtwork() {
 	a.nowLamp, a.nowLampOK = lamp.CoverPreset(img)
 }
 
+// refreshNowAppIcon decodes the session app's icon when the selected app
+// changes. The shell may have no icon for an app; the head then shows only
+// the name.
+func (a *App) refreshNowAppIcon() {
+	s, ok := a.nowSession()
+	key := ""
+	if ok && len(s.AppIcon) > 0 {
+		key = fmt.Sprintf("%s\x00%x", s.AUMID, fnv64(s.AppIcon))
+	}
+	if key == a.nowIconKey {
+		return
+	}
+	a.nowIconKey = key
+	a.nowIcon = nil
+	if !ok || len(s.AppIcon) == 0 {
+		return
+	}
+	img, _, err := image.Decode(bytes.NewReader(s.AppIcon))
+	if err != nil {
+		if a.log != nil {
+			a.log.Printf("now playing app icon: %v", err)
+		}
+		return
+	}
+	a.nowIcon = ui.NewBitmap(img)
+}
+
 // nowArtworkKey includes the thumbnail bytes so a cover that arrives late —
 // a placeholder logo first, the real artwork a poll later — refreshes under
 // the same session title.
@@ -602,6 +632,7 @@ func (a *App) switchNowMedia() {
 	next := (a.nowMediaIndex() + 1) % len(a.nowSnap.Sessions)
 	a.nowMediaAUMID = a.nowSnap.Sessions[next].AUMID
 	a.refreshNowArtwork()
+	a.refreshNowAppIcon()
 	a.updateUI(func() {})
 }
 

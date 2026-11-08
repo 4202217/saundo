@@ -322,6 +322,11 @@ func (a *App) nowPlayingCard(c *ui.Context, p palette) {
 func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session, preview, animateMeter bool, art *ui.Bitmap, field *image.RGBA, level func() analyze.Frame, showSwitch bool) {
 	ui.Column(c).Margin(8, 12, 10, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
 		ui.Row(c).Height(28).Gap(7).AlignItems(ui.Center).Children(func() {
+			// The app icon is optional: the shell knows one for most apps,
+			// and the name alone carries the rest.
+			if a.nowIcon != nil {
+				ui.Image(c, a.nowIcon).Size(16, 16).Shrink(0)
+			}
 			name := s.AppName
 			if name == "" {
 				name = locales.FlyoutUnknownApp()

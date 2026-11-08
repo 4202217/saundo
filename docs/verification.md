@@ -304,6 +304,27 @@ blocked; the UI reports a PTP timeout with this hint.
   forwarding is pinned by `TestNowPlayingCommandForwards` and
   `TestNowPlayingRidesAsDMAP`. A real Chrome Media Session was later read live;
   see the Now Playing display section below.
+- **App names and icons come from the shell.** SMTC exposes only the AUMID.
+  MyGo Music (`MyGo Music.exe`, unpackaged) and Chrome
+  (`Chrome.UserData.Profile1`) both failed WinRT
+  `AppInfo.GetFromAppUserModelId` with 0x80070490, and the old hardcoded map
+  left MyGo Music as 未知应用 (reported live on Windows 11 26300). The read
+  now enumerates the Start menu's Applications folder once and matches an
+  AUMID to an item by exact id, executable file name or display name, or the
+  token before a profile suffix; the item supplies the localized name and a
+  64×64 PNG icon. An app outside that folder falls back to its running
+  executable and version resource, then the known-app map; without an icon
+  the card shows the name alone, and a truly unknown app reads 未知应用.
+  Live read after the change: `Chrome.UserData.Profile1` → Google Chrome,
+  `MyGo Music.exe` → MyGo Music, packaged
+  `AppleInc.AppleMusicWin_nzyj5cx40ttqa!App` → Apple Music, and
+  `dev.zcode.app` → ZCode — the last two show that an arbitrary AUMID
+  resolves when it is in the Applications folder; all four returned 2–5 KB
+  PNG icons, saved under `.audit/previews/nowplaying-appname/icons/`
+  (uncommitted). `TestMatchInstalledApp` pins the matching rules,
+  `TestAppNameResolvesUnpackagedExecutable` the fallbacks, and
+  `TestNowPlayingHeadShowsAppIconWhenAvailable` the icon's presence and
+  absence.
 - **Silent tray start.** `mygo.App.WasOpenedAtLogin()` hides the window at
   startup (`--tray` forces the same); the app runs from the tray and the
   window returns from the tray icon (verified live with the packaged binary).
