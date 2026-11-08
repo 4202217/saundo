@@ -20,9 +20,12 @@ per receiver.
   600×600 carrier of three flat color fields and caches it; the receiver's
   Lab k-means reduces the carrier back to the three colors. The cover has no
   rendered image.
-- The preview follows what the top display follows. Cover priority runs the
-  cover through the same Lab k-means the receiver uses for `MediaColors`
-  (`lamp.CoverPreset`) and paints the three-color glow. With no cover yet it
+- The preview follows what the top display follows: the session the app
+  pushes (the system's current session), not the media card's arrow
+  selection — switching the card to a paused session leaves the preview on
+  the pushed cover. Cover priority runs the cover through the same Lab
+  k-means the receiver uses for `MediaColors` (`lamp.CoverPreset`) and
+  paints the three-color glow. With no cover yet it
   paints a neutral cover tile with the media glyph; the receiver's own
   fresh-session placeholder is a white center on a dark ring and is not
   previewed. Template priority paints the selected template's three-color

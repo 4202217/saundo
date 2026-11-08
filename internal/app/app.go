@@ -126,6 +126,9 @@ type App struct {
 	nowFieldDark   *image.RGBA
 	nowLamp        lamp.Preset
 	nowLampOK      bool
+	nowLampKey     string
+	nowPinned      bool
+	nowCurrent     string
 	levelFrame     func(delay time.Duration) analyze.Frame
 	controlNow     func(aumid string, action nowplaying.Action)
 	nowTrack       nowplaying.Track
@@ -495,13 +498,29 @@ func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
 	a.nowSnap = snap
 	a.nowErr = errText
 	a.nowTrack, a.nowOK = nowPlayingTrack(snap)
-	if len(snap.Sessions) == 0 {
+	current := ""
+	if len(snap.Sessions) > 0 {
+		current = snap.Sessions[snapIndex(snap)].AUMID
+	}
+	if current != a.nowCurrent {
+		// A new session became the system's current one. The card follows
+		// it unless the user picks another one again from the switch arrow.
+		a.nowCurrent = current
+		a.nowPinned = false
+	}
+	switch {
+	case len(snap.Sessions) == 0:
 		a.nowMediaAUMID = ""
-	} else if !a.hasNowSession(a.nowMediaAUMID) {
-		a.nowMediaAUMID = snap.Sessions[snapIndex(snap)].AUMID
+		a.nowPinned = false
+	case !a.hasNowSession(a.nowMediaAUMID):
+		a.nowMediaAUMID = current
+		a.nowPinned = false
+	case !a.nowPinned:
+		a.nowMediaAUMID = current
 	}
 	a.refreshNowArtwork()
 	a.refreshNowAppIcon()
+	a.refreshNowLamp()
 	a.fitFlyout()
 }
 
@@ -552,8 +571,6 @@ func (a *App) refreshNowArtwork() {
 	a.nowArt = nil
 	a.nowFieldLight = nil
 	a.nowFieldDark = nil
-	a.nowLamp = lamp.Preset{}
-	a.nowLampOK = false
 	if !ok || len(s.Artwork) == 0 {
 		return
 	}
@@ -567,6 +584,34 @@ func (a *App) refreshNowArtwork() {
 	a.nowFieldLight = coverField(img, false)
 	a.nowFieldDark = coverField(img, true)
 	a.nowArt = ui.NewBitmap(img)
+}
+
+// refreshNowLamp keeps the light preview on the session the engine pushes:
+// the system's current session, not the card's manual selection. The top
+// display follows that same cover, so switching the card to a paused session
+// must not change the preview.
+func (a *App) refreshNowLamp() {
+	if len(a.nowSnap.Sessions) == 0 {
+		return // nothing is pushed; the light keeps its last cover
+	}
+	s := a.nowSnap.Sessions[snapIndex(a.nowSnap)]
+	if s.Title == "" {
+		return
+	}
+	key := nowArtworkKey(s)
+	if key == a.nowLampKey {
+		return
+	}
+	a.nowLampKey = key
+	a.nowLamp = lamp.Preset{}
+	a.nowLampOK = false
+	if len(s.Artwork) == 0 {
+		return
+	}
+	img, _, err := image.Decode(bytes.NewReader(s.Artwork))
+	if err != nil {
+		return
+	}
 	a.nowLamp, a.nowLampOK = lamp.CoverPreset(img)
 }
 
@@ -631,6 +676,7 @@ func (a *App) switchNowMedia() {
 	}
 	next := (a.nowMediaIndex() + 1) % len(a.nowSnap.Sessions)
 	a.nowMediaAUMID = a.nowSnap.Sessions[next].AUMID
+	a.nowPinned = a.nowMediaAUMID != a.nowCurrent
 	a.refreshNowArtwork()
 	a.refreshNowAppIcon()
 	a.updateUI(func() {})
