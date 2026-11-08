@@ -367,8 +367,8 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 }
 
 // nowPlayingPreview is the settings page's card. It shows the live session,
-// or a sample card when nothing plays, so the preview never disappears; the
-// master off dims it and the page disables its rows.
+// or a sample card when nothing plays, so the preview never disappears. The
+// display switch only hides the flyout card; the preview stays live.
 func (a *App) nowPlayingPreview(c *ui.Context, p palette) {
 	s, ok := a.nowSession()
 	var art *ui.Bitmap
@@ -390,13 +390,7 @@ func (a *App) nowPlayingPreview(c *ui.Context, p palette) {
 	if p.dark {
 		field = dark
 	}
-	wrap := ui.Column(c)
-	if !a.cfg.ShowNowPlayingPanel {
-		wrap.Opacity(0.45)
-	}
-	wrap.Children(func() {
-		a.nowPlayingCardBody(c, p, s, true, previewMeterAnimates(ok, a.cfg.ShowNowPlayingPanel), art, field, level, true)
-	})
+	a.nowPlayingCardBody(c, p, s, true, previewMeterAnimates(ok), art, field, level, true)
 }
 
 // previewSession is the settings page's sample card when nothing plays.
@@ -501,8 +495,8 @@ func meterAnimates(animate, playing, windowed bool, reduceMotion func() bool) bo
 }
 
 // previewMeterAnimates keeps the settings sample still: the preview follows
-// the live level only while a session plays and the feature is on.
-func previewMeterAnimates(live, enabled bool) bool { return live && enabled }
+// the live level only while a session plays.
+func previewMeterAnimates(live bool) bool { return live }
 
 // nowPlayingMeter draws five bars centered on one horizontal axis. Each bar is
 // a window into the cover's color field at its own column, so the spectrum

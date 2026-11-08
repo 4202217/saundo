@@ -30,7 +30,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   one discovery line when nothing is found, or an all-hidden title plus the
   recovery hint when every row is hidden; the add row is the only plus.
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
-  (20–2000 ms, applies 500 ms after the last change), the 在面板中显示延迟切换
+  (20–2000 ms, applies 500 ms after the last change), the 托盘面板中显示
   header switch that shows or hides the flyout's latency segment row, and
   read-only format/sync rows.
 - 氛围灯 page: the top-display card with the HomePod 专属 tag and the power
@@ -41,16 +41,16 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   same global choice; see [ambient-light.md](ambient-light.md).
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and per-app
   capture (application list built from window titles + audio sessions).
-- 正在播放 page: one card. The header is the display master 显示正在播放
-  (`showNowPlayingPanel`, on) with the 系统媒体 badge; below it a preview of the
-  real Now Playing card (the live session, or a sample card when nothing
-  plays); a live session's meter animates at 30 fps while the master is on,
-  and the sample's stays still. Then come the rows 封面 (a three-way
-  latency-style segmented control: 无封面 / 默认封面 / 媒体封面, default
-  media; persists as `coverMode`), 播放控制 (`playbackControls`),
-  封面配色 (`coverColors`), and 音频电平 (`audioLevel`). The receiver track
-  info is always pushed; there is no row and no setting. Master off greys the
-  preview at 45% and disables every row; the dependent values stay. New
+- 正在播放 page: one card. The header is the 媒体卡片 title with the
+  托盘面板中显示 chip and the display switch (`showNowPlayingPanel`, on);
+  below it a preview of the real media card (the live session, or a sample
+  card when nothing plays); a live session's meter animates at 30 fps, and the
+  sample's stays still. Then come the rows 封面 (a three-way latency-style
+  segmented control: 无封面 / 默认封面 / 媒体封面, default media; persists
+  as `coverMode`), 播放控制 (`playbackControls`), 封面配色 (`coverColors`),
+  and 音频电平 (`audioLevel`). The receiver track info is always pushed; there
+  is no row and no setting. The display switch only hides the flyout card; the
+  preview and every row stay active. New
   `settings.json` keys default on; missing keys read their defaults; changes
   save immediately and resize the flyout.
 - 更新 page: update states, channel (stable/beta), release-history list —
@@ -116,10 +116,11 @@ change in the flyout).
   en locale — prefer `-Class MyGoWindow` plus `-ProcId`.
 - The audio page's custom slider debounces; a screenshot taken mid-debounce
   shows the old value with the new selection.
-- The 正在播放 master off is not the same as no media: the media card is
-  hidden either way and the flyout shrinks the same amount, but the settings
-  page still shows the greyed preview and the retained option values.
-- The receiver track info is always pushed while streaming; the card's
-  display master does not gate it.
+- The media card display switch only hides the flyout card; the settings
+  preview and the option rows stay active. It is not the same as no media:
+  the flyout card is hidden either way and the flyout shrinks the same amount,
+  but the settings preview shows the live or sample card.
+- The receiver track info is always pushed while streaming; the display
+  switch does not gate it.
 - Passwords never render back — dots only (`receivers_page.go:489-492`). A
   page showing a stored password verbatim is a bug.

@@ -188,10 +188,10 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
 		{pageConnection, []string{"连接", "重连与验证策略。", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免声音在本机与接收器上重复播放；断开或退出时恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
-		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "在面板中显示延迟切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
+		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "封面", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "点击电源按钮熄灭顶屏"}},
 		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
-		{pageNowPlaying, []string{"正在播放", "面板中的正在播放卡片、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
+		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
@@ -472,15 +472,13 @@ func TestMeterAnimatesOnlyLivePlaybackInAWindow(t *testing.T) {
 }
 
 func TestSettingsPreviewMeterFollowsLivePlaybackOnly(t *testing.T) {
-	tests := []struct{ live, enabled, want bool }{
-		{true, true, true},
-		{true, false, false},
-		{false, true, false},
-		{false, false, false},
+	tests := []struct{ live, want bool }{
+		{true, true},
+		{false, false},
 	}
 	for _, tt := range tests {
-		if got := previewMeterAnimates(tt.live, tt.enabled); got != tt.want {
-			t.Fatalf("previewMeterAnimates(live=%v, enabled=%v) = %v, want %v", tt.live, tt.enabled, got, tt.want)
+		if got := previewMeterAnimates(tt.live); got != tt.want {
+			t.Fatalf("previewMeterAnimates(live=%v) = %v, want %v", tt.live, got, tt.want)
 		}
 	}
 }
@@ -1126,36 +1124,36 @@ func TestNowPlayingSettingsPersist(t *testing.T) {
 	a.nowMediaAUMID = "test.session"
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
-	badge, ok := tt.Find(locales.SettingsSystemMediaBadge())
+	chip, ok := tt.Find(locales.SettingsShowInPanel())
 	if !ok {
-		t.Fatalf("badge missing; texts: %q", tt.Texts())
+		t.Fatalf("display chip missing; texts: %q", tt.Texts())
 	}
-	// The master switch sits after the badge, 8 DIP gap, 32 wide.
-	switchX := badge.X + badge.W + 8 + 16
-	tt.ClickAt(switchX, badge.Y+badge.H/2)
+	// The display switch sits after the chip, 8 DIP gap, 32 wide.
+	switchX := chip.X + chip.W + 8 + 16
+	tt.ClickAt(switchX, chip.Y+chip.H/2)
 	tt.Frame()
 	if a.cfg.ShowNowPlayingPanel {
-		t.Fatal("master switch did not turn off")
+		t.Fatal("display switch did not turn off")
 	}
 	if a.showNowPlayingPanel.Load() {
-		t.Fatal("master gate still on")
+		t.Fatal("display gate still on")
 	}
 	cfg := a.sets.Load()
 	if cfg.ShowNowPlayingPanel {
-		t.Fatal("master setting not saved")
+		t.Fatal("display setting not saved")
 	}
 	if !cfg.PlaybackControls || !cfg.CoverColors || !cfg.AudioLevel {
 		t.Fatalf("sibling defaults changed: %+v", cfg)
 	}
-	// A dependent row is disabled while the master is off.
+	// A dependent row stays active while the card is hidden.
 	row, ok := tt.Find(locales.SettingsPlaybackControls())
 	if !ok {
 		t.Fatalf("playback row missing; texts: %q", tt.Texts())
 	}
 	tt.ClickAt(switchX, row.Y+row.H/2)
 	tt.Frame()
-	if !a.cfg.PlaybackControls {
-		t.Fatal("disabled playback row changed")
+	if a.cfg.PlaybackControls {
+		t.Fatal("active playback row did not change")
 	}
 }
 

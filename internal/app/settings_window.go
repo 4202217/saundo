@@ -311,44 +311,39 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 	})
 }
 
-// nowPlayingPage is the settings page for the panel's Now Playing card. The
-// display switch is the card's master; the options below it are subordinate.
+// nowPlayingPage is the settings page for the panel's media card. The display
+// switch only controls the flyout card; the options below it stay active.
 func (a *App) nowPlayingPage(c *ui.Context, p palette) {
-	master := a.cfg.ShowNowPlayingPanel
 	pageCard(c, p, func() {
-		cardHead(c, p, iconNote, locales.SettingsShowNowPlaying(), 15, 14, func() {
-			chip(c, p, locales.SettingsSystemMediaBadge(), chipNeutral)
-			toggle(c, p, &a.cfg.ShowNowPlayingPanel, locales.SettingsShowNowPlaying(), func(v bool) {
+		cardHead(c, p, iconNote, locales.SettingsShowNowPlaying(), 13, 14, func() {
+			chip(c, p, locales.SettingsShowInPanel(), chipNeutral)
+			toggle(c, p, &a.cfg.ShowNowPlayingPanel, locales.SettingsShowInPanel(), func(v bool) {
 				a.showNowPlayingPanel.Store(v)
 				a.persistNowPlaying()
 			})
 		})
 		a.nowPlayingPreview(c, p)
 		rowLine(c, p)
-		a.nowPlayingCoverRow(c, p, master)
+		a.nowPlayingCoverRow(c, p)
 		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsPlaybackControls(), locales.SettingsPlaybackControlsDesc(),
-			&a.cfg.PlaybackControls, master, func(bool) { a.persistNowPlaying() })
+			&a.cfg.PlaybackControls, func(bool) { a.persistNowPlaying() })
 		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsCoverColors(), locales.SettingsCoverColorsDesc(),
-			&a.cfg.CoverColors, master, func(bool) { a.persistNowPlaying() })
+			&a.cfg.CoverColors, func(bool) { a.persistNowPlaying() })
 		rowLine(c, p)
 		a.nowPlayingOptionRow(c, p, locales.SettingsAudioLevel(), locales.SettingsAudioLevelDesc(),
-			&a.cfg.AudioLevel, master, func(bool) { a.persistNowPlaying() })
+			&a.cfg.AudioLevel, func(bool) { a.persistNowPlaying() })
 	})
 }
 
 // nowPlayingCoverRow is the three-way cover control: none, the default
 // placeholder, or the media's own artwork.
-func (a *App) nowPlayingCoverRow(c *ui.Context, p palette, enabled bool) {
-	titleColor, subColor := p.fg, p.muted
-	if !enabled {
-		titleColor, subColor = p.muted, p.faint
-	}
+func (a *App) nowPlayingCoverRow(c *ui.Context, p palette) {
 	ui.Column(c).Padding(10, 14).Gap(8).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
-			ui.Text(c, locales.SettingsCover()).FontSize(13).FontWeight(500).TextColor(titleColor).SingleLine()
-			ui.Text(c, locales.SettingsCoverDesc()).FontSize(11.5).TextColor(subColor).SingleLine().Ellipsis("…")
+			ui.Text(c, locales.SettingsCover()).FontSize(13).FontWeight(500).TextColor(p.fg).SingleLine()
+			ui.Text(c, locales.SettingsCoverDesc()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 		})
 		seg := a.coverModeIndex()
 		items := []segmentItem{
@@ -356,7 +351,7 @@ func (a *App) nowPlayingCoverRow(c *ui.Context, p palette, enabled bool) {
 			{locales.SettingsCoverPlaceholder(), iconNote},
 			{locales.SettingsCoverMedia(), iconImage},
 		}
-		if segmented(c, p, &seg, items, 0, !enabled, locales.SettingsCover()).Changed() {
+		if segmented(c, p, &seg, items, 0, false, locales.SettingsCover()).Changed() {
 			a.cfg.CoverMode = coverModeAt(seg)
 			a.persistNowPlaying()
 		}
@@ -385,13 +380,9 @@ func coverModeAt(i int) settings.CoverMode {
 	}
 }
 
-func (a *App) nowPlayingOptionRow(c *ui.Context, p palette, title, sub string, on *bool, enabled bool, changed func(bool)) {
-	titleColor, subColor := p.fg, p.muted
-	if !enabled {
-		titleColor, subColor = p.muted, p.faint
-	}
-	settingRowColors(c, p, title, sub, titleColor, subColor, func() {
-		toggle(c, p, on, title, changed).Disabled(!enabled)
+func (a *App) nowPlayingOptionRow(c *ui.Context, p palette, title, sub string, on *bool, changed func(bool)) {
+	settingRow(c, p, title, sub, func() {
+		toggle(c, p, on, title, changed)
 	})
 }
 
@@ -612,9 +603,8 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 		})
 	})
 	if a.cfg.MuteLocalOnConnect {
-		ui.Row(c).Margin(8, 0, 0, 2).Gap(6).AlignItems(ui.Start).Children(func() {
-			ui.Icon(c, iconInfo).Size(13, 13).TextColor(p.muted)
-			ui.Text(c, locales.SettingsMuteLocalNote()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
+			infoNote(c, p, locales.SettingsMuteLocalNote())
 		})
 	}
 }
@@ -659,8 +649,8 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 			if a.latencyApplying {
 				ui.Spinner(c).Size(10, 10).TextColor(p.accent)
 			}
-			ui.Text(c, locales.SettingsLatencyPanelSwitch()).FontSize(11.5).TextColor(p.muted)
-			toggle(c, p, &a.showLatencySwitch, locales.SettingsLatencyPanelSwitch(), func(v bool) {
+			chip(c, p, locales.SettingsShowInPanel(), chipNeutral)
+			toggle(c, p, &a.showLatencySwitch, locales.SettingsShowInPanel(), func(v bool) {
 				a.setShowLatencySwitch(v)
 			})
 		})
@@ -679,11 +669,11 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 			})
 			a.latencyCustomTile(c, p, &mode)
 		}).Label(locales.SettingsLatency())
-
-		ui.Text(c, locales.SettingsLatencyNote()).FontSize(11.5).TextColor(p.muted).
-			Margin(6, 14, 8, 14).SingleLine().Ellipsis("…")
 	})
 
+	ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
+		infoNote(c, p, locales.SettingsLatencyNote())
+	})
 	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsAudioFormat(), locales.SettingsAudioFormatDesc(), func() {
 			staticText(c, p, locales.AudioFormatValue())
@@ -741,7 +731,7 @@ func (a *App) latencyCustomTile(c *ui.Context, p palette, mode *settings.Latency
 	selected := *mode == settings.LatencyCustom
 	// The radio group already spaces its children by 8 DIP; a top margin here
 	// would double that gap above the custom tile.
-	outer := ui.Column(c).Margin(0, 14, 0, 14).Radius(10).Clip().
+	outer := ui.Column(c).Margin(0, 14, 8, 14).Radius(10).Clip().
 		Border(1, p.line).Background(p.pill)
 	if selected {
 		outer.Background(p.accentSoft).BorderColor(p.accent)
