@@ -15,8 +15,9 @@ mygo-update.key
 .DS_Store
 Thumbs.db
 
-# The macOS MediaRemote adapter, assembled by scripts/build.sh (see docs/platforms.md).
-cmd/saundo/build/adapter/
+# The macOS MediaRemote adapter, assembled by scripts/build-adapter.sh into the
+# platform resource directory mygo ships only with darwin/arm64 builds.
+cmd/saundo/resources/darwin-arm64/adapter/
 
 # The vendored adapter's CMake build output.
 native/mediaremote-adapter/build/

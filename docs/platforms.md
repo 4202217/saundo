@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-07 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # Multi-platform development
 
@@ -65,6 +65,8 @@ already wraps?
   6. Add the row to the parity table, and a line to
      [devices.md](devices.md) or [verification.md](verification.md) if a
      real device behaved differently from the code's assumption.
+  7. Run `make platforms`. Both targets must build and vet before the
+     change is done.
 
 Platform internals never leak upward: COM vtables, ObjC selectors, and
 Core Audio property codes stay inside the leaf packages.
@@ -80,7 +82,8 @@ Core Audio property codes stay inside the leaf packages.
 | Credentials at rest | DPAPI (per user) | login-Keychain master key + AES-256-GCM (per user) |
 | Receiver discovery | mDNS + the ARP neighbor table | mDNS; the neighbor table returns empty |
 | Auto-update | signed feed through `mygo.Updater` | disabled: the build is ad-hoc signed and the feed carries Windows assets; re-enable with a signed, notarized mac feed |
-| Packaging | `saundo.exe` + NSIS installer | `saundo.app` + dmg, Info.plist from `mygo.json` `macos.infoPlist`, ad-hoc signed |
+| Packaging | `saundo.exe` + NSIS installer | `saundo.app` + dmg, Info.plist from `mygo.json` `macos.infoPlist`, ad-hoc signed unless `SAUNDO_MAC_SIGN_IDENTITY` names one |
+| Flyout style | system-rounded flyout with its window shadow | rounded flyout or NSPopover; the style setting is macOS-only |
 
 ## macOS runtime notes
 
@@ -104,6 +107,10 @@ Core Audio property codes stay inside the leaf packages.
   `brew install --cask` (brew does not quarantine by default), a terminal
   `curl` download, or `xattr -dr com.apple.quarantine`. The updater stays
   off until a signed, notarized feed exists.
+- **Local signing**: set `SAUNDO_MAC_SIGN_IDENTITY` to an Apple Development
+  or Developer ID identity for a stable local signature; without it the
+  build signs ad hoc. No certificate is committed, so CI and other Macs
+  never fail `codesign` on an identity they do not have.
 - **Keychain in tests**: parallel test binaries touching an item created
   by another binary trigger an ACL prompt. Headless runs set
   `SAUNDO_CREDS_MASTER_KEY` (64 hex chars) and the creds package decides
@@ -113,14 +120,28 @@ Core Audio property codes stay inside the leaf packages.
 ## Build and checks
 
 - **Windows**: `mingw32-make check` and `mingw32-make build` from Git Bash.
-- **macOS**: `make check` and `make build` — the same four checks (gofmt,
-  catalog, vet, `go tool mygo vet .`, tests) plus the app bundle.
-- Both run through `scripts/build.sh`, which branches on `uname -s`:
-  `mygo build -platform windows/amd64` or `-platform darwin/arm64`,
-  version stamped from git describe.
+- **macOS**: `make check` and `make build` — the same checks (gofmt,
+  catalog, vet, `go tool mygo vet .`, tests) plus the app bundle. cmake
+  builds the Now Playing adapter.
+- **Either host**: `make platforms` (`go run ./scripts/check-platforms`)
+  builds and vets windows/amd64 and darwin/arm64 with `CGO_ENABLED=0` and
+  rejects `saundo/internal/darwin`, `purego`, and `golang.org/x/sys/windows`
+  imports in files the other build compiles. `make check` includes it, and
+  CI runs it as the `platforms` job.
+- Both host builds run through `scripts/build.sh`, which branches on
+  `uname -s`: `mygo build -platform windows/amd64` or
+  `-platform darwin/arm64`, version stamped from git describe. The macOS
+  branch calls `scripts/build-adapter.sh` first; the adapter lands in
+  `cmd/saundo/resources/darwin-arm64/adapter`, which mygo ships only with
+  the darwin/arm64 target, so a clean Windows checkout never needs it.
+- **Signing**: `cmd/saundo/mygo.json` commits no certificate. The macOS
+  build signs ad hoc unless `SAUNDO_MAC_SIGN_IDENTITY` names a local
+  identity; CI and the release pass `-sign -` until a Developer ID exists.
 - CI mirrors the split: `.github/workflows/ci.yml` runs `check` on
-  windows-latest and `check-macos` on macos-latest; `release.yml` builds
-  the installer and the dmg on their own runners. `cmd/saundo/build_test.go`
-  asserts both branches of the build script.
+  windows-latest, `check-macos` on macos-latest, and `platforms` on
+  ubuntu-latest; `release.yml` builds the installer and the dmg on their
+  own runners. `cmd/saundo/build_test.go` asserts both branches of the
+  build script and that `mygo.json` declares no platform-blind resource or
+  signing identity.
 - The race detector needs a C toolchain on either platform and is not run
   in CI.
