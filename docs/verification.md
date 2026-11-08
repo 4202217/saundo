@@ -1572,6 +1572,18 @@ above.
   Windows; the reviewer measured the shortened subtitle at 354.5 DIP
   against the 415-DIP column at the 720 default. It still ellipsizes at the
   640 minimum, like other single-line settings subtitles.
+- **Draft verification (2026-11-09).** The release workflow (run
+  42506672553) passed `check`, `check-macos`, `draft`, `build`, and
+  `build-macos`. The draft carried `install.ps1`, the Windows installer,
+  the update archive, the three deltas, `update-windows-amd64.json`, the
+  arm64 dmg, and `SHA256SUMS`; `sha256sum -c` passed for all six
+  checksummed files. The manifest names 0.6.0-beta.1, is signed, and
+  carries the ASCII English notes. The release is published as a
+  prerelease: `releases/latest` still serves the signed 0.5.0 stable feed,
+  `releases/download/v0.6.0-beta.1/update-windows-amd64.json` serves
+  0.6.0-beta.1, and the beta installer URL returns 200. The beta channel
+  resolves the prerelease through `ResolvePrereleaseFeed`; stable builds
+  skip it.
 - **Verification map (2026-11-09).** All six feature pages were audited
   from source after the port and corrected in their own commit: the update
   page is Windows-only, offline receivers are dropped rather than shown,
