@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-07 -->
+<!-- reviewed-through: 2026-11-08 -->
 
 # Receiver profiles
 
@@ -26,7 +26,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
   directed reply carries the same TXT fields, including the stereo `tsid` and
   `gpn`.
 - Verified on software 27.2 (2026-10-31): pairing, PTP, a 35-second muted session, a six-minute app run, a 30-minute soak at exactly 44100 × 1800 frames with zero drops, an audible tone with volume restore — and a cold start that needed more than 10 s to re-establish PTP after a long session (the handshake deadline is now 30 s).
-- Ambient light / Sound Glow (2026-11-07): the top display renders the current Now Playing cover once Sound Glow is enabled in the HomePod settings; without it the top stays white. A new 600×600 `SET_PARAMETER image/jpeg` cover on the encrypted control channel repaints it. `POST /artwork/command` is not needed and was removed after three consecutive cover changes repainted an `AudioAccessory5,1` at 27.2. A black cover lands on the default white; a true LED-off has no AirPlay command, only the on-device `SoundBoardServices` XPC (`setLEDContents:`, `disable_leds`) with entitlement. The sender keeps one cover slot: the light owns it while on; while off, the receiver track-info cover wins when that setting is on and the origin image is the fallback. `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
+- Ambient light / Sound Glow (2026-11-07): the top display renders the current Now Playing cover once Sound Glow is enabled in the HomePod settings; without it the top stays white. A new 600×600 `SET_PARAMETER image/jpeg` cover on the encrypted control channel repaints it. `POST /artwork/command` is not needed and was removed after three consecutive cover changes repainted an `AudioAccessory5,1` at 27.2. The ambient light has a permanent card, a power action, and a 封面/模板 priority segment. Cover priority (the default) hands the slot to the media cover; template priority shows one of six templates. The manual 关灯 sends the `updateMRPlaybackState` command (`POST /command`, binary plist, `mrPlaybackState: 2`), which clears the Now Playing renderer while the RTP stream keeps running; state `1` restores the current image. Observed on a muted `AudioAccessory5,1` 27.2 on 2026-11-07 (blue → off → blue → off, session streaming throughout). A media pause keeps the current light; only the manual 关灯 sends state `2`, and 开灯 sends `1`. With cover priority on and no media cover, the sender sends no image and the receiver keeps its last light. A stereo pair `AudioAccessory5,1` 27.3 probe on 2026-11-07 confirmed that clearing the slot, a state 2→1 cycle, and a new item without artwork keep the last image; the white-center placeholder appears only on a fresh session. The sender keeps one artwork slot: a template owns it or cover mode hands it to the media cover; the playback state is independent. The on-device `SoundBoardServices` XPC (`setLEDContents:`, `disable_leds`) remains a local-only path with entitlement. `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
 ## HomePod stereo pair
 
@@ -42,6 +42,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 - One AP2 session per member with `groupUUID = tsid`; SETPEERS carries both members plus the sender; **the sender is the PTP grandmaster** (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
 - Capture fans out to one ring per member; both sessions must reach streaming before the group launches.
 - Verified (2026-10-31): both member sessions streamed through the sender-supplied master, a system tone caused zero drops, the flyout showed `正在播放到 HomePods`, and a 60 s silence suspend kept both sessions up and resumed audibly.
+- Ambient light on the pair (2026-11-07): `updateMRPlaybackState` reaches both members and state `2` darkens both. A state `1` on the follower can leave its renderer white; a new session restores it. The sender assumes playing on a fresh session (no redundant state `1`) and resends the artwork after a resume's state `1`; after a disconnect/reconnect and a resume, both members were normal. If a follower is already stuck white, reconnect.
 
 ## macOS AirPlay receiver (Require Password)
 

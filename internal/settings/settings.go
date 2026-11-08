@@ -40,11 +40,35 @@ const (
 	DefaultLatencyCustomMS = 700
 )
 
-// LampSettings is the global ambient-light choice: whether the HomePod top
-// display shows a light, and which preset it shows.
+// LampSettings is the global ambient-light choice. The light is always part
+// of the app; Off is the manual "关灯" state. Cover chooses the media cover;
+// when it is off, Preset renders one of the six templates. LegacyEnabled
+// decodes the old on/off switch so an existing file keeps its state.
 type LampSettings struct {
-	Enabled bool   `json:"enabled"`
-	Preset  string `json:"preset"`
+	Off           bool   `json:"off"`
+	Cover         bool   `json:"cover"`
+	Preset        string `json:"preset"`
+	LegacyEnabled *bool  `json:"enabled,omitempty"`
+}
+
+// UnmarshalJSON tracks whether the file had a cover field. An old template
+// file has no cover field and must stay cover off, not inherit the default
+// cover-on value from the pre-populated settings struct.
+func (l *LampSettings) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Off           *bool  `json:"off"`
+		Cover         *bool  `json:"cover"`
+		Preset        string `json:"preset"`
+		LegacyEnabled *bool  `json:"enabled"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	l.Off = raw.Off != nil && *raw.Off
+	l.Cover = raw.Cover != nil && *raw.Cover
+	l.Preset = raw.Preset
+	l.LegacyEnabled = raw.LegacyEnabled
+	return nil
 }
 
 // Settings is the user's configuration.
@@ -76,7 +100,6 @@ type Settings struct {
 	StrictReceiverAuth  bool               `json:"strictReceiverAuth"`
 	AutoConnect         bool               `json:"autoConnect"`
 	Reconnect           bool               `json:"reconnect"`
-	ShowNowPlaying      bool               `json:"showNowPlaying"`
 	ShowNowPlayingPanel bool               `json:"showNowPlayingPanel"`
 	PlaybackControls    bool               `json:"playbackControls"`
 	CoverColors         bool               `json:"coverColors"`
@@ -108,7 +131,6 @@ func Default() Settings {
 		LatencyMode:         LatencyLow,
 		LatencyCustomMS:     DefaultLatencyCustomMS,
 		ShowLatencySwitch:   true,
-		ShowNowPlaying:      true,
 		ShowNowPlayingPanel: true,
 		PlaybackControls:    true,
 		CoverColors:         true,
@@ -118,7 +140,7 @@ func Default() Settings {
 		Reconnect:           true,
 		TrayAnimation:       true,
 		Theme:               ThemeSystem,
-		Lamp:                LampSettings{Enabled: true, Preset: lamp.DefaultID},
+		Lamp:                LampSettings{Cover: true, Preset: lamp.DefaultID},
 	}
 }
 
@@ -202,9 +224,25 @@ func (s *Store) Load() Settings {
 	default:
 		out.CoverMode = CoverMedia
 	}
-	// An old file has no lamp object at all, which keeps the default (on +
-	// the default preset). An unknown preset never survives a load.
-	out.Lamp.Preset = lamp.Normalize(out.Lamp.Preset)
+	// The old switch stored "enabled"; invert it once and drop the field.
+	if out.Lamp.LegacyEnabled != nil {
+		out.Lamp.Off = !*out.Lamp.LegacyEnabled
+		out.Lamp.LegacyEnabled = nil
+	}
+	// The old model stored cover mode as the "media" preset. A legacy media,
+	// empty, or unknown value turns cover on and resets to the default
+	// template. A valid template keeps the stored cover flag, which is absent
+	// (false) in every old template file.
+	switch out.Lamp.Preset {
+	case "media", "":
+		out.Lamp.Cover = true
+		out.Lamp.Preset = lamp.DefaultID
+	default:
+		if _, ok := lamp.ByID(out.Lamp.Preset); !ok {
+			out.Lamp.Cover = true
+			out.Lamp.Preset = lamp.DefaultID
+		}
+	}
 	return out
 }
 

@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 // visibleFlyoutHeight is the height a tester should use for this App's
 // current devices, latency row, and media card.
 func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampExpanded, a.lampEnabled)
+	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded)
 }
 
 func withLocale(t *testing.T, tag string) {
@@ -62,7 +62,7 @@ func previewApp() *App {
 		latencyMode:       "low",
 		latencyCustom:     700,
 		showLatencySwitch: true,
-		lampEnabled:       true,
+		lampOff:           false,
 		lampPreset:        "dune",
 	}
 	a.selID = "AA:BB:CC:DD:EE:01"
@@ -84,7 +84,7 @@ func previewApp() *App {
 		PTPActive:      true,
 		PTPReady:       true,
 		Reconnect:      true,
-		LampEnabled:    true,
+		LampOff:        false,
 		LampPreset:     "dune",
 	}
 	a.reconnect = true
@@ -98,7 +98,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 		"声渡", "saundo", "设备", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开", "离线", "音量", "65%", "正在播放到 HomePods",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "诊断日志",
-		"氛围灯", "HomePod 专属", "沙丘",
+		"氛围灯", "沙丘",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
@@ -208,9 +208,9 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageConnection, []string{"连接", "重连与验证策略", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "连接时静音本机扬声器，断开或退出时恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在音画同步与连接稳定之间取舍", "延迟模式", "面板快捷切换", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
-		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "开启氛围灯", "HomePod 专属", "HomePod 顶屏", "默认", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "关闭后回到默认"}},
+		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "顶屏灯光", "HomePod 专属", "HomePod 顶屏", "封面", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白", "按关灯熄灭顶屏"}},
 		{pageCapture, []string{"采集", "系统输出", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
-		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "在接收器上显示曲目信息", "Apple Music", "夜航"}},
+		{pageNowPlaying, []string{"正在播放", "面板中的正在播放、封面配色与音频电平。", "显示正在播放", "系统媒体", "封面", "无封面", "默认封面", "媒体封面", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "立即检查", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
 	}
@@ -563,24 +563,20 @@ func TestFlyoutHeightForDeviceRows(t *testing.T) {
 	noMedia := map[int]int{0: 383, 1: 300, 2: 356, 3: 412, 5: 412}
 	withMedia := map[int]int{0: 533, 1: 450, 2: 506, 3: 562, 5: 562}
 	for _, tc := range []struct {
-		name  string
 		media bool
 		want  map[int]int
-	}{{"no media", false, noMedia}, {"media", true, withMedia}} {
+	}{{false, noMedia}, {true, withMedia}} {
 		for devices, want := range tc.want {
-			if got := flyoutHeightFor(devices, false, tc.media, false); got != want {
-				t.Errorf("flyoutHeightFor(%d, false, media=%v, lamp=off) = %d, want %d", devices, tc.media, got, want)
+			want += lampSectionHeight
+			if got := flyoutHeightFor(devices, false, tc.media); got != want {
+				t.Errorf("flyoutHeightFor(%d, false, media=%v) = %d, want %d", devices, tc.media, got, want)
 			}
-			if got := flyoutHeightFor(devices, true, tc.media, false); got != want+latencySwitchHeight {
-				t.Errorf("flyoutHeightFor(%d, true, media=%v, lamp=off) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
-			}
-			if got := flyoutHeightFor(devices, false, tc.media, true); got != want+lampSectionHeight {
-				t.Errorf("flyoutHeightFor(%d, false, media=%v, lamp=on) = %d, want %d", devices, tc.media, got, want+lampSectionHeight)
+			if got := flyoutHeightFor(devices, true, tc.media); got != want+latencySwitchHeight {
+				t.Errorf("flyoutHeightFor(%d, true, media=%v) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
 			}
 		}
 	}
 }
-
 func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 	var want float32
 	for devices := 0; devices <= deviceRows; devices++ {
@@ -629,8 +625,8 @@ func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
 	}
 }
 
-func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
-	enabled, streaming := false, true
+func TestRefreshNowPlayingPushesWhileStreaming(t *testing.T) {
+	streaming := false
 	track := nowplaying.Session{Title: "夜曲", Artist: "周杰伦", Album: "十一月的萧邦"}
 	ok := true
 	var pushes []string
@@ -644,43 +640,35 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 		pushNowPlaying: func(title, artist, album string, cover []byte, coverMIME string) {
 			pushes = append(pushes, title+"\x00"+artist)
 		},
-		nowPlayingSetting: func() (bool, bool) { return enabled, streaming },
+		nowPlayingStreaming: func() bool { return streaming },
 	}
 
-	// The state updates even while pushing is off.
+	// The state updates without a stream; nothing is sent.
 	a.refreshNowPlaying()
 	if !a.nowOK || a.nowTrack.Title != "夜曲" || a.nowTrack.Artist != "周杰伦" {
 		t.Fatalf("track = %+v ok=%v", a.nowTrack, a.nowOK)
 	}
 	if len(pushes) != 0 {
-		t.Fatalf("pushed while disabled: %v", pushes)
-	}
-
-	// Enabling while disconnected shows the track but sends nothing; the
-	// first streaming poll sends it.
-	enabled, streaming = true, false
-	a.refreshNowPlaying()
-	if len(pushes) != 0 {
 		t.Fatalf("pushed without a stream: %v", pushes)
 	}
+
+	// The first streaming poll sends the track once.
 	streaming = true
 	a.refreshNowPlaying()
 	if len(pushes) != 1 {
-		t.Fatalf("pushes after enabling = %d, want 1", len(pushes))
+		t.Fatalf("pushes while streaming = %d, want 1", len(pushes))
 	}
 	a.refreshNowPlaying()
 	if len(pushes) != 1 {
 		t.Fatalf("unchanged track pushed twice: %v", pushes)
 	}
 
-	// A new track while off is not sent; re-enabling sends it.
-	enabled = false
+	// The card's display switch does not gate the receiver push.
+	a.showNowPlayingPanel.Store(false)
 	track = nowplaying.Session{Title: "稻香", Artist: "周杰伦"}
 	a.refreshNowPlaying()
-	enabled = true
-	a.refreshNowPlaying()
 	if len(pushes) != 2 || pushes[1] != "稻香\x00周杰伦" {
-		t.Fatalf("pushes = %v", pushes)
+		t.Fatalf("push with the panel hidden = %v", pushes)
 	}
 
 	// A new streaming session resends the same metadata after reconnect.
@@ -690,16 +678,6 @@ func TestRefreshNowPlayingPushesOnlyWhenEnabled(t *testing.T) {
 	a.refreshNowPlaying()
 	if len(pushes) != 3 {
 		t.Fatalf("pushes after reconnect = %d, want 3", len(pushes))
-	}
-
-	// Re-enabling mid-track resends, so the receiver shows the current
-	// track and cover without waiting for the next one.
-	enabled = false
-	a.refreshNowPlaying()
-	enabled = true
-	a.refreshNowPlaying()
-	if len(pushes) != 4 {
-		t.Fatalf("pushes after re-enabling = %d, want 4", len(pushes))
 	}
 
 	// No media clears both the state and the sent marker.
@@ -728,7 +706,7 @@ func TestRefreshNowPlayingPushesArtworkChanges(t *testing.T) {
 			covers = append(covers, append([]byte(nil), cover...))
 			mimes = append(mimes, coverMIME)
 		},
-		nowPlayingSetting: func() (bool, bool) { return true, true },
+		nowPlayingStreaming: func() bool { return true },
 	}
 	a.refreshNowPlaying()
 	if len(covers) != 1 || !bytes.Equal(covers[0], session.Artwork) || mimes[0] != "image/png" {

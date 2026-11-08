@@ -110,9 +110,9 @@ type App struct {
 	receiverDelayTimer *time.Timer
 	receiverDelayPend  map[string]int
 
-	readNowPlaying    func() (nowplaying.Snapshot, error)
-	pushNowPlaying    func(title, artist, album string, cover []byte, coverMIME string)
-	nowPlayingSetting func() (show, streaming bool)
+	readNowPlaying      func() (nowplaying.Snapshot, error)
+	pushNowPlaying      func(title, artist, album string, cover []byte, coverMIME string)
+	nowPlayingStreaming func() bool
 	// setThemeSource applies the appearance; a test replaces it, because
 	// mygo.Theme.SetSource needs the running application's main thread.
 	setThemeSource func(mygo.ThemeSource)
@@ -122,6 +122,8 @@ type App struct {
 	nowArtKey      string
 	nowFieldLight  *image.RGBA
 	nowFieldDark   *image.RGBA
+	nowLamp        lamp.Preset
+	nowLampOK      bool
 	levelFrame     func(delay time.Duration) analyze.Frame
 	controlNow     func(aumid string, action nowplaying.Action)
 	nowTrack       nowplaying.Track
@@ -134,9 +136,9 @@ type App struct {
 	strict              bool
 	reconnect           bool
 	launchAtStart       bool
-	showNowPlaying      bool
 	showNowPlayingPanel atomic.Bool
-	lampEnabled         bool
+	lampOff             bool
+	lampCover           bool
 	lampPreset          string
 	lampExpanded        bool
 	trayAnimation       bool
@@ -217,7 +219,8 @@ func Run() error {
 		a.latencyCustom = float64(settings.DefaultLatencyCustomMS)
 	}
 	a.showLatencySwitch = cfg.ShowLatencySwitch
-	a.lampEnabled = cfg.Lamp.Enabled
+	a.lampOff = cfg.Lamp.Off
+	a.lampCover = cfg.Lamp.Cover
 	a.lampPreset = lamp.Normalize(cfg.Lamp.Preset)
 	a.appNames = []string{locales.CaptureAllSystem()}
 	a.appIDs = []string{"0"}
@@ -293,7 +296,7 @@ func (a *App) ready() {
 		})
 		// Discovery has not reported yet, so the flyout opens at the empty
 		// state's height and grows as devices and a media session arrive.
-		a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch, false, a.lampEnabled)
+		a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch, false)
 		a.win = mygo.NewFlyout(mygo.FlyoutOptions{
 			Tray:      a.tray,
 			Placement: mygo.PlacementBottom,
@@ -330,8 +333,10 @@ func (a *App) ready() {
 		a.win.Hide()
 	})
 	// The flyout's content rises in once per show; the window itself is the
-	// system's to animate.
+	// system's to animate. Hiding the flyout folds the template list, so the
+	// next open starts collapsed.
 	a.win.OnShow(func() { a.flyoutEntered = false })
+	a.win.OnHide(func() { a.collapseLampList() })
 	// Created before the engine starts, so its field stays immutable while
 	// engine callbacks read it from other goroutines.
 	a.settingsWin = a.newSettingsWindow()
@@ -393,9 +398,8 @@ func (a *App) ready() {
 			}
 		}()
 	}
-	a.nowPlayingSetting = func() (show, streaming bool) {
-		snap := a.eng.Snapshot()
-		return snap.ShowNowPlaying && a.showNowPlayingPanel.Load(), snap.State == sender.StateStreaming
+	a.nowPlayingStreaming = func() bool {
+		return a.eng.Snapshot().State == sender.StateStreaming
 	}
 	a.eng.Start()
 	if !silent {
@@ -405,8 +409,8 @@ func (a *App) ready() {
 }
 
 // pollNowPlaying reads the system media session every two seconds, displays
-// it, and pushes track changes while 推送正在播放 is on. The setting comes from
-// the live engine snapshot, not the settings copy loaded at startup.
+// it, and pushes track changes to a streaming receiver. The push is
+// unconditional; the card's display switch does not gate it.
 func (a *App) pollNowPlaying() {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -423,8 +427,9 @@ func (a *App) pollNowPlaying() {
 }
 
 // refreshNowPlaying updates the card and pushes the current track to a
-// streaming receiver when 推送正在播放 is on. A new stream resends the current
-// track so a reconnect does not leave the receiver without metadata.
+// streaming receiver. The push does not depend on the card's display switch;
+// a new stream resends the current track so a reconnect does not leave the
+// receiver without metadata.
 func (a *App) refreshNowPlaying() {
 	if a.readNowPlaying == nil {
 		return
@@ -435,21 +440,21 @@ func (a *App) refreshNowPlaying() {
 		errText = err.Error()
 	}
 	track, ok := nowPlayingTrack(snap)
-	show, streaming := false, false
-	if a.nowPlayingSetting != nil {
-		show, streaming = a.nowPlayingSetting()
+	streaming := false
+	if a.nowPlayingStreaming != nil {
+		streaming = a.nowPlayingStreaming()
 	}
 	if streaming && !a.lastStreaming {
 		a.nowSent = ""
 	}
 	a.lastStreaming = streaming
-	if !ok || !show {
+	if !ok {
 		a.nowSent = ""
 	}
 	a.updateUI(func() {
 		a.setNowSnapshot(snap, errText)
 	})
-	if !show || !ok || !streaming || a.pushNowPlaying == nil {
+	if !ok || !streaming || a.pushNowPlaying == nil {
 		return
 	}
 	s := snap.Sessions[snapIndex(snap)]
@@ -544,6 +549,8 @@ func (a *App) refreshNowArtwork() {
 	a.nowArt = nil
 	a.nowFieldLight = nil
 	a.nowFieldDark = nil
+	a.nowLamp = lamp.Preset{}
+	a.nowLampOK = false
 	if !ok || len(s.Artwork) == 0 {
 		return
 	}
@@ -557,6 +564,7 @@ func (a *App) refreshNowArtwork() {
 	a.nowFieldLight = coverField(img, false)
 	a.nowFieldDark = coverField(img, true)
 	a.nowArt = ui.NewBitmap(img)
+	a.nowLamp, a.nowLampOK = lamp.CoverPreset(img)
 }
 
 // nowArtworkKey includes the thumbnail bytes so a cover that arrives late —
@@ -644,13 +652,13 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	}
 	a.strict = snap.StrictAuth
 	a.reconnect = snap.Reconnect
-	a.showNowPlaying = snap.ShowNowPlaying
-	a.lampEnabled = snap.LampEnabled
+	a.lampOff = snap.LampOff
+	a.lampCover = snap.LampCover
 	a.lampPreset = lamp.Normalize(snap.LampPreset)
 	// The engine owns the lamp fields. Mirror them here so an app-only save
 	// (theme, update preferences, launch at login) cannot write a stale lamp
 	// choice back over the engine's.
-	a.cfg.Lamp = settings.LampSettings{Enabled: a.lampEnabled, Preset: a.lampPreset}
+	a.cfg.Lamp = settings.LampSettings{Off: a.lampOff, Cover: a.lampCover, Preset: a.lampPreset}
 	if a.trayAnimation != snap.TrayAnimation {
 		a.trayAnimation = snap.TrayAnimation
 		a.syncTrayAnimator()
@@ -701,7 +709,7 @@ func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampExpanded, a.lampEnabled)
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded)
 	if h == a.flyoutH {
 		return
 	}

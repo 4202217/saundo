@@ -51,8 +51,8 @@ type Snapshot struct {
 	AudioIdle          bool
 	MuteLocal          MuteLocalState
 	MuteLocalError     string
-	ShowNowPlaying     bool
-	LampEnabled        bool
+	LampOff            bool
+	LampCover          bool
 	LampPreset         string
 	TrayAnimation      bool
 	LatencyMS          int
@@ -84,7 +84,6 @@ const (
 	cmdStrictAuth
 	cmdName
 	cmdReconnect
-	cmdShowNowPlaying
 	cmdLamp
 	cmdTrayAnimation
 	cmdMuteLocal
@@ -110,6 +109,7 @@ type command struct {
 	coverMIME string
 	reconnect bool
 	show      bool
+	lampCover bool
 	spec      receivers.Spec
 	patch     receivers.Patch
 }
@@ -165,6 +165,7 @@ type transport interface {
 	InitialVolumePercent() (float64, bool)
 	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)
 	SetLampArtwork(data []byte, mime string, on bool)
+	SetPlaybackState(playing bool)
 	PTP() (active, ready bool, offsetMS float64)
 }
 
@@ -212,6 +213,7 @@ func (s *session) SetNowPlaying(title, artist, album string, cover []byte, cover
 func (s *session) SetLampArtwork(data []byte, mime string, on bool) {
 	s.sender.SetLampArtwork(data, mime, on)
 }
+func (s *session) SetPlaybackState(playing bool) { s.sender.SetPlaybackState(playing) }
 func (s *session) PTP() (active, ready bool, offsetMS float64) {
 	if s.ptp == nil {
 		return false, false, 0
@@ -589,15 +591,6 @@ func (e *Engine) SetReconnect(on bool) {
 	e.send(command{kind: cmdReconnect, value: v})
 }
 
-// SetShowNowPlaying toggles pushing track metadata to the receiver.
-func (e *Engine) SetShowNowPlaying(on bool) {
-	v := 0.0
-	if on {
-		v = 1
-	}
-	e.send(command{kind: cmdShowNowPlaying, value: v})
-}
-
 // SetTrayAnimation toggles the animated tray icon preference.
 func (e *Engine) SetTrayAnimation(on bool) {
 	v := 0.0
@@ -619,14 +612,15 @@ func (e *Engine) SetNowPlaying(title, artist, album string, cover []byte, coverM
 	e.send(command{kind: cmdNowPlaying, text: title, name: artist, album: album, cover: cover, coverMIME: coverMIME})
 }
 
-// SetLamp turns the ambient light on or off and chooses its preset. The
+// SetLamp turns the light off manually or on with a cover or template. Off
+// is the "关灯" state; the ambient feature itself is always present. The
 // setting applies to the live session at once and persists for the next one.
-func (e *Engine) SetLamp(enabled bool, preset string) {
+func (e *Engine) SetLamp(off, cover bool, preset string) {
 	v := 0.0
-	if enabled {
+	if off {
 		v = 1
 	}
-	e.send(command{kind: cmdLamp, value: v, text: preset})
+	e.send(command{kind: cmdLamp, value: v, text: preset, lampCover: cover})
 }
 
 func (e *Engine) send(cmd command) {
@@ -964,16 +958,12 @@ func (e *Engine) handleCommand(cmd command) {
 		}
 		e.markSettingsDirty()
 		e.publish()
-	case cmdShowNowPlaying:
-		e.setsValue.ShowNowPlaying = cmd.value != 0
-		e.markSettingsDirty()
-		e.publish()
 	case cmdLamp:
 		preset := lamp.Normalize(cmd.text)
 		if preset != cmd.text {
 			e.logf("ambient light: preset %q is unknown, using %q", cmd.text, preset)
 		}
-		e.setsValue.Lamp = settings.LampSettings{Enabled: cmd.value != 0, Preset: preset}
+		e.setsValue.Lamp = settings.LampSettings{Off: cmd.value != 0, Cover: cmd.lampCover, Preset: preset}
 		e.prepareLampImage()
 		e.applyLamp()
 		e.markSettingsDirty()
@@ -992,7 +982,7 @@ func (e *Engine) handleCommand(cmd command) {
 		}
 		e.publish()
 	case cmdNowPlaying:
-		if e.setsValue.ShowNowPlaying && e.tr != nil {
+		if e.tr != nil {
 			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album, cmd.cover, cmd.coverMIME)
 			e.publish()
 		}
@@ -1167,14 +1157,10 @@ func (e *Engine) reconnectShouldRetry() bool {
 	return !e.userDisconnect && !e.stopping && e.setsValue.Reconnect && e.selectedID != ""
 }
 
-// prepareLampImage renders the enabled preset on the engine goroutine, so
+// prepareLampImage renders the selected template on the engine goroutine, so
 // the sender's callback path only copies bytes. A render failure keeps the
 // setting and retries on the next change or connect.
 func (e *Engine) prepareLampImage() {
-	if !e.setsValue.Lamp.Enabled {
-		e.lampImage, e.lampImagePreset = nil, ""
-		return
-	}
 	preset := lamp.Normalize(e.setsValue.Lamp.Preset)
 	if e.lampImagePreset == preset && len(e.lampImage) > 0 {
 		return
@@ -1188,22 +1174,14 @@ func (e *Engine) prepareLampImage() {
 	e.lampImage, e.lampImagePreset = data, preset
 }
 
-// applyLamp sends the current light, or the origin reset when the light is
-// off. The lamp image owns the cover slot while on; while off, a receiver
-// track-info cover wins and the origin is the fallback. A receiver that
-// cannot show top-display artwork is skipped with one diagnostic line per
-// session.
+// applyLamp applies the manual off state and the two lit modes. Off sends
+// the paused playback state, which stops the Now Playing renderer and turns
+// the top display dark without touching the audio. Cover hands the artwork
+// slot to the media cover; a template owns it. A media pause keeps the
+// current light. A receiver that cannot show top-display artwork is skipped
+// with one diagnostic line per session.
 func (e *Engine) applyLamp() {
 	if e.tr == nil {
-		return
-	}
-	if !e.setsValue.Lamp.Enabled {
-		if e.lampTargetCapable() {
-			e.logf("ambient light: off, default restore on %s", e.connectedName)
-			e.tr.SetLampArtwork(lamp.Off(), "image/jpeg", false)
-		} else {
-			e.tr.SetLampArtwork(nil, "", false)
-		}
 		return
 	}
 	if !e.lampTargetCapable() {
@@ -1213,11 +1191,24 @@ func (e *Engine) applyLamp() {
 		}
 		return
 	}
-	if len(e.lampImage) == 0 {
+	if e.setsValue.Lamp.Off {
+		e.logf("ambient light: off (manual) on %s", e.connectedName)
+		e.tr.SetPlaybackState(false)
 		return
 	}
-	e.logf("ambient light: apply %s (%d bytes) to %s", e.lampImagePreset, len(e.lampImage), e.connectedName)
+	if e.setsValue.Lamp.Cover {
+		e.tr.SetLampArtwork(nil, "", false)
+		e.logf("ambient light: cover on %s", e.connectedName)
+		e.tr.SetPlaybackState(true)
+		return
+	}
+	preset := lamp.Normalize(e.setsValue.Lamp.Preset)
+	if e.lampImagePreset != preset || len(e.lampImage) == 0 {
+		return
+	}
+	e.logf("ambient light: template %s (%d bytes) on %s", e.lampImagePreset, len(e.lampImage), e.connectedName)
 	e.tr.SetLampArtwork(e.lampImage, "image/jpeg", true)
+	e.tr.SetPlaybackState(true)
 }
 
 // lampTargetCapable fails closed: a missing target, an unknown model, or an
@@ -1783,8 +1774,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 		LatencyMS:          e.setsValue.LatencyMS,
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,
-		ShowNowPlaying:     e.setsValue.ShowNowPlaying,
-		LampEnabled:        e.setsValue.Lamp.Enabled,
+		LampOff:            e.setsValue.Lamp.Off,
+		LampCover:          e.setsValue.Lamp.Cover,
 		LampPreset:         lamp.Normalize(e.setsValue.Lamp.Preset),
 		TrayAnimation:      e.setsValue.TrayAnimation,
 		CaptureEndpoint:    e.captureEndpoint,

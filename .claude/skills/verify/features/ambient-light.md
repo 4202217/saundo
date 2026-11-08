@@ -1,85 +1,169 @@
 # Ambient light
 
-The HomePod top display renders the current Now Playing cover. While the
-ambient light is on, the sender puts a generated palette image there instead
-of the media cover. One global choice, not per receiver.
+The HomePod top display renders the current Now Playing cover. The ambient
+light is a permanent global card: a desk-lamp glyph and a power action turn
+the top display off and on, and a two-way priority segment chooses between
+the media cover and one of six generated templates. One global choice, not
+per receiver.
 
 ## Sub-features
 
-- 氛围灯 settings page and the flyout's ambient card. The settings page owns
-  the 开启氛围灯 switch, on by default; the flyout card appears only while it
-  is on and has no switch. The tray menu has no ambient item.
-- Seven presets: 默认 (origin reset), 暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白.
-  `internal/lamp` renders six palettes plus origin as deterministic 600×600
-  JPEGs and caches each one.
-- The image leaves as one `SET_PARAMETER image/jpeg` cover on the encrypted
-  control channel. It is sent when a preset changes and when a stream starts;
-  the artwork POST command is not used.
-- One cover slot. The light owns it while on. With the light off, the
-  receiver track-info cover (在接收器上显示曲目信息) wins when it is on, and
-  the origin image is the fallback. A media cover change updates the text
-  without displacing the light.
+- 氛围灯 settings page and the flyout's ambient card. The card is always
+  present; its head carries the desk-lamp glyph and the power action (关灯
+  when lit, 开灯 when dark). The row carries the compact 封面/模板 priority
+  segment left of the chevron. The settings page puts the full
+  封面优先/模板优先 segment in the preview row, beside the 72-DIP preview and
+  its name, and its head keeps the HomePod 专属 tag. The tray menu has no
+  ambient item.
+- Choices: the media cover (default) plus six templates: 暖烬, 沙丘, 苔庭,
+  潮汐, 兰夜, 月白. `internal/lamp` renders the six palettes as deterministic
+  600×600 JPEGs and caches each one. The cover has no rendered image.
+- The preview follows what the top display follows. Cover priority runs the
+  cover through the same Lab k-means the receiver uses for `MediaColors`
+  (`lamp.CoverPreset`) and paints the three-color glow. With no cover yet it
+  paints a neutral cover tile with the media glyph; the receiver's own
+  fresh-session placeholder is a white center on a dark ring and is not
+  previewed. Template priority paints the selected template.
+- In cover priority the flyout row shows the preview, the current source and
+  the segment: no chevron and no template list. Choosing 模板 shows the
+  chevron; the six swatches stay collapsed until it is clicked. Picking a
+  template keeps template priority and leaves the flyout list open. Hiding
+  the flyout folds the list, so the next open starts collapsed. The settings
+  page keeps the six templates visible in both priorities.
+- A template leaves as one `SET_PARAMETER image/jpeg` cover on the encrypted
+  control channel. It is sent when the choice changes and when a stream
+  starts; the artwork POST command is not used.
+- The light follows the cover, not the play/pause state: a paused track
+  keeps the current light, and a new cover (a track change) updates it. The
+  only way to darken the display is the manual 关灯 action.
+- 关灯 posts the updateMRPlaybackState command with `mrPlaybackState` 2;
+  开灯 posts state 1 and then resends the current cover. A new session
+  assumes playing and does not send a redundant state 1. The state is
+  persisted as `lamp.off`; the light is on by default, and an old
+  `lamp.enabled: false` migrates to off.
+- Cover priority is persisted as `lamp.cover`. An old `preset: "media"` or
+  an unknown/empty preset turns it on and resets the template to `dune`; a
+  valid old template keeps it off. The priority segment and the template
+  grid write the same flag.
+- Picking a template while the light is off turns the light on and chooses
+  template priority; choosing the cover segment also turns the light on. The
+  grid stays clickable while dimmed.
+- With cover priority on and no media cover, the sender stops sending an
+  image and the receiver keeps its last light. A fresh session with no
+  artwork shows the receiver's white-center placeholder. The sender has no
+  clear-artwork command, so the placeholder is not reachable after a
+  template or cover has been shown without a new session.
+- One artwork slot: cover priority hands it to the media cover and a
+  template owns it; the playback state is independent. A media cover change
+  updates the text without displacing a template.
 - Capability gate. `device.TopDisplayCapable` accepts the HomePod family at
   software 27.2 or later and fails closed on an unknown model or version.
-  A stereo group fans the image out to each capable member.
+  A stereo group fans the image and the playback state out to each capable
+  member.
 - Sound Glow must be enabled on the HomePod's own settings. Without it the
   top stays white.
 
 ## How to get to it (user POV)
 
 设置 → 氛围灯, or the ambient card under the playback card in the flyout.
-Turning the switch on shows the card; turning it off hides it.
+The power glyph turns the top display off and on; the 封面/模板 segment in
+the flyout row, left of the chevron, and the 封面优先/模板优先 segment in the
+settings preview row choose the source. In cover priority the flyout has no
+template list; choosing 模板 reveals the chevron; the six swatches stay
+collapsed until it is clicked.
 
 ## Driving it
 
 Headless UI:
 
 ```bash
-go test -run 'TestFlyoutLampCardVisibleWhenOn|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffHidesSection|TestSettingsLampSwitchHidesFlyout|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffShowsHintAndDisablesPresets|TestLampSurfacesInEnglish' -v ./internal/app/
+go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampPickingWhileOffTurnsOn|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffShowsHintAndPickingTurnsOn|TestLampSurfacesInEnglish' -v ./internal/app/
 ```
 
-Renderer and capability:
+Renderer, cover palette, and settings:
 
 ```bash
-go test -run 'TestPresetsMatchCatalog|TestGeneratedJPEGsAre600Square|TestPresetPixelsFollowTheBlobs|TestGeneratorCachesPerPreset' -v ./internal/lamp/
+go test -run 'TestPresetsMatchCatalog|TestGeneratedJPEGsAre600Square|TestPresetPixelsFollowTheBlobs|TestGeneratorCachesPerPreset|TestCoverPresetClustersTheCover|TestCoverPresetRejectsEmptyImages|TestCoverPresetIsDeterministic' -v ./internal/lamp/
 go test -run 'TestTopDisplayCapable' -v ./internal/airplay/device/
-go test -run 'TestLampDefaultsOnAndOrigin|TestLampOldFileLoadsDefaults' -v ./internal/settings/
+go test -run 'TestLampDefaultsOnAndCover|TestLampOldFileLoadsDefaults|TestLampLegacyEnabledInvertsToOff|TestLampOldMediaPresetTurnsCoverOn|TestLampOldTemplatePresetTurnsCoverOff|TestLampRoundTrips' -v ./internal/settings/
 ```
 
 Sender and engine:
 
 ```bash
-go test -run 'TestSetLampArtworkSendsCover|TestSetLampArtworkWaitsForStreaming|TestSetLampArtworkDuplicateIsNoOp|TestSetLampArtworkDoesNotTouchDMAPText|TestSetLampArtworkClearSendsNothing' -v ./internal/airplay/sender/
-go test -run 'TestLampToggleAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToOrigin|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestGroupArtworkFansOutToBothCapableMembers|TestGroupArtworkSkipsIncapableMember|TestMediaCoverWinsWhenLampIsOff|TestLampCoverWinsWhileOn' -v ./internal/engine/
+go test -run 'TestSetLampArtworkSendsCover|TestSetLampArtworkWaitsForStreaming|TestSetLampArtworkDuplicateIsNoOp|TestSetLampArtworkDoesNotTouchDMAPText|TestSetLampArtworkClearSendsNothing|TestSetPlaybackStateSendsCommand|TestSetPlaybackStateWaitsForStreaming|TestSetPlaybackStateAssumesPlayingOnSessionStart|TestSetPlaybackStateResumesWithTheCover|TestMediaCoverWinsWhenLampIsOff|TestLampCoverWinsWhileOn' -v ./internal/airplay/sender/
+go test -run 'TestLampOffOnAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToDefault|TestLampCoverKeepsPlayingOnPause|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestGroupArtworkFansOutToBothCapableMembers|TestGroupArtworkSkipsIncapableMember' -v ./internal/engine/
 ```
 
 Live, with a HomePod at software 27.2 or later and Sound Glow on:
 
-1. Connect and stream, then open 设置 → 氛围灯.
-2. Turn 开启氛围灯 on and choose 潮汐. The top display repaints within a
-   second or two; the log shows a `SET_PARAMETER image/jpeg` cover.
-3. Switch 沙丘 to 兰夜. Each repaint replaces the previous palette.
-4. Turn the switch off. The top returns to its default white, or to the media
-   cover while 在接收器上显示曲目信息 is on.
-5. Disconnect and reconnect. The chosen preset reapplies when the stream
-   starts.
-6. Repeat with a stereo pair: each capable member repaints.
+1. Connect and stream, then open 设置 → 氛围灯. Cover priority is on by
+   default; the preview follows the current cover and the top repaints
+   within a second or two. The flyout card shows the preview, 封面 and the
+   segment, with no chevron and no template list.
+2. Choose 模板 in the flyout row. The chevron appears; click it to show the
+   six swatches, then pick 潮汐 and the top repaints. The list stays open.
+   Close and reopen the flyout; the list is collapsed again. The settings
+   page shows the same change.
+3. Choose 封面. The chevron and the swatches hide; the top follows the
+   cover again.
+4. Pause the track. The light stays on the current cover.
+5. Press 关灯. The top goes dark; the card stays and the glyph shows 开灯.
+6. Press 开灯. The top shows the current cover or template again.
+7. With the light off, pick another template in the settings page. The light
+   turns on with it and the priority becomes template.
+8. Restart the app while the light is off. It stays off; 开灯 restores it.
+9. Repeat with a stereo pair: each capable member repaints and goes dark.
 
-Proven end state: the top display shows the chosen preset, the change
-survives a settings-window close/reopen and an app restart, and the receiver
-keeps its own default or media cover while the light is off.
+The playback-state probe (muted, 27.2) is:
+
+```bash
+SAUNDO_PLAYBACK_STATE_TEST=1 go test ./internal/airplay/sender -run TestLivePlaybackState -v
+```
+
+The no-media placeholder probe (muted, stereo pair 27.3) is:
+
+```bash
+SAUNDO_PLACEHOLDER_TEST=1 go test ./internal/airplay/sender -run TestLivePlaceholderReturn -v
+```
+
+It sends a tide template, clears the artwork slot, cycles playback state
+2→1, and sends a new item without artwork. The observed result is blue and
+dark, with no white center: the receiver keeps the last image. The white
+center appears only on a fresh session with no artwork.
+
+Proven end state: the priority segment and the six templates share one
+global choice; cover priority hides the flyout chevron and template list;
+template priority shows the chevron and expands the list only on click; the
+preview follows the cover's extracted
+palette; the app preview shows a media-glyph tile when there is no cover;
+the receiver's fresh session shows its white-center placeholder; after a
+template, the last light survives clearing the slot; the power action
+darkens and restores the display without stopping the stream; the choice
+and the off state survive a settings-window close/reopen and an app restart.
 
 ## Gotchas
 
 - Sound Glow off leaves the top white. That is the HomePod setting, not the
   app; the app cannot enable it.
-- A true LED-off has no AirPlay command. 默认 sends a black cover that the
-  receiver lifts to its default white; do not expect a dark top.
-- The light and the receiver track-info cover share one slot. The light wins
-  while it is on; a song change must not replace it.
+- 关灯 is a playback state, not an image. There is no black or white reset
+  image; the display goes dark through the Now Playing renderer.
+- The white-center placeholder is the receiver's fresh-session scene, not
+  the cover and not the Sound Glow palette. The sender cannot set it, and
+  clearing the artwork slot after a template does not bring it back. The app
+  preview shows a neutral media-glyph tile for the same no-cover state.
+- Cover priority needs the media cover. The receiver track-info push is
+  always on; a coverless track keeps the previous light rather than showing
+  white.
+- The cover preview is local. The receiver runs its own Lab k-means and its
+  own audio-driven Sound Glow; the preview mirrors the palette, not the live
+  LED frames.
+- The flyout list stays open after a template pick; hiding the flyout folds
+  it, so the next open starts collapsed.
 - The 6,1 and first-generation HomePod are outside `TopDisplayCapable` until
   they are verified. An unknown model or version stays off.
 - A stereo pair's simultaneous repaint is not yet verified; a member that is
   not top-display capable is skipped.
-- The flyout card is absent while the setting is off; that is not the same as
-  no Now Playing card.
+- A state `1` on a stereo follower can leave its renderer white; a new
+  session restores it. The sender avoids a redundant state `1` and resends
+  the artwork after a resume's state `1`; if it sticks, reconnect.

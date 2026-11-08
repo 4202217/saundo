@@ -358,6 +358,14 @@ func (g *groupTransport) SetLampArtwork(data []byte, mime string, on bool) {
 	}
 }
 
+// SetPlaybackState sends the media playback state to every member; the top
+// displays all go dark or light together.
+func (g *groupTransport) SetPlaybackState(playing bool) {
+	for _, m := range g.members {
+		m.sender.SetPlaybackState(playing)
+	}
+}
+
 func (g *groupTransport) PTP() (active, ready bool, offsetMS float64) {
 	if g.master == nil {
 		return false, false, 0

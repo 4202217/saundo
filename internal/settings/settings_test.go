@@ -18,13 +18,12 @@ func TestVolumeByDeviceAndFlagsRoundTrip(t *testing.T) {
 		t.Fatal("reconnect should default to on")
 	}
 	def.Reconnect = true
-	def.ShowNowPlaying = true
 	def.VolumeByDevice = map[string]float64{"AA:BB": 33}
 	if err := s.Save(def); err != nil {
 		t.Fatal(err)
 	}
 	got := s.Load()
-	if !got.Reconnect || !got.ShowNowPlaying {
+	if !got.Reconnect {
 		t.Fatalf("flags lost: %+v", got)
 	}
 	if got.VolumeByDevice["AA:BB"] != 33 {
@@ -178,24 +177,20 @@ func TestLatencyText(t *testing.T) {
 	}
 }
 
-func TestLampDefaultsOnAndOrigin(t *testing.T) {
+func TestLampDefaultsOnAndCover(t *testing.T) {
 	s := NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
 	got := s.Load()
-	if !got.Lamp.Enabled {
-		t.Fatal("lamp should default to on")
+	if got.Lamp.Off {
+		t.Fatal("light should default to on")
 	}
-	if got.Lamp.Preset != "origin" {
-		t.Fatalf("lamp preset = %q, want origin", got.Lamp.Preset)
+	if !got.Lamp.Cover || got.Lamp.Preset != "dune" {
+		t.Fatalf("lamp = %+v, want cover on + the dune template", got.Lamp)
 	}
 }
 
-func TestDefaultsEnableMuteAndReceiverPush(t *testing.T) {
-	got := Default()
-	if !got.MuteLocalOnConnect {
+func TestDefaultsEnableLocalMute(t *testing.T) {
+	if !Default().MuteLocalOnConnect {
 		t.Fatal("local output mute should default to on")
-	}
-	if !got.ShowNowPlaying {
-		t.Fatal("receiver track info should default to on")
 	}
 }
 
@@ -205,19 +200,30 @@ func TestLampOldFileLoadsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "origin" {
-		t.Fatalf("legacy file lamp = %+v, want on + origin", got.Lamp)
+	if got.Lamp.Off || !got.Lamp.Cover || got.Lamp.Preset != "dune" {
+		t.Fatalf("legacy file lamp = %+v, want light on + cover + dune", got.Lamp)
 	}
 }
 
-func TestLampUnknownPresetNormalizesToOrigin(t *testing.T) {
+func TestLampUnknownPresetNormalizesToCover(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	if err := os.WriteFile(path, []byte(`{"lamp":{"enabled":true,"preset":"bogus"}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got := NewStoreAt(path).Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "origin" {
-		t.Fatalf("unknown preset = %+v, want on + origin", got.Lamp)
+	if got.Lamp.Off || !got.Lamp.Cover || got.Lamp.Preset != "dune" {
+		t.Fatalf("unknown preset = %+v, want light on + cover + dune", got.Lamp)
+	}
+}
+
+func TestLampLegacyEnabledInvertsToOff(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"lamp":{"enabled":false,"preset":"ember"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := NewStoreAt(path).Load()
+	if !got.Lamp.Off || got.Lamp.Cover || got.Lamp.Preset != "ember" {
+		t.Fatalf("legacy enabled=false = %+v, want off + template ember", got.Lamp)
 	}
 }
 
@@ -225,13 +231,44 @@ func TestLampRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	s := NewStoreAt(path)
 	cfg := s.Load()
-	cfg.Lamp = LampSettings{Enabled: true, Preset: "ember"}
+	cfg.Lamp = LampSettings{Off: true, Cover: false, Preset: "ember"}
 	if err := s.Save(cfg); err != nil {
 		t.Fatal(err)
 	}
 	got := s.Load()
-	if !got.Lamp.Enabled || got.Lamp.Preset != "ember" {
-		t.Fatalf("lamp round trip = %+v", got.Lamp)
+	if !got.Lamp.Off || got.Lamp.Cover || got.Lamp.Preset != "ember" {
+		t.Fatalf("lamp round trip = %+v, want off + template ember", got.Lamp)
+	}
+	cfg = s.Load()
+	cfg.Lamp = LampSettings{Off: false, Cover: true, Preset: "moss"}
+	if err := s.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	got = s.Load()
+	if got.Lamp.Off || !got.Lamp.Cover || got.Lamp.Preset != "moss" {
+		t.Fatalf("cover round trip = %+v, want on + cover + moss", got.Lamp)
+	}
+}
+
+func TestLampOldMediaPresetTurnsCoverOn(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"lamp":{"preset":"media"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := NewStoreAt(path).Load()
+	if !got.Lamp.Cover || got.Lamp.Preset != "dune" {
+		t.Fatalf("old media preset = %+v, want cover + dune", got.Lamp)
+	}
+}
+
+func TestLampOldTemplatePresetTurnsCoverOff(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"lamp":{"preset":"ember"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := NewStoreAt(path).Load()
+	if got.Lamp.Cover || got.Lamp.Preset != "ember" {
+		t.Fatalf("old template preset = %+v, want template ember", got.Lamp)
 	}
 }
 

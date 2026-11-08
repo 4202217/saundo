@@ -39,6 +39,7 @@ type fakeTransport struct {
 	artwork      [][]byte
 	artworkMIME  []string
 	artworkOn    []bool
+	playback     []bool
 	pins         []string
 	waitingPin   bool
 	pauses       []bool
@@ -101,6 +102,9 @@ func (f *fakeTransport) SetLampArtwork(data []byte, mime string, on bool) {
 	f.artwork = append(f.artwork, append([]byte(nil), data...))
 	f.artworkMIME = append(f.artworkMIME, mime)
 	f.artworkOn = append(f.artworkOn, on)
+}
+func (f *fakeTransport) SetPlaybackState(playing bool) {
+	f.playback = append(f.playback, playing)
 }
 func (f *fakeTransport) PTP() (bool, bool, float64) { return false, false, 0 }
 
@@ -828,19 +832,12 @@ func TestTrayAnimationCommandPersists(t *testing.T) {
 	}
 }
 
-func TestNowPlayingCommandForwardsWhenEnabled(t *testing.T) {
+func TestNowPlayingCommandForwards(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()
 	h.connect()
 	h.launch()
 
-	h.e.handleCommand(command{kind: cmdShowNowPlaying, value: 0})
-	h.e.handleCommand(command{kind: cmdNowPlaying, text: "歌", name: "手", album: "片"})
-	if len(h.fake.nowPlaying) != 0 {
-		t.Fatal("metadata forwarded while the switch is off")
-	}
-
-	h.e.handleCommand(command{kind: cmdShowNowPlaying, value: 1})
 	h.e.handleCommand(command{kind: cmdNowPlaying, text: "歌", name: "手", album: "片",
 		cover: []byte{0x89, 'P', 'N', 'G'}, coverMIME: "image/png"})
 	if len(h.fake.nowPlaying) != 1 || h.fake.nowPlaying[0] != "歌\x00手\x00片" {

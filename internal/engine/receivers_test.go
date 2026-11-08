@@ -20,6 +20,16 @@ func newHarnessWithStores(t *testing.T, sets *settings.Store, credsStore *creds.
 	t.Helper()
 	h := &harness{e: NewWithReceivers(sets, credsStore, reg, &diagnostics.Log{}, nil), now: time.Now()}
 	h.e.now = func() time.Time { return h.now }
+	// Unit tests must never touch the machine's real render endpoint. The
+	// mute default is on, so a connect-and-stream test would otherwise call
+	// WASAPI; mute_test.go overrides this with its recording fake.
+	h.e.setEndpointMuted = func(string, bool) error { return nil }
+	h.e.defaultEndpoint = func() (capture.Endpoint, error) {
+		return capture.Endpoint{ID: "default-ep", Name: "Speakers"}, nil
+	}
+	h.e.endpoints = func() ([]capture.Endpoint, error) {
+		return []capture.Endpoint{{ID: "default-ep", Name: "Speakers"}}, nil
+	}
 	h.e.newSession = func(d device.Device) (transport, func(), error) {
 		h.sessions++
 		h.fake = newFakeTransport(sender.Events{

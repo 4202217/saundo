@@ -610,6 +610,7 @@ func (s *Sender) beginPlayback(epoch time.Time) {
 	s.feedback.arm(now)
 	s.sendMetadata()
 	s.sendCover()
+	s.sendPlaybackState()
 	s.info("streaming to %q, RTP %d frames/packet at %d Hz%s", s.name, framesPerPacket, raopRate,
 		map[bool]string{true: " (encrypted)", false: ""}[s.ap2 != nil && s.ap2.encryptAudio])
 	if s.events.Launched != nil {
@@ -692,9 +693,60 @@ func (s *Sender) SetLampArtwork(data []byte, mime string, on bool) {
 	}
 }
 
+// Playback states the receiver's MediaRemote accepts for the top display.
+const (
+	playbackPlaying = 1
+	playbackPaused  = 2
+)
+
+// SetPlaybackState mirrors the media playback state to the receiver. Paused
+// stops the Now Playing renderer and turns the top display off while the RTP
+// stream keeps running; playing restores the current image. The state is
+// stored and sent when the session streams.
+func (s *Sender) SetPlaybackState(playing bool) {
+	state := playbackPaused
+	if playing {
+		state = playbackPlaying
+	}
+	prev := s.playbackState
+	s.playbackState = state
+	if s.state != StateStreaming {
+		return
+	}
+	s.sendPlaybackState()
+	// A resume re-sends the artwork after the state: some receivers restart
+	// the Now Playing renderer on state 1 and drop the image that arrived
+	// before it.
+	if state == playbackPlaying && prev == playbackPaused {
+		s.sentCover = s.sentCover[:0]
+		s.sentCoverMIME = ""
+		s.sendCover()
+	}
+}
+
+// sendPlaybackState posts the MR playback-state command on the encrypted
+// control channel. The receiver applies it to the main session.
+func (s *Sender) sendPlaybackState() {
+	if s.state != StateStreaming || s.playbackState == 0 || s.playbackState == s.playbackStateSent {
+		return
+	}
+	body, err := crypto.Encode(map[string]any{
+		"type": "updateMRPlaybackState",
+		"params": map[string]any{
+			"mrPlaybackState": s.playbackState,
+		},
+	})
+	if err != nil {
+		s.warn("playback state encode: %v", err)
+		return
+	}
+	s.sendRequest("POST", "/command", "application/x-apple-binary-plist", string(body), s.metadataHeaders())
+	s.playbackStateSent = s.playbackState
+	s.info("playback state: %d", s.playbackState)
+}
+
 // coverImage is the image that owns the Now Playing cover slot. The ambient
-// light wins while it is on; otherwise the receiver track-info cover wins,
-// with the origin image as the fallback.
+// light wins while it is on; otherwise the receiver track-info cover wins.
 func (s *Sender) coverImage() ([]byte, string) {
 	if s.lampOn && len(s.lampCover) > 0 {
 		return s.lampCover, s.lampCoverMIME
