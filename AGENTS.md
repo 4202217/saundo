@@ -20,6 +20,7 @@ Scope:
 - `docs/devices.md`: per-receiver profiles — how each family advertises, pairs, and behaves.
 - `docs/implementation.md`: the code map — runtime model, packages, flows, build.
 - `docs/ui.md`: the UI design language — tokens, widgets, motion, windows.
+- `docs/ui-copy.md`: the copy standard — terminology, state wording, units, punctuation.
 - `docs/verification.md`: automated checks, live-test recipes, and the evidence log.
 - `README.md`: the project overview for readers.
 

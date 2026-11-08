@@ -9,27 +9,28 @@
   wave); eyes static.
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
-- Right click opens the menu: 显示控制面板, 设置…, 检查更新…, 断开连接 or
+- Right click opens the menu: 显示面板, 设置…, 检查更新…, 断开连接 or
   连接上次设备, 退出声渡. The menu is installed only for the duration of the
   popup.
 - Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
   height from the device rows (56 each, 141 empty state), the latency row
   (44), the Now Playing card (150 while a session exists), and the ambient
-  section (83 while on, plus 53 when its preset grid expands); base 474
+  section (90 collapsed, plus 53 when its preset grid expands); base 459
   with no flexible spacer, so the playback card follows the device card.
   The resize grows the flyout upward from the tray anchor (`flyout.go`),
   pinned by `TestFlyoutHeightForDeviceRows`, `TestFlyoutKeepsPlaybackGap`,
   and `TestFlyoutTargetHeightFitsPlayback`.
-- Ambient light card: a 44-DIP row under the playback card while 氛围灯 is
-  on, with a 32-DIP preview, the preset name, and a rotating chevron.
+- Ambient light card: a permanent 44-DIP row under the playback card, with
+  a 32-DIP preview, the preset name, and a rotating chevron.
   Expanding shows a 10-per-row grid of 30-DIP swatches, up to four rows,
-  scrolling past that. The card has no switch; the settings page owns the
-  choice. See [ambient-light.md](ambient-light.md).
+  scrolling past that. The card has no on/off switch; the power action dims
+  the top display, and the settings page owns the light choice. See
+  [ambient-light.md](ambient-light.md).
 - Faces: idle-open while disconnected, smile while connected but silent,
   stream while streaming, connect while connecting, error on failure; the
   flyout footer shares them (`faceOf`).
 - Silent start: login launch and `--tray` hide the panel; the tooltip
-  carries the status (`saundo · 正在播放到 <name>`).
+  carries the status (`saundo · 正在通过 <name> 播放`).
 - Single instance: a second launch hands its command line over and exits 0.
 
 ## How to get to it (user POV)

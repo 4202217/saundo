@@ -7,6 +7,7 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/receivers"
+	"saundo/internal/settings"
 )
 
 // The 接收器 settings page: the merged receiver list per mockup-final, with
@@ -105,8 +106,8 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	// the list would be; the add row below keeps its margin in every state.
 	if len(visible) > 0 {
 		ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11).FontWeight(600).LetterSpacing(0.3).TextColor(p.muted)
-			groupCount(c, p, len(visible))
+			ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+			countBadge(c, p, len(visible))
 		})
 
 		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
@@ -117,12 +118,11 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 		})
 	} else if len(hidden) > 0 {
 		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			ui.Text(c, locales.ReceiverEmptyAllHiddenTitle()).FontSize(12.5).FontWeight(500).TextColor(p.fg2)
-			ui.Text(c, locales.ReceiverEmptyHiddenHint()).FontSize(11.5).TextColor(p.muted).Margin(3, 0, 0, 0)
+			emptyCopy(c, p, locales.ReceiverEmptyAllHiddenTitle(), locales.ReceiverEmptyHiddenHint(), false)
 		})
 	} else {
 		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			ui.Text(c, locales.ReceiverDiscoveryHint()).FontSize(11.5).TextColor(p.muted)
+			emptyCopy(c, p, locales.ReceiverEmptyTitle(), locales.ReceiverDiscoveryHint(), false)
 		})
 	}
 
@@ -145,8 +145,8 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 				cluster.Children(func() {
 					chev := ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted)
 					chev.Rotate((1 - parts.Progress()) * -90)
-					ui.Text(c, locales.ReceiverGroupHidden()).FontSize(11).FontWeight(600).LetterSpacing(0.3).TextColor(p.muted)
-					groupCount(c, p, len(hidden))
+					ui.Text(c, locales.ReceiverGroupHidden()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+					countBadge(c, p, len(hidden))
 				})
 			})
 			if panel := parts.Panel(func() {
@@ -163,14 +163,6 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	}
 
 	a.receiverDialogs(c, p)
-}
-
-// groupCount is the small pill beside a group's label.
-func groupCount(c *ui.Context, p palette, n int) {
-	ui.Box(c).Height(18).MinWidth(18).Radius(9).Padding(0, 6).Center().Shrink(0).
-		Background(p.pill).Children(func() {
-		ui.Textf(c, "%d", n).FontSize(10.5).TextColor(p.muted)
-	})
 }
 
 // receiverAddRow is the dashed manual-add affordance under the card.
@@ -222,7 +214,7 @@ func (a *App) receiverRow(c *ui.Context, p palette, v receivers.View, hiddenGrou
 // receiverRowHead is the card's clickable head: glyph, name column, edit
 // button (expanded manual rows), the enable switch, and the chevron.
 func (a *App) receiverRowHead(c *ui.Context, p palette, v receivers.View, open, hiddenGroup bool) {
-	head := ui.ButtonBase(c.Key("head:"+v.Key)).MinHeight(58).Padding(8, 14).Gap(11).
+	head := ui.ButtonBase(c.Key("head:"+v.Key)).MinHeight(56).Padding(9, 14).Gap(12).
 		AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
 		Label(v.Name).FillWidth()
 	switch {
@@ -328,13 +320,13 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			ui.Text(c, v.Name).FontSize(13).FontWeight(500).TextColor(nameColor).
 				SingleLine().Ellipsis("…").Shrink(1)
 			if v.IsManual() {
-				a.receiverChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
+				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
 			}
 			if v.AutoConnect {
-				a.receiverChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
+				inlineChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
 			}
 			if v.Hidden {
-				a.receiverChip(c, p, locales.ReceiverChipHidden(), chipNeutral, true)
+				inlineChip(c, p, locales.ReceiverChipHidden(), chipNeutral, true)
 			}
 		})
 		sub := receiverSubtitle(v)
@@ -382,25 +374,6 @@ func receiverModelLabel(v receivers.View) string {
 	return locales.DeviceDefaultModel()
 }
 
-// receiverChip is the small status pill beside a receiver's name.
-func (a *App) receiverChip(c *ui.Context, p palette, label string, tone chipTone, hidden bool) {
-	e := ui.Box(c).Height(20).Radius(10).Padding(0, 8).Center().Shrink(0)
-	color := p.fg2
-	switch {
-	case tone == chipOK && !hidden:
-		e.Background(p.greenSoft)
-		color = p.green
-	case tone == chipNeutral && !hidden && label == locales.ReceiverChipManual():
-		e.Background(p.card).Border(1, p.line)
-	default:
-		e.Background(p.pill)
-		color = p.muted
-	}
-	e.Children(func() {
-		ui.Text(c, label).FontSize(10.5).TextColor(color).SingleLine()
-	})
-}
-
 // receiverEditButton is the side button on an expanded manual row. It is
 // attached to the head instead of laid out in the tail so the switch and
 // chevron do not move between rows.
@@ -409,19 +382,10 @@ func (a *App) receiverEditButton(c *ui.Context, p palette, v receivers.View, hid
 	if hiddenGroup {
 		color = p.muted
 	}
-	b := ui.ButtonBase(c.Key("edit:"+v.Key)).Height(26).Radius(13).Padding(0, 7).Gap(5).
-		Center().Shrink(0).Cursor(ui.CursorPointer).Label(locales.ReceiverEditButton()).
-		Attach(ui.AnchorRight, ui.AnchorRight).Right(receiverTailInset)
-	if b.Hovered() {
-		b.Background(p.pill)
-	}
-	b.OnClick(func() {
+	b := rowAction(c, p, "edit:"+v.Key, locales.ReceiverEditButton(), iconPencil, color, func() {
 		a.beginEditReceiver(v)
 	})
-	b.Children(func() {
-		ui.Icon(c, iconPencil).Size(12, 12).TextColor(color)
-		ui.Text(c, locales.ReceiverEditButton()).FontSize(11).TextColor(color).SingleLine()
-	})
+	b.Attach(ui.AnchorRight, ui.AnchorRight).Right(receiverTailInset)
 }
 
 // receiverTailInset clears the fixed tail (32 switch + 8 gap + 12 chevron),
@@ -450,7 +414,7 @@ func (a *App) receiverDelayRow(c *ui.Context, p palette, v receivers.View, hidde
 				ui.Text(c, locales.ReceiverDelayTitle()).FontSize(12.5).FontWeight(500).TextColor(title)
 				ui.Text(c, locales.ReceiverDelayDesc()).FontSize(11.5).TextColor(sub)
 			})
-			ui.Text(c, locales.ReceiverDelayUnit(delay)).FontSize(11.5).TextColor(valueColor)
+			ui.Text(c, settings.LatencyText(delay)).FontSize(11.5).TextColor(valueColor)
 		})
 		value := float64(delay)
 		sl := slider(c, p, &value, 0, receivers.MaxDelayMS, locales.ReceiverDelayTitle(), func(next float64) {
@@ -464,9 +428,9 @@ func (a *App) receiverDelayRow(c *ui.Context, p palette, v receivers.View, hidde
 			sl.Opacity(0.55)
 		}
 		ui.Row(c).Margin(2, 0, 0, 0).Children(func() {
-			ui.Text(c, "0 ms").FontSize(10).TextColor(p.faint)
+			ui.Text(c, "0 ms").FontSize(10.5).TextColor(p.faint)
 			ui.Spacer(c)
-			ui.Text(c, "2000 ms").FontSize(10).TextColor(p.faint)
+			ui.Text(c, "2 s").FontSize(10.5).TextColor(p.faint)
 		})
 	})
 }
@@ -524,7 +488,7 @@ func (a *App) receiverPasswordRow(c *ui.Context, p palette, v receivers.View, hi
 			if v.PasswordSet {
 				ui.Box(c).MaxWidth(140).Height(22).Radius(6).Padding(0, 8).Center().
 					Background(p.pill).Children(func() {
-					ui.Text(c, "••••••").FontSize(11).TextColor(p.fg2)
+					ui.Text(c, "••••••").FontSize(11.5).TextColor(p.fg2)
 				})
 			}
 			color := p.accent
@@ -535,19 +499,10 @@ func (a *App) receiverPasswordRow(c *ui.Context, p palette, v receivers.View, hi
 			if v.PasswordSet {
 				label = locales.ReceiverPasswordChange()
 			}
-			b := ui.ButtonBase(c.Key("pw:"+v.Key)).Height(28).Radius(14).Padding(0, 9).Gap(5).
-				Center().Shrink(0).Cursor(ui.CursorPointer).Label(label)
-			if b.Hovered() {
-				b.Background(p.pill)
-			}
-			b.OnClick(func() {
+			rowAction(c, p, "pw:"+v.Key, label, iconKey, color, func() {
 				a.receiverDialog = receiverDialogState{kind: receiverDialogPassword, key: v.Key, entered: false}
 				a.receiverDialogOpen = true
 				a.receiverDraft = receiverDraft{}
-			})
-			b.Children(func() {
-				ui.Icon(c, iconKey).Size(13, 13).TextColor(color)
-				ui.Text(c, label).FontSize(11.5).FontWeight(500).TextColor(color).SingleLine()
 			})
 		})
 	}

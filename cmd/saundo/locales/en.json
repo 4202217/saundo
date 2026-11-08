@@ -2,7 +2,6 @@
   "@@locale": "en",
   "appName": "saundo",
   "appSubtitle": "AIRPLAY 2",
-  "aboutBrand": "saundo",
   "aboutVersion": "Version {version} · {channel}",
   "@aboutVersion": {
     "placeholders": {
@@ -30,20 +29,19 @@
   "aboutIssues": "Report an issue",
   "aboutIssuesDesc": "Report a problem or suggest a change",
   "aboutLicense": "License",
-  "aboutLicenseDesc": "GPL-3.0-only · © 2026 4202217",
+  "aboutLicenseDesc": "GPL-3.0 · © 2026 4202217",
   "aboutNotices": "Third-party notices",
   "aboutNoticesDesc": "AirPlay 2 references and open-source components",
   "settingsWindowTitle": "Settings · saundo",
-  "trayShowPanel": "Show control panel",
+  "trayShowPanel": "Show panel",
   "traySettings": "Settings…",
-  "trayConnectLast": "Connect to last device",
+  "trayConnectLast": "Connect to last receiver",
   "trayDisconnect": "Disconnect",
   "trayQuit": "Quit saundo",
   "trayTooltip": "saundo",
   "statusReconnecting": "Reconnecting…",
   "statusConnecting": "Connecting…",
   "statusPairing": "Pairing…",
-  "statusHandshaking": "Handshaking…",
   "statusStreamingTo": "Streaming to {name}",
   "@statusStreamingTo": {
     "placeholders": {
@@ -69,14 +67,14 @@
   "devicePinPairing": "{model} · PIN pairing",
   "deviceNeedsPassword": "{model} · Password required",
   "deviceUnsupported": "{model} · Not supported",
-  "deviceAuthSetup": "{model} · auth-setup",
+  "deviceAuthSetup": "{model} · Authentication required",
   "deviceAirPlay2": "{model} · AirPlay 2",
   "deviceAirPlay1": "{model} · AirPlay 1",
   "deviceDefaultModel": "AirPlay",
-  "deviceListLabel": "Device list",
-  "flyoutRefreshDevices": "Refresh devices",
-  "flyoutDevices": "Devices",
-  "flyoutDeviceCount": "{n, plural, =0 {No devices} one {# device} other {# devices}}",
+  "deviceListLabel": "Receiver list",
+  "flyoutRefreshDevices": "Refresh receivers",
+  "flyoutDevices": "Receivers",
+  "flyoutDeviceCount": "{n, plural, =0 {No receivers} one {# receiver} other {# receivers}}",
   "@flyoutDeviceCount": {
     "placeholders": {
       "n": {
@@ -92,7 +90,7 @@
       }
     }
   },
-  "flyoutSearching": "Searching for AirPlay devices nearby…",
+  "flyoutSearching": "Searching for AirPlay receivers nearby…",
   "flyoutSearchHint": "Make sure the receiver is on the same network and AirPlay is on.",
   "flyoutSearchAgain": "Search again",
   "flyoutPlayback": "Playback",
@@ -117,8 +115,8 @@
     }
   },
   "flyoutNowPlayingNoMedia": "No media detected",
-  "flyoutNowPlayingSessionFailed": "Could not read the system media session",
-  "flyoutNowPlayingSession": "System media session",
+  "flyoutNowPlayingSessionFailed": "Could not read the system media information",
+  "flyoutNowPlayingSession": "System media",
   "flyoutNowPlayingAlbum": "Now playing · {album}",
   "@flyoutNowPlayingAlbum": {
     "placeholders": {
@@ -133,7 +131,6 @@
   "flyoutPlay": "Play",
   "flyoutPause": "Pause",
   "flyoutNext": "Next",
-  "flyoutNowPlaying": "Now playing",
   "actionCancel": "Cancel",
   "actionRetry": "Retry",
   "actionDisconnect": "Disconnect",
@@ -162,7 +159,7 @@
     }
   },
   "pinLabel": "Pairing code",
-  "pinHint": "The code is used for this pairing only.",
+  "pinHint": "Used for this pairing only.",
   "pinSubmit": "Pair",
   "pinFallbackDevice": "the receiver",
   "passwordTitle": "Enter receiver password",
@@ -175,7 +172,7 @@
     }
   },
   "passwordLabel": "Password",
-  "passwordHint": "The password is saved on this PC and used only for this device.",
+  "passwordHint": "The password is saved on this PC and used only for this receiver.",
   "passwordFallbackDevice": "this receiver",
   "settingsNavGeneral": "General",
   "settingsNavConnection": "Connection",
@@ -185,10 +182,10 @@
   "settingsNavNowPlaying": "Now Playing",
   "pageGeneralDesc": "Sender identity, startup, and appearance.",
   "pageConnectionDesc": "Reconnection and verification.",
-  "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver sync.",
-  "pageAudioDesc": "Trade sync against stability; switching mid-session reconnects.",
+  "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver delay compensation.",
+  "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio or a single app.",
-  "pageNowPlayingDesc": "The panel's Now Playing, cover colors, and audio level.",
+  "pageNowPlayingDesc": "The panel's Now Playing card, cover colors, and audio level.",
   "settingsNowPlayingSampleTitle": "Night Ferry",
   "settingsNowPlayingSampleArtist": "Signal Coast",
   "settingsSenderName": "Sender name",
@@ -200,19 +197,19 @@
   "settingsCoverColors": "Cover colors",
   "settingsCoverColorsDesc": "Use colors extracted from the cover for the progress bar and audio level; off uses the default colors.",
   "settingsCover": "Cover",
-  "settingsCoverDesc": "What the media card shows on its left.",
+  "settingsCoverDesc": "What the Now Playing card shows on its left.",
   "settingsCoverNone": "No cover",
   "settingsCoverPlaceholder": "Default cover",
   "settingsCoverMedia": "Media cover",
   "settingsAudioLevel": "Audio level",
-  "settingsAudioLevelDesc": "The five-band level at the title row, following playback; it stays still when Windows animation effects are off.",
+  "settingsAudioLevelDesc": "The five-band audio level follows playback; it stays still when Windows animation effects are off.",
   "settingsSave": "Save",
   "settingsLaunchAtStart": "Start at login",
   "settingsLaunchAtStartDesc": "Stay quietly in the tray after you sign in to Windows",
   "settingsTrayAnimation": "Tray animation",
-  "settingsTrayAnimationDesc": "Animate the icon while connecting or streaming; off when Windows animation effects are disabled",
+  "settingsTrayAnimationDesc": "Animate the tray icon while connecting or playing; off when Windows animation effects are disabled",
   "settingsLanguage": "Language",
-  "settingsLanguageDesc": "The language of the interface and update window",
+  "settingsLanguageDesc": "The language of the interface and messages",
   "languageSystem": "Follow system",
   "languageEnglish": "English",
   "languageChinese": "简体中文",
@@ -223,31 +220,19 @@
   "themeDark": "Dark",
   "settingsAbout": "About",
   "settingsAboutBrand": "saundo",
-  "settingsUpdates": "Updates",
-  "settingsUpdatesDesc": "Check for a new version",
   "settingsAutoUpdate": "Check automatically",
-  "settingsCheckNow": "Check now",
-  "settingsUpdateAvailable": "Version {version} is available",
-  "@settingsUpdateAvailable": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
-  "settingsUpdateUnavailable": "Automatic updates are not available in this build",
+  "settingsCheckNow": "Check for updates",
   "settingsChannel": "Updates channel",
   "settingsChannelDesc": "Stable releases, or beta releases too",
-  "settingsBeta": "Beta updates",
   "settingsReconnect": "Reconnect after a drop",
-  "settingsReconnectDesc": "Backoff 1s / 2s / 5s / 10s / 15s, up to 5 attempts",
+  "settingsReconnectDesc": "Retries at 1, 2, 5, 10, and 15 seconds, up to 5 attempts.",
   "settingsStrictAuth": "Strict receiver verification",
-  "settingsStrictAuthDesc": "Disconnect when pairing proof or signature fails",
+  "settingsStrictAuthDesc": "Disconnect when pairing verification or the signature fails.",
   "receiverGroupEnabled": "Enabled",
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
-  "receiverAddSub": "Fill in an IP or hostname manually, for receivers mDNS cannot find",
-  "receiverEmptyHiddenHint": "Turn a switch back on in the hidden group below.",
+  "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find.",
+  "receiverEmptyHiddenHint": "Enable it again in the hidden group below.",
   "receiverEmptyAllHiddenTitle": "All receivers are hidden",
   "receiverDiscoveryHint": "AirPlay receivers on your network appear here automatically.",
   "receiverChipManual": "Manual",
@@ -255,20 +240,12 @@
   "receiverChipHidden": "Hidden",
   "receiverEnableSwitch": "Show in the panel; off moves the row to the hidden group",
   "receiverAutoToggle": "Connect at launch",
-  "receiverAutoToggleDesc": "One receiver at a time; toggling one clears the others",
+  "receiverAutoToggleDesc": "One receiver at a time; enabling one turns the others off.",
   "receiverDelayTitle": "DSP/DAC delay",
   "receiverDelayDesc": "Compensate the receiver's own audio buffering",
-  "receiverDelayUnit": "{ms} ms",
-  "@receiverDelayUnit": {
-    "placeholders": {
-      "ms": {
-        "type": "int"
-      }
-    }
-  },
   "receiverPasswordTitle": "Receiver password",
   "receiverPasswordSaved": "Saved · used for AirPlay password authentication",
-  "receiverPasswordUnset": "Not set · fill in only when this receiver asks for a password",
+  "receiverPasswordUnset": "Not saved · fill in when the receiver asks",
   "receiverPasswordChange": "Change",
   "receiverPasswordSet": "Set",
   "receiverEditButton": "Edit",
@@ -286,11 +263,11 @@
       }
     }
   },
-  "receiverRemoveHint1": "The receiver leaves settings and the device list; the receiver itself is not changed.",
+  "receiverRemoveHint1": "Removes it from settings and the panel; the receiver itself is not changed.",
   "receiverRemoveHint2": "You can add it again later with \"Add receiver\".",
   "receiverDialogTitleAdd": "Add receiver",
   "receiverDialogTitleEdit": "Edit receiver",
-  "receiverDialogSubAdd": "For receivers mDNS cannot discover.",
+  "receiverDialogSubAdd": "Enter the name, address, and authentication.",
   "receiverDialogSubEdit": "Change the manually added receiver's details.",
   "receiverFieldName": "Name",
   "receiverFieldNamePlaceholder": "Bedroom, Living room…",
@@ -329,38 +306,38 @@
   "receiverPasswordClear": "Clear saved password",
   "receiverErrorPasswordRequired": "Enter a new password.",
   "settingsLatency": "Latency mode",
-  "settingsLatencyPanelSwitch": "Panel switch",
+  "settingsLatencyPanelSwitch": "Show latency switch in panel",
   "settingsLatencyLow": "Low latency",
-  "settingsLatencyLowDesc": "Default; may drop on weak Wi-Fi",
+  "settingsLatencyLowDesc": "Lowest latency; may drop on a weak network.",
   "settingsLatencyStandard": "Standard",
-  "settingsLatencyStandardDesc": "Reference buffering; steadier day to day",
+  "settingsLatencyStandardDesc": "Balanced buffering; steadier day to day.",
   "settingsLatencyStable": "Stable",
-  "settingsLatencyStableDesc": "Receiver default; favors continuity on weak Wi-Fi",
+  "settingsLatencyStableDesc": "Highest latency; favors continuity on a weak network.",
   "settingsLatencyCustom": "Custom",
-  "settingsLatencyCustomDesc": "Manual 20–2000 ms; under 200 ms unverified",
-  "settingsLatencyNote": "Some receivers, such as macOS, use their own fixed latency.",
+  "settingsLatencyCustomDesc": "Manual 20–2000 ms; under 200 ms stability varies by receiver.",
+  "settingsLatencyNote": "Some receivers, such as the AirPlay receiver on a Mac, use their own fixed latency.",
   "settingsAudioFormat": "Audio format",
-  "settingsAudioFormatDesc": "Fixed format, compatible with all AirPlay 2 receivers",
+  "settingsAudioFormatDesc": "Fixed format, compatible with AirPlay 2 receivers.",
   "audioFormatValue": "ALAC · 44.1 kHz · Stereo",
   "settingsSyncMode": "Sync mode",
-  "settingsSyncModeDesc": "PTP or NTP based on receiver support",
+  "settingsSyncModeDesc": "Picks PTP or NTP from the receiver's capabilities.",
   "settingsAuto": "Auto",
   "settingsMuteLocal": "Mute this PC while connected",
-  "settingsMuteLocalDesc": "Mute local speakers while connected; restore on disconnect.",
-  "settingsMuteLocalDescOn": "Local speakers are muted; restore on disconnect.",
+  "settingsMuteLocalDesc": "Avoids hearing the same audio on this PC and the receiver; restored on disconnect or quit.",
+  "settingsMuteLocalDescOn": "Local speakers are muted; they will be restored on disconnect.",
   "settingsMuteLocalDescWaiting": "Applies when a receiver connects; not connected now.",
   "settingsMuteLocalDescFailed": "Could not mute local output; check the audio device.",
   "settingsMuteLocalNote": "Some drivers mute capture too; turn this off if audio stops.",
-  "settingsSystemOutput": "System output",
-  "settingsSystemOutputDesc": "The Windows default playback device",
+  "settingsSystemOutput": "System audio",
+  "settingsSystemOutputDesc": "Capture the Windows default output device",
   "settingsAppCapture": "Per-app capture",
-  "settingsAppCaptureDesc": "Stream only the selected application",
+  "settingsAppCaptureDesc": "Play only the selected app's audio",
   "settingsCaptureStatus": "Capture status",
   "settingsCaptureStatusDesc": "Current capture source",
   "settingsCaptureError": "Capture error",
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
-  "summaryStereoGroup": "Stereo pair · {n, number}/2 · Current device",
+  "summaryStereoGroup": "Stereo pair · {n, number}/2 · Current receiver",
   "@summaryStereoGroup": {
     "placeholders": {
       "n": {
@@ -368,7 +345,7 @@
       }
     }
   },
-  "summaryModelCurrentDevice": "{model} · Current device",
+  "summaryModelCurrentDevice": "{model} · Current receiver",
   "@summaryModelCurrentDevice": {
     "placeholders": {
       "model": {
@@ -376,10 +353,10 @@
       }
     }
   },
-  "summaryCurrentDevice": "Current device",
+  "summaryCurrentDevice": "Current receiver",
   "summaryConnected": "Connected",
   "summaryConnecting": "Connecting",
-  "sidebarNoDevice": "No device selected",
+  "sidebarNoDevice": "No receiver selected",
   "sidebarConnectedStereo": "Connected · Stereo pair",
   "captureFollowSystem": "Follow system default",
   "captureAllSystem": "Entire system",
@@ -394,10 +371,6 @@
   "settingsChannelStable": "Stable",
   "settingsChannelBeta": "Beta",
   "settingsCheckFailed": "Check failed",
-  "updateWindowTitle": "Software Update",
-  "updateChecking": "Checking for updates…",
-  "updateCheckingDesc": "This takes a moment.",
-  "updateUpToDate": "You're up to date",
   "updateAvailableTitle": "Version {version} is available",
   "@updateAvailableTitle": {
     "placeholders": {
@@ -431,7 +404,6 @@
   },
   "updateDownloadingMeta": "Restart after the download to finish installing.",
   "updateCancel": "Cancel",
-  "updateBackground": "Continue in background",
   "updateReadyTitle": "{version} is ready",
   "@updateReadyTitle": {
     "placeholders": {
@@ -444,11 +416,8 @@
   "updateReadyShort": "Update ready",
   "updateRestartNow": "Restart now",
   "updateRetry": "Retry",
-  "updateCheckFailedTitle": "Update check failed",
   "updateDownloadFailedTitle": "Download failed",
   "updateDisabledTitle": "Updates aren't available in this build",
-  "updateDisabledDesc": "Install a released build to receive updates.",
-  "updateAutoDownload": "Download and install updates automatically",
   "flyoutUpdateAvailable": "{version} available",
   "@flyoutUpdateAvailable": {
     "placeholders": {
@@ -465,16 +434,8 @@
       }
     }
   },
-  "flyoutUpdateReady": "Restart to update",
-  "trayCheckUpdates": "Check for Updates…",
-  "updateUpToDateDesc": "Version {version} is the latest.",
-  "@updateUpToDateDesc": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
+  "flyoutUpdateReady": "Restart to install",
+  "trayCheckUpdates": "Check for updates…",
   "updateCheckingShort": "Checking…",
   "updateUpToDateShort": "Up to date",
   "updateNotesTitle": "{version} What's New",
@@ -485,7 +446,7 @@
       }
     }
   },
-  "updateNotesMeta": "Released {date} · Current version {current}",
+  "updateNotesMeta": "Current version {current} · Released {date}",
   "@updateNotesMeta": {
     "placeholders": {
       "date": {
@@ -552,12 +513,11 @@
   },
   "settingsNavLamp": "Ambient light",
   "pageLampDesc": "Every HomePod top display shows the same light.",
-  "settingsLampCardTitle": "Top display light",
-  "settingsLampTemplates": "Custom templates",
+  "settingsLampCardTitle": "Ambient light",
+  "settingsLampTemplates": "Templates",
   "settingsLampHomePodOnly": "HomePod only",
-  "settingsLampTop": "HomePod top display",
-  "settingsLampHintOn": "Turn off darkens the top display; turn on restores the current choice.",
-  "settingsLampHintOff": "The top display is off; turn it on before changing the light.",
+  "settingsLampHintOn": "Click the power button to turn the top display off; click it again to restore the current choice.",
+  "settingsLampHintOff": "The top display is off; click the power button before changing the light.",
   "settingsLampSoundGlowHint": "Enable Sound Glow in the HomePod settings; without it the top display stays white.",
   "lampTurnOff": "Turn off",
   "lampTurnOn": "Turn on",
@@ -567,7 +527,7 @@
   "lampPriorityCover": "Cover first",
   "lampPriorityTemplate": "Template first",
   "lampPriorityCoverShort": "Cover",
-  "lampPriorityTemplateShort": "Template",
+  "lampPriorityTemplateShort": "Light",
   "lampPresetCover": "Cover",
   "lampPresetEmber": "Ember",
   "lampPresetDune": "Dune",
@@ -578,5 +538,7 @@
   "flyoutLampSection": "Ambient light",
   "flyoutLampColors": "Colors",
   "flyoutLampExpand": "Show colors",
-  "flyoutLampCollapse": "Hide colors"
+  "flyoutLampCollapse": "Hide colors",
+  "receiverEmptyTitle": "No receivers yet",
+  "versionLocalTag": "Local build"
 }

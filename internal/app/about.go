@@ -52,6 +52,20 @@ func (a *App) aboutProjectCards(c *ui.Context, p palette) {
 	})
 }
 
+// currentVersionLabel is the version the update surfaces name. It keeps the
+// release the build is and drops the git describe stamp, so a local build
+// never shows a developer version in a settings row.
+func (a *App) currentVersionLabel() string {
+	v, local := displayVersion(a.currentVersion())
+	switch {
+	case v == "":
+		return locales.AboutVersionDev()
+	case local:
+		return v + " · " + locales.VersionLocalTag()
+	}
+	return v
+}
+
 // aboutVersionText names the release the build is, not the git hash it was
 // cut from. A local build keeps its release number and says so, so it never
 // reads as the published release.

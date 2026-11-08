@@ -54,16 +54,6 @@ func (msgs Messages) AppSubtitle() string {
 	return Catalog.Format(msgs.locale, "appSubtitle", nil)
 }
 
-// AboutBrand says "saundo"
-// in the language the app shows.
-func AboutBrand() string { return In(i18n.Locale()).AboutBrand() }
-
-// AboutBrand says "saundo"
-// in the language of msgs.
-func (msgs Messages) AboutBrand() string {
-	return Catalog.Format(msgs.locale, "aboutBrand", nil)
-}
-
 // AboutVersion says "Version {version} · {channel}"
 // in the language the app shows.
 func AboutVersion(version string, channel string) string {
@@ -166,11 +156,11 @@ func (msgs Messages) AboutLicense() string {
 	return Catalog.Format(msgs.locale, "aboutLicense", nil)
 }
 
-// AboutLicenseDesc says "GPL-3.0-only · © 2026 4202217"
+// AboutLicenseDesc says "GPL-3.0 · © 2026 4202217"
 // in the language the app shows.
 func AboutLicenseDesc() string { return In(i18n.Locale()).AboutLicenseDesc() }
 
-// AboutLicenseDesc says "GPL-3.0-only · © 2026 4202217"
+// AboutLicenseDesc says "GPL-3.0 · © 2026 4202217"
 // in the language of msgs.
 func (msgs Messages) AboutLicenseDesc() string {
 	return Catalog.Format(msgs.locale, "aboutLicenseDesc", nil)
@@ -206,11 +196,11 @@ func (msgs Messages) SettingsWindowTitle() string {
 	return Catalog.Format(msgs.locale, "settingsWindowTitle", nil)
 }
 
-// TrayShowPanel says "Show control panel"
+// TrayShowPanel says "Show panel"
 // in the language the app shows.
 func TrayShowPanel() string { return In(i18n.Locale()).TrayShowPanel() }
 
-// TrayShowPanel says "Show control panel"
+// TrayShowPanel says "Show panel"
 // in the language of msgs.
 func (msgs Messages) TrayShowPanel() string {
 	return Catalog.Format(msgs.locale, "trayShowPanel", nil)
@@ -226,11 +216,11 @@ func (msgs Messages) TraySettings() string {
 	return Catalog.Format(msgs.locale, "traySettings", nil)
 }
 
-// TrayConnectLast says "Connect to last device"
+// TrayConnectLast says "Connect to last receiver"
 // in the language the app shows.
 func TrayConnectLast() string { return In(i18n.Locale()).TrayConnectLast() }
 
-// TrayConnectLast says "Connect to last device"
+// TrayConnectLast says "Connect to last receiver"
 // in the language of msgs.
 func (msgs Messages) TrayConnectLast() string {
 	return Catalog.Format(msgs.locale, "trayConnectLast", nil)
@@ -294,16 +284,6 @@ func StatusPairing() string { return In(i18n.Locale()).StatusPairing() }
 // in the language of msgs.
 func (msgs Messages) StatusPairing() string {
 	return Catalog.Format(msgs.locale, "statusPairing", nil)
-}
-
-// StatusHandshaking says "Handshaking…"
-// in the language the app shows.
-func StatusHandshaking() string { return In(i18n.Locale()).StatusHandshaking() }
-
-// StatusHandshaking says "Handshaking…"
-// in the language of msgs.
-func (msgs Messages) StatusHandshaking() string {
-	return Catalog.Format(msgs.locale, "statusHandshaking", nil)
 }
 
 // StatusStreamingTo says "Streaming to {name}"
@@ -388,11 +368,11 @@ func (msgs Messages) DeviceUnsupported(model string) string {
 	return Catalog.Format(msgs.locale, "deviceUnsupported", map[string]any{"model": model})
 }
 
-// DeviceAuthSetup says "{model} · auth-setup"
+// DeviceAuthSetup says "{model} · Authentication required"
 // in the language the app shows.
 func DeviceAuthSetup(model string) string { return In(i18n.Locale()).DeviceAuthSetup(model) }
 
-// DeviceAuthSetup says "{model} · auth-setup"
+// DeviceAuthSetup says "{model} · Authentication required"
 // in the language of msgs.
 func (msgs Messages) DeviceAuthSetup(model string) string {
 	return Catalog.Format(msgs.locale, "deviceAuthSetup", map[string]any{"model": model})
@@ -428,41 +408,41 @@ func (msgs Messages) DeviceDefaultModel() string {
 	return Catalog.Format(msgs.locale, "deviceDefaultModel", nil)
 }
 
-// DeviceListLabel says "Device list"
+// DeviceListLabel says "Receiver list"
 // in the language the app shows.
 func DeviceListLabel() string { return In(i18n.Locale()).DeviceListLabel() }
 
-// DeviceListLabel says "Device list"
+// DeviceListLabel says "Receiver list"
 // in the language of msgs.
 func (msgs Messages) DeviceListLabel() string {
 	return Catalog.Format(msgs.locale, "deviceListLabel", nil)
 }
 
-// FlyoutRefreshDevices says "Refresh devices"
+// FlyoutRefreshDevices says "Refresh receivers"
 // in the language the app shows.
 func FlyoutRefreshDevices() string { return In(i18n.Locale()).FlyoutRefreshDevices() }
 
-// FlyoutRefreshDevices says "Refresh devices"
+// FlyoutRefreshDevices says "Refresh receivers"
 // in the language of msgs.
 func (msgs Messages) FlyoutRefreshDevices() string {
 	return Catalog.Format(msgs.locale, "flyoutRefreshDevices", nil)
 }
 
-// FlyoutDevices says "Devices"
+// FlyoutDevices says "Receivers"
 // in the language the app shows.
 func FlyoutDevices() string { return In(i18n.Locale()).FlyoutDevices() }
 
-// FlyoutDevices says "Devices"
+// FlyoutDevices says "Receivers"
 // in the language of msgs.
 func (msgs Messages) FlyoutDevices() string {
 	return Catalog.Format(msgs.locale, "flyoutDevices", nil)
 }
 
-// FlyoutDeviceCount says "{n, plural, =0 {No devices} one {# device} other {# devices}}"
+// FlyoutDeviceCount says "{n, plural, =0 {No receivers} one {# receiver} other {# receivers}}"
 // in the language the app shows.
 func FlyoutDeviceCount(n int) string { return In(i18n.Locale()).FlyoutDeviceCount(n) }
 
-// FlyoutDeviceCount says "{n, plural, =0 {No devices} one {# device} other {# devices}}"
+// FlyoutDeviceCount says "{n, plural, =0 {No receivers} one {# receiver} other {# receivers}}"
 // in the language of msgs.
 func (msgs Messages) FlyoutDeviceCount(n int) string {
 	return Catalog.Format(msgs.locale, "flyoutDeviceCount", map[string]any{"n": n})
@@ -478,11 +458,11 @@ func (msgs Messages) FlyoutConnectFailed(error string) string {
 	return Catalog.Format(msgs.locale, "flyoutConnectFailed", map[string]any{"error": error})
 }
 
-// FlyoutSearching says "Searching for AirPlay devices nearby…"
+// FlyoutSearching says "Searching for AirPlay receivers nearby…"
 // in the language the app shows.
 func FlyoutSearching() string { return In(i18n.Locale()).FlyoutSearching() }
 
-// FlyoutSearching says "Searching for AirPlay devices nearby…"
+// FlyoutSearching says "Searching for AirPlay receivers nearby…"
 // in the language of msgs.
 func (msgs Messages) FlyoutSearching() string {
 	return Catalog.Format(msgs.locale, "flyoutSearching", nil)
@@ -588,21 +568,21 @@ func (msgs Messages) FlyoutNowPlayingNoMedia() string {
 	return Catalog.Format(msgs.locale, "flyoutNowPlayingNoMedia", nil)
 }
 
-// FlyoutNowPlayingSessionFailed says "Could not read the system media session"
+// FlyoutNowPlayingSessionFailed says "Could not read the system media information"
 // in the language the app shows.
 func FlyoutNowPlayingSessionFailed() string { return In(i18n.Locale()).FlyoutNowPlayingSessionFailed() }
 
-// FlyoutNowPlayingSessionFailed says "Could not read the system media session"
+// FlyoutNowPlayingSessionFailed says "Could not read the system media information"
 // in the language of msgs.
 func (msgs Messages) FlyoutNowPlayingSessionFailed() string {
 	return Catalog.Format(msgs.locale, "flyoutNowPlayingSessionFailed", nil)
 }
 
-// FlyoutNowPlayingSession says "System media session"
+// FlyoutNowPlayingSession says "System media"
 // in the language the app shows.
 func FlyoutNowPlayingSession() string { return In(i18n.Locale()).FlyoutNowPlayingSession() }
 
-// FlyoutNowPlayingSession says "System media session"
+// FlyoutNowPlayingSession says "System media"
 // in the language of msgs.
 func (msgs Messages) FlyoutNowPlayingSession() string {
 	return Catalog.Format(msgs.locale, "flyoutNowPlayingSession", nil)
@@ -678,16 +658,6 @@ func FlyoutNext() string { return In(i18n.Locale()).FlyoutNext() }
 // in the language of msgs.
 func (msgs Messages) FlyoutNext() string {
 	return Catalog.Format(msgs.locale, "flyoutNext", nil)
-}
-
-// FlyoutNowPlaying says "Now playing"
-// in the language the app shows.
-func FlyoutNowPlaying() string { return In(i18n.Locale()).FlyoutNowPlaying() }
-
-// FlyoutNowPlaying says "Now playing"
-// in the language of msgs.
-func (msgs Messages) FlyoutNowPlaying() string {
-	return Catalog.Format(msgs.locale, "flyoutNowPlaying", nil)
 }
 
 // ActionCancel says "Cancel"
@@ -830,11 +800,11 @@ func (msgs Messages) PinLabel() string {
 	return Catalog.Format(msgs.locale, "pinLabel", nil)
 }
 
-// PinHint says "The code is used for this pairing only."
+// PinHint says "Used for this pairing only."
 // in the language the app shows.
 func PinHint() string { return In(i18n.Locale()).PinHint() }
 
-// PinHint says "The code is used for this pairing only."
+// PinHint says "Used for this pairing only."
 // in the language of msgs.
 func (msgs Messages) PinHint() string {
 	return Catalog.Format(msgs.locale, "pinHint", nil)
@@ -890,11 +860,11 @@ func (msgs Messages) PasswordLabel() string {
 	return Catalog.Format(msgs.locale, "passwordLabel", nil)
 }
 
-// PasswordHint says "The password is saved on this PC and used only for this device."
+// PasswordHint says "The password is saved on this PC and used only for this receiver."
 // in the language the app shows.
 func PasswordHint() string { return In(i18n.Locale()).PasswordHint() }
 
-// PasswordHint says "The password is saved on this PC and used only for this device."
+// PasswordHint says "The password is saved on this PC and used only for this receiver."
 // in the language of msgs.
 func (msgs Messages) PasswordHint() string {
 	return Catalog.Format(msgs.locale, "passwordHint", nil)
@@ -990,21 +960,21 @@ func (msgs Messages) PageConnectionDesc() string {
 	return Catalog.Format(msgs.locale, "pageConnectionDesc", nil)
 }
 
-// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver sync."
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver delay compensation."
 // in the language the app shows.
 func PageReceiversDesc() string { return In(i18n.Locale()).PageReceiversDesc() }
 
-// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver sync."
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver delay compensation."
 // in the language of msgs.
 func (msgs Messages) PageReceiversDesc() string {
 	return Catalog.Format(msgs.locale, "pageReceiversDesc", nil)
 }
 
-// PageAudioDesc says "Trade sync against stability; switching mid-session reconnects."
+// PageAudioDesc says "Trade latency against stability; switching mid-session reconnects."
 // in the language the app shows.
 func PageAudioDesc() string { return In(i18n.Locale()).PageAudioDesc() }
 
-// PageAudioDesc says "Trade sync against stability; switching mid-session reconnects."
+// PageAudioDesc says "Trade latency against stability; switching mid-session reconnects."
 // in the language of msgs.
 func (msgs Messages) PageAudioDesc() string {
 	return Catalog.Format(msgs.locale, "pageAudioDesc", nil)
@@ -1020,11 +990,11 @@ func (msgs Messages) PageCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "pageCaptureDesc", nil)
 }
 
-// PageNowPlayingDesc says "The panel's Now Playing, cover colors, and audio level."
+// PageNowPlayingDesc says "The panel's Now Playing card, cover colors, and audio level."
 // in the language the app shows.
 func PageNowPlayingDesc() string { return In(i18n.Locale()).PageNowPlayingDesc() }
 
-// PageNowPlayingDesc says "The panel's Now Playing, cover colors, and audio level."
+// PageNowPlayingDesc says "The panel's Now Playing card, cover colors, and audio level."
 // in the language of msgs.
 func (msgs Messages) PageNowPlayingDesc() string {
 	return Catalog.Format(msgs.locale, "pageNowPlayingDesc", nil)
@@ -1142,11 +1112,11 @@ func (msgs Messages) SettingsCover() string {
 	return Catalog.Format(msgs.locale, "settingsCover", nil)
 }
 
-// SettingsCoverDesc says "What the media card shows on its left."
+// SettingsCoverDesc says "What the Now Playing card shows on its left."
 // in the language the app shows.
 func SettingsCoverDesc() string { return In(i18n.Locale()).SettingsCoverDesc() }
 
-// SettingsCoverDesc says "What the media card shows on its left."
+// SettingsCoverDesc says "What the Now Playing card shows on its left."
 // in the language of msgs.
 func (msgs Messages) SettingsCoverDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverDesc", nil)
@@ -1192,11 +1162,11 @@ func (msgs Messages) SettingsAudioLevel() string {
 	return Catalog.Format(msgs.locale, "settingsAudioLevel", nil)
 }
 
-// SettingsAudioLevelDesc says "The five-band level at the title row, following playback; it stays still when Windows animation effects are off."
+// SettingsAudioLevelDesc says "The five-band audio level follows playback; it stays still when Windows animation effects are off."
 // in the language the app shows.
 func SettingsAudioLevelDesc() string { return In(i18n.Locale()).SettingsAudioLevelDesc() }
 
-// SettingsAudioLevelDesc says "The five-band level at the title row, following playback; it stays still when Windows animation effects are off."
+// SettingsAudioLevelDesc says "The five-band audio level follows playback; it stays still when Windows animation effects are off."
 // in the language of msgs.
 func (msgs Messages) SettingsAudioLevelDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAudioLevelDesc", nil)
@@ -1242,11 +1212,11 @@ func (msgs Messages) SettingsTrayAnimation() string {
 	return Catalog.Format(msgs.locale, "settingsTrayAnimation", nil)
 }
 
-// SettingsTrayAnimationDesc says "Animate the icon while connecting or streaming; off when Windows animation effects are disabled"
+// SettingsTrayAnimationDesc says "Animate the tray icon while connecting or playing; off when Windows animation effects are disabled"
 // in the language the app shows.
 func SettingsTrayAnimationDesc() string { return In(i18n.Locale()).SettingsTrayAnimationDesc() }
 
-// SettingsTrayAnimationDesc says "Animate the icon while connecting or streaming; off when Windows animation effects are disabled"
+// SettingsTrayAnimationDesc says "Animate the tray icon while connecting or playing; off when Windows animation effects are disabled"
 // in the language of msgs.
 func (msgs Messages) SettingsTrayAnimationDesc() string {
 	return Catalog.Format(msgs.locale, "settingsTrayAnimationDesc", nil)
@@ -1262,11 +1232,11 @@ func (msgs Messages) SettingsLanguage() string {
 	return Catalog.Format(msgs.locale, "settingsLanguage", nil)
 }
 
-// SettingsLanguageDesc says "The language of the interface and update window"
+// SettingsLanguageDesc says "The language of the interface and messages"
 // in the language the app shows.
 func SettingsLanguageDesc() string { return In(i18n.Locale()).SettingsLanguageDesc() }
 
-// SettingsLanguageDesc says "The language of the interface and update window"
+// SettingsLanguageDesc says "The language of the interface and messages"
 // in the language of msgs.
 func (msgs Messages) SettingsLanguageDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLanguageDesc", nil)
@@ -1372,26 +1342,6 @@ func (msgs Messages) SettingsAboutBrand() string {
 	return Catalog.Format(msgs.locale, "settingsAboutBrand", nil)
 }
 
-// SettingsUpdates says "Updates"
-// in the language the app shows.
-func SettingsUpdates() string { return In(i18n.Locale()).SettingsUpdates() }
-
-// SettingsUpdates says "Updates"
-// in the language of msgs.
-func (msgs Messages) SettingsUpdates() string {
-	return Catalog.Format(msgs.locale, "settingsUpdates", nil)
-}
-
-// SettingsUpdatesDesc says "Check for a new version"
-// in the language the app shows.
-func SettingsUpdatesDesc() string { return In(i18n.Locale()).SettingsUpdatesDesc() }
-
-// SettingsUpdatesDesc says "Check for a new version"
-// in the language of msgs.
-func (msgs Messages) SettingsUpdatesDesc() string {
-	return Catalog.Format(msgs.locale, "settingsUpdatesDesc", nil)
-}
-
 // SettingsAutoUpdate says "Check automatically"
 // in the language the app shows.
 func SettingsAutoUpdate() string { return In(i18n.Locale()).SettingsAutoUpdate() }
@@ -1402,36 +1352,14 @@ func (msgs Messages) SettingsAutoUpdate() string {
 	return Catalog.Format(msgs.locale, "settingsAutoUpdate", nil)
 }
 
-// SettingsCheckNow says "Check now"
+// SettingsCheckNow says "Check for updates"
 // in the language the app shows.
 func SettingsCheckNow() string { return In(i18n.Locale()).SettingsCheckNow() }
 
-// SettingsCheckNow says "Check now"
+// SettingsCheckNow says "Check for updates"
 // in the language of msgs.
 func (msgs Messages) SettingsCheckNow() string {
 	return Catalog.Format(msgs.locale, "settingsCheckNow", nil)
-}
-
-// SettingsUpdateAvailable says "Version {version} is available"
-// in the language the app shows.
-func SettingsUpdateAvailable(version string) string {
-	return In(i18n.Locale()).SettingsUpdateAvailable(version)
-}
-
-// SettingsUpdateAvailable says "Version {version} is available"
-// in the language of msgs.
-func (msgs Messages) SettingsUpdateAvailable(version string) string {
-	return Catalog.Format(msgs.locale, "settingsUpdateAvailable", map[string]any{"version": version})
-}
-
-// SettingsUpdateUnavailable says "Automatic updates are not available in this build"
-// in the language the app shows.
-func SettingsUpdateUnavailable() string { return In(i18n.Locale()).SettingsUpdateUnavailable() }
-
-// SettingsUpdateUnavailable says "Automatic updates are not available in this build"
-// in the language of msgs.
-func (msgs Messages) SettingsUpdateUnavailable() string {
-	return Catalog.Format(msgs.locale, "settingsUpdateUnavailable", nil)
 }
 
 // SettingsChannel says "Updates channel"
@@ -1454,16 +1382,6 @@ func (msgs Messages) SettingsChannelDesc() string {
 	return Catalog.Format(msgs.locale, "settingsChannelDesc", nil)
 }
 
-// SettingsBeta says "Beta updates"
-// in the language the app shows.
-func SettingsBeta() string { return In(i18n.Locale()).SettingsBeta() }
-
-// SettingsBeta says "Beta updates"
-// in the language of msgs.
-func (msgs Messages) SettingsBeta() string {
-	return Catalog.Format(msgs.locale, "settingsBeta", nil)
-}
-
 // SettingsReconnect says "Reconnect after a drop"
 // in the language the app shows.
 func SettingsReconnect() string { return In(i18n.Locale()).SettingsReconnect() }
@@ -1474,11 +1392,11 @@ func (msgs Messages) SettingsReconnect() string {
 	return Catalog.Format(msgs.locale, "settingsReconnect", nil)
 }
 
-// SettingsReconnectDesc says "Backoff 1s / 2s / 5s / 10s / 15s, up to 5 attempts"
+// SettingsReconnectDesc says "Retries at 1, 2, 5, 10, and 15 seconds, up to 5 attempts."
 // in the language the app shows.
 func SettingsReconnectDesc() string { return In(i18n.Locale()).SettingsReconnectDesc() }
 
-// SettingsReconnectDesc says "Backoff 1s / 2s / 5s / 10s / 15s, up to 5 attempts"
+// SettingsReconnectDesc says "Retries at 1, 2, 5, 10, and 15 seconds, up to 5 attempts."
 // in the language of msgs.
 func (msgs Messages) SettingsReconnectDesc() string {
 	return Catalog.Format(msgs.locale, "settingsReconnectDesc", nil)
@@ -1494,11 +1412,11 @@ func (msgs Messages) SettingsStrictAuth() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuth", nil)
 }
 
-// SettingsStrictAuthDesc says "Disconnect when pairing proof or signature fails"
+// SettingsStrictAuthDesc says "Disconnect when pairing verification or the signature fails."
 // in the language the app shows.
 func SettingsStrictAuthDesc() string { return In(i18n.Locale()).SettingsStrictAuthDesc() }
 
-// SettingsStrictAuthDesc says "Disconnect when pairing proof or signature fails"
+// SettingsStrictAuthDesc says "Disconnect when pairing verification or the signature fails."
 // in the language of msgs.
 func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
@@ -1534,21 +1452,21 @@ func (msgs Messages) ReceiverAddTitle() string {
 	return Catalog.Format(msgs.locale, "receiverAddTitle", nil)
 }
 
-// ReceiverAddSub says "Fill in an IP or hostname manually, for receivers mDNS cannot find"
+// ReceiverAddSub says "Fill in an IP address or hostname for receivers mDNS cannot find."
 // in the language the app shows.
 func ReceiverAddSub() string { return In(i18n.Locale()).ReceiverAddSub() }
 
-// ReceiverAddSub says "Fill in an IP or hostname manually, for receivers mDNS cannot find"
+// ReceiverAddSub says "Fill in an IP address or hostname for receivers mDNS cannot find."
 // in the language of msgs.
 func (msgs Messages) ReceiverAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverAddSub", nil)
 }
 
-// ReceiverEmptyHiddenHint says "Turn a switch back on in the hidden group below."
+// ReceiverEmptyHiddenHint says "Enable it again in the hidden group below."
 // in the language the app shows.
 func ReceiverEmptyHiddenHint() string { return In(i18n.Locale()).ReceiverEmptyHiddenHint() }
 
-// ReceiverEmptyHiddenHint says "Turn a switch back on in the hidden group below."
+// ReceiverEmptyHiddenHint says "Enable it again in the hidden group below."
 // in the language of msgs.
 func (msgs Messages) ReceiverEmptyHiddenHint() string {
 	return Catalog.Format(msgs.locale, "receiverEmptyHiddenHint", nil)
@@ -1624,11 +1542,11 @@ func (msgs Messages) ReceiverAutoToggle() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggle", nil)
 }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; toggling one clears the others"
+// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off."
 // in the language the app shows.
 func ReceiverAutoToggleDesc() string { return In(i18n.Locale()).ReceiverAutoToggleDesc() }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; toggling one clears the others"
+// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off."
 // in the language of msgs.
 func (msgs Messages) ReceiverAutoToggleDesc() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)
@@ -1654,16 +1572,6 @@ func (msgs Messages) ReceiverDelayDesc() string {
 	return Catalog.Format(msgs.locale, "receiverDelayDesc", nil)
 }
 
-// ReceiverDelayUnit says "{ms} ms"
-// in the language the app shows.
-func ReceiverDelayUnit(ms int) string { return In(i18n.Locale()).ReceiverDelayUnit(ms) }
-
-// ReceiverDelayUnit says "{ms} ms"
-// in the language of msgs.
-func (msgs Messages) ReceiverDelayUnit(ms int) string {
-	return Catalog.Format(msgs.locale, "receiverDelayUnit", map[string]any{"ms": ms})
-}
-
 // ReceiverPasswordTitle says "Receiver password"
 // in the language the app shows.
 func ReceiverPasswordTitle() string { return In(i18n.Locale()).ReceiverPasswordTitle() }
@@ -1684,11 +1592,11 @@ func (msgs Messages) ReceiverPasswordSaved() string {
 	return Catalog.Format(msgs.locale, "receiverPasswordSaved", nil)
 }
 
-// ReceiverPasswordUnset says "Not set · fill in only when this receiver asks for a password"
+// ReceiverPasswordUnset says "Not saved · fill in when the receiver asks"
 // in the language the app shows.
 func ReceiverPasswordUnset() string { return In(i18n.Locale()).ReceiverPasswordUnset() }
 
-// ReceiverPasswordUnset says "Not set · fill in only when this receiver asks for a password"
+// ReceiverPasswordUnset says "Not saved · fill in when the receiver asks"
 // in the language of msgs.
 func (msgs Messages) ReceiverPasswordUnset() string {
 	return Catalog.Format(msgs.locale, "receiverPasswordUnset", nil)
@@ -1766,11 +1674,11 @@ func (msgs Messages) ReceiverRemoveConfirmSub(name string, model string) string 
 	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name, "model": model})
 }
 
-// ReceiverRemoveHint1 says "The receiver leaves settings and the device list; the receiver itself is not changed."
+// ReceiverRemoveHint1 says "Removes it from settings and the panel; the receiver itself is not changed."
 // in the language the app shows.
 func ReceiverRemoveHint1() string { return In(i18n.Locale()).ReceiverRemoveHint1() }
 
-// ReceiverRemoveHint1 says "The receiver leaves settings and the device list; the receiver itself is not changed."
+// ReceiverRemoveHint1 says "Removes it from settings and the panel; the receiver itself is not changed."
 // in the language of msgs.
 func (msgs Messages) ReceiverRemoveHint1() string {
 	return Catalog.Format(msgs.locale, "receiverRemoveHint1", nil)
@@ -1806,11 +1714,11 @@ func (msgs Messages) ReceiverDialogTitleEdit() string {
 	return Catalog.Format(msgs.locale, "receiverDialogTitleEdit", nil)
 }
 
-// ReceiverDialogSubAdd says "For receivers mDNS cannot discover."
+// ReceiverDialogSubAdd says "Enter the name, address, and authentication."
 // in the language the app shows.
 func ReceiverDialogSubAdd() string { return In(i18n.Locale()).ReceiverDialogSubAdd() }
 
-// ReceiverDialogSubAdd says "For receivers mDNS cannot discover."
+// ReceiverDialogSubAdd says "Enter the name, address, and authentication."
 // in the language of msgs.
 func (msgs Messages) ReceiverDialogSubAdd() string {
 	return Catalog.Format(msgs.locale, "receiverDialogSubAdd", nil)
@@ -2136,11 +2044,11 @@ func (msgs Messages) SettingsLatency() string {
 	return Catalog.Format(msgs.locale, "settingsLatency", nil)
 }
 
-// SettingsLatencyPanelSwitch says "Panel switch"
+// SettingsLatencyPanelSwitch says "Show latency switch in panel"
 // in the language the app shows.
 func SettingsLatencyPanelSwitch() string { return In(i18n.Locale()).SettingsLatencyPanelSwitch() }
 
-// SettingsLatencyPanelSwitch says "Panel switch"
+// SettingsLatencyPanelSwitch says "Show latency switch in panel"
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyPanelSwitch() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyPanelSwitch", nil)
@@ -2156,11 +2064,11 @@ func (msgs Messages) SettingsLatencyLow() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyLow", nil)
 }
 
-// SettingsLatencyLowDesc says "Default; may drop on weak Wi-Fi"
+// SettingsLatencyLowDesc says "Lowest latency; may drop on a weak network."
 // in the language the app shows.
 func SettingsLatencyLowDesc() string { return In(i18n.Locale()).SettingsLatencyLowDesc() }
 
-// SettingsLatencyLowDesc says "Default; may drop on weak Wi-Fi"
+// SettingsLatencyLowDesc says "Lowest latency; may drop on a weak network."
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyLowDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyLowDesc", nil)
@@ -2176,11 +2084,11 @@ func (msgs Messages) SettingsLatencyStandard() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyStandard", nil)
 }
 
-// SettingsLatencyStandardDesc says "Reference buffering; steadier day to day"
+// SettingsLatencyStandardDesc says "Balanced buffering; steadier day to day."
 // in the language the app shows.
 func SettingsLatencyStandardDesc() string { return In(i18n.Locale()).SettingsLatencyStandardDesc() }
 
-// SettingsLatencyStandardDesc says "Reference buffering; steadier day to day"
+// SettingsLatencyStandardDesc says "Balanced buffering; steadier day to day."
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyStandardDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyStandardDesc", nil)
@@ -2196,11 +2104,11 @@ func (msgs Messages) SettingsLatencyStable() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyStable", nil)
 }
 
-// SettingsLatencyStableDesc says "Receiver default; favors continuity on weak Wi-Fi"
+// SettingsLatencyStableDesc says "Highest latency; favors continuity on a weak network."
 // in the language the app shows.
 func SettingsLatencyStableDesc() string { return In(i18n.Locale()).SettingsLatencyStableDesc() }
 
-// SettingsLatencyStableDesc says "Receiver default; favors continuity on weak Wi-Fi"
+// SettingsLatencyStableDesc says "Highest latency; favors continuity on a weak network."
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyStableDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyStableDesc", nil)
@@ -2216,21 +2124,21 @@ func (msgs Messages) SettingsLatencyCustom() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyCustom", nil)
 }
 
-// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms unverified"
+// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms stability varies by receiver."
 // in the language the app shows.
 func SettingsLatencyCustomDesc() string { return In(i18n.Locale()).SettingsLatencyCustomDesc() }
 
-// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms unverified"
+// SettingsLatencyCustomDesc says "Manual 20–2000 ms; under 200 ms stability varies by receiver."
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyCustomDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyCustomDesc", nil)
 }
 
-// SettingsLatencyNote says "Some receivers, such as macOS, use their own fixed latency."
+// SettingsLatencyNote says "Some receivers, such as the AirPlay receiver on a Mac, use their own fixed latency."
 // in the language the app shows.
 func SettingsLatencyNote() string { return In(i18n.Locale()).SettingsLatencyNote() }
 
-// SettingsLatencyNote says "Some receivers, such as macOS, use their own fixed latency."
+// SettingsLatencyNote says "Some receivers, such as the AirPlay receiver on a Mac, use their own fixed latency."
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyNote() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyNote", nil)
@@ -2246,11 +2154,11 @@ func (msgs Messages) SettingsAudioFormat() string {
 	return Catalog.Format(msgs.locale, "settingsAudioFormat", nil)
 }
 
-// SettingsAudioFormatDesc says "Fixed format, compatible with all AirPlay 2 receivers"
+// SettingsAudioFormatDesc says "Fixed format, compatible with AirPlay 2 receivers."
 // in the language the app shows.
 func SettingsAudioFormatDesc() string { return In(i18n.Locale()).SettingsAudioFormatDesc() }
 
-// SettingsAudioFormatDesc says "Fixed format, compatible with all AirPlay 2 receivers"
+// SettingsAudioFormatDesc says "Fixed format, compatible with AirPlay 2 receivers."
 // in the language of msgs.
 func (msgs Messages) SettingsAudioFormatDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAudioFormatDesc", nil)
@@ -2276,11 +2184,11 @@ func (msgs Messages) SettingsSyncMode() string {
 	return Catalog.Format(msgs.locale, "settingsSyncMode", nil)
 }
 
-// SettingsSyncModeDesc says "PTP or NTP based on receiver support"
+// SettingsSyncModeDesc says "Picks PTP or NTP from the receiver's capabilities."
 // in the language the app shows.
 func SettingsSyncModeDesc() string { return In(i18n.Locale()).SettingsSyncModeDesc() }
 
-// SettingsSyncModeDesc says "PTP or NTP based on receiver support"
+// SettingsSyncModeDesc says "Picks PTP or NTP from the receiver's capabilities."
 // in the language of msgs.
 func (msgs Messages) SettingsSyncModeDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSyncModeDesc", nil)
@@ -2306,21 +2214,21 @@ func (msgs Messages) SettingsMuteLocal() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocal", nil)
 }
 
-// SettingsMuteLocalDesc says "Mute local speakers while connected; restore on disconnect."
+// SettingsMuteLocalDesc says "Avoids hearing the same audio on this PC and the receiver; restored on disconnect or quit."
 // in the language the app shows.
 func SettingsMuteLocalDesc() string { return In(i18n.Locale()).SettingsMuteLocalDesc() }
 
-// SettingsMuteLocalDesc says "Mute local speakers while connected; restore on disconnect."
+// SettingsMuteLocalDesc says "Avoids hearing the same audio on this PC and the receiver; restored on disconnect or quit."
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDesc() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDesc", nil)
 }
 
-// SettingsMuteLocalDescOn says "Local speakers are muted; restore on disconnect."
+// SettingsMuteLocalDescOn says "Local speakers are muted; they will be restored on disconnect."
 // in the language the app shows.
 func SettingsMuteLocalDescOn() string { return In(i18n.Locale()).SettingsMuteLocalDescOn() }
 
-// SettingsMuteLocalDescOn says "Local speakers are muted; restore on disconnect."
+// SettingsMuteLocalDescOn says "Local speakers are muted; they will be restored on disconnect."
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDescOn() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDescOn", nil)
@@ -2356,21 +2264,21 @@ func (msgs Messages) SettingsMuteLocalNote() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalNote", nil)
 }
 
-// SettingsSystemOutput says "System output"
+// SettingsSystemOutput says "System audio"
 // in the language the app shows.
 func SettingsSystemOutput() string { return In(i18n.Locale()).SettingsSystemOutput() }
 
-// SettingsSystemOutput says "System output"
+// SettingsSystemOutput says "System audio"
 // in the language of msgs.
 func (msgs Messages) SettingsSystemOutput() string {
 	return Catalog.Format(msgs.locale, "settingsSystemOutput", nil)
 }
 
-// SettingsSystemOutputDesc says "The Windows default playback device"
+// SettingsSystemOutputDesc says "Capture the Windows default output device"
 // in the language the app shows.
 func SettingsSystemOutputDesc() string { return In(i18n.Locale()).SettingsSystemOutputDesc() }
 
-// SettingsSystemOutputDesc says "The Windows default playback device"
+// SettingsSystemOutputDesc says "Capture the Windows default output device"
 // in the language of msgs.
 func (msgs Messages) SettingsSystemOutputDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSystemOutputDesc", nil)
@@ -2386,11 +2294,11 @@ func (msgs Messages) SettingsAppCapture() string {
 	return Catalog.Format(msgs.locale, "settingsAppCapture", nil)
 }
 
-// SettingsAppCaptureDesc says "Stream only the selected application"
+// SettingsAppCaptureDesc says "Play only the selected app's audio"
 // in the language the app shows.
 func SettingsAppCaptureDesc() string { return In(i18n.Locale()).SettingsAppCaptureDesc() }
 
-// SettingsAppCaptureDesc says "Stream only the selected application"
+// SettingsAppCaptureDesc says "Play only the selected app's audio"
 // in the language of msgs.
 func (msgs Messages) SettingsAppCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAppCaptureDesc", nil)
@@ -2446,33 +2354,33 @@ func (msgs Messages) CaptureSystemDefault() string {
 	return Catalog.Format(msgs.locale, "captureSystemDefault", nil)
 }
 
-// SummaryStereoGroup says "Stereo pair · {n, number}/2 · Current device"
+// SummaryStereoGroup says "Stereo pair · {n, number}/2 · Current receiver"
 // in the language the app shows.
 func SummaryStereoGroup(n int) string { return In(i18n.Locale()).SummaryStereoGroup(n) }
 
-// SummaryStereoGroup says "Stereo pair · {n, number}/2 · Current device"
+// SummaryStereoGroup says "Stereo pair · {n, number}/2 · Current receiver"
 // in the language of msgs.
 func (msgs Messages) SummaryStereoGroup(n int) string {
 	return Catalog.Format(msgs.locale, "summaryStereoGroup", map[string]any{"n": n})
 }
 
-// SummaryModelCurrentDevice says "{model} · Current device"
+// SummaryModelCurrentDevice says "{model} · Current receiver"
 // in the language the app shows.
 func SummaryModelCurrentDevice(model string) string {
 	return In(i18n.Locale()).SummaryModelCurrentDevice(model)
 }
 
-// SummaryModelCurrentDevice says "{model} · Current device"
+// SummaryModelCurrentDevice says "{model} · Current receiver"
 // in the language of msgs.
 func (msgs Messages) SummaryModelCurrentDevice(model string) string {
 	return Catalog.Format(msgs.locale, "summaryModelCurrentDevice", map[string]any{"model": model})
 }
 
-// SummaryCurrentDevice says "Current device"
+// SummaryCurrentDevice says "Current receiver"
 // in the language the app shows.
 func SummaryCurrentDevice() string { return In(i18n.Locale()).SummaryCurrentDevice() }
 
-// SummaryCurrentDevice says "Current device"
+// SummaryCurrentDevice says "Current receiver"
 // in the language of msgs.
 func (msgs Messages) SummaryCurrentDevice() string {
 	return Catalog.Format(msgs.locale, "summaryCurrentDevice", nil)
@@ -2498,11 +2406,11 @@ func (msgs Messages) SummaryConnecting() string {
 	return Catalog.Format(msgs.locale, "summaryConnecting", nil)
 }
 
-// SidebarNoDevice says "No device selected"
+// SidebarNoDevice says "No receiver selected"
 // in the language the app shows.
 func SidebarNoDevice() string { return In(i18n.Locale()).SidebarNoDevice() }
 
-// SidebarNoDevice says "No device selected"
+// SidebarNoDevice says "No receiver selected"
 // in the language of msgs.
 func (msgs Messages) SidebarNoDevice() string {
 	return Catalog.Format(msgs.locale, "sidebarNoDevice", nil)
@@ -2648,46 +2556,6 @@ func (msgs Messages) SettingsCheckFailed() string {
 	return Catalog.Format(msgs.locale, "settingsCheckFailed", nil)
 }
 
-// UpdateWindowTitle says "Software Update"
-// in the language the app shows.
-func UpdateWindowTitle() string { return In(i18n.Locale()).UpdateWindowTitle() }
-
-// UpdateWindowTitle says "Software Update"
-// in the language of msgs.
-func (msgs Messages) UpdateWindowTitle() string {
-	return Catalog.Format(msgs.locale, "updateWindowTitle", nil)
-}
-
-// UpdateChecking says "Checking for updates…"
-// in the language the app shows.
-func UpdateChecking() string { return In(i18n.Locale()).UpdateChecking() }
-
-// UpdateChecking says "Checking for updates…"
-// in the language of msgs.
-func (msgs Messages) UpdateChecking() string {
-	return Catalog.Format(msgs.locale, "updateChecking", nil)
-}
-
-// UpdateCheckingDesc says "This takes a moment."
-// in the language the app shows.
-func UpdateCheckingDesc() string { return In(i18n.Locale()).UpdateCheckingDesc() }
-
-// UpdateCheckingDesc says "This takes a moment."
-// in the language of msgs.
-func (msgs Messages) UpdateCheckingDesc() string {
-	return Catalog.Format(msgs.locale, "updateCheckingDesc", nil)
-}
-
-// UpdateUpToDate says "You're up to date"
-// in the language the app shows.
-func UpdateUpToDate() string { return In(i18n.Locale()).UpdateUpToDate() }
-
-// UpdateUpToDate says "You're up to date"
-// in the language of msgs.
-func (msgs Messages) UpdateUpToDate() string {
-	return Catalog.Format(msgs.locale, "updateUpToDate", nil)
-}
-
 // UpdateAvailableTitle says "Version {version} is available"
 // in the language the app shows.
 func UpdateAvailableTitle(version string) string {
@@ -2784,16 +2652,6 @@ func (msgs Messages) UpdateCancel() string {
 	return Catalog.Format(msgs.locale, "updateCancel", nil)
 }
 
-// UpdateBackground says "Continue in background"
-// in the language the app shows.
-func UpdateBackground() string { return In(i18n.Locale()).UpdateBackground() }
-
-// UpdateBackground says "Continue in background"
-// in the language of msgs.
-func (msgs Messages) UpdateBackground() string {
-	return Catalog.Format(msgs.locale, "updateBackground", nil)
-}
-
 // UpdateReadyTitle says "{version} is ready"
 // in the language the app shows.
 func UpdateReadyTitle(version string) string { return In(i18n.Locale()).UpdateReadyTitle(version) }
@@ -2844,16 +2702,6 @@ func (msgs Messages) UpdateRetry() string {
 	return Catalog.Format(msgs.locale, "updateRetry", nil)
 }
 
-// UpdateCheckFailedTitle says "Update check failed"
-// in the language the app shows.
-func UpdateCheckFailedTitle() string { return In(i18n.Locale()).UpdateCheckFailedTitle() }
-
-// UpdateCheckFailedTitle says "Update check failed"
-// in the language of msgs.
-func (msgs Messages) UpdateCheckFailedTitle() string {
-	return Catalog.Format(msgs.locale, "updateCheckFailedTitle", nil)
-}
-
 // UpdateDownloadFailedTitle says "Download failed"
 // in the language the app shows.
 func UpdateDownloadFailedTitle() string { return In(i18n.Locale()).UpdateDownloadFailedTitle() }
@@ -2872,26 +2720,6 @@ func UpdateDisabledTitle() string { return In(i18n.Locale()).UpdateDisabledTitle
 // in the language of msgs.
 func (msgs Messages) UpdateDisabledTitle() string {
 	return Catalog.Format(msgs.locale, "updateDisabledTitle", nil)
-}
-
-// UpdateDisabledDesc says "Install a released build to receive updates."
-// in the language the app shows.
-func UpdateDisabledDesc() string { return In(i18n.Locale()).UpdateDisabledDesc() }
-
-// UpdateDisabledDesc says "Install a released build to receive updates."
-// in the language of msgs.
-func (msgs Messages) UpdateDisabledDesc() string {
-	return Catalog.Format(msgs.locale, "updateDisabledDesc", nil)
-}
-
-// UpdateAutoDownload says "Download and install updates automatically"
-// in the language the app shows.
-func UpdateAutoDownload() string { return In(i18n.Locale()).UpdateAutoDownload() }
-
-// UpdateAutoDownload says "Download and install updates automatically"
-// in the language of msgs.
-func (msgs Messages) UpdateAutoDownload() string {
-	return Catalog.Format(msgs.locale, "updateAutoDownload", nil)
 }
 
 // FlyoutUpdateAvailable says "{version} available"
@@ -2918,34 +2746,24 @@ func (msgs Messages) FlyoutUpdateDownloading(percent int) string {
 	return Catalog.Format(msgs.locale, "flyoutUpdateDownloading", map[string]any{"percent": percent})
 }
 
-// FlyoutUpdateReady says "Restart to update"
+// FlyoutUpdateReady says "Restart to install"
 // in the language the app shows.
 func FlyoutUpdateReady() string { return In(i18n.Locale()).FlyoutUpdateReady() }
 
-// FlyoutUpdateReady says "Restart to update"
+// FlyoutUpdateReady says "Restart to install"
 // in the language of msgs.
 func (msgs Messages) FlyoutUpdateReady() string {
 	return Catalog.Format(msgs.locale, "flyoutUpdateReady", nil)
 }
 
-// TrayCheckUpdates says "Check for Updates…"
+// TrayCheckUpdates says "Check for updates…"
 // in the language the app shows.
 func TrayCheckUpdates() string { return In(i18n.Locale()).TrayCheckUpdates() }
 
-// TrayCheckUpdates says "Check for Updates…"
+// TrayCheckUpdates says "Check for updates…"
 // in the language of msgs.
 func (msgs Messages) TrayCheckUpdates() string {
 	return Catalog.Format(msgs.locale, "trayCheckUpdates", nil)
-}
-
-// UpdateUpToDateDesc says "Version {version} is the latest."
-// in the language the app shows.
-func UpdateUpToDateDesc(version string) string { return In(i18n.Locale()).UpdateUpToDateDesc(version) }
-
-// UpdateUpToDateDesc says "Version {version} is the latest."
-// in the language of msgs.
-func (msgs Messages) UpdateUpToDateDesc(version string) string {
-	return Catalog.Format(msgs.locale, "updateUpToDateDesc", map[string]any{"version": version})
 }
 
 // UpdateCheckingShort says "Checking…"
@@ -2978,13 +2796,13 @@ func (msgs Messages) UpdateNotesTitle(version string) string {
 	return Catalog.Format(msgs.locale, "updateNotesTitle", map[string]any{"version": version})
 }
 
-// UpdateNotesMeta says "Released {date} · Current version {current}"
+// UpdateNotesMeta says "Current version {current} · Released {date}"
 // in the language the app shows.
 func UpdateNotesMeta(date string, current string) string {
 	return In(i18n.Locale()).UpdateNotesMeta(date, current)
 }
 
-// UpdateNotesMeta says "Released {date} · Current version {current}"
+// UpdateNotesMeta says "Current version {current} · Released {date}"
 // in the language of msgs.
 func (msgs Messages) UpdateNotesMeta(date string, current string) string {
 	return Catalog.Format(msgs.locale, "updateNotesMeta", map[string]any{"date": date, "current": current})
@@ -3112,21 +2930,21 @@ func (msgs Messages) PageLampDesc() string {
 	return Catalog.Format(msgs.locale, "pageLampDesc", nil)
 }
 
-// SettingsLampCardTitle says "Top display light"
+// SettingsLampCardTitle says "Ambient light"
 // in the language the app shows.
 func SettingsLampCardTitle() string { return In(i18n.Locale()).SettingsLampCardTitle() }
 
-// SettingsLampCardTitle says "Top display light"
+// SettingsLampCardTitle says "Ambient light"
 // in the language of msgs.
 func (msgs Messages) SettingsLampCardTitle() string {
 	return Catalog.Format(msgs.locale, "settingsLampCardTitle", nil)
 }
 
-// SettingsLampTemplates says "Custom templates"
+// SettingsLampTemplates says "Templates"
 // in the language the app shows.
 func SettingsLampTemplates() string { return In(i18n.Locale()).SettingsLampTemplates() }
 
-// SettingsLampTemplates says "Custom templates"
+// SettingsLampTemplates says "Templates"
 // in the language of msgs.
 func (msgs Messages) SettingsLampTemplates() string {
 	return Catalog.Format(msgs.locale, "settingsLampTemplates", nil)
@@ -3142,31 +2960,21 @@ func (msgs Messages) SettingsLampHomePodOnly() string {
 	return Catalog.Format(msgs.locale, "settingsLampHomePodOnly", nil)
 }
 
-// SettingsLampTop says "HomePod top display"
-// in the language the app shows.
-func SettingsLampTop() string { return In(i18n.Locale()).SettingsLampTop() }
-
-// SettingsLampTop says "HomePod top display"
-// in the language of msgs.
-func (msgs Messages) SettingsLampTop() string {
-	return Catalog.Format(msgs.locale, "settingsLampTop", nil)
-}
-
-// SettingsLampHintOn says "Turn off darkens the top display; turn on restores the current choice."
+// SettingsLampHintOn says "Click the power button to turn the top display off; click it again to restore the current choice."
 // in the language the app shows.
 func SettingsLampHintOn() string { return In(i18n.Locale()).SettingsLampHintOn() }
 
-// SettingsLampHintOn says "Turn off darkens the top display; turn on restores the current choice."
+// SettingsLampHintOn says "Click the power button to turn the top display off; click it again to restore the current choice."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOn() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOn", nil)
 }
 
-// SettingsLampHintOff says "The top display is off; turn it on before changing the light."
+// SettingsLampHintOff says "The top display is off; click the power button before changing the light."
 // in the language the app shows.
 func SettingsLampHintOff() string { return In(i18n.Locale()).SettingsLampHintOff() }
 
-// SettingsLampHintOff says "The top display is off; turn it on before changing the light."
+// SettingsLampHintOff says "The top display is off; click the power button before changing the light."
 // in the language of msgs.
 func (msgs Messages) SettingsLampHintOff() string {
 	return Catalog.Format(msgs.locale, "settingsLampHintOff", nil)
@@ -3262,11 +3070,11 @@ func (msgs Messages) LampPriorityCoverShort() string {
 	return Catalog.Format(msgs.locale, "lampPriorityCoverShort", nil)
 }
 
-// LampPriorityTemplateShort says "Template"
+// LampPriorityTemplateShort says "Light"
 // in the language the app shows.
 func LampPriorityTemplateShort() string { return In(i18n.Locale()).LampPriorityTemplateShort() }
 
-// LampPriorityTemplateShort says "Template"
+// LampPriorityTemplateShort says "Light"
 // in the language of msgs.
 func (msgs Messages) LampPriorityTemplateShort() string {
 	return Catalog.Format(msgs.locale, "lampPriorityTemplateShort", nil)
@@ -3380,4 +3188,24 @@ func FlyoutLampCollapse() string { return In(i18n.Locale()).FlyoutLampCollapse()
 // in the language of msgs.
 func (msgs Messages) FlyoutLampCollapse() string {
 	return Catalog.Format(msgs.locale, "flyoutLampCollapse", nil)
+}
+
+// ReceiverEmptyTitle says "No receivers yet"
+// in the language the app shows.
+func ReceiverEmptyTitle() string { return In(i18n.Locale()).ReceiverEmptyTitle() }
+
+// ReceiverEmptyTitle says "No receivers yet"
+// in the language of msgs.
+func (msgs Messages) ReceiverEmptyTitle() string {
+	return Catalog.Format(msgs.locale, "receiverEmptyTitle", nil)
+}
+
+// VersionLocalTag says "Local build"
+// in the language the app shows.
+func VersionLocalTag() string { return In(i18n.Locale()).VersionLocalTag() }
+
+// VersionLocalTag says "Local build"
+// in the language of msgs.
+func (msgs Messages) VersionLocalTag() string {
+	return Catalog.Format(msgs.locale, "versionLocalTag", nil)
 }

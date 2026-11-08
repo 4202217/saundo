@@ -69,7 +69,7 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	a.receiverHiddenOpen = true
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"接收器", "管理接收器、自动连接、可见性与每台接收器的音画同步。",
+		"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。",
 		"已启用", "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
 		"自动连接", "手动添加", "添加接收器", "已隐藏", "卧室 HomePod mini",
 		"AudioAccessory5,1 · 192.168.1.20:7000",
@@ -166,7 +166,7 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		"启动时自动连接", "同一时间仅一台",
-		"DSP/DAC 延迟", "补偿接收器的硬件音频延迟", "0 ms", "2000 ms",
+		"DSP/DAC 延迟", "补偿接收器的硬件音频延迟", "0 ms", "2 s",
 		"接收器密码", "已保存 · 用于 AirPlay 密码认证", "更改", "••••••",
 		"编辑",
 	} {
@@ -174,8 +174,8 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 			t.Fatalf("expanded receiver row is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
-	// The offline remembered row shows 未设置 for its password.
-	if !tt.HasText("未设置 · 仅在这台接收器要求密码时填写") {
+	// The offline remembered row shows 未保存 for its password.
+	if !tt.HasText("未保存 · 连接时按需填写") {
 		t.Fatalf("unset password copy is missing; texts: %q", tt.Texts())
 	}
 }
@@ -313,8 +313,8 @@ func TestReceiverAddDialogRenders(t *testing.T) {
 	a.openAddReceiver()
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"添加接收器", "用于无法通过 mDNS 发现的接收器。",
-		"名称", "类型", "AirPort Express", "IP 地址或主机名", "端口", "常用 5000 或 7000",
+		"添加接收器", "填写名称、地址与认证方式。",
+		"名称", "类型", "AirPort Express", "IP 地址或主机名", "端口", "通常为 5000 或 7000",
 		"密码认证", "无", "取消", "添加",
 	} {
 		if !tt.HasText(want) {
@@ -381,7 +381,7 @@ func TestReceiverRemoveDialogRenders(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		"移除接收器？", "书房 AirPort Express",
-		"会从设置和设备列表中移除这台接收器；接收器本身不会被更改。",
+		"会从设置和面板中移除；接收器本身不受影响。",
 		"移除",
 	} {
 		if !tt.HasText(want) {

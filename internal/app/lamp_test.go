@@ -285,7 +285,7 @@ func TestSettingsLampPageOffRequiresTurningOn(t *testing.T) {
 	a.snap.LampCover = true
 	a.lampPreset = "dune"
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !tt.HasText("顶屏已熄灭；先按开灯才能调整。") {
+	if !tt.HasText("顶屏已熄灭；点击电源按钮后即可调整。") {
 		t.Fatalf("off hint is missing; texts: %q", tt.Texts())
 	}
 	a.chooseLampPreset("ember")
@@ -330,14 +330,14 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	for _, want := range []string{"Ambient light", "Cover", "Template", "Dune"} {
+	for _, want := range []string{"Ambient light", "Cover", "Light", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English flyout is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
 	a.page = pageLamp
 	tt = ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{"Ambient light", "Top display light", "HomePod only", "HomePod top display", "Cover first", "Template first", "Dune"} {
+	for _, want := range []string{"Ambient light", "HomePod only", "Cover first", "Template first", "Dune"} {
 		if !tt.HasText(want) {
 			t.Fatalf("English lamp page is missing %q; texts: %q", want, tt.Texts())
 		}

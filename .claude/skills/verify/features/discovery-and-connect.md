@@ -54,7 +54,7 @@ lines — `pair-setup M1`…M4, `control channel now encrypted`, `session SETUP`
 `$EV/flyout-before.png` and `-after.png` with capture-window.ps1. Disconnect
 by 断开 and confirm `session stopped` plus the row returning to idle.
 
-Proven end state: the flyout shows 正在播放到 `<name>` with the
+Proven end state: the flyout shows 正在通过 `<name>` 播放 with the
 `ALAC · 44.1 kHz · 立体声 · PTP · 已同步` line (PTP on HomePod/Mac), the row
 carries 已连接, and the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK`
 every 2 s.

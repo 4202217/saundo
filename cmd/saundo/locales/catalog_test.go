@@ -2,7 +2,10 @@ package locales
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -20,6 +23,132 @@ func TestCatalogKeyParity(t *testing.T) {
 	for key := range zh {
 		if _, ok := en[key]; !ok {
 			t.Errorf("en.json has no %q", key)
+		}
+	}
+}
+
+// TestCatalogHasNoDeadKeys fails when a catalog key has no caller outside the
+// generated accessors and the tests. Delete the key instead of shipping copy
+// no surface can show.
+func TestCatalogHasNoDeadKeys(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	var source strings.Builder
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", ".audit", "bin", "node_modules", "testdata":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		if filepath.ToSlash(path) == filepath.ToSlash(filepath.Join(root, "cmd/saundo/locales/catalog_gen.go")) {
+			return nil
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		source.Write(body)
+		source.WriteByte('\n')
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := source.String()
+	for key := range readCatalog(t, "en.json") {
+		accessor := strings.ToUpper(key[:1]) + key[1:]
+		if !strings.Contains(src, "locales."+accessor+"(") {
+			t.Errorf("catalog key %q has no caller (locales.%s)", key, accessor)
+		}
+	}
+}
+
+// TestCatalogBannedTerms keeps the terminology rules in docs/ui-copy.md.
+// A banned term names an implementation detail or a second word for a
+// concept the interface already names once.
+func TestCatalogBannedTerms(t *testing.T) {
+	banned := map[string][]string{
+		"zh-CN": {
+			"音画同步", "接收设备", "接收端", "推流", "串流", "参考实现",
+			"握手", "退避", "auth-setup", "自定义模板", "更新窗口", "打开一台",
+			"媒体卡", "控制面板", "弱网", "断音", "未验证", "静默驻留",
+			"让图标动起来", "设备列表", "当前设备", "未选择设备",
+			"立即检查", "这台设备", "打开下方", "顶屏灯光",
+		},
+		"en": {
+			"auth-setup", "Backoff", "Reference buffering", "update window",
+			"Refresh devices", "No devices", "Device list", "this device",
+			"Top display light",
+		},
+	}
+	for loc, terms := range banned {
+		catalog := readCatalog(t, loc+".json")
+		for key, value := range catalog {
+			for _, term := range terms {
+				if strings.Contains(value, term) {
+					t.Errorf("%s: %q contains banned term %q", loc, key, term)
+				}
+			}
+		}
+	}
+}
+
+// TestCatalogUniqueValues keeps a new key from quietly reusing another key's
+// copy. The shared set names keys that intentionally say the same thing in
+// different surfaces. A new duplicate fails so its author makes a decision.
+func TestCatalogUniqueValues(t *testing.T) {
+	shared := map[string]bool{
+		"appName": true, "trayTooltip": true, "settingsAboutBrand": true,
+		"trayDisconnect": true, "actionDisconnect": true,
+		"flyoutDevices": true, "pinFallbackDevice": true, "settingsNavReceivers": true,
+		"statusStreaming": true, "settingsNavNowPlaying": true,
+		"flyoutNowPlayingSession": true, "settingsSystemMediaBadge": true,
+		"flyoutPlayback": true, "flyoutPlay": true,
+		"actionCancel": true, "updateCancel": true,
+		"actionRetry": true, "updateRetry": true,
+		"actionConnect": true, "settingsNavConnection": true,
+		"commonSettings": true, "receiverPasswordSet": true,
+		"settingsCover": true, "lampPriorityCoverShort": true, "lampPresetCover": true,
+		"settingsSave": true, "receiverDialogSave": true,
+		"languageSystem": true, "themeSystem": true,
+		"receiverGroupHidden": true, "receiverChipHidden": true,
+		"receiverAddTitle": true, "receiverDialogTitleAdd": true,
+		"receiverPasswordTitle": true, "receiverAuthPassword": true, "receiverFieldPassword": true,
+		"updateAvailableTitle": true, "flyoutUpdateAvailable": true,
+		"updateAvailableMeta": true, "updateNotesMeta": true,
+		"settingsNavLamp": true, "settingsLampCardTitle": true, "flyoutLampSection": true,
+		"settingsLampTemplates": true, "lampPriorityTemplateShort": true,
+		"passwordLabel": true, "receiverFieldAuth": true,
+		"themeLight":            true,
+		"settingsLatencyStable": true, "settingsChannelStable": true,
+	}
+	for _, loc := range []string{"zh-CN", "en"} {
+		byValue := map[string][]string{}
+		for key, value := range readCatalog(t, loc+".json") {
+			byValue[value] = append(byValue[value], key)
+		}
+		for value, keys := range byValue {
+			if len(keys) < 2 {
+				continue
+			}
+			slices.Sort(keys)
+			allowed := true
+			for _, key := range keys {
+				if !shared[key] {
+					allowed = false
+					break
+				}
+			}
+			if !allowed {
+				t.Errorf("%s: %q is shared by %v; use one key or add the keys to shared", loc, value, keys)
+			}
 		}
 	}
 }

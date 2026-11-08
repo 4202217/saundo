@@ -24,7 +24,7 @@ const (
 	// media card, and no error bar; the no-media panel is compact and the
 	// media card adds its own height when a session exists.
 	flyoutWidth  = 420
-	flyoutHeight = 456
+	flyoutHeight = 459
 
 	// errorBarHeight is the connection error bar under the device card.
 	errorBarHeight = 48
@@ -107,7 +107,7 @@ func (a *App) flyoutHeader(c *ui.Context, p palette) {
 	ui.Row(c).Height(46).Padding(0, 10, 0, 14).Gap(8).Children(func() {
 		ui.Icon(c, iconMark).Size(21, 21).TextColor(p.fg)
 		ui.Column(c).Gap(1).Children(func() {
-			ui.Text(c, locales.AppName()).FontSize(13.5).FontWeight(600).SingleLine()
+			ui.Text(c, locales.AppName()).FontSize(13).FontWeight(600).SingleLine()
 			ui.Text(c, locales.AppSubtitle()).FontSize(8.5).FontWeight(600).LetterSpacing(1.1).TextColor(p.muted).SingleLine()
 		})
 		ui.Spacer(c)
@@ -118,7 +118,7 @@ func (a *App) flyoutHeader(c *ui.Context, p palette) {
 
 func (a *App) deviceSection(c *ui.Context, p palette) {
 	devices := a.snap.Devices
-	sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)))
+	sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)), false, nil)
 	a.deviceCard(c, p, devices)
 	if a.errorBarShown() {
 		ui.Row(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).Background(p.redSoft).Children(func() {
@@ -161,16 +161,14 @@ func (a *App) emptyDevices(c *ui.Context, p palette) {
 		face := ui.Icon(c, faceSearch).Size(28, 28).TextColor(p.faint)
 		t := face.Loop("pulse", 1200*time.Millisecond, ui.EaseInOut)
 		face.Opacity(0.55 + 0.45*(1-abs32(2*t-1)))
-		ui.Text(c, locales.FlyoutSearching()).FontSize(12.5).TextColor(p.fg2).TextAlign(ui.Center)
-		ui.Text(c, locales.FlyoutSearchHint()).FontSize(11.5).
-			TextColor(p.muted).TextAlign(ui.Center)
+		emptyCopy(c, p, locales.FlyoutSearching(), locales.FlyoutSearchHint(), true)
 		b := ui.ButtonBase(c).Padding(2, 6).Radius(6).Cursor(ui.CursorPointer).Label(locales.FlyoutSearchAgain())
 		b.OnClick(func() { a.eng.Refresh() })
 		if b.Hovered() {
 			b.Background(p.pill)
 		}
 		b.Children(func() {
-			ui.Text(c, locales.FlyoutSearchAgain()).FontSize(12).TextColor(p.accent).SingleLine()
+			ui.Text(c, locales.FlyoutSearchAgain()).FontSize(12.5).TextColor(p.accent).SingleLine()
 		})
 	})
 }
@@ -202,7 +200,7 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 			deviceGlyph(c, p, d, selected)
 
 			ui.Column(c).Grow(1).Gap(1).Children(func() {
-				ui.Text(c, d.Name).FontSize(13.5).FontWeight(500).SingleLine().Ellipsis("…")
+				ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
 				ui.Text(c, deviceSubtitle(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 			})
 		})
@@ -253,30 +251,17 @@ func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, act
 	}
 }
 
-// playbackHead is the playback section header. A latency apply shows a small
-// spinner after the section label; the right-aligned ALAC line never moves.
-func (a *App) playbackHead(c *ui.Context, p palette, note string) {
-	ui.Row(c).Padding(6, 2, 2, 2).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, locales.FlyoutPlayback()).FontSize(11).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-		if a.latencyApplying {
-			ui.Spinner(c).Size(10, 10).TextColor(p.accent).Margin(0, 0, 0, 6)
-		}
-		ui.Spacer(c)
-		ui.Text(c, note).FontSize(11.5).TextColor(p.muted).SingleLine()
-	})
-}
-
 func (a *App) playbackSection(c *ui.Context, p palette) {
 	note := locales.FlyoutFormat()
 	if phaseOf(a.snap) == phaseStreaming {
 		note += " · " + a.syncText()
 	}
 	note += " · " + locales.FlyoutLatency(a.latencyDisplay())
-	a.playbackHead(c, p, note)
+	sectionHead(c, p, locales.FlyoutPlayback(), note, a.latencyApplying, nil)
 
 	card := ui.Column(c).Radius(10).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
-		ui.Column(c).Padding(10, 12, 8, 12).Children(func() {
+		ui.Column(c).Padding(10, 12, 10, 12).Children(func() {
 			ui.Row(c).Children(func() {
 				ui.Text(c, locales.VolumeLabel()).FontSize(13).FontWeight(500)
 				ui.Spacer(c)
@@ -286,7 +271,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 		})
 		rowLine(c, p)
 		if a.showLatencySwitch {
-			ui.Column(c).Padding(6, 12, 7, 12).Children(func() { a.latencySwitch(c, p) })
+			ui.Column(c).Padding(6, 12, 10, 12).Children(func() { a.latencySwitch(c, p) })
 			rowLine(c, p)
 		}
 		a.nowPlayingCard(c, p)
@@ -297,40 +282,14 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 // own; the playback head's ALAC line shows the current latency.
 func (a *App) latencySwitch(c *ui.Context, p palette) {
 	seg := a.latencyModeIndex()
-	parts := ui.SegmentedBase(c, &seg, 4)
-	parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
-		Label(locales.SettingsLatency()).Children(func() {
-		icons := []*ui.SVG{iconLatencyLow, iconLatencyStandard, iconLatencyStable, iconSliders}
-		names := []string{
-			locales.SettingsLatencyLow(),
-			locales.SettingsLatencyStandard(),
-			locales.SettingsLatencyStable(),
-			locales.SettingsLatencyCustom(),
-		}
-		for i := range names {
-			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).Cursor(ui.CursorPointer).Label(names[i])
-			if i == seg {
-				if p.dark {
-					s.Background(p.pillHover)
-				} else {
-					s.Background(p.card)
-				}
-				s.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
-			}
-			s.Children(func() {
-				ic := ui.Icon(c, icons[i]).Size(12, 12)
-				tx := ui.Text(c, names[i]).FontSize(11.5).SingleLine()
-				if i == seg {
-					ic.TextColor(p.accent)
-					tx.TextColor(p.fg)
-				} else {
-					ic.TextColor(p.muted)
-					tx.TextColor(p.muted)
-				}
-			})
-		}
-	})
-	if parts.Track.Changed() {
+	items := []segmentItem{
+		{locales.SettingsLatencyLow(), iconLatencyLow},
+		{locales.SettingsLatencyStandard(), iconLatencyStandard},
+		{locales.SettingsLatencyStable(), iconLatencyStable},
+		{locales.SettingsLatencyCustom(), iconSliders},
+	}
+	track := segmented(c, p, &seg, items, 0, false, locales.SettingsLatency())
+	if track.Changed() {
 		a.setLatencyMode(latencyModeAt(seg))
 	}
 }
@@ -361,7 +320,7 @@ func (a *App) nowPlayingCard(c *ui.Context, p palette) {
 // its transport and session switch are read-only, and animateMeter says
 // whether its meter asks for continuous frames.
 func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session, preview, animateMeter bool, art *ui.Bitmap, field *image.RGBA, level func() analyze.Frame, showSwitch bool) {
-	ui.Column(c).Margin(8, 12, 8, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
+	ui.Column(c).Margin(8, 12, 10, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
 		ui.Row(c).Height(28).Gap(7).AlignItems(ui.Center).Children(func() {
 			name := s.AppName
 			if name == "" {
@@ -614,7 +573,7 @@ func (a *App) nowPlayingProgress(c *ui.Context, p palette, s nowplaying.Session,
 			pos = s.Duration
 		}
 		frac := float32(pos) / float32(s.Duration)
-		ui.Text(c, formatClock(pos)).FontSize(10).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+		ui.Text(c, formatClock(pos)).FontSize(10.5).TextColor(p.muted).FontFeatures("tnum").SingleLine()
 		ui.Box(c).Grow(1).Height(3).Draw(func(pt *ui.Painter, r ui.Rect) {
 			pt.Fill(r, p.line, 1.5)
 			if frac > 0 {
@@ -635,7 +594,7 @@ func (a *App) nowPlayingProgress(c *ui.Context, p palette, s nowplaying.Session,
 			pt.Fill(thumb, p.card, 4.5)
 			pt.Stroke(thumb, p.line, 4.5, 1)
 		})
-		ui.Text(c, "-"+formatClock(s.Duration-pos)).FontSize(10).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+		ui.Text(c, "-"+formatClock(s.Duration-pos)).FontSize(10.5).TextColor(p.muted).FontFeatures("tnum").SingleLine()
 	})
 }
 
@@ -706,7 +665,7 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 		}
 		b.Children(func() {
 			ui.Icon(c, iconDoc).Size(13, 13).TextColor(p.ctl)
-			ui.Text(c, locales.LogTitle()).FontSize(12).TextColor(p.ctl).SingleLine()
+			ui.Text(c, locales.LogTitle()).FontSize(12.5).TextColor(p.ctl).SingleLine()
 		})
 	})
 }
@@ -779,15 +738,14 @@ func (a *App) logDialog(c *ui.Context, p palette) {
 	}
 	ui.DialogBase(c, &a.showLog, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
-		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
+		panel.Width(430).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.logEntered)
-		ui.Text(c, locales.LogTitle()).FontSize(18).FontWeight(650)
-		ui.Text(c, locales.LogRecentLines(len(lines))).FontSize(12).TextColor(p.muted).Margin(4, 0, 0, 0)
+		dialogHead(c, p, iconDoc, locales.LogTitle(), locales.LogRecentLines(len(lines)), false, nil)
 		ui.Scroll(c).Height(300).Margin(14, 0, 0, 0).Padding(10).Radius(10).Background(p.pill).Children(func() {
 			ui.Column(c).Gap(2).Children(func() {
 				if len(lines) == 0 {
-					ui.Text(c, locales.LogEmpty()).FontSize(11).TextColor(p.muted)
+					ui.Text(c, locales.LogEmpty()).FontSize(11.5).TextColor(p.muted)
 				}
 				for _, line := range lines {
 					ui.Text(c, line).Font("Cascadia Mono").FontSize(10.5).TextColor(p.fg2)
@@ -809,14 +767,13 @@ func (a *App) pinDialog(c *ui.Context, p palette) {
 	}
 	modal := ui.DialogBase(c, &a.pinOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
-		panel.Width(380).Padding(22).Radius(14).Background(p.card).Border(1, p.line).
+		panel.Width(430).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.pinEntered)
-		ui.Text(c, locales.PinTitle()).FontSize(18).FontWeight(650)
-		ui.Text(c, locales.PinInstruction(deviceNameOr(a.snap.PinDevice, locales.PinFallbackDevice()))).
-			FontSize(12.5).TextColor(p.muted).Margin(5, 0, 0, 0)
-		ui.Text(c, locales.PinLabel()).FontSize(11).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted).Margin(16, 0, 6, 0)
-		submitted := ui.TextInput(c, &a.pinCode).Height(46).Radius(8).PaddingX(12).FontSize(14).
+		dialogHead(c, p, iconKey, locales.PinTitle(),
+			locales.PinInstruction(deviceNameOr(a.snap.PinDevice, locales.PinFallbackDevice())), false, nil)
+		ui.Text(c, locales.PinLabel()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted).Margin(16, 0, 6, 0)
+		submitted := ui.TextInput(c, &a.pinCode).Height(46).Radius(8).PaddingX(12).FontSize(13).
 			Label(locales.PinLabel()).AutoFocus().Submitted()
 		ui.Text(c, locales.PinHint()).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 0, 0)
 		ui.Row(c).Justify(ui.End).Gap(8).Margin(20, 0, 0, 0).Children(func() {
@@ -838,14 +795,13 @@ func (a *App) passwordDialog(c *ui.Context, p palette) {
 	}
 	modal := ui.DialogBase(c, &a.passwordOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
-		panel.Width(380).Padding(22).Radius(14).Background(p.card).Border(1, p.line).
+		panel.Width(430).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.passwordEntered)
-		ui.Text(c, locales.PasswordTitle()).FontSize(18).FontWeight(650)
-		ui.Text(c, locales.PasswordInstruction(deviceNameOr(a.snap.PasswordDevice, locales.PasswordFallbackDevice()))).
-			FontSize(12.5).TextColor(p.muted).Margin(5, 0, 0, 0)
-		ui.Text(c, locales.PasswordLabel()).FontSize(11).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted).Margin(16, 0, 6, 0)
-		submitted := ui.TextInput(c, &a.passwordPrompt).Height(46).Radius(8).PaddingX(12).FontSize(14).
+		dialogHead(c, p, iconKey, locales.PasswordTitle(),
+			locales.PasswordInstruction(deviceNameOr(a.snap.PasswordDevice, locales.PasswordFallbackDevice())), false, nil)
+		ui.Text(c, locales.PasswordLabel()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted).Margin(16, 0, 6, 0)
+		submitted := ui.TextInput(c, &a.passwordPrompt).Height(46).Radius(8).PaddingX(12).FontSize(13).
 			Label(locales.PasswordLabel()).Password().AutoFocus().Submitted()
 		ui.Text(c, locales.PasswordHint()).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 0, 0)
 		ui.Row(c).Justify(ui.End).Gap(8).Margin(20, 0, 0, 0).Children(func() {

@@ -274,8 +274,8 @@ func (a *App) notesRangeMeta() string {
 			entries[len(entries)-1].Version,
 			entries[0].Version,
 			len(entries),
-			a.currentVersion(),
+			a.currentVersionLabel(),
 		)
 	}
-	return locales.UpdateNotesMeta(updateDate(a.upd.date), a.currentVersion())
+	return locales.UpdateNotesMeta(updateDate(a.upd.date), a.currentVersionLabel())
 }
