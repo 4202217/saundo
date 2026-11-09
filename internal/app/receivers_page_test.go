@@ -161,8 +161,19 @@ func TestReceiverPageScrollsAtMinimumHeight(t *testing.T) {
 
 func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	a := receiverFixture()
+	mac := device.Device{
+		ID: "AA:02", Name: "MacBook", Host: "192.168.1.30", Port: 7000,
+		Model: "Mac14,2", Auth: device.AuthHAPPassword, Family: device.FamilyMac,
+		AirPlay2: true, Online: true,
+	}
+	a.snap.Devices = append(a.snap.Devices, mac)
+	a.snap.Receivers = append(a.snap.Receivers, receivers.View{
+		Key: "AA:02", Name: "MacBook", Kind: receivers.KindDiscovered,
+		Model: "Mac14,2", Online: true, Device: mac,
+		Entry: receivers.Entry{Key: "AA:02", Kind: receivers.KindDiscovered, Name: "MacBook"},
+	})
 	a.page = pageReceivers
-	a.receiverOpen = map[string]bool{"m:ab12": true, "AA:00": true}
+	a.receiverOpen = map[string]bool{"m:ab12": true, "AA:00": true, "AA:02": true}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		"启动时自动连接", "同一时间仅一台",
