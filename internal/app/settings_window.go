@@ -411,15 +411,7 @@ func (a *App) nowPlayingOptionRow(c *ui.Context, p palette, title, sub string, o
 // persistNowPlaying stores the panel display options and resizes the flyout.
 func (a *App) persistNowPlaying() {
 	a.showNowPlayingPanel.Store(a.cfg.ShowNowPlayingPanel)
-	if a.sets != nil {
-		cfg := a.sets.Load()
-		cfg.ShowNowPlayingPanel = a.cfg.ShowNowPlayingPanel
-		cfg.PlaybackControls = a.cfg.PlaybackControls
-		cfg.CoverColors = a.cfg.CoverColors
-		cfg.CoverMode = a.cfg.CoverMode
-		cfg.AudioLevel = a.cfg.AudioLevel
-		_ = a.sets.Save(cfg)
-	}
+	a.saveSettings()
 	a.fitFlyout()
 	a.updateUI(func() {})
 }
@@ -647,19 +639,13 @@ func (a *App) muteLocalSub() string {
 	}
 }
 
-// setMuteLocal saves the preference and forwards it to the engine. The write
-// is field-targeted, like the other options that share settings.json with the
-// engine's debounced save.
+// setMuteLocal saves the preference and forwards it to the engine.
 func (a *App) setMuteLocal(on bool) {
 	a.cfg.MuteLocalOnConnect = on
 	if a.eng != nil {
 		a.eng.SetMuteLocal(on)
 	}
-	if a.sets != nil {
-		cfg := a.sets.Load()
-		cfg.MuteLocalOnConnect = on
-		_ = a.sets.Save(cfg)
-	}
+	a.saveSettings()
 }
 
 func (a *App) audioPage(c *ui.Context, p palette) {

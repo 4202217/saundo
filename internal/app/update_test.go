@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -208,6 +209,21 @@ func TestAcceptingAPrereleaseSetsTheEngine(t *testing.T) {
 	a.setBeta(true)
 	if !f.pre {
 		t.Fatal("the engine was not switched to prereleases")
+	}
+}
+
+// TestChannelChoicePersists pins the settings row the user reported: the app
+// writes the channel it just chose.
+func TestChannelChoicePersists(t *testing.T) {
+	a := updateApp(&fakeUpdates{enabled: true})
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	a.setBeta(true)
+	if !a.sets.Load().Beta {
+		t.Fatal("the beta choice did not persist")
+	}
+	a.setBeta(false)
+	if a.sets.Load().Beta {
+		t.Fatal("the stable choice did not persist")
 	}
 }
 

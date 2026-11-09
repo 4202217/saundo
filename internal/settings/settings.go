@@ -173,6 +173,22 @@ func (s *Store) Dir() string { return filepath.Dir(s.path) }
 func (s *Store) Load() Settings {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.loadLocked()
+}
+
+// Update loads the stored settings, calls fn with them, and saves the result,
+// all under the store lock. fn runs under that lock and must not call the
+// store. Each writer reads the file as it is now, so it cannot clobber fields
+// another writer changed since this process started.
+func (s *Store) Update(fn func(*Settings)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v := s.loadLocked()
+	fn(&v)
+	return s.saveLocked(v)
+}
+
+func (s *Store) loadLocked() Settings {
 	out := Default()
 	data, err := os.ReadFile(s.path)
 	if err != nil {
@@ -302,6 +318,10 @@ func clampLatency(ms int) int {
 func (s *Store) Save(v Settings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.saveLocked(v)
+}
+
+func (s *Store) saveLocked(v Settings) error {
 	if v.DeviceID == "" {
 		v.DeviceID = newDeviceID()
 	}

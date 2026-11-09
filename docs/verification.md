@@ -268,6 +268,7 @@ DPAPI. They are keyed by the receiver's `deviceid`.
 - 发送端名称 changes the name the receiver shows on its next connection.
 - 严格验证接收器 makes a bad server proof or signature abort the session.
 - 启动时自动连接上次设备 reconnects the last device when discovery finds it.
+- 更新通道 keeps the chosen 稳定版 or 测试版 across a restart.
 - Settings are stored in `%APPDATA%\saundo\settings.json`.
 
 ## PTP and Windows Firewall
@@ -1822,3 +1823,32 @@ The independent review confirmed eight issues. The fixes and their pins:
   passed in 55.8 s. `mingw32-make build` produced `0.6.0-beta.1` and
   relaunched the app. The mixed-pair retest passed with no reconnect after
   the takeover; the two-new-version run is still pending.
+
+## Settings write ownership and the update channel (2026-11-09)
+
+- **Symptom.** Choosing 稳定版 under 设置 → 更新 reverted to 测试版 after
+  restarting the app.
+- **Cause.** The app and the engine each kept a full `settings.Settings`
+  snapshot and each wrote the whole file. `Engine.shutdown` always flushed
+  its startup copy, so it restored `beta: true` over the app's
+  `beta: false`. Every field one side did not own had the same exposure.
+- **Fix.** `settings.Store.Update` loads, mutates, and saves under one lock.
+  `settings.MergeApp` and `settings.MergeEngine` copy only the fields each
+  side owns, and a reflection test requires every `Settings` field to be
+  classified. Both writers now read the current file before merging.
+- **Reproduction.** `TestEngineShutdownKeepsTheAppsChannelChoice` seeds
+  `beta: true`, builds the engine, saves `beta: false` as the app would,
+  calls `shutdown`, and asserts `beta` stayed false. It failed before the fix
+  with `engine shutdown restored the app's old channel`.
+- **Live.** The user switched the channel to 稳定版 and restarted the app;
+  the setting stayed. User confirmed, 2026-11-09.
+- **Pinned by** `TestEngineShutdownKeepsTheAppsChannelChoice`,
+  `TestUpdatePreservesFieldsItDoesNotTouch`, `TestEverySettingHasOneWriter`,
+  `TestMergeCopiesOnlyOwnedFields`, `TestAppSaveLeavesEngineFieldsAlone`,
+  `TestChannelChoicePersists`, `TestShowLatencySwitchPersists`,
+  `TestTrayAnimationCommandUpdatesSnapshotOnly`,
+  `TestMuteLocalCommandUpdatesStateOnly`, and `TestLatencySettingsReachStore`.
+- **Checks.** `mingw32-make check` green after the fix: gofmt, i18n check,
+  go vet, mygo vet, every package test, the verification map, and both
+  platform builds. `mingw32-make build` produced `0.6.0-beta.1` and
+  relaunched the app.

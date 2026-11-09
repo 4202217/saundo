@@ -74,11 +74,7 @@ func (a *App) rebuildFlyout() {
 func (a *App) setFlyoutPopover(on bool) {
 	a.flyoutPopover = on
 	a.cfg.FlyoutPopover = on
-	if a.sets != nil {
-		cfg := a.sets.Load()
-		cfg.FlyoutPopover = on
-		_ = a.sets.Save(cfg)
-	}
+	a.saveSettings()
 	if a.eng != nil {
 		a.eng.SetFlyoutPopover(on)
 	}
