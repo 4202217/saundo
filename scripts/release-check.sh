@@ -81,7 +81,9 @@ required=(
   cmd/saundo/mygo.json cmd/saundo/locales/en.json cmd/saundo/locales/zh-CN.json
   internal/app/update.go internal/app/update_dialog.go internal/app/update_history.go
   .github/workflows/release.yml scripts/release-check.sh scripts/release-notes.sh
-  .claude/skills/release/SKILL.md
+  .claude/skills/release/SKILL.md .claude/skills/ui-mockup/SKILL.md
+  .claude/skills/ui-mockup/assets/mockup-template.html
+  .claude/skills/ui-mockup/assets/flyout-template.html
 )
 for f in "${required[@]}"; do
   [ -f "$f" ] || fail "missing $f"
@@ -96,6 +98,9 @@ grep -q '更新页' README.zh-CN.md || fail "README.zh-CN.md lacks the update pa
 grep -Fq 'update window' README.md && fail "README.md says update window; use update page"
 grep -Fq '更新窗口' README.zh-CN.md && fail "README.zh-CN.md says 更新窗口; use 更新页"
 grep -q 'Docs audit' docs/releasing.md || fail "docs/releasing.md lacks a docs audit"
+grep -q '## UI mockup templates' docs/releasing.md || fail "docs/releasing.md lacks the UI mockup template refresh"
+grep -qi 'mockup templates' .claude/skills/release/SKILL.md || fail "the release skill lacks the UI mockup template step"
+grep -q 'ui-mockup/assets' docs/ui.md || fail "docs/ui.md does not point at the mockup templates"
 grep -q 'Latency modes' docs/verification.md || fail "docs/verification.md lacks latency modes"
 grep -q 'Tray animation' docs/verification.md || fail "docs/verification.md lacks tray animation"
 grep -q '更新 page' docs/verification.md || fail "docs/verification.md lacks the update page"

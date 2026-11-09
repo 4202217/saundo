@@ -34,17 +34,19 @@ Do not tag, push, or publish around a failed check. Do not rotate `MYGO_UPDATER_
 
 Use the version from the release request as `v<version>`. Without one, pick the next semver from the unreleased changelog (features minor, fixes patch), state it in your first line, and proceed. The range is every commit since the last release tag. The version in `cmd/saundo/mygo.json` must match the tag. A beta uses `0.4.2-beta.1`. A stable release uses `0.4.2`.
 
-## 2. Docs audit, UI review, and changelogs
+## 2. Docs audit, UI review, mockup templates, and changelogs
 
 Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release commit.
 
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
 - `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
-
-Run the UI review skill (`/ui-review`) before you write the changelogs. It inventories the copy, renders the preview matrix, and lists copy and layout findings by severity. Resolve every P0 and every terminology finding. Land the fixes as their own commit before the release commit; the changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the UI review outcome in `docs/verification.md`.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
+
+Run the UI review skill (`/ui-review`) before you write the changelogs. It inventories the copy, renders the preview matrix, and lists copy and layout findings by severity. Resolve every P0 and every terminology finding. Land the fixes as their own commit before the release commit; the changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the UI review outcome in `docs/verification.md`.
+
+Refresh the UI mockup templates after the UI review settles the interface and before the changelogs. The two assets under `.claude/skills/ui-mockup/assets/` and the skill's height rule must describe the interface this release ships, not the previous one. Compare them with the shipped palette, widgets, and geometry in `internal/app/theme.go`, `ui_kit.go`, `flyout.go`, `settings_window.go`, and `receivers_page.go`; update tokens, widget sizes, shell geometry, sample content, and both locale strings. Render the settings target, normal, and edge states and the flyout's idle, streaming, empty, and error states in zh-CN and English, light and dark, plus the flyout's media card and ambient states, into `.audit/release-<version>/mockups/`. Inspect every screenshot for clipping, overflow, and wrapped copy, and record the render directory in `docs/verification.md`. Land the template update as its own commit before the release commit, like the UI review fixes. Follow the render recipe in `.claude/skills/ui-mockup/SKILL.md`.
 
 Do not commit the docs, README, or changelog changes yet. The release commit comes after the maintainer's test is recorded.
 
@@ -173,4 +175,4 @@ For rollback, signing, and GPL compliance, follow `docs/releasing.md`. Do not ro
 
 ## Report
 
-State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the verification skill outcome, the UI review outcome (clean, changed, blocked), and the preview matrix path. If you stopped, name the failing gate and the file or command that proves it.
+State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, and the mockup template refresh (changed, already current, or the recorded gap) with its render directory. If you stopped, name the failing gate and the file or command that proves it.
