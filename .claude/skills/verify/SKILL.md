@@ -119,8 +119,8 @@ in the run, run the doctor again before concluding anything.
 
 Known trap it reports: `saundo.log` can be missing on disk while the app
 runs — a deleted file leaves the app writing to a dangling handle. The live
-log is then the flyout's 诊断日志 card (its 复制 button puts it on the
-clipboard).
+log is then the 诊断日志 row on the settings 关于 page (its 复制 button puts
+it on the clipboard).
 
 ## 4. Drive
 

@@ -32,6 +32,7 @@
   "aboutLicenseDesc": "GPL-3.0-only · © 2026 4202217",
   "aboutNotices": "Third-party notices",
   "aboutNoticesDesc": "AirPlay 2 references and open-source components",
+  "aboutLogDesc": "View and copy the recent runtime log",
   "settingsWindowTitle": "Settings · Saundo",
   "trayShowPanel": "Show tray panel",
   "traySettings": "Settings…",
@@ -139,7 +140,7 @@
   "actionOffline": "Offline",
   "actionConnect": "Connect",
   "commonSettings": "Settings",
-  "logTitle": "Diagnostics",
+  "logTitle": "Diagnostic log",
   "logRecentLines": "{n, plural, one {Last # line} other {Last # lines}}",
   "@logRecentLines": {
     "placeholders": {
@@ -380,7 +381,7 @@
   "volumeLabel": "Volume",
   "settingsNavUpdates": "Updates",
   "pageUpdatesDesc": "Versions, automatic checks, and installation.",
-  "pageAboutDesc": "Version, project links, and license.",
+  "pageAboutDesc": "Version, project links, license, and diagnostic log.",
   "settingsCurrentVersion": "Current version",
   "settingsAutoUpdateDesc": "Check once after launch, then daily",
   "settingsAutoDownload": "Download and install automatically",

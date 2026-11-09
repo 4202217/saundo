@@ -99,7 +99,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	for _, want := range []string{
 		"声渡", "AIRPLAY 2", "接收器", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开连接", "离线", "音量", "65%", "正在通过 HomePods 播放",
-		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义", "诊断日志",
+		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义",
 		"氛围灯", "沙丘",
 	} {
 		if !tt.HasText(want) {
@@ -120,7 +120,6 @@ func TestEnglishLocaleRenders(t *testing.T) {
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
 		"Saundo", "AIRPLAY 2", "Receivers", "3 receivers", "65%", "Streaming to HomePods",
-		"Diagnostics",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("English view is missing %q; texts: %q", want, tt.Texts())
@@ -196,7 +195,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无", "默认", "媒体", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
-		{pageAbout, []string{"关于", "版本、项目链接与许可。", "声渡 · Saundo", "开发版", "项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"}},
+		{pageAbout, []string{"关于", "版本、项目链接、许可与诊断日志。", "声渡 · Saundo", "开发版", "项目主页", "版本发布", "问题反馈", "诊断日志", "查看并复制最近的运行日志", "许可证", "第三方声明"}},
 	}
 	for _, tc := range cases {
 		a := previewApp()
@@ -438,13 +437,35 @@ func TestAboutPageOpensProjectLinks(t *testing.T) {
 	tt.Frame()
 	for _, label := range []string{"项目主页", "版本发布", "问题反馈", "许可证", "第三方声明"} {
 		if err := tt.Click(label); err != nil {
-			t.Fatal(err)
+			tt.Scroll(500, 300, 0, 160)
+			tt.Frame()
+			if err := tt.Click(label); err != nil {
+				t.Fatal(err)
+			}
 		}
 		tt.Frame()
 	}
 	want := []string{aboutRepoURL, aboutReleasesURL, aboutIssuesURL, aboutLicenseURL, aboutNoticesURL}
 	if got := tt.OpenedURLs(); !slices.Equal(got, want) {
 		t.Fatalf("opened %q, want %q", got, want)
+	}
+}
+
+func TestAboutPageOpensLogDialog(t *testing.T) {
+	a := previewApp()
+	a.page = pageAbout
+	a.snap.LogLines = []string{"2026-11-09 12:00:00 streaming"}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	if err := tt.Click(locales.LogTitle()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !a.showLog {
+		t.Fatal("the 诊断日志 row did not open the log dialog")
+	}
+	if !tt.HasText("2026-11-09 12:00:00 streaming") {
+		t.Fatalf("the log dialog is missing the log lines; texts: %q", tt.Texts())
 	}
 }
 
@@ -455,6 +476,7 @@ func TestFlyoutKeepsPlaybackControlsOnly(t *testing.T) {
 		locales.SettingsLaunchAtStart(), locales.ReceiverAutoToggle(),
 		locales.SettingsReconnect(), locales.SettingsStrictAuth(),
 		locales.ReceiverPasswordTitle(), locales.SettingsSystemOutput(),
+		locales.LogTitle(),
 	} {
 		if tt.HasText(moved) {
 			t.Fatalf("flyout still shows configuration %q; texts: %q", moved, tt.Texts())

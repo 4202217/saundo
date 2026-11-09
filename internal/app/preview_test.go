@@ -593,6 +593,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("dialog-password", password.view, flyoutWidth, visibleFlyoutHeight(password), false)
 
 	log := fixture()
+	log.page = pageAbout
 	log.showLog = true
 	log.snap.LogLines = []string{
 		"2026-11-01 12:00:01 saundo 0.3.0",
@@ -602,7 +603,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		"2026-11-01 12:00:04 ptp: follower ready",
 		"2026-11-01 12:00:05 capture open: PHL 27E2F7901 (NVIDIA High Definition Audio) (48000 Hz)",
 	}
-	save("dialog-log", log.view, flyoutWidth, visibleFlyoutHeight(log), false)
+	save("dialog-log", log.settingsView, 720, 500, false)
 
 	frames("probe-flyout-enter", fixture().view, flyoutWidth, visibleFlyoutHeight(fixture()))
 	pinProbe := fixture()

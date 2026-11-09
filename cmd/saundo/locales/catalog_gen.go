@@ -186,6 +186,16 @@ func (msgs Messages) AboutNoticesDesc() string {
 	return Catalog.Format(msgs.locale, "aboutNoticesDesc", nil)
 }
 
+// AboutLogDesc says "View and copy the recent runtime log"
+// in the language the app shows.
+func AboutLogDesc() string { return In(i18n.Locale()).AboutLogDesc() }
+
+// AboutLogDesc says "View and copy the recent runtime log"
+// in the language of msgs.
+func (msgs Messages) AboutLogDesc() string {
+	return Catalog.Format(msgs.locale, "aboutLogDesc", nil)
+}
+
 // SettingsWindowTitle says "Settings · Saundo"
 // in the language the app shows.
 func SettingsWindowTitle() string { return In(i18n.Locale()).SettingsWindowTitle() }
@@ -740,11 +750,11 @@ func (msgs Messages) CommonSettings() string {
 	return Catalog.Format(msgs.locale, "commonSettings", nil)
 }
 
-// LogTitle says "Diagnostics"
+// LogTitle says "Diagnostic log"
 // in the language the app shows.
 func LogTitle() string { return In(i18n.Locale()).LogTitle() }
 
-// LogTitle says "Diagnostics"
+// LogTitle says "Diagnostic log"
 // in the language of msgs.
 func (msgs Messages) LogTitle() string {
 	return Catalog.Format(msgs.locale, "logTitle", nil)
@@ -2578,11 +2588,11 @@ func (msgs Messages) PageUpdatesDesc() string {
 	return Catalog.Format(msgs.locale, "pageUpdatesDesc", nil)
 }
 
-// PageAboutDesc says "Version, project links, and license."
+// PageAboutDesc says "Version, project links, license, and diagnostic log."
 // in the language the app shows.
 func PageAboutDesc() string { return In(i18n.Locale()).PageAboutDesc() }
 
-// PageAboutDesc says "Version, project links, and license."
+// PageAboutDesc says "Version, project links, license, and diagnostic log."
 // in the language of msgs.
 func (msgs Messages) PageAboutDesc() string {
 	return Catalog.Format(msgs.locale, "pageAboutDesc", nil)

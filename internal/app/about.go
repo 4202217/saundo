@@ -33,16 +33,23 @@ func (a *App) aboutPage(c *ui.Context, p palette) {
 			})
 		})
 	})
-	a.aboutProjectCards(c, p)
+	a.aboutCards(c, p)
 }
 
-func (a *App) aboutProjectCards(c *ui.Context, p palette) {
+func (a *App) aboutCards(c *ui.Context, p palette) {
 	pageCard(c, p, func() {
 		aboutLinkRow(c, p, locales.AboutHome(), locales.AboutHomeDesc(), aboutRepoURL)
 		rowLine(c, p)
 		aboutLinkRow(c, p, locales.AboutReleases(), locales.AboutReleasesDesc(), aboutReleasesURL)
 		rowLine(c, p)
 		aboutLinkRow(c, p, locales.AboutIssues(), locales.AboutIssuesDesc(), aboutIssuesURL)
+	})
+
+	pageCard(c, p, func() {
+		aboutRow(c, p, locales.LogTitle(), locales.AboutLogDesc(), iconChevronRight, func() {
+			a.showLog = true
+			a.logEntered = false
+		})
 	})
 
 	pageCard(c, p, func() {
@@ -114,17 +121,23 @@ func isBuildStamp(rest string) bool {
 // aboutLinkRow is a settings row that opens a page in the browser. The whole
 // row is the target, so the external-link glyph appears only where it works.
 func aboutLinkRow(c *ui.Context, p palette, title, sub, url string) {
+	aboutRow(c, p, title, sub, iconExternal, func() { c.OpenURL(url) })
+}
+
+// aboutRow is a settings row whose whole surface performs one action. The
+// glyph says where the action lands: another app or another view.
+func aboutRow(c *ui.Context, p palette, title, sub string, glyph *ui.SVG, onClick func()) {
 	row := ui.ButtonBase(c).MinHeight(50).Padding(7, 14).Gap(12).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Label(title)
 	if row.Hovered() {
 		row.Background(p.pill)
 	}
-	row.OnClick(func() { c.OpenURL(url) })
+	row.OnClick(onClick)
 	row.Children(func() {
 		ui.Column(c).Grow(1).Gap(2).Children(func() {
 			ui.Text(c, title).FontSize(13).FontWeight(500).SingleLine()
 			ui.Text(c, sub).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 		})
-		ui.Icon(c, iconExternal).Size(13, 13).TextColor(p.faint)
+		ui.Icon(c, glyph).Size(13, 13).TextColor(p.faint)
 	})
 }
