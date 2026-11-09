@@ -1644,3 +1644,8 @@ and the verification map is corrected.
   dmg, and `SHA256SUMS`; `sha256sum -c` passed for all six checksummed
   files. The manifest names 0.6.0, is signed, and carries the ASCII English
   notes. The tag stays on `14f27cc`; publishing is the remaining gate.
+
+- **Publish (2026-11-09).** `gh release edit v0.6.0 --draft=false`
+  published the stable release. The public feed serves the signed 0.6.0
+  manifest; the installer and dmg URLs follow to 200. A live update from an
+  installed 0.5.0 build is still owed.
