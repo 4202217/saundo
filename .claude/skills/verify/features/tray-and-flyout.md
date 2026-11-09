@@ -58,24 +58,39 @@ by its first tooltip, which is the localized brand (`声渡` under zh-CN,
 appear/vanish (`MyGoFlyoutShadow`). A second launch must exit 0 and leave
 one process —
 checking `$?` after launching `bin/saundo.exe` documents the handover. Animation frames
-are pinned headless by `TestTrayAnimationFaces`; the toggle paths by
+are pinned headless by `TestTrayAnimationFaces`; the app toggle by
+`TestTrayAnimationSettingPersists`, the engine command by
+`TestTrayAnimationCommandPersists`, and the store default by
 `TestTrayAnimationDefaultsOnAndRoundTrips`.
+
+The commands and the `MyGoFlyoutShadow`/`saundo.exe` paths above are
+Windows-only. On macOS use the menu-bar icon, `screencapture -x`, and the
+log at `~/Library/Application Support/saundo/saundo.log`.
 
 Proven end state: click toggles the panel (handle 0 ⇄ nonzero), Escape
 dismisses it, the tooltip carries the live status, and exactly one
-saundo.exe process exists throughout.
+saundo.exe process exists throughout. The recorded live run covered an
+outside click and a UIA invoke, not an Escape press.
 
 ## Gotchas
 
 - The tray icon face follows the phase (`faceOf`), so it does encode the
   session state; the tooltip is still the authoritative text.
-- The flyout is frameless and layered: a plain screen grab can miss it;
-  use PrintWindow (capture-window.ps1), and expect class
-  `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`) — a
+- The flyout is frameless and transparent: a WS_POPUP/WS_EX_TOOLWINDOW
+  window drawn through DirectComposition, not WS_EX_LAYERED. A plain
+  screen grab can miss it; use PrintWindow (capture-window.ps1), and expect
+  class `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`) — a
   capture reporting ~420 px (or a 1.25× multiple of it under DPI
   virtualization) is correct; 480 was an old design value. On macOS with
   the tray-panel-as-popover style on, the window is a system popover, not
-  `MyGoFlyoutShadow` (`flyout_window.go`).
+  `MyGoFlyoutShadow` (`flyout_window.go`). That style activates the app
+  inside mygo (showPopover calls activateIgnoringOtherApps), so an open
+  settings window comes forward; the known limitation is in
+  docs/platforms.md. The default rounded style is a nonactivating panel and
+  does not.
+- On Windows `showWindow` calls `mygo.App.Focus()` through `focus_other.go`;
+  on macOS it is a no-op (`focus_darwin.go`). The Windows tray focus was not
+  exercised live, so the proven end state does not cover it.
 - A flyout hidden at capture time is a normal state (app in tray), not a
   failure — the doctor lists window absence as OK.
 - `SetIcon` costs 0.5–0.8 ms per frame at 100 ms; do not "fix" explorer CPU

@@ -34,8 +34,9 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   receiver is hidden and returns with its saved settings. The active
   session's row stays reachable even when it just went offline. The 已启用
   head renders only when the list has rows. An empty page is plain prose:
-  one discovery line when nothing is found, or an all-hidden title plus the
-  recovery hint when every row is hidden; the add row is the only plus.
+  a title plus the discovery hint when nothing is found, or an all-hidden
+  title plus the recovery hint when every row is hidden; the add row is the
+  only plus.
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 托盘面板中显示
   header switch that shows or hides the flyout's latency segment row, and
@@ -58,8 +59,8 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 - 正在播放 page: one card. The header is the 媒体卡片 title with the
   托盘面板中显示 chip and the display switch (`showNowPlayingPanel`, on);
   below it a preview of the real media card (the live session, or a sample
-  card when nothing plays); a live session's meter animates at 30 fps, and the
-  sample's stays still. Then a 封面 row whose three-way segmented control
+  card when nothing plays); a playing live session's meter animates at 30 fps
+  (Reduce Motion off), a paused one stays still, and the sample's stays still. Then a 封面 row whose three-way segmented control
   sits at its right (无 / 默认 / 媒体, default media; persists as
   `coverMode`), then 播放控制 (`playbackControls`), 封面配色
   (`coverColors`), and 音频电平 (`audioLevel`). The receiver track info is always pushed; there
@@ -67,8 +68,9 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   preview and every row stay active. New
   `settings.json` keys default on; missing keys read their defaults; changes
   save immediately and resize the flyout.
-- 更新 page: update states, channel (stable/beta), release-history list —
-  see [updates.md](updates.md).
+- 更新 page: update states, channel (stable/beta), and a Full-notes link to
+  the release-notes dialog, which holds the release history — see
+  [updates.md](updates.md).
 - 关于 page: the identity card shows the app's smile mark and the version
   line. Below it are the project links and the license/notices rows, and the
   version line never shows the git describe suffix.
@@ -93,8 +95,10 @@ Settings defaults:
 go test -run 'TestDefaultsEnableLocalMute|TestLampDefaultsOnAndCover|TestLampOldFileLoadsDefaults' -v ./internal/settings/
 ```
 
-Live engine path for the mute (mutes the receiver first, drives the engine
-directly, restores the local endpoint and the receiver's remembered volume):
+Live engine path for the mute (Windows-only; the test is windows-tagged.
+macOS uses the Core Audio output-device mute. It mutes the receiver first,
+drives the engine directly, and restores the local endpoint and the
+receiver's remembered volume):
 
 ```bash
 SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
