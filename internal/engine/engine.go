@@ -1905,7 +1905,9 @@ func (e *Engine) markSettingsDirty() {
 func (e *Engine) saveSettingsNow() {
 	e.settingsDirtyAt = time.Time{}
 	if e.sets != nil {
-		_ = e.sets.Save(e.setsValue)
+		_ = e.sets.Update(func(stored *settings.Settings) {
+			settings.MergeEngine(stored, &e.setsValue)
+		})
 	}
 }
 

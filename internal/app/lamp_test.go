@@ -7,7 +7,6 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
-	"saundo/internal/engine"
 	"saundo/internal/settings"
 )
 
@@ -344,17 +343,25 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 	}
 }
 
-// TestAppSaveKeepsEngineLamp pins the single-writer rule: an app-only save
-// must carry the engine's current lamp choice, not the value loaded at
-// startup.
-func TestAppSaveKeepsEngineLamp(t *testing.T) {
+// TestAppSaveLeavesEngineFieldsAlone pins the single-writer rule: an app-only
+// save writes the app's fields and leaves the engine's stored ones as they
+// are, even when the app's in-memory copy holds a stale value.
+func TestAppSaveLeavesEngineFieldsAlone(t *testing.T) {
 	a := previewApp()
 	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
-	a.apply(engine.Snapshot{LampOff: false, LampPreset: "ember"})
+	cfg := a.sets.Load()
+	cfg.Lamp = settings.LampSettings{Cover: true, Preset: "ember"}
+	if err := a.sets.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	a.cfg.Lamp = settings.LampSettings{Cover: false, Preset: "moss"}
 	a.cfg.LaunchAtStart = true
 	a.saveSettings()
 	got := a.sets.Load()
-	if got.Lamp.Off || got.Lamp.Preset != "ember" {
-		t.Fatalf("app save wrote lamp %+v, want light on + ember", got.Lamp)
+	if got.Lamp != (settings.LampSettings{Cover: true, Preset: "ember"}) {
+		t.Fatalf("app save wrote lamp %+v, want cover on + ember", got.Lamp)
+	}
+	if !got.LaunchAtStart {
+		t.Fatal("app save did not persist LaunchAtStart")
 	}
 }

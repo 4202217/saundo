@@ -998,29 +998,37 @@ func TestGroupMemberRingsTakeOverCapture(t *testing.T) {
 	}
 }
 
-func TestTrayAnimationCommandPersists(t *testing.T) {
+// TestTrayAnimationCommandUpdatesSnapshotOnly pins the ownership split: the
+// engine reports the new state in its snapshot, but the app owns the
+// persistence and the engine's save leaves the stored value alone.
+func TestTrayAnimationCommandUpdatesSnapshotOnly(t *testing.T) {
 	h := newHarness(t)
+	cfg := h.e.sets.Load()
+	cfg.TrayAnimation = false
+	if err := h.e.sets.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	h.e.handleCommand(command{kind: cmdTrayAnimation, value: 1})
+	if !h.e.buildSnapshot().TrayAnimation {
+		t.Fatal("snapshot did not turn tray animation on")
+	}
+	h.e.setsValue.Volume = 42
+	h.e.markSettingsDirty()
+	h.flushSettings()
+	got := h.e.sets.Load()
+	if got.Volume != 42 {
+		t.Fatalf("the engine's save did not write its own volume: %v", got.Volume)
+	}
+	if got.TrayAnimation {
+		t.Fatal("the engine's save wrote the app-owned tray animation")
+	}
 	h.e.handleCommand(command{kind: cmdTrayAnimation, value: 0})
 	if h.e.buildSnapshot().TrayAnimation {
 		t.Fatal("snapshot kept tray animation on")
 	}
 	h.flushSettings()
 	if h.e.sets.Load().TrayAnimation {
-		t.Fatal("tray animation off was not saved")
-	}
-	h.e.setsValue.Volume = 42
-	h.e.markSettingsDirty()
-	h.flushSettings()
-	if h.e.sets.Load().TrayAnimation {
-		t.Fatal("a later settings save reverted tray animation")
-	}
-	h.e.handleCommand(command{kind: cmdTrayAnimation, value: 1})
-	if !h.e.buildSnapshot().TrayAnimation {
-		t.Fatal("snapshot did not turn tray animation on")
-	}
-	h.flushSettings()
-	if !h.e.sets.Load().TrayAnimation {
-		t.Fatal("tray animation on was not saved")
+		t.Fatal("the engine's save wrote the app-owned tray animation")
 	}
 }
 
@@ -1100,10 +1108,23 @@ func TestLatencyApplyReportsOfflineDevice(t *testing.T) {
 
 func TestLatencySettingsReachStore(t *testing.T) {
 	h := newHarness(t)
+	// The app owns the show-in-panel switch; seed it off so the engine's save
+	// cannot pass by agreeing with the default.
+	cfg := h.e.sets.Load()
+	cfg.ShowLatencySwitch = false
+	if err := h.e.sets.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
 	h.e.handleCommand(command{kind: cmdLatencySettings, text: "standard", value: 1500, show: true})
+	if !h.e.setsValue.ShowLatencySwitch {
+		t.Fatal("the command did not update the engine state")
+	}
 	h.flushSettings()
 	got := h.e.sets.Load()
-	if got.LatencyMode != settings.LatencyStandard || got.LatencyCustomMS != 1500 || !got.ShowLatencySwitch {
+	if got.LatencyMode != settings.LatencyStandard || got.LatencyCustomMS != 1500 {
 		t.Fatalf("latency settings = %+v", got)
+	}
+	if got.ShowLatencySwitch {
+		t.Fatal("the engine's save wrote the app-owned show switch")
 	}
 }

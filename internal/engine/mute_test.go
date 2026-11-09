@@ -258,11 +258,22 @@ func TestMuteGuardCorruptIsLeftAlone(t *testing.T) {
 	}
 }
 
-func TestMuteLocalSettingPersists(t *testing.T) {
+// TestMuteLocalCommandUpdatesStateOnly pins the ownership split: the app owns
+// the persisted preference, so the engine's save leaves the stored value
+// alone even after the command updates its runtime state.
+func TestMuteLocalCommandUpdatesStateOnly(t *testing.T) {
 	h := newHarness(t)
+	cfg := h.e.sets.Load()
+	cfg.MuteLocalOnConnect = false
+	if err := h.e.sets.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
 	h.e.handleCommand(command{kind: cmdMuteLocal, show: true})
+	if !h.e.setsValue.MuteLocalOnConnect {
+		t.Fatal("the command did not update the engine state")
+	}
 	h.flushSettings()
-	if cfg := h.e.sets.Load(); !cfg.MuteLocalOnConnect {
-		t.Fatal("MuteLocalOnConnect did not persist")
+	if cfg := h.e.sets.Load(); cfg.MuteLocalOnConnect {
+		t.Fatal("the engine's save wrote the app-owned mute preference")
 	}
 }

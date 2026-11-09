@@ -935,11 +935,7 @@ func (a *App) setLaunchAtStart(on bool) {
 func (a *App) setTrayAnimation(on bool) {
 	a.trayAnimation = on
 	a.cfg.TrayAnimation = on
-	if a.sets != nil {
-		cfg := a.sets.Load()
-		cfg.TrayAnimation = on
-		_ = a.sets.Save(cfg)
-	}
+	a.saveSettings()
 	if a.eng != nil {
 		a.eng.SetTrayAnimation(on)
 	}
@@ -1087,10 +1083,7 @@ func (a *App) setLanguage(label string) {
 		tag = "zh-CN"
 	}
 	a.cfg.Language = tag
-	cfg := a.sets.Load()
-	cfg.Language = tag
-	a.cfg = cfg
-	_ = a.sets.Save(cfg)
+	a.saveSettings()
 	mygo.App.SetLocale(tag)
 }
 
@@ -1116,11 +1109,7 @@ func (a *App) setTheme(label string) {
 		mode = settings.ThemeDark
 	}
 	a.cfg.Theme = mode
-	if a.sets != nil {
-		cfg := a.sets.Load()
-		cfg.Theme = mode
-		_ = a.sets.Save(cfg)
-	}
+	a.saveSettings()
 	if a.setThemeSource != nil {
 		a.setThemeSource(appearanceSource(mode))
 	}

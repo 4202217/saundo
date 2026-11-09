@@ -396,6 +396,19 @@ func TestMuteLocalSettingPersists(t *testing.T) {
 	}
 }
 
+func TestShowLatencySwitchPersists(t *testing.T) {
+	a := previewApp()
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	a.setShowLatencySwitch(false)
+	if a.sets.Load().ShowLatencySwitch {
+		t.Fatal("turning the panel switch off did not persist")
+	}
+	a.setShowLatencySwitch(true)
+	if !a.sets.Load().ShowLatencySwitch {
+		t.Fatal("turning the panel switch on did not persist")
+	}
+}
+
 func TestAboutVersionText(t *testing.T) {
 	stable := locales.SettingsChannelStable()
 	beta := locales.SettingsChannelBeta()

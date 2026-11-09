@@ -11,6 +11,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"saundo/cmd/saundo/locales"
+	"saundo/internal/settings"
 )
 
 // updatePhase is what the update surfaces show.
@@ -71,11 +72,13 @@ func (mygoUpdates) Relaunch() { mygo.App.Relaunch() }
 
 func (mygoUpdates) SetPrereleases(on bool) { mygo.Updater.SetPrereleases(on) }
 
-// saveSettings writes the update preferences; a test without a store keeps
-// them in memory only.
+// saveSettings writes the app-owned preferences over the stored file; a test
+// without a store keeps them in memory only.
 func (a *App) saveSettings() {
 	if a.sets != nil {
-		_ = a.sets.Save(a.cfg)
+		_ = a.sets.Update(func(stored *settings.Settings) {
+			settings.MergeApp(stored, &a.cfg)
+		})
 	}
 }
 
