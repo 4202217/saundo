@@ -107,6 +107,11 @@ Core Audio property codes stay inside the leaf packages.
   `brew install --cask` (brew does not quarantine by default), a terminal
   `curl` download, or `xattr -dr com.apple.quarantine`. The updater stays
   off until a signed, notarized feed exists.
+- **Tray popover activation, known limitation**: mygo's `NSPopover` path
+  calls `activateIgnoringOtherApps` for a tray flyout, so an open settings
+  window comes forward with the app. v0.8.0, v0.8.3, and main offer no
+  nonactivating option; `ShowInactive` takes the same path. Left unfixed
+  for now: a proper fix needs a mygo option.
 - **Local signing**: set `SAUNDO_MAC_SIGN_IDENTITY` to an Apple Development
   or Developer ID identity for a stable local signature; without it the
   build signs ad hoc. No certificate is committed, so CI and other Macs
