@@ -768,6 +768,14 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		s.localIP = ev.Local.IP
 		s.hostIP = ev.Peer.IP
 		s.info("RTSP connected to %s:%d", s.host, ev.Peer.Port)
+		// The socket itself proves the target is this host, even when
+		// discovery could not classify it (a manual row or a failed
+		// interface read). Refuse before pairing; the receiver rejects the
+		// session SETUP anyway, and a stream to its own host would loop.
+		if s.localIP != "" && s.localIP == s.hostIP {
+			s.fail("本机正在运行声渡，不能作为接收器。")
+			return
+		}
 		s.beginAuthChain()
 	case raopio.EventTCPConnectFailed:
 		if ev.TCP == raopio.TCPEvent {

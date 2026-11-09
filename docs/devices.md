@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # Receiver profiles
 
@@ -58,6 +58,7 @@ Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
 - **PTP required** (feature bit 41); the same follower serves it, its clock likewise boot-relative.
 - Latency: `latencyMin 11025`, `latencyMax 88200`, plus a 66150-sample scheduling latency.
 - **Now Playing metadata.** While streaming, the sender's DMAP `mlit` and the follow-up image `SET_PARAMETER` reach its Now Playing UI. The pushed SMTC cover was confirmed on screen on 2026-11-07 (MacBook Air, `Mac14,2`).
+- **The local receiver is not a target.** The receiver advertised by the machine running saundo is marked `Local` by discovery. The receiver list keeps it in the hidden group with a 本机 chip and no enable switch or expander, the flyout never lists it, the engine refuses a connect before pairing, and the sender stops a connection whose socket local and peer addresses match, which covers a manual row to this host. On 2026-11-10 the sender ran on the same MacBook Air (`Mac14,2`, `192.168.31.200`, deviceid `02:8F:B8:25:3A:B2`); HAP pairing, pair-verify, the encrypted control channel, and `GET /info` succeeded, the AP2 session SETUP returned 401 with the Digest challenge, and the authenticated replay returned 400. The same receiver completed the replay and reached streaming from another machine on 2026-11-01, so the Mac profile is unchanged; the receiver refuses a session from its own host. A local target would also share one audio path and loop. Evidence: [verification.md](verification.md), 2026-11-10.
 
 ## Apple TV (on-screen PIN)
 

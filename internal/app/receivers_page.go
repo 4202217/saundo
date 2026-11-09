@@ -198,7 +198,7 @@ func (a *App) receiverAddRow(c *ui.Context, p palette) {
 // receiverRow is one card row: glyph, name with chips, enable switch,
 // chevron, and the expanded config. Hidden rows grey their parts.
 func (a *App) receiverRow(c *ui.Context, p palette, v receivers.View, hiddenGroup, divider bool) {
-	open := a.receiverOpen[v.Key]
+	open := !v.Local && a.receiverOpen[v.Key]
 	row := ui.Column(c).Key(v.Key).Shrink(0).
 		Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
 	if divider {
@@ -215,6 +215,16 @@ func (a *App) receiverRow(c *ui.Context, p palette, v receivers.View, hiddenGrou
 // receiverRowHead is the card's clickable head: glyph, name column, edit
 // button (expanded manual rows), the enable switch, and the chevron.
 func (a *App) receiverRowHead(c *ui.Context, p palette, v receivers.View, open, hiddenGroup bool) {
+	// The local receiver is not a target: its row is a label, with no
+	// switch and no expander, so it cannot be enabled or configured.
+	if v.Local {
+		ui.Row(c.Key("head:"+v.Key)).MinHeight(56).Padding(9, 14).Gap(12).
+			AlignItems(ui.Center).Justify(ui.Start).FillWidth().Children(func() {
+			a.receiverGlyph(c, p, v, false, hiddenGroup)
+			a.receiverNameCol(c, p, v, false)
+		})
+		return
+	}
 	head := ui.ButtonBase(c.Key("head:"+v.Key)).MinHeight(56).Padding(9, 14).Gap(12).
 		AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
 		Label(v.Name).FillWidth()
@@ -322,6 +332,9 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			}
 			ui.Text(c, v.Name).FontSize(13).FontWeight(500).TextColor(nameColor).
 				SingleLine().Ellipsis("…").Shrink(1)
+			if v.Local {
+				inlineChip(c, p, locales.ReceiverChipLocal(), chipNeutral, v.Hidden)
+			}
 			if v.IsManual() {
 				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
 			}

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # saundo Architecture and Technology Selection
 
@@ -196,6 +196,8 @@ path for Apple TV.
 **Core Audio capture and macOS privacy.** The process tap needs TCC audio-capture consent keyed to the app bundle, and macOS 15+ drops mDNS, RTSP, and PTP until Local Network is allowed. A tap-only aggregate device refuses to start; the output device must be a sub-device and the clock master. The distribution is ad-hoc signed until a Developer ID exists, so a quarantined download needs the user's Open Anyway approval once per cdhash. See [platforms.md](platforms.md).
 
 **mDNS and firewall.** Windows Firewall, multiple NICs, and VPNs all affect discovery. The multicast browse is primary; when a receiver's multicast does not reach the PC, a directed query on UDP 5353 to addresses in the ARP neighbor table and the remembered receiver list still resolves it.
+
+**A receiver on the sender's own host is never a target.** Discovery marks an advertisement whose address is one of this host's interface addresses as local. The receiver list keeps the row in the hidden group to show that it was seen, but the row cannot be enabled or expanded, the flyout never lists it, the engine refuses every connect to it, and the sender stops a connection whose local and peer addresses match. The sender and its own receiver share one audio path and would loop, and macOS refuses the AP2 session SETUP from the receiver's own host. See [devices.md](devices.md).
 
 **HomePod OS differences.** Confirmed on real hardware on 2026-10-31: HomePod
 software 27.2 accepts an NTP session SETUP and RECORD but silently ignores the

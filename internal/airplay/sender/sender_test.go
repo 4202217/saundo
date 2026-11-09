@@ -357,6 +357,28 @@ func (readyClock) Activate() {}
 
 // TestPTPWaitToleratesSlowClock keeps the session alive through the extended
 // PTP window and fails with the firewall hint only after it expires.
+// TestRefusesASessionToThisHost pins the socket-level guard: when the
+// connected socket's local and peer addresses match, the target is this
+// host, so the sender stops before sending a pairing request.
+func TestRefusesASessionToThisHost(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.localIP = "192.168.1.10"
+	r.peerIP = "192.168.1.10"
+	r.start()
+	if len(r.launched) != 1 || r.launched[0].ok {
+		t.Fatalf("launched = %+v, want one failure", r.launched)
+	}
+	if !strings.Contains(r.launched[0].err, "本机") {
+		t.Fatalf("error = %q, want the local receiver message", r.launched[0].err)
+	}
+	if r.sender.State() != StateIdle {
+		t.Fatalf("state = %s, want idle", r.sender.State())
+	}
+	if len(r.rx.requests) != 0 {
+		t.Fatalf("pairing requests reached the receiver: %v", r.rx.requests)
+	}
+}
+
 func TestPTPWaitToleratesSlowClock(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	r.sender.SetPTPClock(neverReadyClock{})

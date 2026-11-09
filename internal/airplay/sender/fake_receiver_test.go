@@ -57,6 +57,10 @@ type rig struct {
 	volumeEvents []float64
 	receiverMS   []int
 	logs         []string
+	// localIP and peerIP override the fake connection's endpoints, so a test
+	// can present the receiver at this host's own address.
+	localIP string
+	peerIP  string
 }
 
 func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *storedPairing) *rig {
@@ -151,10 +155,17 @@ func (r *rig) start() {
 type fakeIO struct{ r *rig }
 
 func (f *fakeIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) error {
+	local, peer := f.r.localIP, f.r.peerIP
+	if local == "" {
+		local = "192.168.1.10"
+	}
+	if peer == "" {
+		peer = "192.168.1.20"
+	}
 	f.r.emit(raopio.Event{
 		Kind: raopio.EventTCPConnected, TCP: ch,
-		Local: raopio.Endpoint{IP: "192.168.1.10", Port: 40000},
-		Peer:  raopio.Endpoint{IP: "192.168.1.20", Port: port},
+		Local: raopio.Endpoint{IP: local, Port: 40000},
+		Peer:  raopio.Endpoint{IP: peer, Port: port},
 	})
 	return nil
 }

@@ -181,6 +181,7 @@
   "receiverEmptyHiddenHint": "在下方“已隐藏”组里重新启用这台接收器即可恢复。",
   "receiverEmptyAllHiddenTitle": "所有接收器都已隐藏",
   "receiverDiscoveryHint": "网络上的 AirPlay 接收器会自动出现在这里。",
+  "receiverChipLocal": "本机",
   "receiverChipManual": "手动添加",
   "receiverChipAuto": "启动时",
   "receiverChipHidden": "已隐藏",

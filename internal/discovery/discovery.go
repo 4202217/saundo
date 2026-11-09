@@ -5,6 +5,8 @@
 package discovery
 
 import (
+	"net"
+	"net/netip"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,6 +53,13 @@ type Service struct {
 	cycles         int
 	seedsMu        sync.Mutex
 	seeds          []string
+
+	// interfaceAddrs lists this host's own addresses, injected so tests can
+	// mark a device local. localSet keeps the last successful read: a failed
+	// read is unknown, not empty, so the previous set stands.
+	interfaceAddrs func() ([]net.Addr, error)
+	localMu        sync.Mutex
+	localSet       map[netip.Addr]struct{}
 }
 
 type seen struct {
@@ -80,6 +89,7 @@ func New(queryInterval, queryTimeout time.Duration) *Service {
 		unicastPort:    defaultUnicastPort,
 		unicastTimeout: 500 * time.Millisecond,
 		unicastEvery:   unicastEveryPasses,
+		interfaceAddrs: net.InterfaceAddrs,
 	}
 }
 
@@ -182,6 +192,7 @@ func (s *Service) run() {
 }
 
 func (s *Service) queryOnce() {
+	local := s.localAddresses()
 	var wg sync.WaitGroup
 	// The directed pass is parallel to the browse so a slow neighbor does not
 	// extend the cycle by its full timeout.
@@ -203,6 +214,7 @@ func (s *Service) queryOnce() {
 				defer read.Done()
 				for e := range entries {
 					if d, ok := parseEntry(e, service); ok {
+						d.Local = localHost(local, d.Host)
 						s.merge(d)
 					}
 				}
@@ -238,6 +250,7 @@ func (s *Service) merge(d device.Device) {
 		merged.Host = d.Host
 		merged.Port = d.Port
 	}
+	merged.Local = d.Local
 	if d.Model != "" {
 		merged.Model = d.Model
 	}
@@ -292,6 +305,65 @@ func (s *Service) publish() {
 		default:
 		}
 	}
+}
+
+// localAddresses returns the host's own addresses as a set. A failed read
+// keeps the previous set; before the first successful read the set is nil and
+// localHost marks nothing, so an unknown host stays a candidate.
+func (s *Service) localAddresses() map[netip.Addr]struct{} {
+	addrs, err := s.interfaceAddrs()
+	if err != nil {
+		s.localMu.Lock()
+		defer s.localMu.Unlock()
+		return s.localSet
+	}
+	set := make(map[netip.Addr]struct{}, len(addrs))
+	for _, a := range addrs {
+		if ip, ok := addrIP(a); ok {
+			set[ip.Unmap()] = struct{}{}
+		}
+	}
+	s.localMu.Lock()
+	s.localSet = set
+	s.localMu.Unlock()
+	return set
+}
+
+// addrIP extracts the address from the net.Addr forms InterfaceAddrs returns.
+func addrIP(a net.Addr) (netip.Addr, bool) {
+	var raw net.IP
+	switch v := a.(type) {
+	case *net.IPNet:
+		raw = v.IP
+	case *net.IPAddr:
+		raw = v.IP
+	}
+	if raw == nil {
+		return netip.Addr{}, false
+	}
+	ip, ok := netip.AddrFromSlice(raw)
+	if !ok {
+		return netip.Addr{}, false
+	}
+	return ip, true
+}
+
+// localHost reports whether host is one of this host's own addresses. A
+// hostname is unknown, not local; the advertisement carries an IP.
+func localHost(set map[netip.Addr]struct{}, host string) bool {
+	if len(set) == 0 {
+		return false
+	}
+	ip, err := netip.ParseAddr(strings.TrimSpace(host))
+	if err != nil {
+		return false
+	}
+	ip = ip.Unmap()
+	if ip.Zone() != "" {
+		ip = ip.WithZone("")
+	}
+	_, ok := set[ip]
+	return ok
 }
 
 func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {

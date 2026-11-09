@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # UI copy standard
 
@@ -15,8 +15,9 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | The media card | 媒体卡片 | media card | 媒体卡 (short form) |
 | Ambient light | 氛围灯 | ambient light | 顶屏灯光 as the feature name |
 | The light's target | 顶屏 | top display | 屏幕 |
+| A receiver on the machine running saundo | 本机 | local | 自身接收器, this device, this Mac as the chip |
 
-The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays.
+The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target, and its row is the only place `本机` / `local` appears.
 
 ## Latency and stability
 
