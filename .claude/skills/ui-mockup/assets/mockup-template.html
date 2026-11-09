@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>saundo · UI mockup</title>
 <!--
-  saundo UI mockup template.
+  saundo settings-window mockup template.
 
   Copy this file to .audit/mockups/<topic>/mockup.html and edit only the
   marked blocks: NAV, PAGE, STATES, COPY, the three view functions, and the
@@ -18,8 +18,10 @@
   Headless shots can select a state from the URL:
     ?view=target|normal|edge&lang=zh|en&dark=0|1&zoom=1|1.25|1.5
 
-  The window is the real settings surface: 720x500, 190 sidebar, 14/20
-  page insets. The page body is the slot the mockup exists to decide.
+  The window is the real settings surface: 720x500, a 190 sidebar with nine
+  pages, and a 14/20 page inset. The page body is the slot the mockup exists
+  to decide. Tokens mirror internal/app/theme.go; widget sizes mirror
+  internal/app/ui_kit.go and settings_window.go.
 -->
 <style>
   * { box-sizing: border-box; }
@@ -137,36 +139,27 @@
 
   .sidebar {
     width: 190px; flex: none; display: flex; flex-direction: column;
-    padding: 10px; border-right: 1px solid var(--line2); background: var(--bg);
+    padding: 12px 10px 10px; border-right: 1px solid var(--line2); background: var(--bg);
   }
   .nav { display: flex; flex-direction: column; gap: 2px; }
   .nav-item {
     height: 32px; padding: 0 9px; border-radius: 7px;
     display: flex; align-items: center; gap: 8px;
-    font-size: 12.5px; color: var(--fg2);
+    font-size: 12.5px; color: var(--ctl);
+    transition: background 140ms var(--ease), color 140ms var(--ease);
   }
   .nav-item .icon { width: 15px; height: 15px; color: var(--muted); }
+  .nav-item:hover { background: var(--pill); }
   .nav-item.active { background: var(--card); color: var(--fg); font-weight: 500; box-shadow: var(--raised-shadow); }
+  body.dark .nav-item.active { background: rgba(255, 255, 255, .15); box-shadow: none; }
   .nav-item.active .icon { color: var(--fg); }
   .sidebar .spacer { flex: 1; }
-  .identity {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px 5px 2px; margin-top: 6px;
-    border-top: 1px solid var(--line2);
-  }
-  .identity-glyph {
-    position: relative; width: 24px; height: 24px; flex: none;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 12px; background: var(--pill); color: var(--fg2);
-  }
-  .identity-glyph .icon { width: 13px; height: 13px; }
-  .identity-glyph .online {
-    position: absolute; right: -1px; bottom: -1px;
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--green); box-shadow: 0 0 0 2px var(--bg);
-  }
-  .identity-copy .name { font-size: 12.5px; }
-  .identity-copy .sub { font-size: 10.5px; color: var(--muted); }
+  .sidebar-rule { height: 1px; background: var(--line2); }
+  .identity { display: flex; align-items: center; gap: 8px; margin: 10px 6px 0; }
+  .identity-dot { width: 6px; height: 6px; flex: none; border-radius: 3px; background: var(--faint); }
+  .identity-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .identity-copy .name { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .identity-copy .sub { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .page { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 14px 0 10px 0; }
   .page-head { padding: 0 20px 0 20px; }
@@ -178,21 +171,44 @@
   /* ---------- page helpers, replace the sample content ---------- */
   .group-head {
     display: flex; align-items: center; gap: 7px;
-    font-size: 11px; font-weight: 600; letter-spacing: .3px; color: var(--muted);
+    font-size: 11.5px; font-weight: 600; letter-spacing: .55px; color: var(--muted);
     margin-top: 6px;
   }
   .count {
     height: 18px; min-width: 18px; padding: 0 6px; border-radius: 9px;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--pill); color: var(--muted);
-    font-size: 10.5px; font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums;
+    font-size: 10.5px; letter-spacing: 0; font-variant-numeric: tabular-nums;
   }
   .card {
     margin-top: 8px; border: 1px solid var(--line); border-radius: 12px;
     background: var(--card); overflow: hidden;
   }
-  .row { display: flex; align-items: center; gap: 11px; min-height: 58px; padding: 8px 14px; }
-  .row + .row { border-top: 1px solid var(--line2); }
+  .page-card { margin-top: 12px; }
+  .card-head {
+    height: 44px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-head .tile {
+    width: 22px; height: 22px; flex: none; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--pill); color: var(--ctl);
+  }
+  .card-head .tile .icon { width: 13px; height: 13px; }
+  .card-head .title {
+    flex: 1; min-width: 0; font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-head .cluster { flex: none; display: flex; align-items: center; gap: 8px; }
+  .row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 9px 14px; }
+  .row + .row, .row-body + .row { border-top: 1px solid var(--line2); }
+  .row-body { padding: 0 14px 4px; border-top: 1px solid var(--line2); }
+  .row-body .setting-row { padding-left: 14px; padding-right: 14px; }
+  .row-body .setting-row + .setting-row { border-top: 1px solid var(--line2); }
+  .setting-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; }
+  .setting-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .setting-copy .title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .setting-copy .sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .setting-control { flex: none; display: flex; align-items: center; gap: 6px; }
   .glyph {
     position: relative; width: 30px; height: 30px; flex: none;
     display: flex; align-items: center; justify-content: center;
@@ -204,35 +220,122 @@
     width: 9px; height: 9px; border-radius: 50%;
     background: var(--green); box-shadow: 0 0 0 2px var(--card);
   }
+  .row.expanded .glyph { background: var(--card); }
+  .row.expanded .glyph .online { box-shadow: 0 0 0 2px var(--sel); }
+  .row.expanded { background: var(--sel); }
   .namecol { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
   .name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .name { font-size: 13px; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sub { font-size: 11.5px; line-height: 1.35; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-tail { flex: none; display: flex; align-items: center; gap: 8px; }
   .chip {
-    height: 20px; padding: 0 8px; border-radius: 10px; flex: none;
+    height: 22px; padding: 0 9px; border-radius: 11px; flex: none;
     display: inline-flex; align-items: center; white-space: nowrap;
-    font-size: 10.5px; font-weight: 500; background: var(--pill); color: var(--muted);
+    font-size: 11.5px; background: var(--card); border: 1px solid var(--line); color: var(--fg2);
   }
-  .chip.ok { background: var(--green-soft); color: var(--green); }
+  .chip.ok { background: var(--green-soft); border-color: transparent; color: var(--green); }
+  .chip.accent { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .chip.danger { background: var(--red-soft); border-color: transparent; color: var(--red); }
+  .chip.sm { height: 20px; padding: 0 8px; border-radius: 10px; font-size: 10.5px; }
+  .chip.dim { background: var(--pill); border-color: transparent; color: var(--muted); }
   .switch {
     position: relative; width: 32px; height: 19px; flex: none;
-    border-radius: 9.5px; background: var(--faint);
+    border-radius: 9.5px; background: var(--line);
+    transition: background 140ms var(--ease);
   }
   .switch::after {
     content: ""; position: absolute; top: 2px; left: 2px;
     width: 15px; height: 15px; border-radius: 50%;
     background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+    transition: transform 140ms var(--ease), background 140ms var(--ease);
   }
   .switch.on { background: var(--fg); }
   .switch.on::after { transform: translateX(13px); background: var(--bg); }
-
+  .chev { width: 12px; height: 12px; flex: none; color: var(--muted); }
+  .chev.closed { transform: rotate(-90deg); }
+  .row-action {
+    height: 26px; padding: 0 8px; border-radius: 13px; flex: none;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 500; white-space: nowrap;
+  }
+  .row-action .icon { width: 12px; height: 12px; }
+  .row-action.accent { color: var(--accent); }
+  .row-action.strong { color: var(--fg2); }
+  .row-action.muted { color: var(--muted); }
+  .row-action.faint { color: var(--faint); }
+  .row-action:hover { background: var(--pill); }
+  .field {
+    width: 150px; height: 28px; padding: 0 9px; border-radius: 7px;
+    border: 1px solid var(--pill); background: var(--card);
+    display: flex; align-items: center; font-size: 12.5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .field.placeholder { color: var(--muted); }
+  .chip-button {
+    height: 28px; padding: 0 10px; border-radius: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--card); border: 1px solid var(--line);
+    font-size: 11.5px; color: var(--fg2); white-space: nowrap;
+  }
+  .chip-button:hover { background: var(--pill); }
+  .card-action {
+    height: 30px; padding: 0 14px; border-radius: 15px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--fg); color: var(--bg);
+    font-size: 12.5px; font-weight: 500; white-space: nowrap;
+  }
+  .primary {
+    height: 34px; padding: 0 16px; border-radius: 17px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--fg); color: var(--bg);
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+  }
+  .quiet {
+    height: 34px; padding: 0 12px; border-radius: 17px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--muted); white-space: nowrap;
+  }
+  .quiet:hover { background: var(--pill); }
+  .seg {
+    height: 30px; display: flex; gap: 2px; padding: 2px;
+    border-radius: 8px; background: var(--pill);
+  }
+  .seg button {
+    flex: 1; height: 26px; padding: 0 8px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    font-size: 11.5px; color: var(--muted); white-space: nowrap;
+  }
+  .seg button .icon { width: 12px; height: 12px; }
+  .seg button.active { background: var(--card); color: var(--fg); box-shadow: var(--raised-shadow); }
+  body.dark .seg button.active { background: var(--pill-hover); box-shadow: none; }
+  .seg button.active .icon { color: var(--accent); }
+  .slider { position: relative; height: 20px; margin-top: 5px; padding: 0 8px; }
+  .slider::before {
+    content: ""; position: absolute; left: 8px; right: 8px; top: 9px;
+    height: 4px; border-radius: 2px; background: var(--line);
+  }
+  .slider::after {
+    content: ""; position: absolute; left: 8px; top: 9px;
+    width: calc((100% - 16px) * var(--value, .1)); height: 4px;
+    border-radius: 2px; background: var(--fg);
+  }
+  .slider-knob {
+    position: absolute; top: 3px;
+    left: calc(8px + (100% - 16px) * var(--value, .1) - 8px);
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  }
+  .slider-scale { display: flex; justify-content: space-between; margin-top: 2px; font-size: 10.5px; color: var(--faint); }
+  .info-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; }
+  .info-note .icon { width: 13px; height: 13px; margin-top: 1px; color: var(--muted); }
+  .info-note .lines { font-size: 11.5px; line-height: 1.5; color: var(--muted); }
   .add-row {
     width: 100%; margin-top: 12px; min-height: 44px; padding: 9px 14px;
     display: flex; align-items: center; gap: 10px;
-    border: 1px dashed color-mix(in srgb, var(--line) 55%, var(--muted) 45%);
+    border: 1px dashed color-mix(in srgb, var(--line) 80%, var(--muted) 20%);
     border-radius: 12px; background: transparent; text-align: left; color: var(--accent);
   }
-  .add-row:hover { background: var(--pill); border-color: var(--muted); }
+  .add-row:hover { background: var(--pill); }
   .add-plus {
     width: 24px; height: 24px; flex: none; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
@@ -242,22 +345,18 @@
   .add-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .add-title { font-size: 12.5px; font-weight: 500; }
   .add-sub { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
   .empty-note { margin: 2px 0 0; padding: 0; }
   .empty-note-title { font-size: 12.5px; font-weight: 500; line-height: 1.4; color: var(--fg2); }
   .empty-note-hint { margin-top: 3px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
   .empty-note-line { font-size: 11.5px; line-height: 1.5; color: var(--muted); }
-
   .divider { height: 1px; background: var(--line2); }
   .hidden-group { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line2); }
   .group-toggle {
     height: 28px; padding: 0 8px 0 4px; border-radius: 7px;
     display: inline-flex; align-items: center; gap: 6px;
-    color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .3px;
+    color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .55px;
   }
   .group-toggle:hover { background: var(--pill); }
-  .chev { width: 12px; height: 12px; flex: none; color: var(--muted); }
-  .chev.closed { transform: rotate(-90deg); }
 
   @media (max-width: 1120px) {
     .notes { width: min(720px, 100%); }
@@ -295,13 +394,15 @@ const ICON = {
   link: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></g></svg>',
   speaker: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="5.5"/><path d="M9.5 18.5h5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></g></svg>',
   wave: '<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 8v4M8 5v10M12 8v4M16 6v8"/></g></svg>',
+  lamp: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 3.5h9.6l-1.7 6.4H8.9L7.2 3.5Z"/><path d="M12 9.9v7.6"/><path d="M8 17.5h8"/><path d="M9.5 20.5h5"/></g></svg>',
   screen: '<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="10" rx="1.6"/><path d="M7 17h6"/></g></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></g></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5h-4.5"/></g></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11.2v5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></g></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></g></svg>',
   chevron: '<svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14.5 5.5l4 4"/></g></svg>',
   key: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="15.5" r="3.5"/><path d="M11 13 20 4M17 7l2.5 2.5M14.5 9.5l2 2"/></g></svg>',
-  eyeOff: '<svg viewBox="0 0 20 20" fill="none"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 10s2.6-4.5 7.2-4.5S17.2 10 17.2 10s-2.6 4.5-7.2 4.5S2.8 10 2.8 10Z"/><circle cx="10" cy="10" r="2"/><path d="M4 4l12 12"/></g></svg>',
   close: '<svg viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
   min: '<svg viewBox="0 0 12 12" fill="none"><path d="M2.5 8.5h7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
   max: '<svg viewBox="0 0 12 12" fill="none"><rect x="2.7" y="2.7" width="6.6" height="6.6" rx="1" stroke="currentColor" stroke-width="1.1"/></svg>',
@@ -315,16 +416,19 @@ function esc(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&am
    ========================================================================= */
 
 const NAV = [
-  { id: 'general',   zh: '通用',   en: 'General',   icon: 'sliders' },
-  { id: 'connection',zh: '连接',   en: 'Connection',icon: 'link' },
-  { id: 'receivers', zh: '接收器', en: 'Receivers', icon: 'speaker' },
-  { id: 'audio',     zh: '音频',   en: 'Audio',     icon: 'wave' },
-  { id: 'capture',   zh: '采集',   en: 'Capture',   icon: 'screen' },
-  { id: 'updates',   zh: '更新',   en: 'Updates',   icon: 'refresh' }
+  { id: 'general',    zh: '通用',     en: 'General',      icon: 'sliders' },
+  { id: 'connection', zh: '连接',     en: 'Connection',   icon: 'link' },
+  { id: 'receivers',  zh: '接收器',   en: 'Receivers',    icon: 'speaker' },
+  { id: 'audio',      zh: '音频',     en: 'Audio',        icon: 'wave' },
+  { id: 'lamp',       zh: '氛围灯',   en: 'Ambient light', icon: 'lamp' },
+  { id: 'capture',    zh: '采集',     en: 'Capture',      icon: 'screen' },
+  { id: 'nowplaying', zh: '正在播放', en: 'Now Playing',  icon: 'note' },
+  { id: 'updates',    zh: '更新',     en: 'Updates',      icon: 'refresh' },
+  { id: 'about',      zh: '关于',     en: 'About',        icon: 'info' }
 ];
 
 const PAGE = {
-  active: 'receivers',
+  activeByView: { target: 'general', normal: 'receivers', edge: 'receivers' },
   title:    { zh: '页面标题', en: 'Page title' },
   subtitle: { zh: '一句话说明这个页面。', en: 'One sentence describing this page.' }
 };
@@ -337,42 +441,94 @@ const STATES = [
 
 const COPY = {
   zh: {
-    section: '示例分组',
-    addTitle: '添加项', addSub: '手动填写地址或说明',
-    rowA: '示例项 A', rowASub: '型号 · 192.168.1.20:7000',
-    rowB: '示例项 B', rowBSub: '型号 · 192.168.1.21:7000',
-    targetHint: '目标态的内容放在这里。替换这个区块。',
-    edgeTitle: '边界态标题',
-    edgeHint: '边界态的一行说明。',
-    identity: '未选择设备', identitySub: '未连接'
+    // target: a standard page card
+    cardTitle: '示例卡片', showInPanel: '托盘面板中显示',
+    senderTitle: '发送端名称', senderSub: '接收器上显示的名字',
+    senderValue: '声渡', save: '保存',
+    startTitle: '登录时自动启动', startSub: '登录后在托盘中静默运行',
+    languageTitle: '语言', languageSub: '界面与提示的语言', languageValue: '跟随系统',
+    note: '开启“连接后静音本机输出”后，部分音频设备会让采集到的声音也静音。接收器没有声音时，请关闭这个开关。',
+    // normal and edge: the receiver list
+    section: '已启用',
+    addTitle: '添加接收器',
+    addSub: '手动填写 IP 或主机名，适用于无法通过 mDNS 发现的接收器',
+    rowA: '客厅 HomePod', rowASub: 'AudioAccessory5,1 · 192.168.1.20:7000',
+    rowB: '卧室 HomePod mini', rowBSub: 'AudioAccessory5,1 · 192.168.1.21:7000',
+    chipAuto: '自动连接',
+    autoTitle: '启动时自动连接', autoSub: '同一时间仅一台；启用一台会关闭其他接收器。',
+    delayTitle: 'DSP/DAC 延迟', delaySub: '补偿接收器的硬件音频延迟', delayValue: '200 ms',
+    passwordTitle: '接收器密码', passwordSub: '已保存 · 用于 AirPlay 密码认证', passwordAction: '更改',
+    hidden: '已隐藏',
+    edgeTitle: '暂无接收器',
+    edgeHint: '网络上的 AirPlay 接收器会自动出现在这里。',
+    identity: '未选择接收器', identitySub: '未连接'
   },
   en: {
-    section: 'Example group',
-    addTitle: 'Add item', addSub: 'Fill in an address or note manually',
-    rowA: 'Example A', rowASub: 'Model · 192.168.1.20:7000',
-    rowB: 'Example B', rowBSub: 'Model · 192.168.1.21:7000',
-    targetHint: 'Put the target state here. Replace this block.',
-    edgeTitle: 'Edge state title',
-    edgeHint: 'One line describing the edge state.',
-    identity: 'No device selected', identitySub: 'Not connected'
+    cardTitle: 'Example card', showInPanel: 'Show in tray panel',
+    senderTitle: 'Sender name', senderSub: 'The name receivers show',
+    senderValue: 'saundo', save: 'Save',
+    startTitle: 'Start at login', startSub: 'Stay quietly in the tray after you sign in',
+    languageTitle: 'Language', languageSub: 'The language of the interface and messages', languageValue: 'Follow system',
+    note: 'With “Mute this PC while connected” on, some audio devices mute capture too. Turn that switch off if the receiver goes silent.',
+    section: 'Enabled',
+    addTitle: 'Add receiver',
+    addSub: 'Fill in an IP address or hostname for receivers mDNS cannot find.',
+    rowA: 'Living Room HomePod', rowASub: 'AudioAccessory5,1 · 192.168.1.20:7000',
+    rowB: 'Bedroom HomePod mini', rowBSub: 'AudioAccessory5,1 · 192.168.1.21:7000',
+    chipAuto: 'Auto-connect',
+    autoTitle: 'Connect at launch', autoSub: 'One receiver at a time; enabling one turns the others off.',
+    delayTitle: 'DSP/DAC delay', delaySub: 'Compensate the receiver\'s own audio buffering', delayValue: '200 ms',
+    passwordTitle: 'Receiver password', passwordSub: 'Saved · used for AirPlay password authentication', passwordAction: 'Change',
+    hidden: 'Hidden',
+    edgeTitle: 'No receivers yet',
+    edgeHint: 'AirPlay receivers on your network appear here automatically.',
+    identity: 'No receiver selected', identitySub: 'Not connected'
   }
 };
 
-/* Replace these three functions with the states you are deciding. */
+/* Replace these three functions with the states you are deciding.
+   viewTarget shows the standard settings card: a card head and setting
+   rows. viewNormal and viewEdge show the receiver list's group head, rows,
+   add row, and hidden group. Keep the helpers; replace the sample copy. */
 function viewTarget() {
-  return '<div class="empty-note"><div class="empty-note-line">' + esc(COPY[state.lang].targetHint) + '</div></div>' + addRowHTML();
+  const t = key => esc(COPY[state.lang][key]);
+  return '<div class="card page-card">' +
+    '<div class="card-head"><span class="tile">' + icon('info') + '</span>' +
+      '<span class="title">' + t('cardTitle') + '</span>' +
+      '<span class="cluster"><span class="chip">' + t('showInPanel') + '</span>' +
+      '<span class="switch on"></span></span>' +
+    '</div>' +
+    settingRow('senderTitle', 'senderSub', function() {
+      return '<span class="field">' + t('senderValue') + '</span>' +
+        '<span class="chip-button">' + t('save') + '</span>';
+    }) +
+    '<div class="divider"></div>' +
+    settingRow('startTitle', 'startSub', function() { return '<span class="switch"></span>'; }) +
+    '<div class="divider"></div>' +
+    settingRow('languageTitle', 'languageSub', function() {
+      return '<span class="field">' + t('languageValue') + '</span>';
+    }) +
+  '</div>' +
+  '<div class="info-note">' + icon('info') + '<div class="lines">' + t('note') + '</div></div>';
 }
 function viewNormal() {
-  return groupHead(COPY[state.lang].section, 2) +
+  const t = key => esc(COPY[state.lang][key]);
+  return groupHead(t('section'), 2) +
     '<div class="card">' +
-      exampleRow(COPY[state.lang].rowA, COPY[state.lang].rowASub, true) +
-      exampleRow(COPY[state.lang].rowB, COPY[state.lang].rowBSub, false) +
-    '</div>' + addRowHTML();
+      receiverRow(t('rowA'), t('rowASub'), t('chipAuto'), true, true) +
+      receiverRow(t('rowB'), t('rowBSub'), '', true, false) +
+    '</div>' +
+    addRowHTML() +
+    '<div class="hidden-group">' +
+      '<button type="button" class="group-toggle"><span class="chev closed">' + ICON.chevron + '</span>' +
+        '<span>' + t('hidden') + '</span><span class="count">1</span></button>' +
+    '</div>';
 }
 function viewEdge() {
+  const t = key => esc(COPY[state.lang][key]);
   return '<div class="empty-note">' +
-    '<div class="empty-note-title">' + esc(COPY[state.lang].edgeTitle) + '</div>' +
-    '<div class="empty-note-hint">' + esc(COPY[state.lang].edgeHint) + '</div>' +
+    '<div class="empty-note-title">' + t('edgeTitle') + '</div>' +
+    '<div class="empty-note-hint">' + t('edgeHint') + '</div>' +
   '</div>' + addRowHTML();
 }
 
@@ -384,6 +540,16 @@ function notesHTML() {
       '<li><b>目标态</b> The state this mockup exists to decide.</li>' +
       '<li><b>正常态</b> The page with content, for rhythm and continuity.</li>' +
       '<li><b>边界态</b> The empty, all-hidden, or failure state that shares the layout.</li>' +
+    '</ul>' +
+    '<p class="kicker">组件 · WIDGETS</p><ul>' +
+      '<li><b>卡片</b> radius 12, 1px line border, 8 DIP after a group head and 12 DIP after the page head.</li>' +
+      '<li><b>卡头</b> 44 high: a fixed 22 tile (radius 6, 13 glyph in ctl), a 13/600 title, a trailing cluster.</li>' +
+      '<li><b>设置行</b> 56 high, 8/14 padding: 13/500 title over an 11.5 muted line, control at the right.</li>' +
+      '<li><b>胶囊</b> 22 high / 11 radius / 11.5 text; the name chip is 20 high / 10 radius / 10.5 text.</li>' +
+      '<li><b>动作阶梯</b> 26 row, 28 field commit, 30 card, 34 dialog.</li>' +
+      '<li><b>对话框</b> panel radius 14 over the shared scrim (rgba(20,22,30,.22)); header, body, then the 34 DIP pills.</li>' +
+      '<li><b>开关</b> 32x19 track, 15 knob: off is line, on is fg with a bg knob.</li>' +
+      '<li><b>分段</b> 30 track / 8 radius; the selected 26 segment is card in light and pill-hover in dark.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
       '<li><code>key</code> zh-CN / English</li>' +
@@ -409,12 +575,43 @@ function t(key) { return COPY[state.lang][key]; }
 function groupHead(label, count) {
   return '<div class="group-head"><span>' + esc(label) + '</span><span class="count">' + count + '</span></div>';
 }
-function exampleRow(name, sub, online) {
-  return '<div class="row">' +
-    '<span class="glyph">' + icon('speaker') + (online ? '<i class="online"></i>' : '') + '</span>' +
-    '<span class="namecol"><span class="name-line"><span class="name">' + esc(name) + '</span></span>' +
-    '<span class="sub">' + esc(sub) + '</span></span>' +
-    '<span class="switch' + (online ? ' on' : '') + '"></span>' +
+function settingRow(title, sub, control) {
+  return '<div class="setting-row">' +
+    '<div class="setting-copy"><span class="title">' + esc(t(title)) + '</span>' +
+    '<span class="sub">' + esc(t(sub)) + '</span></div>' +
+    '<div class="setting-control">' + control() + '</div>' +
+  '</div>';
+}
+function receiverRow(name, sub, chip, on, open) {
+  return '<div class="row' + (open ? ' expanded' : '') + '">' +
+    '<span class="glyph">' + icon('speaker') + '<i class="online"></i></span>' +
+    '<span class="namecol"><span class="name-line"><span class="name">' + esc(name) + '</span>' +
+      (chip ? '<span class="chip sm ok">' + esc(chip) + '</span>' : '') + '</span>' +
+      '<span class="sub">' + esc(sub) + '</span></span>' +
+    '<span class="row-tail"><span class="switch' + (on ? ' on' : '') + '"></span>' +
+      '<span class="chev' + (open ? '' : ' closed') + '">' + ICON.chevron + '</span></span>' +
+  '</div>' +
+  (open ? receiverBody() : '');
+}
+function receiverBody() {
+  return '<div class="row-body">' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('autoTitle')) + '</span>' +
+      '<span class="sub">' + esc(t('autoSub')) + '</span></div>' +
+      '<div class="setting-control"><span class="switch on"></span></div>' +
+    '</div>' +
+    '<div class="setting-row"><div class="setting-copy">' +
+      '<span class="title">' + esc(t('delayTitle')) + '</span>' +
+      '<span class="sub">' + esc(t('delaySub')) + '</span>' +
+    '</div><div class="setting-control">' + esc(t('delayValue')) + '</div></div>' +
+    '<div class="slider" style="--value:.1"><span class="slider-knob"></span></div>' +
+    '<div class="slider-scale"><span>0 ms</span><span>2 s</span></div>' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('passwordTitle')) + '</span>' +
+      '<span class="sub">' + esc(t('passwordSub')) + '</span></div>' +
+      '<div class="setting-control"><button type="button" class="row-action accent">' +
+        icon('key') + esc(t('passwordAction')) + '</button></div>' +
+    '</div>' +
   '</div>';
 }
 function addRowHTML() {
@@ -425,17 +622,18 @@ function addRowHTML() {
 }
 
 function sidebarHTML() {
+  const active = PAGE.activeByView[state.view] || 'receivers';
   return '<aside class="sidebar"><nav class="nav" aria-label="Settings pages">' +
-    NAV.map(item => '<div class="nav-item' + (item.id === PAGE.active ? ' active' : '') + '">' +
+    NAV.map(item => '<div class="nav-item' + (item.id === active ? ' active' : '') + '">' +
       icon(item.icon) + '<span>' + esc(item[state.lang]) + '</span></div>').join('') +
-    '</nav><div class="spacer"></div>' +
-    '<div class="identity"><span class="identity-glyph">' + icon('speaker') + '</span>' +
+    '</nav><div class="spacer"></div><div class="sidebar-rule"></div>' +
+    '<div class="identity"><span class="identity-dot"></span>' +
       '<div class="identity-copy"><div class="name">' + esc(t('identity')) + '</div>' +
       '<div class="sub">' + esc(t('identitySub')) + '</div></div></div></aside>';
 }
 function titlebarHTML() {
   return '<div class="titlebar">' + icon('mark', 'mark') +
-    '<span class="titlebar-title">' + (state.lang === 'zh' ? '设置 · 声渡' : 'Settings · saundo') + '</span>' +
+    '<span class="titlebar-title">' + (state.lang === 'zh' ? '设置 · 声渡' : 'Settings · Saundo') + '</span>' +
     '<span class="wincontrols" aria-hidden="true">' +
       '<span class="wincontrol">' + icon('min') + '</span>' +
       '<span class="wincontrol">' + icon('max') + '</span>' +

@@ -39,10 +39,10 @@ If the evidence rules out the change the user asked for, show it and stop.
 Write one brief. Use it for the current session's mockup, and reuse it verbatim for every variant when fanning out. Carry:
 
 - The goal and the quoted complaint.
-- The surface and size. Settings is 720x500, minimum 640x420. The flyout is 420 wide and its height follows `flyoutHeightFor`: 500 at three device rows, 56 less per missing row, 470 for the empty state, plus 44 while the latency row is shown.
+- The surface and size. Settings is 720x500, minimum 640x420, with a 190-wide sidebar of nine pages. The flyout is 420 wide and its height follows `flyoutHeightFor`: 459 for three device rows, 62 less because the media card replaces the old Now Playing row, 90 for the permanent ambient section, +150 while a media session exists, +44 for the latency row, +48 for the connection error bar, and +53 for the expanded ambient grid (`flyoutHeightForState`).
 - The token and geometry source: `internal/app/theme.go`, and `.audit/mockup-final.html` when it is the visual baseline.
 - The locale source: `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-CN.json`. New copy needs a key and both languages.
-- Native constraints: mygo primitives only (`Column`, `Row`, `Box`, `Text`, `ButtonBase`, `Icon`, `toggle`, `slider`, `CollapsibleBase`), plus borders, radius, padding, opacity, and the palette. No images, web fonts, or gradients. Inline SVG only for icons in `internal/app/icons.go`.
+- Native constraints: mygo primitives only (`Column`, `Row`, `Box`, `Text`, `ButtonBase`, `Icon`, `toggle`, `slider`, `CollapsibleBase`, `SegmentedBase`), plus borders, radius, padding, opacity, and the palette. No images, web fonts, or gradients outside the ambient preview's color glow. Inline SVG only for icons in `internal/app/icons.go`.
 - The states to render: the target, the normal state, and the edge that shares the layout. Render every state in zh-CN and English, light and dark.
 - A visible switcher in the mockup for state, language, and theme.
 - The output folder: `.audit/mockups/<topic>/`. The single mockup is `mockup.html`; variants are `mockup-<model>.html`. Keep the Chrome renders beside them as `r<N>-<state>-<lang>-<theme>.png`. Self-contained, no network.
@@ -61,7 +61,7 @@ cp .claude/skills/ui-mockup/assets/mockup-template.html .audit/mockups/<topic>/m
 cp .claude/skills/ui-mockup/assets/flyout-template.html .audit/mockups/<topic>/flyout.html
 ```
 
-Edit only the marked blocks. In the settings template they are `NAV`, `PAGE`, `STATES`, `COPY`, the three view functions, and the notes. In the flyout template they are `COPY`, `DEVICES`, `STATES`, the state functions, and the notes. Keep the tokens, shell, toolbar, and helpers. Render with headless Chrome, inspect the screenshot, and fix clipping, overflow, and wrapped copy. Use the template's URL parameters to screenshot a specific state.
+Edit only the marked blocks. In the settings template they are `NAV`, `PAGE`, `STATES`, `COPY`, the three view functions, and the notes. In the flyout template they are `COPY`, `DEVICES`, `STATES`, and the notes. Keep the tokens, shell, toolbar, and helpers. Render with headless Chrome, inspect the screenshot, and fix clipping, overflow, and wrapped copy. Use the template's URL parameters to screenshot a specific state, and its media and ambient toggles for the two optional height contributions.
 
 Build three variants only when the user explicitly asks for variants, a model bakeoff, or collision thinking (碰撞). For three, run one per model from the pstack `arena runners` line, default opus, sonnet, and fable, each with its own output path. Use `pstack:poteto-agent` when available and run them in parallel. Require each to render and inspect its own screenshot.
 

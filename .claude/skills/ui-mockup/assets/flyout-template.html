@@ -11,17 +11,21 @@
   marked blocks: COPY, DEVICES, STATES, the state functions, and the notes.
   Keep the tokens, flyout chrome, toolbar, and helpers.
 
-  The flyout is 420 wide. Its height follows flyoutHeightFor: 500 at three
-  device rows, 56 less per missing row, 470 for the empty state, and +44
-  when the latency row is shown. The device card and the playback card keep
-  the same gap; do not stretch one without the other.
+  The flyout is 420 wide. Its height follows flyoutHeightFor in
+  internal/app/flyout.go: base 459 for three device rows, 62 less because the
+  media card replaces the old Now Playing row, 90 for the permanent ambient
+  section, +150 while a media session exists, +44 for the latency row, +48 for
+  the connection error bar, and +53 for the expanded ambient grid
+  (flyoutHeightForState). The device card and the playback card touch through
+  the body's 8 DIP gap; there is no flexible spacer.
 
   Render:
     chrome --headless=new --hide-scrollbars --window-size=1400,900 \
       --screenshot=.audit/previews/<topic>.png file:///.../flyout.html
 
   Headless shots can select a state from the URL:
-    ?state=idle|streaming|empty|error&lang=zh|en&dark=0|1&latency=0|1&zoom=1|1.25|1.5
+    ?state=idle|streaming|empty|error&lang=zh|en&dark=0|1
+    &latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5
 -->
 <style>
   * { box-sizing: border-box; }
@@ -131,7 +135,7 @@
     padding: 0 10px 0 14px;
   }
   .flyout-head .mark { width: 21px; height: 21px; color: var(--fg); }
-  .app-name { font-size: 13.5px; font-weight: 600; line-height: 1.2; }
+  .app-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
   .app-sub { font-size: 8.5px; font-weight: 600; letter-spacing: 1.1px; color: var(--muted); line-height: 1.2; }
   .flyout-head .spacer { flex: 1; }
   .icon-btn {
@@ -146,12 +150,11 @@
     flex: 1; min-height: 0; display: flex; flex-direction: column;
     padding: 2px 12px 8px 12px; gap: 8px;
   }
-  .flyout-body .spacer { flex: 1; }
   .section-head {
     padding: 6px 2px 2px 2px;
     display: flex; align-items: center; gap: 8px;
   }
-  .section-label { font-size: 11px; font-weight: 600; letter-spacing: .55px; color: var(--muted); }
+  .section-label { font-size: 11.5px; font-weight: 600; letter-spacing: .55px; color: var(--muted); }
   .section-note { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card {
     border: 1px solid var(--line); border-radius: 10px;
@@ -180,30 +183,31 @@
   }
   .device-row.selected .glyph .online { box-shadow: 0 0 0 2px var(--sel); }
   .namecol { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-  .name { font-size: 13.5px; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name { font-size: 13px; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sub { font-size: 11.5px; line-height: 1.35; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row-action {
-    flex: none; display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 7px; border-radius: 6px;
-    font-size: 12px; font-weight: 500; white-space: nowrap;
+    height: 26px; flex: none; display: inline-flex; align-items: center; gap: 5px;
+    padding: 0 8px; border-radius: 13px;
+    font-size: 11.5px; font-weight: 500; white-space: nowrap;
   }
-  .row-action .icon { width: 13px; height: 13px; }
+  .row-action .icon { width: 12px; height: 12px; }
   .row-action.accent { color: var(--accent); }
   .row-action.strong { color: var(--fg2); }
   .row-action.muted { color: var(--muted); }
+  .row-action.faint { color: var(--faint); }
   .row-action:hover { background: var(--pill); }
 
   .empty-card {
-    height: 140px; display: flex; flex-direction: column;
+    height: 141px; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 4px; padding: 18px;
     text-align: center;
   }
   .search-face { width: 28px; height: 28px; color: var(--faint); animation: pulse 1.2s ease-in-out infinite; }
   .search-face svg { display: block; width: 100%; height: 100%; }
   @keyframes pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
-  .empty-title { font-size: 12.5px; color: var(--fg2); }
+  .empty-title { font-size: 12.5px; font-weight: 500; color: var(--fg2); }
   .empty-hint { font-size: 11.5px; color: var(--muted); }
-  .empty-action { margin-top: 2px; padding: 2px 6px; border-radius: 6px; font-size: 12px; color: var(--accent); }
+  .empty-action { margin-top: 2px; padding: 2px 6px; border-radius: 6px; font-size: 12.5px; color: var(--accent); }
   .empty-action:hover { background: var(--pill); }
 
   .error-bar {
@@ -212,29 +216,28 @@
     font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
-  .playback-head { padding: 6px 2px 2px 2px; display: flex; align-items: center; gap: 8px; }
   .playback-card { flex: none; }
-  .volume { padding: 10px 12px 8px 12px; }
+  .volume { padding: 10px 12px 10px 12px; }
   .volume-head { display: flex; align-items: baseline; }
   .volume-label { font-size: 13px; font-weight: 500; }
   .volume-value { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .range { position: relative; height: 20px; margin-top: 5px; padding: 0 8px; }
   .range::before {
-    content: ""; position: absolute; left: 8px; right: 8px; top: 8px;
+    content: ""; position: absolute; left: 8px; right: 8px; top: 9px;
     height: 4px; border-radius: 2px; background: var(--line);
   }
   .range::after {
-    content: ""; position: absolute; left: 8px; top: 8px;
+    content: ""; position: absolute; left: 8px; top: 9px;
     width: calc((100% - 16px) * var(--value, .65)); height: 4px;
     border-radius: 2px; background: var(--fg);
   }
   .range-knob {
-    position: absolute; top: 2px; left: calc(8px + (100% - 16px) * var(--value, .65) - 8px);
+    position: absolute; top: 3px; left: calc(8px + (100% - 16px) * var(--value, .65) - 8px);
     width: 16px; height: 16px; border-radius: 50%; background: #fff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
   }
+  .latency { padding: 6px 12px 10px 12px; }
   .line { height: 1px; background: var(--line2); }
-  .latency { padding: 6px 12px 7px 12px; }
   .seg {
     height: 30px; display: flex; gap: 2px; padding: 2px;
     border-radius: 8px; background: var(--pill);
@@ -246,27 +249,83 @@
   }
   .seg button .icon { width: 12px; height: 12px; }
   .seg button.active { background: var(--card); color: var(--fg); box-shadow: var(--raised-shadow); }
+  body.dark .seg button.active { background: var(--pill-hover); box-shadow: none; }
   .seg button.active .icon { color: var(--accent); }
 
-  .now { height: 62px; display: flex; align-items: center; gap: 10px; padding: 9px 12px; }
-  .now-tile {
-    width: 34px; height: 34px; flex: none; border-radius: 9px;
+  /* ---------- media card ---------- */
+  .media-card {
+    margin: 8px 12px 10px 12px; padding: 8px 10px 8px 10px;
+    border-radius: 12px; background: var(--pill);
+  }
+  .media-head { height: 28px; display: flex; align-items: center; gap: 7px; }
+  .media-head .app-icon { width: 16px; height: 16px; flex: none; color: var(--fg2); }
+  .media-app { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media-switch {
+    width: 24px; height: 24px; flex: none; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--card); color: var(--muted);
+  }
+  .media-switch:hover { background: var(--card-hover); color: var(--fg); }
+  .media-switch .icon { width: 12px; height: 12px; }
+  .media-main { height: 62px; display: flex; align-items: center; gap: 10px; padding: 6px 0 4px 0; }
+  .media-poster {
+    width: 52px; height: 52px; flex: none; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
-    background: var(--accent-soft); color: var(--accent);
+    background: var(--card); color: var(--muted);
   }
-  .now-tile .icon { width: 16px; height: 16px; }
-  .now-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .now-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .now-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .now-push { flex: none; display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
-  .switch { position: relative; width: 32px; height: 19px; flex: none; border-radius: 9.5px; background: var(--faint); }
-  .switch::after {
-    content: ""; position: absolute; top: 2px; left: 2px;
-    width: 15px; height: 15px; border-radius: 50%; background: #fff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  .media-poster .icon { width: 18px; height: 18px; }
+  .media-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .media-title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meter { position: relative; width: 23px; height: 24px; flex: none; }
+  .meter i { position: absolute; width: 3px; border-radius: 1.5px; background: var(--fg); }
+  .media-progress { height: 28px; display: flex; align-items: center; gap: 7px; padding-top: 4px; }
+  .transport { display: flex; align-items: center; gap: 4px; flex: none; }
+  .transport button {
+    width: 24px; height: 24px; border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--card); color: var(--muted);
   }
-  .switch.on { background: var(--fg); }
-  .switch.on::after { transform: translateX(13px); background: var(--bg); }
+  .transport button:hover { background: var(--card-hover); color: var(--fg); }
+  .transport .icon { width: 12px; height: 12px; }
+  .clock { flex: none; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .track { position: relative; flex: 1; height: 3px; border-radius: 1.5px; background: var(--line); }
+  .track .fill { position: absolute; left: 0; top: 0; height: 3px; width: calc(var(--p, .5) * 100%); border-radius: 1.5px; background: var(--fg); }
+  .track .thumb {
+    position: absolute; top: -3px; left: calc(var(--p, .5) * 100% - 4.5px);
+    width: 9px; height: 9px; border-radius: 4.5px;
+    background: var(--card); border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+  }
+
+  /* ---------- ambient section ---------- */
+  .lamp-card { margin-top: 2px; }
+  .lamp-row { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+  .lamp-preview { width: 32px; height: 32px; flex: none; border-radius: 9px; }
+  .lamp-name { font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .lamp-copy { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+  .chip {
+    height: 22px; padding: 0 9px; border-radius: 11px; flex: none;
+    display: inline-flex; align-items: center; white-space: nowrap;
+    font-size: 11.5px; background: var(--card); border: 1px solid var(--line); color: var(--fg2);
+  }
+  .lamp-seg { width: 128px; flex: none; }
+  .lamp-arrow {
+    width: 26px; height: 26px; flex: none; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted);
+  }
+  .lamp-arrow:hover { background: var(--pill); }
+  .lamp-arrow .icon { width: 12px; height: 12px; transition: transform 160ms var(--ease); }
+  .lamp-arrow.open .icon { transform: rotate(180deg); }
+  .lamp-grid {
+    border-top: 1px solid var(--line2); padding: 10px 12px 12px 12px;
+    display: grid; grid-template-columns: repeat(10, 30px); gap: 8px 7.5px;
+  }
+  .lamp-swatch {
+    width: 30px; height: 30px; border-radius: 15px; flex: none;
+  }
+  .lamp-swatch.selected { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--accent); }
 
   .flyout-foot {
     height: 34px; flex: none; display: flex; align-items: center; gap: 6px;
@@ -279,7 +338,13 @@
   .status.green { color: var(--green); }
   .status.red { color: var(--red); }
   .status.accent { color: var(--accent); }
-  .diag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; font-size: 12px; color: var(--ctl); }
+  .update-chip {
+    height: 22px; padding: 0 9px; flex: none; border-radius: 11px;
+    display: inline-flex; align-items: center;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 11.5px; font-weight: 500; white-space: nowrap;
+  }
+  .diag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; font-size: 12.5px; color: var(--ctl); }
   .diag .icon { width: 13px; height: 13px; }
   .diag:hover { background: var(--pill); }
 
@@ -297,7 +362,8 @@
   <div class="spacer"></div>
   <span class="tool-label" id="stateLabel">状态</span>
   <div class="tool-group" id="stateGroup" role="group"></div>
-  <button type="button" class="tool" id="latencyBtn">延迟条</button>
+  <button type="button" class="tool" id="mediaBtn">媒体卡</button>
+  <button type="button" class="tool" id="lampBtn">灯带</button>
   <span class="tool-label" id="zoomLabel">缩放</span>
   <div class="tool-group" id="zoomGroup" role="group">
     <button type="button" data-zoom="1" class="active">100%</button>
@@ -318,6 +384,7 @@ const ICON = {
   mark: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></svg>',
   faceIdle: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   faceStream: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></svg>',
+  faceConnect: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></svg>',
   faceSearch: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><circle cx="12.15" cy="15.4" r="1.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
   faceError: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5h-4.5"/></g></svg>',
@@ -330,6 +397,13 @@ const ICON = {
   unlink: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></g></svg>',
   slash: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></g></svg>',
   note: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></g></svg>',
+  power: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></g></svg>',
+  chevron: '<svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chevronRight: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  prev: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="2.4" height="14" rx="1"/><path d="M18.6 5.4a1 1 0 0 1 0 1.2L11.4 12l7.2 5.4a1 1 0 0 1-1.2 1.6l-8-6a1 1 0 0 1 0-1.6l8-6a1 1 0 0 1 1.2 0z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5" width="3.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="3.5" height="14" rx="1.2"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5a1 1 0 0 1 1.5-.9l10 6.5a1 1 0 0 1 0 1.8l-10 6.5A1 1 0 0 1 8 18.5z"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="15.6" y="5" width="2.4" height="14" rx="1"/><path d="M5.4 5.4a1 1 0 0 0 0 1.2L12.6 12l-7.2 5.4a1 1 0 0 0 1.2 1.6l8-6a1 1 0 0 0 0-1.6l-8-6a1 1 0 0 0-1.2 0z"/></svg>',
   latencyLow: '<svg viewBox="0 0 24 24"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg>',
   latencyStandard: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
   latencyStable: '<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></g></svg>',
@@ -346,29 +420,33 @@ function esc(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&am
 const COPY = {
   zh: {
     appName: '声渡', appSub: 'AIRPLAY 2',
-    devices: '设备', playback: '播放', volume: '音量', push: '推送', diagnostics: '诊断',
+    devices: '接收器', playback: '播放', volume: '音量',
+    diagnostics: '诊断日志',
     connect: '连接', disconnect: '断开', offline: '离线', retry: '重试',
-    searching: '正在搜索附近的 AirPlay 设备…',
-    searchHint: '请确认接收器在同一网络，并已开启 AirPlay。',
+    searching: '正在搜索附近的 AirPlay 接收器…',
+    searchHint: '请确认接收器与本机在同一网络，且 AirPlay 已开启。',
     searchAgain: '重新搜索',
-    noMedia: '未检测到媒体', mediaSession: '系统媒体会话',
-    track: '夜航', trackSub: '白鲸电台 · 远洋信号',
-    latencyNote: '延迟 200 ms', format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步',
-    statusIdle: '未连接', statusStreaming: '正在播放到 客厅 HomePod', statusError: '连接失败',
-    errorBar: '连接失败: 请求超时',
+    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步', latencyNote: '延迟 200 ms',
+    appMusic: 'Apple Music', track: '夜航', trackArtist: '白鲸电台', elapsed: '2:08', remaining: '-1:56',
+    lamp: '氛围灯', turnOff: '关灯', turnOn: '开灯', lampOff: '已关灯',
+    lampCover: '封面', lampTemplate: '模板', presetDune: '沙丘',
+    statusIdle: '未连接', statusStreaming: '正在通过 客厅 HomePod 播放', statusError: '连接失败',
+    errorBar: '连接失败：请求超时',
     latencyModes: ['低延迟', '标准', '稳定', '自定义']
   },
   en: {
-    appName: 'saundo', appSub: 'AIRPLAY 2',
-    devices: 'Devices', playback: 'Playback', volume: 'Volume', push: 'Push', diagnostics: 'Diagnostics',
+    appName: 'Saundo', appSub: 'AIRPLAY 2',
+    devices: 'Receivers', playback: 'Playback', volume: 'Volume',
+    diagnostics: 'Diagnostics',
     connect: 'Connect', disconnect: 'Disconnect', offline: 'Offline', retry: 'Retry',
-    searching: 'Searching for AirPlay devices nearby…',
+    searching: 'Searching for AirPlay receivers nearby…',
     searchHint: 'Make sure the receiver is on the same network and AirPlay is on.',
     searchAgain: 'Search again',
-    noMedia: 'No media detected', mediaSession: 'System media session',
-    track: 'Night Ferry', trackSub: 'Signal Coast · Open Water',
-    latencyNote: 'Latency 200 ms', format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced',
-    statusIdle: 'Not connected', statusStreaming: 'Streaming to 客厅 HomePod', statusError: 'Connection failed',
+    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced', latencyNote: 'Latency 200 ms',
+    appMusic: 'Apple Music', track: 'Night Ferry', trackArtist: 'Signal Coast', elapsed: '2:08', remaining: '-1:56',
+    lamp: 'Ambient light', turnOff: 'Turn off', turnOn: 'Turn on', lampOff: 'Off',
+    lampCover: 'Cover', lampTemplate: 'Template', presetDune: 'Dune',
+    statusIdle: 'Not connected', statusStreaming: 'Streaming to Living Room HomePod', statusError: 'Connection failed',
     errorBar: 'Connection failed: request timed out',
     latencyModes: ['Low', 'Standard', 'Stable', 'Custom']
   }
@@ -405,16 +483,16 @@ const DEVICES = {
 /* Replace the notes with the stance, states, height rule, and rejects. */
 function notesHTML() {
   return '<h2>设计说明 · Design notes</h2>' +
-    '<p class="notes-intro">Flyout shell template. The width is 420; the height follows the device count so the device card and the playback card keep the same gap. Replace the sample devices and copy.</p>' +
+    '<p class="notes-intro">Flyout shell template. The width is 420 and the height follows the device count, the media card, the latency row, and the ambient section. Replace the sample devices and copy.</p>' +
     '<p class="kicker">状态 · STATES</p><ul>' +
       '<li><b>空闲</b> Three devices, none connected; the footer is muted.</li>' +
       '<li><b>播放</b> The first row is selected; the footer face and the ALAC line name the stream.</li>' +
-      '<li><b>空态</b> No devices; the 140 high search card; the window is 470 high.</li>' +
-      '<li><b>失败</b> The error bar adds its own row under the device card; the row action is Retry.</li>' +
+      '<li><b>空态</b> No devices; the 141 high search card.</li>' +
+      '<li><b>失败</b> The 48 high error bar sits under the device card; the row action is Retry.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
-      '<li>394 at three rows, 56 less per missing row, 365 empty, +44 with the latency row, +150 with the media card, +48 with the error bar.</li>' +
-      '<li>The device row is 56 high; the empty card is 140; the playback card never moves.</li>' +
+      '<li>459 base for three rows, -29 for the empty card, -56 per missing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +53 for the expanded grid.</li>' +
+      '<li>No flexible spacer: the playback and ambient cards hold the same 8 DIP gap as the device and playback cards.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
       '<li><code>key</code> zh-CN / English</li>' +
@@ -429,17 +507,60 @@ function notesHTML() {
    ========================================================================= */
 
 const params = new URLSearchParams(location.search);
+const initialView = params.get('state') || 'idle';
 const state = {
-  view: params.get('state') || 'idle',
+  view: initialView,
   lang: params.get('lang') === 'en' ? 'en' : 'zh',
   dark: params.get('dark') === '1',
   latency: params.get('latency') === '1',
+  media: params.has('media') ? params.get('media') === '1' : initialView === 'streaming',
+  lamp: params.get('lamp') || 'cover',
   zoom: Number(params.get('zoom')) || 1
 };
 
 function t(key) { return COPY[state.lang][key]; }
-function deviceCardHeight(n) { return n <= 0 ? 140 : Math.min(n, 3) * 56 + 2; }
-function flyoutHeight(n, latency) { return 500 - (170 - deviceCardHeight(n)) + (latency ? 44 : 0); }
+
+/* Height rule, mirroring flyoutHeightFor and flyoutHeightForState:
+   459 base, 62 less for the old Now Playing row, 90 ambient, +150 media,
+   +44 latency, +48 error, +53 for the expanded six-template grid. */
+const FLYOUT_BASE = 459, DEVICE_ROWS = 3, DEVICE_ROW_H = 56, DEVICE_EMPTY = 141;
+const NOW_ROW_H = 62, MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 48;
+function deviceCardHeight(n) { return n <= 0 ? DEVICE_EMPTY : Math.min(n, DEVICE_ROWS) * DEVICE_ROW_H + 2; }
+function lampGridHeight(count) {
+  const rows = Math.min(Math.max(Math.ceil(count / 10), 1), 4);
+  return rows * 30 + (rows - 1) * 8 + 22 + 1;
+}
+function flyoutHeight(n, latency, media, expanded, error) {
+  let h = FLYOUT_BASE - (deviceCardHeight(DEVICE_ROWS) - deviceCardHeight(n)) - NOW_ROW_H;
+  if (media) h += MEDIA_H;
+  if (latency) h += LATENCY_H;
+  h += LAMP_H;
+  if (error) h += ERROR_H;
+  if (expanded) h += lampGridHeight(6);
+  return h;
+}
+
+const LAMP_PRESETS = [
+  { id: 'ember',  zh: '暖烬', en: 'Ember',  colors: ['#ff5a1f', '#ffc020', '#b3261e'] },
+  { id: 'dune',   zh: '沙丘', en: 'Dune',   colors: ['#c08a00', '#c47a1e', '#7a3f14'] },
+  { id: 'moss',   zh: '苔庭', en: 'Moss',   colors: ['#4e8a42', '#b8d42e', '#2f7f86'] },
+  { id: 'tide',   zh: '潮汐', en: 'Tide',   colors: ['#2e7fd0', '#3fc9c0', '#4fd18a'] },
+  { id: 'orchid', zh: '兰夜', en: 'Orchid', colors: ['#a83ed0', '#4a5fe0', '#c85a9e'] },
+  { id: 'moon',   zh: '月白', en: 'Moon',   colors: ['#c4d6ee', '#6e84a8', '#e0c48a'] }
+];
+
+function lampGlow(colors, size) {
+  const [a, b, c] = colors;
+  return 'radial-gradient(circle at 30% 28%, ' + a + ' 0%, transparent 62%),' +
+    'radial-gradient(circle at 72% 38%, ' + b + ' 0%, transparent 60%),' +
+    'radial-gradient(circle at 50% 82%, ' + c + ' 0%, transparent 64%),' +
+    'var(--card)';
+}
+function coverGlow() {
+  return 'radial-gradient(circle at 32% 28%, #8b79dd 0%, transparent 64%),' +
+    'radial-gradient(circle at 74% 58%, #3f6fb4 0%, transparent 66%),' +
+    'linear-gradient(140deg, #5b4f9f, #2c3f78)';
+}
 function deviceIcon(model) {
   if (model && model.startsWith('AppleTV')) return 'tv';
   if (model && model.startsWith('Mac')) return 'mac';
@@ -484,17 +605,47 @@ function deviceSectionHTML(devices) {
   return head + body;
 }
 function deviceCount(n) {
-  if (n === 0) return state.lang === 'zh' ? '无设备' : 'No devices';
-  if (state.lang === 'zh') return n + ' 台设备';
-  return n + (n === 1 ? ' device' : ' devices');
+  if (n === 0) return state.lang === 'zh' ? '暂无' : 'No receivers';
+  if (state.lang === 'zh') return n + ' 台';
+  return n + (n === 1 ? ' receiver' : ' receivers');
 }
 function playbackNote() {
   let note = t('format');
   if (state.view === 'streaming') note += ' · ' + t('syncPTP');
   return note + ' · ' + t('latencyNote');
 }
+function mediaCardHTML() {
+  if (!state.media) return '';
+  const bars = [10, 16, 24, 14, 8];
+  const meter = bars.map((h, i) => {
+    const top = (24 - h) / 2;
+    return '<i style="left:' + (i * 5) + 'px;top:' + top + 'px;height:' + h + 'px"></i>';
+  }).join('');
+  return '<div class="media-card">' +
+    '<div class="media-head">' + icon('note', 'app-icon') +
+      '<span class="media-app">' + esc(t('appMusic')) + '</span>' +
+      '<button type="button" class="media-switch">' + icon('chevronRight') + '</button>' +
+    '</div>' +
+    '<div class="media-main">' +
+      '<span class="media-poster">' + icon('note') + '</span>' +
+      '<span class="media-copy"><span class="media-title">' + esc(t('track')) + '</span>' +
+      '<span class="media-sub">' + esc(t('trackArtist')) + '</span></span>' +
+      '<span class="meter">' + meter + '</span>' +
+    '</div>' +
+    '<div class="media-progress">' +
+      '<span class="transport">' +
+        '<button type="button">' + icon('prev') + '</button>' +
+        '<button type="button">' + icon('pause') + '</button>' +
+        '<button type="button">' + icon('next') + '</button>' +
+      '</span>' +
+      '<span class="clock">' + esc(t('elapsed')) + '</span>' +
+      '<span class="track" style="--p:.52"><span class="fill"></span><span class="thumb"></span></span>' +
+      '<span class="clock">' + esc(t('remaining')) + '</span>' +
+    '</div>' +
+  '</div>';
+}
 function playbackSectionHTML() {
-  const head = '<div class="playback-head"><span class="section-label">' + esc(t('playback')) + '</span>' +
+  const head = '<div class="section-head"><span class="section-label">' + esc(t('playback')) + '</span>' +
     '<span class="section-note">' + esc(playbackNote()) + '</span></div>';
   let card = '<div class="card playback-card">';
   card += '<div class="volume"><div class="volume-head"><span class="volume-label">' + esc(t('volume')) + '</span>' +
@@ -508,15 +659,35 @@ function playbackSectionHTML() {
     '</div></div>';
     card += '<div class="line"></div>';
   }
-  const streaming = state.view === 'streaming';
-  card += '<div class="now">' +
-    '<span class="now-tile">' + icon('note') + '</span>' +
-    '<span class="now-copy"><span class="now-title">' + esc(streaming ? t('track') : t('noMedia')) + '</span>' +
-    '<span class="now-sub">' + esc(streaming ? t('trackSub') : t('mediaSession')) + '</span></span>' +
-    '<span class="now-push">' + esc(t('push')) + '<span class="switch on"></span></span>' +
-  '</div>';
+  card += mediaCardHTML();
   card += '</div>';
   return head + card;
+}
+function lampSectionHTML() {
+  const templateMode = state.lamp !== 'cover';
+  const expanded = state.lamp === 'expanded';
+  const preset = LAMP_PRESETS[1];
+  const name = templateMode ? preset[state.lang] || preset.en : t('lampCover');
+  const previewStyle = templateMode ? lampGlow(preset.colors) : coverGlow();
+  const head = '<div class="section-head"><span class="section-label">' + esc(t('lamp')) + '</span>' +
+    '<button type="button" class="icon-btn" style="margin-left:auto">' + icon('power') + '</button></div>';
+  let row = '<div class="lamp-row">' +
+    '<span class="lamp-preview" style="background:' + previewStyle + '"></span>' +
+    '<span class="lamp-copy"><span class="lamp-name">' + esc(name) + '</span></span>' +
+    '<span class="seg lamp-seg">' +
+      '<button type="button" class="' + (templateMode ? '' : 'active') + '">' + esc(t('lampCover')) + '</button>' +
+      '<button type="button" class="' + (templateMode ? 'active' : '') + '">' + esc(t('lampTemplate')) + '</button>' +
+    '</span>';
+  if (templateMode) {
+    row += '<button type="button" class="lamp-arrow' + (expanded ? ' open' : '') + '">' + icon('chevron') + '</button>';
+  }
+  row += '</div>';
+  if (templateMode && expanded) {
+    row += '<div class="lamp-grid">' + LAMP_PRESETS.map(p =>
+      '<span class="lamp-swatch' + (p.id === preset.id ? ' selected' : '') + '" style="background:' + lampGlow(p.colors) + '"></span>').join('') +
+    '</div>';
+  }
+  return '<div>' + head + '<div class="card lamp-card">' + row + '</div></div>';
 }
 function footerHTML() {
   const map = {
@@ -542,8 +713,8 @@ function flyoutHTML(devices, height) {
     '</header>' +
     '<div class="flyout-body">' +
       deviceSectionHTML(devices) +
-      '<div class="spacer"></div>' +
       playbackSectionHTML() +
+      lampSectionHTML() +
     '</div>' +
     footerHTML() +
   '</div>';
@@ -551,7 +722,8 @@ function flyoutHTML(devices, height) {
 
 function render() {
   const devices = DEVICES[state.view] || DEVICES.idle;
-  const height = flyoutHeight(devices.length, state.latency);
+  const expanded = state.lamp === 'expanded';
+  const height = flyoutHeight(devices.length, state.latency, state.media, expanded, state.view === 'error');
   document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
   document.body.classList.toggle('dark', state.dark);
   document.getElementById('brandMark').innerHTML = ICON.mark;
@@ -566,10 +738,13 @@ function render() {
     : icon('moon') + (state.lang === 'zh' ? '深色' : 'Dark');
   document.getElementById('stateLabel').textContent = state.lang === 'zh' ? '状态' : 'State';
   document.getElementById('zoomLabel').textContent = state.lang === 'zh' ? '缩放' : 'Zoom';
-  document.getElementById('latencyBtn').textContent = state.lang === 'zh'
-    ? (state.latency ? '延迟条 开' : '延迟条 关')
-    : (state.latency ? 'Latency row on' : 'Latency row off');
-  document.getElementById('latencyBtn').classList.toggle('active', state.latency);
+  document.getElementById('mediaBtn').textContent = state.lang === 'zh' ? '媒体卡' : 'Media card';
+  document.getElementById('mediaBtn').classList.toggle('active', state.media);
+  const lampLabels = state.lang === 'zh'
+    ? { cover: '灯带·封面', template: '灯带·模板', expanded: '灯带·展开' }
+    : { cover: 'Light cover', template: 'Light template', expanded: 'Light grid' };
+  document.getElementById('lampBtn').textContent = lampLabels[state.lamp] || lampLabels.cover;
+  document.getElementById('lampBtn').classList.toggle('active', state.lamp !== 'cover');
   document.getElementById('stateGroup').innerHTML = STATES.map(item =>
     '<button type="button" data-state="' + item.id + '" class="' + (state.view === item.id ? 'active' : '') + '">' +
     esc(item[state.lang]) + '</button>').join('');
@@ -590,8 +765,12 @@ document.getElementById('zoomGroup').addEventListener('click', e => {
   state.zoom = Number(button.dataset.zoom);
   render();
 });
-document.getElementById('latencyBtn').addEventListener('click', () => {
-  state.latency = !state.latency;
+document.getElementById('mediaBtn').addEventListener('click', () => {
+  state.media = !state.media;
+  render();
+});
+document.getElementById('lampBtn').addEventListener('click', () => {
+  state.lamp = state.lamp === 'cover' ? 'template' : state.lamp === 'template' ? 'expanded' : 'cover';
   render();
 });
 document.getElementById('langBtn').addEventListener('click', () => {
