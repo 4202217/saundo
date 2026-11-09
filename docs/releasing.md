@@ -33,6 +33,15 @@ Audit the docs against the tree before the release commit. Fix drift in the same
 
 Run `/ui-review` before the changelogs. Resolve every P0 and terminology finding; land the fixes as their own commit before the release commit. The changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the outcome in `docs/verification.md`.
 
+## UI mockup templates
+
+Refresh the ui-mockup skill after the UI review settles the interface and before the release commit. The two rendered templates are the baseline every later design round starts from, so a release must not leave them describing the previous UI.
+
+- Compare the templates with the shipped palette, widgets, and geometry: `internal/app/theme.go`, `ui_kit.go`, `flyout.go`, `settings_window.go`, and `receivers_page.go`.
+- Update [.claude/skills/ui-mockup/assets/mockup-template.html](../.claude/skills/ui-mockup/assets/mockup-template.html) and [flyout-template.html](../.claude/skills/ui-mockup/assets/flyout-template.html): tokens, widget sizes, shell geometry, sample content, and both locale strings. Update the skill's height rule and marked-block list when the surface changed.
+- Render the settings target, normal, and edge states and the flyout's idle, streaming, empty, and error states in zh-CN and English, light and dark, into `.audit/release-<version>/mockups/`. Toggle the flyout's media card and ambient states. Inspect every render for clipping, overflow, and wrapped copy.
+- Record the render directory in `docs/verification.md` in the template commit. Land this as its own commit before the release commit, like the UI review fixes.
+
 ## README
 
 Update `README.md` and `README.zh-CN.md` before the release commit. Both are user-facing and must say the same thing.
@@ -59,12 +68,13 @@ VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd
 
 1. Bump `version` in `cmd/saundo/mygo.json`.
 2. Run `/ui-review` and land its P0 and terminology fixes as their own commit.
-3. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
-4. Update `README.md` and `README.zh-CN.md` with the release's user-visible changes.
-5. Run `/pstack:maintain-verification-skill` and land its proven corrections.
-6. Build the candidate, check its update manifest, and record the maintainer's pre-release test in `docs/verification.md`.
-7. Commit the version, both changelogs, both READMEs, the docs audit, and the maintainer's test record as `build: release <version>`.
-8. Run the preflight, then tag that release commit. Do not add a commit between the release commit and the tag.
+3. Refresh the UI mockup templates against the shipped interface and land them as their own commit.
+4. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
+5. Update `README.md` and `README.zh-CN.md` with the release's user-visible changes.
+6. Run `/pstack:maintain-verification-skill` and land its proven corrections.
+7. Build the candidate, check its update manifest, and record the maintainer's pre-release test in `docs/verification.md`.
+8. Commit the version, both changelogs, both READMEs, the docs audit, and the maintainer's test record as `build: release <version>`.
+9. Run the preflight, then tag that release commit. Do not add a commit between the release commit and the tag.
 
 ## Local gate
 

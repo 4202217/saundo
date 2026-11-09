@@ -21,6 +21,8 @@ Constrain the HTML to what mygo can express so the approved render translates on
 
 Skip it for a one-line copy change, a spacing fix with an obvious target, or a behavior change with no visual decision.
 
+The release refreshes both templates even when no design question is open: the release skill requires them to describe the shipped interface before the release commit.
+
 ## Stop conditions
 
 - The gate is red. Run `mingw32-make check` before spending on mockups.
