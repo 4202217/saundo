@@ -988,6 +988,9 @@ func (a *App) cancelPin() {
 }
 
 func (a *App) statusText() string {
+	if a.snap.TakenOver {
+		return locales.StatusTakenOver()
+	}
 	if a.snap.Reconnecting {
 		return locales.StatusReconnecting()
 	}

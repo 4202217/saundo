@@ -257,3 +257,11 @@ Content-Length: <n>
 - The setting cannot be discovered over the protocol; `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
 Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the receiver muted, raw JPEG `/artwork/command` POSTs returned `400 Bad Request`; a binary-plist POST returned `200 OK` but did not replace the cover. On 2026-11-07, three consecutive `SET_PARAMETER image/jpeg` covers (tide, moon, orchid) each repainted the top display with no `/artwork/command`; the POST trigger and the separate `TCPArtwork` channel were removed. Later on 2026-11-07, the `updateMRPlaybackState` command turned the display off and back on while the stream stayed up (see above). A stereo pair `AudioAccessory5,1` 27.3 probe on 2026-11-07 confirmed that clearing the artwork slot, a state 2→1 cycle, and a new item without artwork all keep the last image; the white-center placeholder appears only on a fresh session with no artwork.
+
+## 11. Session takeover
+
+A receiver serves one active sender per session. When a second sender opens a session to the same receiver, the receiver gives it the device and closes the displaced sender's control connection. The displaced sender does not receive a takeover command, a `hijackID`, or a specific error. On a HomePod `AudioAccessory5,1` 27.2 stereo pair member, the loser received a normal `POST /command` with `type: updateInfo`, then a clean control-channel close with an empty error, while the winner reached streaming.
+
+The sender treats a clean control close during streaming as terminal. It stops RTP, timers, and sockets, reports `Preempted`, and does not reconnect. A close carrying an error stays a retryable connection failure, and a clean close during pairing or handshake stays a start failure. The engine records the takeover separately from a generic error so the interface can show the state and offer a manual reconnect instead of fighting the new sender.
+
+Observed on 2026-11-09 with two sender sessions against the same HomePod R, `192.168.31.164:7000`, model `AudioAccessory5,1`, group `HomePods`. The probe is `TestLiveTakeoverProbe`, gated by `SAUNDO_TAKEOVER_TEST=1`. The automated classification is pinned by `TestCleanControlCloseDuringStreamingPreempts` and `TestControlCloseWithErrorIsNotPreemption`; the engine's no-reconnect path by `TestTakeoverStopsReconnect`.

@@ -12,6 +12,9 @@ import (
 	"saundo/internal/audio/ring"
 )
 
+// eventBodyHook is a test hook for live probes. Production leaves it nil.
+var eventBodyHook func(firstLine, contentType string, body []byte)
+
 func (s *Sender) rtspURI() string {
 	return "rtsp://" + s.localIP + "/" + utoa(uint64(s.sessionID))
 }
@@ -407,6 +410,7 @@ func (s *Sender) onEventData(data []byte) {
 		}
 		contentLen := 0
 		cseq := ""
+		contentType := ""
 		for _, line := range strings.Split(string(s.eventPlain[:headEnd]), "\n") {
 			line = trimASCII(line)
 			colon := strings.IndexByte(line, ':')
@@ -418,14 +422,21 @@ func (s *Sender) onEventData(data []byte) {
 				contentLen = toInt(line[colon+1:])
 			case "cseq":
 				cseq = trimASCII(line[colon+1:])
+			case "content-type":
+				contentType = trimASCII(line[colon+1:])
 			}
 		}
 		total := headEnd + 4 + contentLen
 		if len(s.eventPlain) < total {
 			return
 		}
-		if firstLine := strings.SplitN(string(s.eventPlain[:headEnd]), "\r\n", 2)[0]; firstLine != "" {
+		firstLine := strings.SplitN(string(s.eventPlain[:headEnd]), "\r\n", 2)[0]
+		if firstLine != "" {
 			s.info("event request %q", firstLine)
+		}
+		if eventBodyHook != nil {
+			body := append([]byte(nil), s.eventPlain[headEnd+4:total]...)
+			eventBodyHook(firstLine, contentType, body)
 		}
 		s.eventPlain = s.eventPlain[total:]
 

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -61,6 +62,24 @@ func TestGroupForwardsReceiverLatency(t *testing.T) {
 	g.memberEvents(1).ReceiverLatencyChanged(72)
 	if len(got) != 2 || got[0] != 70 || got[1] != 72 {
 		t.Fatalf("group forwarded %v, want [70 72]", got)
+	}
+}
+
+// TestGroupForwardsPreemption pins the member event wiring: a stereo group's
+// sender must report a takeover to the same engine callback a single receiver
+// uses, so the engine stops the reconnect.
+func TestGroupForwardsPreemption(t *testing.T) {
+	g := buildGroup()
+	var got []string
+	g.onPreempted = func(reason string) { got = append(got, reason) }
+
+	ev := g.memberEvents(0)
+	if ev.Preempted == nil {
+		t.Fatal("member events do not forward Preempted")
+	}
+	ev.Preempted("receiver closed the session")
+	if len(got) != 1 || !strings.Contains(got[0], "receiver closed the session") {
+		t.Fatalf("group forwarded %v, want the preemption reason", got)
 	}
 }
 

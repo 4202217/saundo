@@ -50,6 +50,7 @@ type rig struct {
 	events       []raopio.Event
 	launched     []launchResult
 	closed       int
+	preempted    []string
 	pins         []string
 	creds        []string
 	states       []State
@@ -80,6 +81,7 @@ func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *
 	r.sender = New(r.io, Events{
 		Launched:            func(ok bool, err string) { r.launched = append(r.launched, launchResult{ok, err}) },
 		Closed:              func() { r.closed++ },
+		Preempted:           func(reason string) { r.preempted = append(r.preempted, reason) },
 		PinRequired:         func(name string) { r.pins = append(r.pins, name) },
 		CredentialsObtained: func(deviceID, credsJSON string) { r.creds = append(r.creds, credsJSON) },
 		StateChanged:        func(s State) { r.states = append(r.states, s) },

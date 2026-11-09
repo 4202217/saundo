@@ -402,6 +402,32 @@ func TestReconnectBackoffThenSuccess(t *testing.T) {
 	}
 }
 
+func TestTakeoverStopsReconnect(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	h.e.onPreempted("receiver closed the session")
+	if h.e.reconnectWanted {
+		t.Fatal("takeover scheduled a reconnect")
+	}
+	if !h.e.Snapshot().TakenOver {
+		t.Fatal("snapshot does not report the takeover")
+	}
+
+	h.fake.state = sender.StateIdle
+	h.e.onClosed()
+	if h.e.reconnectWanted {
+		t.Fatal("onClosed scheduled a reconnect after a takeover")
+	}
+
+	h.connect()
+	if h.e.Snapshot().TakenOver {
+		t.Fatal("a user connect did not clear the takeover")
+	}
+}
+
 // TestStaleReconnectDoesNotKillActiveSession pins the guard against the
 // stale-retry scenario: the user reconnects while a retry is pending, and
 // the due timer must not tear down that live handshake.

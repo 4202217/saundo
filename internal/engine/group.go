@@ -29,6 +29,7 @@ type groupTransport struct {
 
 	onLaunched        func(ok bool, err string)
 	onClosed          func()
+	onPreempted       func(reason string)
 	onPinRequired     func(deviceName string)
 	onCredentials     func(deviceID, credsJSON string)
 	onState           func(sender.State)
@@ -82,6 +83,7 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		dead:              make(chan struct{}),
 		onLaunched:        e.onLaunched,
 		onClosed:          e.onClosed,
+		onPreempted:       e.onPreempted,
 		onPinRequired:     e.onPinRequired,
 		onCredentials:     e.onCredentials,
 		onState:           e.onStateChanged,
@@ -131,6 +133,11 @@ func (g *groupTransport) memberEvents(idx int) sender.Events {
 	return sender.Events{
 		Launched: func(ok bool, err string) { g.memberLaunched(idx, ok, err) },
 		Closed:   func() { g.memberClosed(idx) },
+		Preempted: func(reason string) {
+			if g.onPreempted != nil {
+				g.onPreempted(fmt.Sprintf("%s：%s", g.members[idx].device.Name, reason))
+			}
+		},
 		PinRequired: func(name string) {
 			if g.onPinRequired != nil {
 				g.onPinRequired(name)

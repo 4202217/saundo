@@ -115,6 +115,14 @@ with its settings, no secrets — only whether a password exists); it also
 carries `LampOff`, `LampCover`, and `LampPreset`, which both lamp surfaces
 read.
 
+A clean control close during a streaming session is a takeover, not a
+retryable failure. `Sender` reports it through `Events.Preempted`;
+`Engine.onPreempted` sets `Snapshot.TakenOver`, clears the pending reconnect,
+and stops the session. A stereo group forwards each member's preemption to
+the same callback, so one member's takeover stops the pair. A user connect or
+disconnect clears the flag. A close carrying an error stays on the normal
+failure path.
+
 The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
 settings survive the pair going offline. Exactly one entry carries

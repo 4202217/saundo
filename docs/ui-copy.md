@@ -39,12 +39,15 @@ The two latency values measure different stages. Never draw them as one bar, nev
 | Connected | 已连接 / Connected | 已连接 / Connected |
 | Disconnected | 未连接 / Not connected | 未连接 / Not connected |
 | Failed | 连接失败 / Connection failed | 连接失败 / Connection failed |
+| Taken over | 已被其他设备接管 / Taken over by another device | 已被其他设备接管 / Taken over by another device |
 | Update available | {version} 可用 / Version {version} is available | {version} 可用 / {version} available |
 | Update downloading | 正在下载 {version} / Downloading {version} | 正在下载 {percent}% / Downloading {percent}% |
 | Update ready | {version} 已下载 / {version} is ready | 待重启 / Update ready |
 | Update installing | 重启后完成安装。 / Restart to finish installing. | 重启以完成安装 / Restart to install |
 
 The long form goes in the footer, the sidebar, and a status line. The short form goes in a chip. Never invent a third wording for the same state.
+
+The takeover state keeps the error phase. Its active-row action is 重新连接 / Reconnect.
 
 ## Tone
 

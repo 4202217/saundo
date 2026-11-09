@@ -24,6 +24,8 @@ func phaseOf(s engine.Snapshot) phase {
 	switch {
 	case s.State == sender.StateStreaming:
 		return phaseStreaming
+	case s.TakenOver:
+		return phaseError
 	case s.State != sender.StateIdle || s.Reconnecting:
 		return phaseConnecting
 	case s.Error != "":

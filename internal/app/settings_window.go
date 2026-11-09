@@ -927,7 +927,11 @@ func (a *App) connectionStateChip(c *ui.Context, p palette) {
 	case phaseConnecting:
 		chip(c, p, locales.SummaryConnecting(), chipAccent)
 	case phaseError:
-		chip(c, p, locales.StatusConnectionFailed(), chipDanger)
+		text := locales.StatusConnectionFailed()
+		if a.snap.TakenOver {
+			text = locales.StatusTakenOver()
+		}
+		chip(c, p, text, chipDanger)
 	default:
 		chip(c, p, locales.StatusDisconnected(), chipNeutral)
 	}
@@ -1004,6 +1008,9 @@ func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color) {
 		sub, dot = a.statusText(), p.accent
 	case phaseError:
 		sub, dot = locales.StatusConnectionFailed(), p.red
+		if a.snap.TakenOver {
+			sub = locales.StatusTakenOver()
+		}
 	default:
 		sub, dot = locales.StatusDisconnected(), p.faint
 	}
