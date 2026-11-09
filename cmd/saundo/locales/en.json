@@ -181,7 +181,7 @@
   "settingsNavCapture": "Capture",
   "settingsNavNowPlaying": "Now Playing",
   "pageGeneralDesc": "Sender identity, startup, and appearance.",
-  "pageConnectionDesc": "Reconnection and verification.",
+  "pageConnectionDesc": "Connection, latency, and stability.",
   "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver delay compensation.",
   "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio or a single app.",
@@ -227,6 +227,23 @@
   "settingsReconnectDesc": "Retries automatically a few times before giving up.",
   "settingsStrictAuth": "Strict receiver verification",
   "settingsStrictAuthDesc": "Disconnect when receiver verification fails.",
+  "settingsHealthLatencySub": "Adjust on Audio",
+  "settingsHealthReceiver": "Receiver processing",
+  "settingsHealthReceiverSub": "Reported by receiver",
+  "settingsHealthReceiverUnknown": "Not reported",
+  "settingsHealthReceiverGroupValue": "Up to {value}",
+  "@settingsHealthReceiverGroupValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsHealthDrops": "Stability",
+  "settingsHealthDropsSub": "This session",
+  "settingsHealthDropsGood": "Good",
+  "settingsHealthDropsBad": "Stuttering",
+  "settingsHealthNote": "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure different stages and are not additive.",
   "receiverGroupEnabled": "Enabled",
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
@@ -335,7 +352,7 @@
   "settingsCaptureError": "Capture error",
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
-  "summaryStereoGroup": "Stereo pair · {n, number}/2 · Current receiver",
+  "summaryStereoGroup": "Stereo pair · {n, number}/2",
   "@summaryStereoGroup": {
     "placeholders": {
       "n": {
@@ -343,7 +360,7 @@
       }
     }
   },
-  "summaryModelCurrentDevice": "{model} · Current receiver",
+  "summaryModelCurrentDevice": "{model}",
   "@summaryModelCurrentDevice": {
     "placeholders": {
       "model": {
@@ -351,7 +368,7 @@
       }
     }
   },
-  "summaryCurrentDevice": "Current receiver",
+  "summaryCurrentDevice": "Receiver",
   "summaryConnected": "Connected",
   "summaryConnecting": "Connecting",
   "sidebarNoDevice": "No receiver selected",

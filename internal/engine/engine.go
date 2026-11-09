@@ -48,15 +48,18 @@ type Snapshot struct {
 	Reconnecting     bool
 	// AudioIdle is true while the engine has suspended RTP after sustained
 	// digital silence. The session stays connected.
-	AudioIdle          bool
-	MuteLocal          MuteLocalState
-	MuteLocalError     string
-	LampOff            bool
-	LampCover          bool
-	LampPreset         string
-	TrayAnimation      bool
-	FlyoutPopover      bool
-	LatencyMS          int
+	AudioIdle      bool
+	MuteLocal      MuteLocalState
+	MuteLocalError string
+	LampOff        bool
+	LampCover      bool
+	LampPreset     string
+	TrayAnimation  bool
+	FlyoutPopover  bool
+	LatencyMS      int
+	// ReceiverLatencyMS is the receiver's own arrival-to-render latency from
+	// its stream SETUP response. 0 means the receiver did not report one.
+	ReceiverLatencyMS  int
 	CaptureEndpoint    string
 	CaptureName        string
 	CaptureRate        int
@@ -312,25 +315,35 @@ type Engine struct {
 	passwordDeviceID string
 	passwordTargetID string
 	volume           float64
-	setsValue        settings.Settings
-	captureEndpoint  string
-	captureName      string
-	captureProcess   uint32
-	captureRate      int
-	captureRunning   bool
-	captureError     string
-	captureStarting  bool
-	captureQueued    bool
-	captureGen       int
-	userDisconnect   bool
-	reconnectWanted  bool
-	reconnectAt      time.Time
-	reconnectNum     int
-	lastMissingLogAt time.Time
-	settingsDirtyAt  time.Time
-	audioPaused      bool
-	pauseUnsupported bool
-	autoTried        bool
+	// receiverLatency is the largest arrival-to-render latency any member of
+	// the active session reported. It is diagnostic only.
+	receiverLatency int
+	// sessionDropped accumulates drops since the current session reached
+	// streaming. lastRawDropped is the sink counter at the last fold, and
+	// dropSessionActive is true between that transition and close. The
+	// accumulation survives a capture sink Reset, which zeroes the raw count.
+	sessionDropped    uint64
+	lastRawDropped    uint64
+	dropSessionActive bool
+	setsValue         settings.Settings
+	captureEndpoint   string
+	captureName       string
+	captureProcess    uint32
+	captureRate       int
+	captureRunning    bool
+	captureError      string
+	captureStarting   bool
+	captureQueued     bool
+	captureGen        int
+	userDisconnect    bool
+	reconnectWanted   bool
+	reconnectAt       time.Time
+	reconnectNum      int
+	lastMissingLogAt  time.Time
+	settingsDirtyAt   time.Time
+	audioPaused       bool
+	pauseUnsupported  bool
+	autoTried         bool
 
 	// lampJPEG renders a preset; tests replace it. lampImage is the encoded
 	// image for lampImagePreset, kept off the sender's tick path.
@@ -416,6 +429,7 @@ func startCaptureDefault(cfg capture.Config) (captureSource, error) {
 
 // openSession builds the production transport for one receiver.
 func (e *Engine) openSession(d device.Device) (transport, func(), error) {
+	e.receiverLatency = 0
 	if d.Host == "" || d.Port == 0 {
 		return nil, nil, fmt.Errorf("receiver %q has no address", d.Name)
 	}
@@ -435,12 +449,13 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 		clock = c
 	}
 	s := sender.New(host, sender.Events{
-		Launched:            e.onLaunched,
-		Closed:              e.onClosed,
-		PinRequired:         e.onPinRequired,
-		CredentialsObtained: e.onCredentials,
-		StateChanged:        e.onStateChanged,
-		VolumeChanged:       e.onReceiverVolume,
+		Launched:               e.onLaunched,
+		Closed:                 e.onClosed,
+		PinRequired:            e.onPinRequired,
+		CredentialsObtained:    e.onCredentials,
+		StateChanged:           e.onStateChanged,
+		VolumeChanged:          e.onReceiverVolume,
+		ReceiverLatencyChanged: e.onReceiverLatency,
 	}, e.senderLog)
 	s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 	s.AttachRing(e.ring)
@@ -1274,9 +1289,14 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
 		e.applyLamp()
+		if !e.dropSessionActive {
+			e.beginDropSession()
+		}
 	} else {
 		e.restoreLocalMute()
 		e.connectedName = ""
+		e.receiverLatency = 0
+		e.endDropSession()
 		e.lastError = err
 		e.logf("session failed: %s", err)
 		if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
@@ -1288,6 +1308,8 @@ func (e *Engine) onLaunched(ok bool, err string) {
 
 func (e *Engine) onClosed() {
 	e.connectedName = ""
+	e.receiverLatency = 0
+	e.endDropSession()
 	e.pinRequired = false
 	e.clearPasswordPrompt()
 	if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
@@ -1327,8 +1349,54 @@ func (e *Engine) onCredentials(deviceID, credsJSON string) {
 }
 
 func (e *Engine) onStateChanged(state sender.State) {
+	if state == sender.StateStreaming && !e.dropSessionActive {
+		e.beginDropSession()
+	}
 	e.logf("state: %s", state)
 	e.publish()
+}
+
+// beginDropSession starts the session's drop accounting. The raw capture
+// counter may already hold idle overflow; only the delta from here counts.
+func (e *Engine) beginDropSession() {
+	e.sessionDropped = 0
+	e.lastRawDropped = 0
+	if e.captureSink != nil {
+		e.lastRawDropped = e.captureSink.Dropped()
+	}
+	e.dropSessionActive = true
+}
+
+func (e *Engine) endDropSession() {
+	e.dropSessionActive = false
+	e.sessionDropped = 0
+	e.lastRawDropped = 0
+}
+
+// foldCaptureDrops adds the sink's new drops to the session total. A raw
+// counter below the last fold means the sink was reset; the accumulated total
+// survives and folding resumes from zero.
+func (e *Engine) foldCaptureDrops() {
+	if e.captureSink == nil {
+		return
+	}
+	raw := e.captureSink.Dropped()
+	if raw >= e.lastRawDropped {
+		e.sessionDropped += raw - e.lastRawDropped
+	}
+	e.lastRawDropped = raw
+}
+
+// resetCaptureSink folds the drops accrued before a capture reset into the
+// session total, then clears the sink. Without the fold, a mid-session
+// endpoint or format change would zero the counter and hide the earlier drops.
+func (e *Engine) resetCaptureSink() {
+	if e.captureSink == nil {
+		return
+	}
+	e.foldCaptureDrops()
+	e.captureSink.Reset()
+	e.lastRawDropped = 0
 }
 
 // onReceiverVolume adopts the receiver's own volume when its hardware knob
@@ -1343,6 +1411,18 @@ func (e *Engine) onReceiverVolume(pct float64) {
 		e.setsValue.VolumeByDevice[e.selectedID] = e.volume
 	}
 	e.markSettingsDirty()
+	e.publish()
+}
+
+// onReceiverLatency records the receiver's own arrival-to-render latency. It
+// is diagnostic: the configured presentation latency stays the scheduler's
+// budget, and the receiver's output latency is not added to it.
+func (e *Engine) onReceiverLatency(ms int) {
+	if ms <= 0 || ms <= e.receiverLatency {
+		return
+	}
+	e.receiverLatency = ms
+	e.logf("receiver reports %d ms arrival-to-render latency", ms)
 	e.publish()
 }
 
@@ -1693,7 +1773,7 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	if e.tr != nil {
 		e.tr.SetInputFormat(stats.Rate)
 	}
-	e.captureSink.Reset()
+	e.resetCaptureSink()
 	if e.mute.state == MuteLocalActive && e.captureProcess == 0 && e.captureEndpoint == "" {
 		// Capture follows the default device. If Windows moved the default,
 		// move the mute with it.
@@ -1719,7 +1799,7 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 		if e.tr != nil {
 			e.tr.SetInputFormat(info.rate)
 		}
-		e.captureSink.Reset()
+		e.resetCaptureSink()
 		e.logf("capture rate changed to %d Hz", info.rate)
 	}
 	if info.name != "" {
@@ -1755,10 +1835,13 @@ func (e *Engine) buildSnapshot() Snapshot {
 	if e.tr != nil {
 		state = e.tr.State()
 	}
-	// Drops before a stream are expected: no sink drains the ring.
+	// Drops before a stream are expected: no sink drains the ring. Report
+	// the accumulation since this session reached streaming; it survives a
+	// capture sink reset.
 	dropped := uint64(0)
-	if e.captureSink != nil && state == sender.StateStreaming {
-		dropped = e.captureSink.Dropped()
+	if e.captureSink != nil && state == sender.StateStreaming && e.dropSessionActive {
+		e.foldCaptureDrops()
+		dropped = e.sessionDropped
 	}
 	var lines []string
 	if e.log != nil {
@@ -1793,6 +1876,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		MuteLocal:          e.mute.state,
 		MuteLocalError:     e.mute.err,
 		LatencyMS:          e.setsValue.LatencyMS,
+		ReceiverLatencyMS:  e.receiverLatency,
 		CaptureProcessPID:  e.captureProcess,
 		CaptureProcessName: e.captureName,
 		LampOff:            e.setsValue.Lamp.Off,

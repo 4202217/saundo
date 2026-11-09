@@ -82,12 +82,13 @@ func TestCatalogBannedTerms(t *testing.T) {
 			"让图标动起来", "设备列表", "当前设备", "未选择设备",
 			"立即检查", "这台设备", "打开下方", "顶屏灯光",
 			"浮窗", "显示面板", "和面板", "签名", "按 1、2、5",
+			"调度缓冲", "接收器输出", "丢样本", "当前接收器",
 		},
 		"en": {
 			"auth-setup", "Backoff", "Reference buffering", "update window",
 			"Refresh devices", "No devices", "Device list", "this device",
 			"Top display light", "Show panel", "tray flyout", "Flyout as popover",
-			"the panel", "signature", "Retries at",
+			"the panel", "signature", "Retries at", "Current receiver",
 		},
 	}
 	for loc, terms := range banned {
@@ -127,8 +128,8 @@ func TestCatalogUniqueValues(t *testing.T) {
 		"updateAvailableMeta": true, "updateNotesMeta": true,
 		"settingsNavLamp": true, "settingsLampCardTitle": true, "flyoutLampSection": true,
 		"settingsLampTemplates": true, "lampSourceTemplate": true,
-		"lampSourceCover": true,
-		"passwordLabel":   true, "receiverFieldAuth": true,
+		"lampSourceCover": true, "summaryCurrentDevice": true,
+		"passwordLabel": true, "receiverFieldAuth": true,
 		"themeLight":            true,
 		"settingsLatencyStable": true, "settingsChannelStable": true,
 		// Both choices mean "none": no receiver authentication, no cover.

@@ -108,7 +108,7 @@
   "settingsNavCapture": "采集",
   "settingsNavNowPlaying": "正在播放",
   "pageGeneralDesc": "发送端身份、启动与外观。",
-  "pageConnectionDesc": "重连与验证策略。",
+  "pageConnectionDesc": "连接状态、延迟与稳定性。",
   "pageReceiversDesc": "管理接收器、自动连接、显示与每台接收器的延迟补偿。",
   "pageAudioDesc": "在延迟与稳定性之间权衡；播放中切换会自动重连。",
   "pageCaptureDesc": "系统声音或单个应用。",
@@ -154,6 +154,23 @@
   "settingsReconnectDesc": "断开后会自动重试几次，然后停止。",
   "settingsStrictAuth": "严格验证接收器",
   "settingsStrictAuthDesc": "接收器验证不通过时断开。",
+  "settingsHealthLatencySub": "可在音频页调整",
+  "settingsHealthReceiver": "接收器处理",
+  "settingsHealthReceiverSub": "接收器自报",
+  "settingsHealthReceiverUnknown": "接收器未上报",
+  "settingsHealthReceiverGroupValue": "最高 {value}",
+  "@settingsHealthReceiverGroupValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsHealthDrops": "稳定性",
+  "settingsHealthDropsSub": "本次会话",
+  "settingsHealthDropsGood": "良好",
+  "settingsHealthDropsBad": "有卡顿",
+  "settingsHealthNote": "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。",
   "receiverGroupEnabled": "已启用",
   "receiverGroupHidden": "已隐藏",
   "receiverAddTitle": "添加接收器",
@@ -262,9 +279,9 @@
   "settingsCaptureError": "采集错误",
   "settingsCaptureNotRunning": "未运行",
   "captureSystemDefault": "系统默认输出",
-  "summaryStereoGroup": "立体声组 · {n, number}/2 · 当前接收器",
-  "summaryModelCurrentDevice": "{model} · 当前接收器",
-  "summaryCurrentDevice": "当前接收器",
+  "summaryStereoGroup": "立体声组 · {n, number}/2",
+  "summaryModelCurrentDevice": "{model}",
+  "summaryCurrentDevice": "接收器",
   "summaryConnected": "已连接",
   "summaryConnecting": "连接中",
   "sidebarNoDevice": "未选择接收器",

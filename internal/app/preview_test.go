@@ -356,6 +356,25 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	muteWaiting.snap.ConnectedName = ""
 	save("settings-connection-mute-waiting-light", muteWaiting.settingsView, 720, 500, false)
 
+	// The connection health card at the 640 minimum and in its unknown and
+	// unstable states.
+	connection640 := fixture()
+	connection640.page = pageConnection
+	save("settings-connection-640-light", connection640.settingsView, 640, 420, false)
+	save("settings-connection-640-dark", connection640.settingsView, 640, 420, true)
+
+	connectionUnknown := fixture()
+	connectionUnknown.page = pageConnection
+	connectionUnknown.snap.ReceiverLatencyMS = 0
+	save("settings-connection-unknown-light", connectionUnknown.settingsView, 720, 500, false)
+	save("settings-connection-unknown-dark", connectionUnknown.settingsView, 720, 500, true)
+
+	connectionUnstable := fixture()
+	connectionUnstable.page = pageConnection
+	connectionUnstable.snap.DroppedSamples = 3
+	save("settings-connection-unstable-light", connectionUnstable.settingsView, 720, 500, false)
+	save("settings-connection-unstable-dark", connectionUnstable.settingsView, 720, 500, true)
+
 	// The Now Playing settings page with a live card, master on and off.
 	nowSettings := fixture()
 	nowSettings.page = pageNowPlaying

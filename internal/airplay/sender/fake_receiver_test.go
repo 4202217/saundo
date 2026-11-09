@@ -54,6 +54,7 @@ type rig struct {
 	creds        []string
 	states       []State
 	volumeEvents []float64
+	receiverMS   []int
 	logs         []string
 }
 
@@ -68,7 +69,7 @@ func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *
 	case modePassword:
 		pin = testReceiverPassword
 	}
-	r.rx = &fakeReceiver{r: r, mode: mode, pin: pin, requests: map[string]int{}, receiverVolume: -27}
+	r.rx = &fakeReceiver{r: r, mode: mode, pin: pin, requests: map[string]int{}, receiverVolume: -27, arrivalRenderMS: 70}
 	if stored != nil {
 		r.rx.clientID = stored.clientID
 		r.rx.clientLTPK = stored.clientLTPK
@@ -83,6 +84,9 @@ func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *
 		CredentialsObtained: func(deviceID, credsJSON string) { r.creds = append(r.creds, credsJSON) },
 		StateChanged:        func(s State) { r.states = append(r.states, s) },
 		VolumeChanged:       func(p float64) { r.volumeEvents = append(r.volumeEvents, p) },
+		ReceiverLatencyChanged: func(ms int) {
+			r.receiverMS = append(r.receiverMS, ms)
+		},
 	}, func(level Level, format string, args ...any) {
 		r.logs = append(r.logs, fmt.Sprintf(format, args...))
 		t.Logf("[%d] "+format, append([]any{level}, args...)...)
@@ -279,6 +283,7 @@ type fakeReceiver struct {
 	retransmitResps   [][]byte
 	feedbacks         int
 	receiverVolume    int64
+	arrivalRenderMS   int64
 	requests          map[string]int
 	setParams         []string
 	commands          []string
@@ -405,9 +410,13 @@ func (f *fakeReceiver) dispatch(req request) {
 			stream := streams[0].(map[string]any)
 			f.audioKey = append([]byte(nil), stream["shk"].([]byte)...)
 			f.ap2Audio = true
-			body, _ := crypto.Encode(map[string]any{"streams": []any{map[string]any{
+			reply := map[string]any{
 				"dataPort": int64(6000), "controlPort": int64(6001), "type": int64(96),
-			}}})
+			}
+			if f.arrivalRenderMS > 0 {
+				reply["arrivalToRenderLatencyMs"] = f.arrivalRenderMS
+			}
+			body, _ := crypto.Encode(map[string]any{"streams": []any{reply}})
 			f.reply(req, 200, "application/x-apple-binary-plist", body)
 			return
 		}

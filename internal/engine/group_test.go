@@ -40,17 +40,28 @@ func buildGroup() *groupTransport {
 	for i, id := range []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"} {
 		idx := i
 		m := device.Device{ID: id, Name: id, Host: "10.0.0.1", Port: 7000, Auth: device.AuthHAPTransient}
-		s := sender.New(fakeIO{}, sender.Events{
-			Closed:       func() { g.memberClosed(idx) },
-			Launched:     func(ok bool, err string) { g.memberLaunched(idx, ok, err) },
-			StateChanged: func(sender.State) { g.memberStateChanged(idx, sender.StateIdle) },
-		}, nopLog)
+		s := sender.New(fakeIO{}, g.memberEvents(idx), nopLog)
 		g.members = append(g.members, &groupMember{
 			device: m, host: raopio.NewHost(), sender: s, ring: ring.New(48000),
 			setLampArtwork: func([]byte, string, bool) {},
 		})
 	}
 	return g
+}
+
+// TestGroupForwardsReceiverLatency pins the member event wiring: a stereo
+// group's sender must report the receiver's latency to the same engine
+// callback a single receiver uses.
+func TestGroupForwardsReceiverLatency(t *testing.T) {
+	g := buildGroup()
+	var got []int
+	g.onReceiverLatency = func(ms int) { got = append(got, ms) }
+
+	g.memberEvents(0).ReceiverLatencyChanged(70)
+	g.memberEvents(1).ReceiverLatencyChanged(72)
+	if len(got) != 2 || got[0] != 70 || got[1] != 72 {
+		t.Fatalf("group forwarded %v, want [70 72]", got)
+	}
 }
 
 // TestGroupStopStaysOnEngineGoroutine pins the teardown ownership: a member
