@@ -33,11 +33,12 @@ func newHarnessWithStores(t *testing.T, sets *settings.Store, credsStore *creds.
 	h.e.newSession = func(d device.Device) (transport, func(), error) {
 		h.sessions++
 		h.fake = newFakeTransport(sender.Events{
-			Launched:            h.e.onLaunched,
-			Closed:              h.e.onClosed,
-			PinRequired:         h.e.onPinRequired,
-			CredentialsObtained: h.e.onCredentials,
-			StateChanged:        h.e.onStateChanged,
+			Launched:               h.e.onLaunched,
+			Closed:                 h.e.onClosed,
+			PinRequired:            h.e.onPinRequired,
+			CredentialsObtained:    h.e.onCredentials,
+			StateChanged:           h.e.onStateChanged,
+			ReceiverLatencyChanged: h.e.onReceiverLatency,
 		})
 		h.fake.rings = h.rings
 		return h.fake, func() { h.fake.stopped = true }, nil

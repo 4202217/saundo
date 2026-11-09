@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-08 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # Receiver profiles
 
@@ -10,7 +10,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 - Pairs with HAP transient pairing: `Flags=0x10`, fixed PIN `3939`, stop at M4 (protocol.md §2.1).
 - `shk` and the audio ChaCha20 key: first 32 bytes of the 64-byte SRP K, no HKDF (protocol.md §2.5).
 - **PTP required.** It accepts an NTP session SETUP and RECORD, then silently ignores the stream SETUP. The sender runs the PTP follower against the HomePod's grandmaster.
-- Latency: `latencyMin` = `latencyMax` = 8820 (200 ms) unless the user configured another value.
+- Latency: `latencyMin` = `latencyMax` = 8820 (200 ms) unless the user configured another value. The stream SETUP response reports `arrivalToRenderLatencyMs`, the receiver's own output latency; a stereo pair reported 69 ms live on 2026-11-09. It is not the sender's presentation latency and is not added to the configured latency. saundo records it for the settings connection card and diagnostics.
 - `SETRATEANCHORTIME` returns plist `status: -12782` and is ignored on realtime streams.
 - Event-channel keys derive from the SRP shared secret; feedback every 2 s.
 - **Directed discovery.** Multicast is intermittent on this network: the

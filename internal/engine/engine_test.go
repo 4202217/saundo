@@ -237,6 +237,133 @@ func TestVolumeCommandStoresPerDevice(t *testing.T) {
 	}
 }
 
+func TestReceiverLatencyUpdatesSnapshot(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	if got := h.e.Snapshot().ReceiverLatencyMS; got != 0 {
+		t.Fatalf("initial receiver latency = %d, want 0", got)
+	}
+
+	h.fake.ev.ReceiverLatencyChanged(70)
+	if got := h.e.Snapshot().ReceiverLatencyMS; got != 70 {
+		t.Fatalf("receiver latency = %d, want 70", got)
+	}
+	found := false
+	for _, line := range h.e.Snapshot().LogLines {
+		if strings.Contains(line, "receiver reports 70 ms arrival-to-render latency") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("diagnostics log missing receiver latency line: %v", h.e.Snapshot().LogLines)
+	}
+
+	h.e.onClosed()
+	if got := h.e.Snapshot().ReceiverLatencyMS; got != 0 {
+		t.Fatalf("receiver latency after close = %d, want 0", got)
+	}
+}
+
+// TestSessionDroppedSamplesExcludeIdleOverflow pins the "this session" scope:
+// capture runs before a stream and the ring discards its oldest samples with
+// no sink draining it, so a clean session must not inherit those drops.
+func TestSessionDroppedSamplesExcludeIdleOverflow(t *testing.T) {
+	h := newHarness(t)
+	fanout := &ring.Fanout{}
+	fanout.Add(h.e.ring)
+	h.e.captureSink = fanout
+
+	for i := 0; i < 12; i++ {
+		h.e.ring.Push(make([]int16, 48000))
+	}
+	if fanout.Dropped() == 0 {
+		t.Fatal("precondition: the idle ring never dropped")
+	}
+
+	h.addDevice()
+	h.connect()
+	h.launch()
+	if got := h.e.Snapshot().DroppedSamples; got != 0 {
+		t.Fatalf("session drops = %d after idle overflow, want 0", got)
+	}
+
+	h.e.ring.Push(make([]int16, 48000))
+	h.e.publish()
+	if got := h.e.Snapshot().DroppedSamples; got == 0 {
+		t.Fatal("a drop after streaming began did not reach the snapshot")
+	}
+}
+
+// TestSessionDroppedSamplesSurviveCaptureReset pins the accumulation across a
+// mid-session capture reset: the raw counter goes to zero, but the session
+// total and later drops must still be visible.
+func TestSessionDroppedSamplesSurviveCaptureReset(t *testing.T) {
+	h := newHarness(t)
+	fanout := &ring.Fanout{}
+	fanout.Add(h.e.ring)
+	h.e.captureSink = fanout
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	for i := 0; i < 9; i++ {
+		h.e.ring.Push(make([]int16, 48000))
+	}
+	h.e.publish()
+	before := h.e.Snapshot().DroppedSamples
+	if before == 0 {
+		t.Fatal("precondition: the streaming ring did not drop")
+	}
+
+	h.e.resetCaptureSink()
+	h.e.publish()
+	if got := h.e.Snapshot().DroppedSamples; got != before {
+		t.Fatalf("session drops after reset = %d, want the pre-reset %d", got, before)
+	}
+
+	for i := 0; i < 9; i++ {
+		h.e.ring.Push(make([]int16, 48000))
+	}
+	h.e.publish()
+	if got := h.e.Snapshot().DroppedSamples; got <= before {
+		t.Fatalf("post-reset drops = %d, want more than %d", got, before)
+	}
+}
+
+// TestSessionDropsBeginAtStreamingState pins the real sender's order: it
+// publishes StateStreaming before Launched, so the baseline must be set at
+// the state transition and must not be reset by the later Launched callback.
+func TestSessionDropsBeginAtStreamingState(t *testing.T) {
+	h := newHarness(t)
+	fanout := &ring.Fanout{}
+	fanout.Add(h.e.ring)
+	h.e.captureSink = fanout
+	h.addDevice()
+	h.connect()
+
+	for i := 0; i < 12; i++ {
+		h.e.ring.Push(make([]int16, 48000))
+	}
+	h.fake.state = sender.StateStreaming
+	h.e.onStateChanged(sender.StateStreaming)
+	if got := h.e.Snapshot().DroppedSamples; got != 0 {
+		t.Fatalf("drops at the streaming transition = %d, want 0", got)
+	}
+
+	h.e.ring.Push(make([]int16, 48000))
+	h.e.publish()
+	if got := h.e.Snapshot().DroppedSamples; got == 0 {
+		t.Fatal("a drop after StateStreaming did not reach the snapshot")
+	}
+
+	h.launch()
+	if got := h.e.Snapshot().DroppedSamples; got == 0 {
+		t.Fatal("Launched reset the session drop baseline")
+	}
+}
+
 func TestReconnectBackoffThenSuccess(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

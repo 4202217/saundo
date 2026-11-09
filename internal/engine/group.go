@@ -27,13 +27,14 @@ type groupTransport struct {
 	dead     chan struct{}
 	deadOnce sync.Once
 
-	onLaunched    func(ok bool, err string)
-	onClosed      func()
-	onPinRequired func(deviceName string)
-	onCredentials func(deviceID, credsJSON string)
-	onState       func(sender.State)
-	onVolume      func(percent float64)
-	logf          func(format string, args ...any)
+	onLaunched        func(ok bool, err string)
+	onClosed          func()
+	onPinRequired     func(deviceName string)
+	onCredentials     func(deviceID, credsJSON string)
+	onState           func(sender.State)
+	onVolume          func(percent float64)
+	onReceiverLatency func(ms int)
+	logf              func(format string, args ...any)
 
 	stopping       bool
 	failed         bool
@@ -74,18 +75,19 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		master = m
 	}
 	g := &groupTransport{
-		group:         d,
-		master:        master,
-		events:        make(chan raopio.Event, 512),
-		stopCh:        make(chan struct{}),
-		dead:          make(chan struct{}),
-		onLaunched:    e.onLaunched,
-		onClosed:      e.onClosed,
-		onPinRequired: e.onPinRequired,
-		onCredentials: e.onCredentials,
-		onState:       e.onStateChanged,
-		onVolume:      e.onReceiverVolume,
-		logf:          e.logf,
+		group:             d,
+		master:            master,
+		events:            make(chan raopio.Event, 512),
+		stopCh:            make(chan struct{}),
+		dead:              make(chan struct{}),
+		onLaunched:        e.onLaunched,
+		onClosed:          e.onClosed,
+		onPinRequired:     e.onPinRequired,
+		onCredentials:     e.onCredentials,
+		onState:           e.onStateChanged,
+		onVolume:          e.onReceiverVolume,
+		onReceiverLatency: e.onReceiverLatency,
+		logf:              e.logf,
 	}
 	// One gate for the pair: every member holds until all streams are accepted,
 	// then the fanout is trimmed once under its push lock and both members begin
@@ -101,26 +103,7 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		memberRing := ring.New(e.ring.Capacity())
 		member := &groupMember{device: m, host: host, ring: memberRing}
 		idx := i
-		s := sender.New(host, sender.Events{
-			Launched: func(ok bool, err string) { g.memberLaunched(idx, ok, err) },
-			Closed:   func() { g.memberClosed(idx) },
-			PinRequired: func(name string) {
-				if g.onPinRequired != nil {
-					g.onPinRequired(name)
-				}
-			},
-			CredentialsObtained: func(deviceID, credsJSON string) {
-				if g.onCredentials != nil {
-					g.onCredentials(deviceID, credsJSON)
-				}
-			},
-			StateChanged: func(state sender.State) { g.memberStateChanged(idx, state) },
-			VolumeChanged: func(percent float64) {
-				if g.onVolume != nil {
-					g.onVolume(percent)
-				}
-			},
-		}, e.senderLog)
+		s := sender.New(host, g.memberEvents(idx), e.senderLog)
 		s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 		s.AttachRing(memberRing)
 		s.SetStartGate(gate)
@@ -138,6 +121,38 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		go g.forward(member)
 	}
 	return g, func() { g.Stop() }, nil
+}
+
+// memberEvents is one member sender's event set. The group forwards each
+// callback to the engine's single set, tagging the member index where the
+// callback needs it. Receiver latency is a per-member report; the engine
+// keeps the largest value for the session.
+func (g *groupTransport) memberEvents(idx int) sender.Events {
+	return sender.Events{
+		Launched: func(ok bool, err string) { g.memberLaunched(idx, ok, err) },
+		Closed:   func() { g.memberClosed(idx) },
+		PinRequired: func(name string) {
+			if g.onPinRequired != nil {
+				g.onPinRequired(name)
+			}
+		},
+		CredentialsObtained: func(deviceID, credsJSON string) {
+			if g.onCredentials != nil {
+				g.onCredentials(deviceID, credsJSON)
+			}
+		},
+		StateChanged: func(state sender.State) { g.memberStateChanged(idx, state) },
+		VolumeChanged: func(percent float64) {
+			if g.onVolume != nil {
+				g.onVolume(percent)
+			}
+		},
+		ReceiverLatencyChanged: func(ms int) {
+			if g.onReceiverLatency != nil {
+				g.onReceiverLatency(ms)
+			}
+		},
+	}
 }
 
 // forward merges each member host's events into one stream. The sender is

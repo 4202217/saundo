@@ -19,11 +19,15 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
   once). On macOS the page also carries the 托盘面板气泡样式 / Tray panel as
   popover row (`flyoutStyleSetting`); it is hidden on Windows.
-- 连接 page: a status card for the current device, 断开后自动重连,
-  严格验证接收器, and 连接后静音本机输出 (on by default). The mute row's
-  subtitle follows the engine state (`MuteLocal`): off, waiting for a
-  connection, muted now, or failed; the driver caveat under the card shows
-  only while the switch is on. Launch auto-connect is not here — it is per receiver on the 接收器 page.
+- 连接 page: a health card for the current receiver (identity, state, and
+  while streaming 延迟模式, 接收器处理, and 稳定性; the two latency values
+  name different stages and are never summed; 稳定性 reads 良好 or 有卡顿;
+  disconnected shows identity and state only), then 断开后自动重连,
+  严格验证接收器, and 连接后静音本机输出 (on by default).
+  The mute row's subtitle follows the engine state (`MuteLocal`): off,
+  waiting for a connection, muted now, or failed; the driver caveat under
+  the card shows only while the switch is on. Launch auto-connect is not
+  here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); per-receiver password
@@ -84,7 +88,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestConnectionPageMuteLocalStates|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Settings defaults:

@@ -111,6 +111,10 @@ type Events struct {
 	// VolumeChanged reports the receiver's own volume in percent, polled
 	// while streaming so hardware volume changes reach the UI.
 	VolumeChanged func(percent float64)
+	// ReceiverLatencyChanged reports the receiver's own arrival-to-render
+	// latency in milliseconds from its stream SETUP response. An absent field
+	// is not reported.
+	ReceiverLatencyChanged func(ms int)
 }
 
 // PTPClock is the receiver-synchronized clock a HomePod on software 27
@@ -230,6 +234,9 @@ type Sender struct {
 	latencyMS int
 	// nextLatencySamples carries the SETUP latency to startStreaming.
 	nextLatencySamples int64
+	// receiverLatencyMS is the receiver's own arrival-to-render latency from
+	// its stream SETUP response. 0 means it did not report one.
+	receiverLatencyMS int
 
 	rtspConnected bool
 	udpBound      bool
@@ -481,6 +488,10 @@ func (s *Sender) SetLatency(ms int) {
 	}
 	s.latencyMS = ms
 }
+
+// ReceiverLatencyMS returns the receiver's reported arrival-to-render latency
+// in milliseconds. 0 means the receiver did not report one.
+func (s *Sender) ReceiverLatencyMS() int { return s.receiverLatencyMS }
 
 // Active reports whether a session is in progress.
 func (s *Sender) Active() bool { return s.state != StateIdle }

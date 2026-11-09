@@ -21,6 +21,7 @@ import (
 	"saundo/internal/engine"
 	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -72,20 +73,21 @@ func previewApp() *App {
 			{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
 			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 		},
-		SelectedID:     "AA:BB:CC:DD:EE:01",
-		State:          sender.StateStreaming,
-		ConnectedName:  "HomePods",
-		Volume:         65,
-		CaptureName:    "Speakers",
-		CaptureRate:    48000,
-		CaptureRunning: true,
-		Name:           "声渡",
-		DroppedSamples: 0,
-		PTPActive:      true,
-		PTPReady:       true,
-		Reconnect:      true,
-		LampOff:        false,
-		LampPreset:     "dune",
+		SelectedID:        "AA:BB:CC:DD:EE:01",
+		State:             sender.StateStreaming,
+		ConnectedName:     "HomePods",
+		Volume:            65,
+		CaptureName:       "Speakers",
+		CaptureRate:       48000,
+		CaptureRunning:    true,
+		Name:              "声渡",
+		ReceiverLatencyMS: 70,
+		DroppedSamples:    0,
+		PTPActive:         true,
+		PTPReady:          true,
+		Reconnect:         true,
+		LampOff:           false,
+		LampPreset:        "dune",
 	}
 	a.reconnect = true
 	return a
@@ -187,7 +189,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "重连与验证策略。", "HomePods", "已连接", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复。"}},
+		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板。", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
@@ -239,6 +241,141 @@ func TestConnectionPageMuteLocalStates(t *testing.T) {
 	tt = ui.NewTester(a.settingsView, 720, 500)
 	if tt.HasText(locales.SettingsMuteLocalNote()) {
 		t.Fatalf("the driver note stayed visible with the mute off; texts: %q", tt.Texts())
+	}
+}
+
+// hasExactText is stricter than ui.Tester.HasText, which matches substrings:
+// a label that vanished can still match the note that quotes it.
+func hasExactText(tt *ui.Tester, want string) bool {
+	for _, got := range tt.Texts() {
+		if got == want {
+			return true
+		}
+	}
+	return false
+}
+
+func countExactText(tt *ui.Tester, want string) int {
+	n := 0
+	for _, got := range tt.Texts() {
+		if got == want {
+			n++
+		}
+	}
+	return n
+}
+
+func TestConnectionHealthCardLabelsAreExact(t *testing.T) {
+	a := previewApp()
+	a.page = pageConnection
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsLatency(),
+		locales.SettingsHealthLatencySub(),
+		locales.SettingsHealthReceiver(),
+		locales.SettingsHealthReceiverSub(),
+		locales.SettingsHealthDrops(),
+		locales.SettingsHealthDropsGood(),
+		locales.SettingsHealthDropsSub(),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("card is missing exact text %q; texts: %q", want, tt.Texts())
+		}
+	}
+	for _, old := range []string{"延迟", "调度缓冲", "接收器输出", "接收器上报", "丢样本"} {
+		if hasExactText(tt, old) {
+			t.Fatalf("card still shows old text %q; texts: %q", old, tt.Texts())
+		}
+	}
+}
+
+func TestConnectionHealthCardStability(t *testing.T) {
+	a := previewApp()
+	a.page = pageConnection
+	a.snap.DroppedSamples = 3
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !hasExactText(tt, locales.SettingsHealthDropsBad()) {
+		t.Fatalf("unstable session is missing %q; texts: %q", locales.SettingsHealthDropsBad(), tt.Texts())
+	}
+	if hasExactText(tt, locales.SettingsHealthDropsGood()) {
+		t.Fatalf("unstable session still reads %q; texts: %q", locales.SettingsHealthDropsGood(), tt.Texts())
+	}
+}
+
+func TestConnectionHealthCardUnknownAndDisconnected(t *testing.T) {
+	a := previewApp()
+	a.page = pageConnection
+
+	a.snap.ReceiverLatencyMS = 0
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{locales.SettingsHealthReceiver(), "—", locales.SettingsHealthReceiverUnknown()} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("unknown latency state is missing exact %q; texts: %q", want, tt.Texts())
+		}
+	}
+
+	a.snap.State = sender.StateIdle
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if got := countExactText(tt, locales.StatusDisconnected()); got != 2 {
+		t.Fatalf("disconnected text count = %d, want 2 (sidebar and card chip); texts: %q", got, tt.Texts())
+	}
+	for _, absent := range []string{
+		locales.SettingsLatency(), locales.SettingsHealthLatencySub(),
+		locales.SettingsHealthReceiver(), locales.SettingsHealthReceiverSub(),
+		locales.SettingsHealthDrops(), locales.SettingsHealthDropsSub(),
+		locales.SettingsHealthNote(),
+	} {
+		if hasExactText(tt, absent) {
+			t.Fatalf("disconnected card still shows %q; texts: %q", absent, tt.Texts())
+		}
+	}
+}
+
+// TestConnectionHealthCardShowsBaseLatency pins the card to the value chosen
+// on the 音频 page, not the effective value that also carries the receiver's
+// DSP/DAC delay.
+func TestConnectionHealthCardShowsBaseLatency(t *testing.T) {
+	a := previewApp()
+	a.page = pageConnection
+	a.snap.Receivers = []receivers.View{{Key: a.snap.SelectedID, DelayMS: 120}}
+
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !hasExactText(tt, "200 ms") {
+		t.Fatalf("card is missing the base latency 200 ms; texts: %q", tt.Texts())
+	}
+	if hasExactText(tt, "320 ms") {
+		t.Fatalf("card shows the effective latency 320 ms; texts: %q", tt.Texts())
+	}
+}
+
+// TestConnectionHealthCardStereoGroup pins the pair's value as the higher of
+// the two member reports and drops the old 当前接收器 suffix.
+func TestConnectionHealthCardStereoGroup(t *testing.T) {
+	a := previewApp()
+	a.page = pageConnection
+	group := device.Device{
+		ID: "stereo:AA:BB:CC:DD:EE:01", Name: "HomePods", Model: "AudioAccessory5,1",
+		StereoID: "AA:BB:CC:DD:EE:01", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true,
+		Members: []device.Device{
+			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Online: true},
+			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Online: true},
+		},
+	}
+	a.snap.Devices = []device.Device{group}
+	a.snap.SelectedID = group.ID
+	a.selID = group.ID
+	a.snap.State = sender.StateStreaming
+	a.snap.ReceiverLatencyMS = 70
+
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if want := locales.SettingsHealthReceiverGroupValue("70 ms"); !hasExactText(tt, want) {
+		t.Fatalf("group card is missing %q; texts: %q", want, tt.Texts())
+	}
+	if want := locales.SummaryStereoGroup(2); !hasExactText(tt, want) {
+		t.Fatalf("group card is missing %q; texts: %q", want, tt.Texts())
+	}
+	if hasExactText(tt, "当前接收器") {
+		t.Fatalf("group card still says 当前接收器; texts: %q", tt.Texts())
 	}
 }
 

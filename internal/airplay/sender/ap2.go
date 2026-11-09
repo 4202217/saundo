@@ -209,12 +209,17 @@ func (s *Sender) sendAP2SetupStream() {
 
 func (s *Sender) handleAP2SetupStream(body []byte) {
 	s.serverPort, s.controlPort = 0, 0
+	receiverLatencyMS := 0
 	if root, err := crypto.Decode(body); err == nil {
 		if m, ok := root.(map[string]any); ok {
 			if streams, ok := m["streams"].([]any); ok && len(streams) > 0 {
 				if s0, ok := streams[0].(map[string]any); ok {
 					s.serverPort = uint16(plistInt(s0, "dataPort"))
 					s.controlPort = uint16(plistInt(s0, "controlPort"))
+					// The receiver reports its own output latency here. It is
+					// not the sender's presentation latency and must not be
+					// added to the configured latency.
+					receiverLatencyMS = int(plistInt(s0, "arrivalToRenderLatencyMs"))
 				}
 			}
 		}
@@ -227,6 +232,12 @@ func (s *Sender) handleAP2SetupStream(body []byte) {
 		s.controlPort = s.serverPort
 	}
 	s.timingPort = s.serverPort
+	if receiverLatencyMS > 0 {
+		s.receiverLatencyMS = receiverLatencyMS
+		if s.events.ReceiverLatencyChanged != nil {
+			s.events.ReceiverLatencyChanged(receiverLatencyMS)
+		}
+	}
 	s.info("stream SETUP ok, dataPort=%d controlPort=%d", s.serverPort, s.controlPort)
 	s.readyToStream()
 }

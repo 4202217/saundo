@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-08 -->
+<!-- reviewed-through: 2026-11-09 -->
 
 # AirPlay 2 wire protocol
 
@@ -93,7 +93,7 @@ Order (a wrong order usually produces "connected but silent" or a drop after 30 
 5. `RECORD` with an empty body and standard RTSP headers; it goes after session SETUP and before stream SETUP.
 6. On a PTP session, send SETPEERS and wait for the clock to be ready (§7) before the stream SETUP.
 7. `SETUP` stream with the ALAC plist (table below).
-8. The response provides `dataPort` and `controlPort`. Do not send another RECORD; start streaming.
+8. The response provides `dataPort` and `controlPort`. It may also carry `arrivalToRenderLatencyMs`, the receiver's own arrival-to-render latency in milliseconds. The value is diagnostic; it is not the sender's presentation latency and is not added to it. Do not send another RECORD; start streaming.
 
 **Digest challenge.** A password-protected Mac answers the session SETUP with 401 and `WWW-Authenticate: Digest realm="airplay"`. Replay the identical request with the RFC 2069 digest — username `AirPlay`, no qop — adding `Authorization`. The replay returns 200.
 

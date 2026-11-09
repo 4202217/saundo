@@ -604,7 +604,7 @@ func (a *App) setAutoUpdate(on bool) {
 
 func (a *App) connectionPage(c *ui.Context, p palette) {
 	if d, ok := a.currentDevice(); ok {
-		a.deviceSummary(c, p, d)
+		a.connectionHealthCard(c, p, d)
 	}
 	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
@@ -897,26 +897,83 @@ func (a *App) capturePage(c *ui.Context, p palette) {
 	})
 }
 
-func (a *App) deviceSummary(c *ui.Context, p palette, d device.Device) {
-	ph := phaseOf(a.snap)
-	e := ui.Row(c).Height(56).Margin(12, 0, 0, 0).Padding(0, 14).Gap(10).
-		Radius(12).Background(p.card).Border(1, p.line)
-	e.Children(func() {
-		deviceGlyph(c, p, d, false)
-		ui.Column(c).Grow(1).Gap(2).Children(func() {
-			ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-			ui.Text(c, summarySub(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+// connectionHealthCard is the connection page's leading card. It keeps the
+// receiver's identity and state, and adds the session's latency and stability
+// only while streaming. The two latency values are separate measurements, not
+// a total, so they are drawn as two independent stats.
+func (a *App) connectionHealthCard(c *ui.Context, p palette, d device.Device) {
+	connected := phaseOf(a.snap) == phaseStreaming
+	card := ui.Column(c).Margin(12, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip()
+	card.Children(func() {
+		ui.Row(c).Height(56).Padding(0, 14).Gap(10).Children(func() {
+			deviceGlyph(c, p, d, false)
+			ui.Column(c).Grow(1).Gap(2).Children(func() {
+				ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
+				ui.Text(c, summarySub(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+			})
+			a.connectionStateChip(c, p)
 		})
-		switch ph {
-		case phaseStreaming:
-			chip(c, p, locales.SummaryConnected(), chipOK)
-		case phaseConnecting:
-			chip(c, p, locales.SummaryConnecting(), chipAccent)
-		case phaseError:
-			chip(c, p, locales.StatusConnectionFailed(), chipDanger)
-		default:
-			chip(c, p, locales.StatusDisconnected(), chipNeutral)
+		if connected {
+			rowLine(c, p)
+			a.connectionHealthStats(c, p, d.IsStereoGroup())
 		}
+	})
+}
+
+func (a *App) connectionStateChip(c *ui.Context, p palette) {
+	switch phaseOf(a.snap) {
+	case phaseStreaming:
+		chip(c, p, locales.SummaryConnected(), chipOK)
+	case phaseConnecting:
+		chip(c, p, locales.SummaryConnecting(), chipAccent)
+	case phaseError:
+		chip(c, p, locales.StatusConnectionFailed(), chipDanger)
+	default:
+		chip(c, p, locales.StatusDisconnected(), chipNeutral)
+	}
+}
+
+func (a *App) connectionHealthStats(c *ui.Context, p palette, group bool) {
+	ui.Column(c).Padding(12, 14).Children(func() {
+		ui.Row(c).Gap(18).AlignItems(ui.Start).Children(func() {
+			healthStat(c, p, locales.SettingsLatency(), settings.LatencyText(a.latencyMS()),
+				locales.SettingsHealthLatencySub())
+			value, sub := "—", locales.SettingsHealthReceiverUnknown()
+			if a.snap.ReceiverLatencyMS > 0 {
+				value = settings.LatencyText(a.snap.ReceiverLatencyMS)
+				if group {
+					value = locales.SettingsHealthReceiverGroupValue(value)
+				}
+				sub = locales.SettingsHealthReceiverSub()
+			}
+			healthStat(c, p, locales.SettingsHealthReceiver(), value, sub)
+			status, tone := locales.SettingsHealthDropsGood(), p.green
+			if a.snap.DroppedSamples > 0 {
+				status, tone = locales.SettingsHealthDropsBad(), p.red
+			}
+			healthStatusStat(c, p, locales.SettingsHealthDrops(), status,
+				locales.SettingsHealthDropsSub(), tone)
+		})
+		ui.Text(c, locales.SettingsHealthNote()).FontSize(10.5).TextColor(p.muted).Margin(10, 0, 0, 0)
+	})
+}
+
+func healthStat(c *ui.Context, p palette, label, value, sub string) {
+	ui.Column(c).Grow(1).Gap(2).Children(func() {
+		ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		ui.Text(c, value).FontSize(15).FontWeight(600).FontFeatures("tnum").SingleLine()
+		ui.Text(c, sub).FontSize(10.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+	})
+}
+
+func healthStatusStat(c *ui.Context, p palette, label, value, sub string, tone ui.Color) {
+	ui.Column(c).Grow(1).Gap(2).Children(func() {
+		ui.Row(c).Gap(5).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(tone)
+			ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		})
+		ui.Text(c, value).FontSize(15).FontWeight(600).TextColor(tone).SingleLine()
+		ui.Text(c, sub).FontSize(10.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 	})
 }
 

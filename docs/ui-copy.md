@@ -8,7 +8,7 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 
 | Concept | Chinese | English | Do not use |
 |---|---|---|---|
-| AirPlay receiver | 接收器 | receiver | 接收设备, 接收端, 设备 (except 播放设备 for a Windows audio endpoint) |
+| AirPlay receiver | 接收器 | receiver | 接收设备, 接收端, 设备, 当前接收器 (except 播放设备 for a Windows audio endpoint) |
 | The tray panel (flyout) | 托盘面板 | tray panel | 面板 (bare), 控制面板, 控制中心 |
 | Playback | 播放 | play | 推流, 串流 |
 | Capture | 采集 | capture | 录制 |
@@ -17,6 +17,17 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | The light's target | 顶屏 | top display | 屏幕 |
 
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays.
+
+## Latency and stability
+
+| Concept | Chinese | English | Do not use |
+|---|---|---|---|
+| The sender buffer the user chooses | 延迟模式 | latency mode | 调度缓冲, 缓冲延迟 |
+| The receiver's own reported processing time | 接收器处理 | receiver processing | 接收器输出, 设备输出 |
+| Session audio stability | 稳定性 | stability | 丢样本, 丢帧 |
+| Where the latency mode is changed | 可在音频页调整 | Adjust on Audio | — |
+
+The two latency values measure different stages. Never draw them as one bar, never add them, and never present the receiver's value as a total.
 
 ## One state, one phrase
 

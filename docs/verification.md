@@ -1596,3 +1596,148 @@ above.
   capture. Connect/disconnect, settings switches, ambient-light actions,
   and update install were not driven because the operator's session was
   streaming; the headless matrix and protocol tests cover those paths.
+
+## Receiver-reported latency (2026-11-09)
+
+- **The stream SETUP response carries the receiver's own output latency.**
+  `arrivalToRenderLatencyMs` is the device's arrival-to-render time, not a
+  protocol constant: the HomePod firmware computes it from
+  `PlatformAudioLatency + PlatformIOBufferSize`, and the HomePod mini 27.2
+  captures report 70 ms. The sender's configured `latencyMin`/`latencyMax`
+  remain its own scheduling budget; the two values are not added.
+- **saundo now parses it.** The sender keeps the value accessible through
+  `ReceiverLatencyMS`, reports it through `Events.ReceiverLatencyChanged`,
+  and the engine writes one diagnostics line per session and exposes the
+  largest member value as `Snapshot.ReceiverLatencyMS`. It does not change
+  playback behavior.
+- `TestStreamSetupReportsReceiverLatency` pins the parse and the event;
+  `TestStreamSetupWithoutReceiverLatency` pins an absent field as unknown,
+  not zero. `TestReceiverLatencyUpdatesSnapshot` pins the snapshot, the
+  diagnostics line, and the close reset.
+- **Not verified live in this change.** The 70 ms value comes from the
+  firmware read and the Unisson captures, not from a saundo session. A live
+  session should confirm the field is present and matches the device.
+
+## Connection health card (2026-11-09)
+
+- **The 连接 page now leads with a health card.** The card carries the
+  current receiver's glyph, name, model, and state chip; while streaming it
+  adds three read-only stats: scheduler latency, the receiver's reported
+  output latency, and dropped samples for the session. The two latency
+  values are separate measurements and are never summed; the note under the
+  stats says so. The receiver output shows `—` and 接收器未上报 when the
+  field is absent. A disconnected or connecting session shows the identity
+  and state only, with no hint row and no placeholder stats.
+- **Tests.** `TestSettingsPagesRender` includes the streaming card's
+  scheduler and receiver values; `TestConnectionHealthCardUnknownAndDisconnected`
+  pins the unknown (`—` / 接收器未上报) and disconnected (identity and state
+  only) states. Native previews were rendered at 720×500 in both languages
+  and themes under `.audit/previews/connection-health/`; the three session
+  switches are visible at the default height and the mute caveat follows
+  below the scroll.
+- **Not verified live.** The preview uses the snapshot fixture
+  (`ReceiverLatencyMS: 70`). A live session still needs to confirm the card
+  reads the field the receiver actually sends.
+
+## Receiver latency live, stereo pair (2026-11-09)
+
+- **The stereo pair reports the field.** After the group transport's sender
+  events were wired, both members' stream SETUP responses reported
+  `arrivalToRenderLatencyMs`; the engine log reads
+  `receiver reports 69 ms arrival-to-render latency` at 12:10:09. This
+  supersedes the earlier "not verified live" note.
+- **The first card build showed `—` for the pair.** The group transport's
+  member senders were created without `ReceiverLatencyChanged`, so the
+  engine never saw the value. `groupTransport.memberEvents` now forwards it
+  from every member, and `TestGroupForwardsReceiverLatency` pins the wiring.
+  The settings connection page now shows the reported value for a stereo
+  group, not `—`.
+- **Evidence.** `%APPDATA%\saundo\saundo.log`, line 43650; the two stream
+  SETUPs at 12:10:09 are the pair. No packet capture was needed because the
+  value is in the SETUP plist.
+
+## Connection card copy review (2026-11-09)
+
+- **The card's two latency numbers now name different stages.** 延迟模式 is
+  the setting chosen on the 音频 page (sub 可在音频页调整); 接收器处理 is
+  the receiver's own reported time (sub 接收器自报). The note defines both
+  and says they are not additive. 稳定性 reads 良好 or 有卡顿 instead of a
+  dropped-sample count; the count stays in diagnostics.
+- **The proportional bars, the PTP badge, and 当前接收器 are gone.** The bars
+  implied a common scale the values do not share; the 音频 page carries the
+  clock detail; the card is already the current receiver. Values are 15 px
+  and labels 11.5 px, on the type ladder.
+- **Tests and gates.** `TestSettingsPagesRender`,
+  `TestConnectionHealthCardLabelsAreExact` (exact text, not `HasText`
+  substrings), `TestConnectionHealthCardStability`, and
+  `TestConnectionHealthCardUnknownAndDisconnected`;
+  `TestCatalogBannedTerms` now bans 调度缓冲, 接收器输出, and 丢样本.
+  Native previews were re-rendered at 720×500 in both languages and themes
+  under `.audit/previews/connection-health/`.
+- **Not rebuilt live in this entry.** The app was streaming; the running
+  build predates this copy change. A rebuild and a live look at the card
+  remain.
+
+## Connection card review follow-up (2026-11-09)
+
+The independent review confirmed eight issues. The fixes and their pins:
+
+- **P0, 本次会话 was not session-scoped.** Capture starts before a stream and
+  the undrained ring discards its oldest samples, so `Snapshot.DroppedSamples`
+  carried idle overflow. The engine now records the capture sink's count when
+  the session reaches streaming and reports only the delta.
+  `TestSessionDroppedSamplesExcludeIdleOverflow` overflows the ring while idle,
+  starts a session, asserts zero, then proves a later drop reaches the
+  snapshot.
+- **P1, 延迟模式 showed the effective latency.** The card used
+  `latencyDisplay()`, which adds the receiver's DSP/DAC delay set on the
+  接收器 page. It now shows `settings.LatencyText(a.latencyMS())`, the value
+  chosen on the 音频 page. `TestConnectionHealthCardShowsBaseLatency` sets a
+  120 ms receiver delay and asserts the card still reads 200 ms.
+- **P1, 当前接收器 still rendered for stereo groups and the empty-model
+  fallback.** `summaryStereoGroup` and `summaryCurrentDevice` are now free of
+  it, and `TestCatalogBannedTerms` bans it. `TestConnectionHealthCardStereoGroup`
+  pins the group card.
+- **P0, the disconnected assertion matched the sidebar.** The test now counts
+  two 未连接 occurrences, one in the sidebar and one in the card chip, and
+  asserts every stat and its sub-label is absent.
+- **P2, labels could hard-clip and had no 640 coverage.** Labels now carry
+  `Ellipsis("…")`; the preview matrix adds 640×420 plus the unknown and
+  unstable states.
+- **P2, the note's wording equated a mode with a duration and reused
+  "output".** It now reads 延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。
+  The values are "not additive", not "do not add". The pair's 接收器处理
+  reads 最高 70 ms.
+- **P2, the record above said the drop count stays in diagnostics.** It does
+  not: it remains in `Snapshot.DroppedSamples`, now session-scoped.
+- **Checks.** `mingw32-make check` is green with the new tests; the native
+  previews are re-rendered at 720 and 640 in both languages and themes.
+- **Rebuilt after the fixes.** The 0.6.0-beta.1 build relaunched at
+  12:59:43, the stereo pair reported 69 ms
+  (`receiver reports 69 ms arrival-to-render latency`), and the live card
+  should read 延迟模式 200 ms, 最高 69 ms, 稳定性 良好. A visual look at the
+  open settings page remains for the user.
+
+## Connection card second review (2026-11-09)
+
+- **P1, the drop baseline went stale on a capture reset.**
+  `applyCaptureStart` and `applyCaptureInfo` call `captureSink.Reset()`, which
+  zeroes the raw counter; the old streaming-start baseline then hid later
+  drops. The engine now accumulates a session total across folds and resets
+  (`sessionDropped`, `lastRawDropped`, `dropSessionActive`), begins at the
+  sender's `StateStreaming` transition (which precedes `Launched`), folds
+  before every capture sink reset, and keeps the total when the raw counter
+  drops. `TestSessionDroppedSamplesSurviveCaptureReset` and
+  `TestSessionDropsBeginAtStreamingState` pin both paths.
+- **P2, preview coverage.** The 640, unknown and unstable previews now have
+  dark variants in both languages, so the record's "both languages and
+  themes" holds.
+- **P2, the mockup note.** The mockup's `healthNote` now matches the shipped
+  catalog wording.
+- **P2, the subtitle fallback.** `docs/ui.md` now names the 接收器 / Receiver
+  fallback for an advertisement with no model.
+- **Checks.** `mingw32-make check` is green with the new tests; the preview
+  matrix adds the dark 640, unknown and unstable states. The 0.6.0-beta.1
+  build relaunched at 13:21:51 and the stereo pair reported 69 ms
+  (`receiver reports 69 ms arrival-to-render latency`); the live card should
+  read 延迟模式 200 ms, 最高 69 ms, 稳定性 良好.

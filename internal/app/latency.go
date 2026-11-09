@@ -116,13 +116,20 @@ func (a *App) latencyMS() int {
 // sender's window. An idle engine shows the base only, because no receiver
 // is streaming.
 func (a *App) latencyDisplay() string {
+	return settings.LatencyText(a.effectiveLatencyMS())
+}
+
+// effectiveLatencyMS is the global base plus the active receiver's DSP/DAC
+// delay, the value the connection page's health card compares against the
+// receiver's own output latency.
+func (a *App) effectiveLatencyMS() int {
 	ms := a.latencyMS()
 	if phaseOf(a.snap) != phaseIdle && a.snap.SelectedID != "" {
 		if delay, ok := a.receiverDelay(a.snap.SelectedID); ok {
 			ms = receivers.EffectiveLatencyMS(ms, delay)
 		}
 	}
-	return settings.LatencyText(ms)
+	return ms
 }
 
 // receiverDelay reads the row's delay, preferring an in-flight slider draft
