@@ -7,7 +7,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 ## HomePod / HomePod mini (software 27.x)
 
 - Advertises `AudioAccessory5,1` (and siblings) with the HAP feature bits; feature bit 41 set.
-- Pairs with HAP transient pairing: `Flags=0x10`, fixed PIN `3939`, stop at M4 (protocol.md §2.1).
+- Pairs with HAP transient pairing by default: `Flags=0x10`, fixed PIN `3939`, stop at M4 (protocol.md §2.1). A HomePod can gate AirPlay with a password; it then uses HAP password pairing (protocol.md §2.3) but keeps the HomePod `shk` and latency profile. The family comes from `AudioAccessory`, not from the pairing method.
 - `shk` and the audio ChaCha20 key: first 32 bytes of the 64-byte SRP K, no HKDF (protocol.md §2.5).
 - **PTP required.** It accepts an NTP session SETUP and RECORD, then silently ignores the stream SETUP. The sender runs the PTP follower against the HomePod's grandmaster.
 - Latency: `latencyMin` = `latencyMax` = 8820 (200 ms) unless the user configured another value. The stream SETUP response reports `arrivalToRenderLatencyMs`, the receiver's own output latency; a stereo pair reported 69 ms live on 2026-11-09. It is not the sender's presentation latency and is not added to the configured latency. saundo records it for the settings connection card and diagnostics.
@@ -48,7 +48,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 
 Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
 
-- Advertises the HAP feature bits with **no `pw` TXT** and `sf` bit 7 set (`sf=0x284` on the Mac14,2).
+- Advertises the HAP feature bits with **no `pw` TXT** and `sf` bit 7 set (`sf=0x284` on the Mac14,2). The `Mac` model selects the Mac key and latency profile; the password is only the pairing method.
 - Transient pairing (`Flags=0x10`) is rejected with TLV error 3. It pairs with HAP pair-setup method 0 keyed by the receiver password: M1 without Flags, M3 with the password as the SRP secret, M5/M6, then pair-verify (protocol.md §2.3).
 - The app prompts for the password on first connect with a masked dialog, saves it per receiver in DPAPI, and reconnects; the receiver's row on the settings 接收器 page can change or clear it. A receiver that needs a password and has none stored never starts a session.
 - The AP2 session SETUP answers 401 with a Digest challenge; the sender replays with RFC 2069, username `AirPlay` (protocol.md §4).
@@ -91,6 +91,10 @@ Tested on a Redmi TV, 2026-11-01.
   auth-setup, AirPlay 2 uses HAP transient pairing or HAP password pairing
   when a password is stored, and AirPlay 1 uses the plaintext path or
   digest password authentication.
+- A manual AirPlay 2 row with a password has no model, so it uses the
+  generic HAP key and latency profile, which is the HomePod rule. A Mac with
+  Require Password must be discovered so its `Mac` model selects the Mac
+  profile.
 - The password is stored in DPAPI under the `password:m:<uuid>` namespace,
   never in `settings.json` or the log. An unreadable stored password is
   treated as absent: the engine prompts again instead of attempting the

@@ -27,6 +27,7 @@ type fakeTransport struct {
 	identity     sender.Identity
 	authDev      string
 	authAP2      bool
+	family       device.Family
 	strict       bool
 	ptpSet       bool
 	inputRates   []int
@@ -77,9 +78,11 @@ func (f *fakeTransport) SetAuth(a device.Auth, ap2 bool, id, creds, pw string) {
 	f.authAP2 = ap2
 	f.authPW = pw
 }
+func (f *fakeTransport) SetFamily(family device.Family) { f.family = family }
 func (f *fakeTransport) SetMemberAuth(m device.Device, creds, pw string) {
 	f.authDev = m.ID
 	f.authPW = pw
+	f.family = m.Family
 }
 func (f *fakeTransport) Rings() []*ring.Buffer         { return f.rings }
 func (f *fakeTransport) SetPTPClock(c sender.PTPClock) { f.ptpSet = c != nil }

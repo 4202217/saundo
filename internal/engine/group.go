@@ -283,12 +283,16 @@ func (g *groupTransport) SetIdentity(id sender.Identity) {
 // SetAuth is unused for a group; the engine calls SetMemberAuth per member.
 func (g *groupTransport) SetAuth(device.Auth, bool, string, string, string) {}
 
+// SetFamily is unused for a group; SetMemberAuth carries each member's family.
+func (g *groupTransport) SetFamily(device.Family) {}
+
 func (g *groupTransport) SetMemberAuth(m device.Device, credsJSON, password string) {
 	for _, member := range g.members {
 		if member.device.ID != m.ID {
 			continue
 		}
 		member.sender.SetAuth(m.Auth, m.Auth.IsHAP(), m.ID, credsJSON, password)
+		member.sender.SetFamily(m.Family)
 	}
 }
 

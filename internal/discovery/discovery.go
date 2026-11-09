@@ -262,6 +262,7 @@ func (s *Service) merge(d device.Device) {
 	merged.GroupLeader = merged.GroupLeader || d.GroupLeader
 	merged.PasswordRequired = merged.PasswordRequired || d.PasswordRequired
 	merged.AirPlay2 = merged.AirPlay2 || d.AirPlay2
+	merged.Family = device.FamilyFor(merged.Model, merged.AM)
 	merged.Auth = chooseAuth(merged)
 	s.devices[d.ID] = &seen{dev: merged, when: s.now()}
 }
@@ -353,6 +354,7 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 		AM:               txt["am"],
 		PasswordRequired: strings.EqualFold(txt["pw"], "true") || strings.EqualFold(txt["pw"], "1") || sf&0x80 != 0,
 		AirPlay2:         service == airplayService,
+		Family:           device.FamilyFor(model, txt["am"]),
 		GroupName:        unescapeDNS(txt["gpn"]),
 		GroupLeader:      leader,
 		StereoID:         strings.TrimSpace(txt["tsid"]),
@@ -514,8 +516,9 @@ func chooseAuth(d device.Device) device.Auth {
 	hap := d.Features&featureHKPairing != 0 || d.Features&featureCoreUtils != 0
 	switch {
 	case hap && d.PasswordRequired:
-		// A macOS receiver with "Require Password" advertises the HAP bits and
-		// no `pw` TXT; the password gates HAP pair-setup, not the AP1 digest.
+		// A HAP receiver with Require Password gates HAP pair-setup, not the
+		// AP1 digest. The family is decided separately; a HomePod and a Mac
+		// both land here.
 		return device.AuthHAPPassword
 	case hap && strings.HasPrefix(d.Model, "AppleTV"):
 		return device.AuthHAPPIN

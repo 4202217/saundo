@@ -1741,3 +1741,20 @@ The independent review confirmed eight issues. The fixes and their pins:
   build relaunched at 13:21:51 and the stereo pair reported 69 ms
   (`receiver reports 69 ms arrival-to-render latency`); the live card should
   read 延迟模式 200 ms, 最高 69 ms, 稳定性 良好.
+
+## Receiver family split (2026-11-09)
+
+- **The pairing method had selected the macOS profile.** `AuthHAPPassword` is
+  the HAP password pairing flow, but the sender also used it to choose the
+  Events-Write `shk`, the macOS latency range, and the Mac request headers. A
+  HomePod that gates AirPlay with a password therefore received the wrong key
+  and latency. The sender now selects those by `device.Family`, derived from
+  the `model`/`am` advertisement; `Auth` only selects the pairing flow.
+- **Pinned by** `TestHomePodPasswordKeepsHomePodProfile` (HomePod `shk`,
+  8820-sample latency, `X-Apple-HKP: 4`, no Mac headers),
+  `TestFamilyFor`, and `TestParseEntrySetsFamily`. The macOS password tests
+  keep the Mac profile.
+- **Still owed.** A live HomePod with an AirPlay password was not
+  configured; the device observation remains pending. The profile is recorded
+  in [devices.md](devices.md).
+- **Checks.** `mingw32-make check` is green.
