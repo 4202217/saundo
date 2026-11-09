@@ -77,10 +77,16 @@ headers, card radii, dialog heads, type sizes, units, and status treatments.
 
 ## 4. Independent review
 
-Keep a decision trail in `.audit/<task>.tsv`. Spawn a fresh reviewer on a
-different model family with the report, the trail, and the diff. Fix every
-confirmed flag, then have a second fresh reviewer check the fixes. A review
-gate stays closed when no independent reviewer can run; report it.
+Model routing changes; inspect it before spawning (the router's tier fields,
+e.g. `magpie claude-desktop`). If every model alias resolves to the same
+family, no independent reviewer exists — skip this step and say so in the
+report.
+
+Otherwise keep a decision trail in `.audit/<task>.tsv`. Spawn a fresh reviewer
+on a different model family with the report, the trail, and the diff. Fix every
+confirmed flag, then have a second fresh reviewer check the fixes. Report the
+gate as closed only when an independent reviewer is impossible for another
+reason.
 
 ## 5. Release gate
 
