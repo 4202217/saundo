@@ -103,20 +103,19 @@ func FourCC(s string) uint32 {
 
 // Audio object and property constants from AudioHardware.h.
 const (
-	AudioObjectSystemObject      uint32 = 1
-	ElementMain                  uint32 = 0
-	ScopeGlobal                  uint32 = 0x676c6f62 // 'glob'
-	ScopeOutput                  uint32 = 0x6f757420 // 'out '
-	PropDefaultOutputDevice      uint32 = 0x644f7574 // 'dOut'
-	PropDevices                  uint32 = 0x64657623 // 'dev#'
-	PropObjectName               uint32 = 0x6c6e616d // 'lnam'
-	PropDeviceUID                uint32 = 0x75696420 // 'uid '
-	PropDeviceIsRunningSomewhere uint32 = 0x676f6e65 // 'gone'
-	PropDeviceMute               uint32 = 0x6d757465 // 'mute'
-	PropTranslateUIDToDevice     uint32 = 0x75696464 // 'uidd'
-	PropTapUID                   uint32 = 0x74756964 // 'tuid'
-	PropTapFormat                uint32 = 0x74666d74 // 'tfmt'
-	PropStreams                  uint32 = 0x73747223 // 'str#'
+	AudioObjectSystemObject  uint32 = 1
+	ElementMain              uint32 = 0
+	ScopeGlobal              uint32 = 0x676c6f62 // 'glob'
+	ScopeOutput              uint32 = 0x6f757420 // 'out '
+	PropDefaultOutputDevice  uint32 = 0x644f7574 // 'dOut'
+	PropDevices              uint32 = 0x64657623 // 'dev#'
+	PropObjectName           uint32 = 0x6c6e616d // 'lnam'
+	PropDeviceUID            uint32 = 0x75696420 // 'uid '
+	PropDeviceMute           uint32 = 0x6d757465 // 'mute'
+	PropTranslateUIDToDevice uint32 = 0x75696464 // 'uidd'
+	PropTapUID               uint32 = 0x74756964 // 'tuid'
+	PropTapFormat            uint32 = 0x74666d74 // 'tfmt'
+	PropStreams              uint32 = 0x73747223 // 'str#'
 )
 
 // EnsureCoreAudio loads the Core Audio framework and its symbols. Callers
@@ -468,14 +467,6 @@ func StopDevice(device uint32, procID DeviceIOProcID) error {
 		return StatusError("AudioDeviceStop", st)
 	}
 	return nil
-}
-
-// DeviceRunningSomewhere reports whether a device is running for any client.
-func DeviceRunningSomewhere(device uint32) (bool, error) {
-	var running uint32
-	size := uint32(4)
-	err := GetProperty(device, PropertyAddress(PropDeviceIsRunningSomewhere, ScopeGlobal), unsafe.Pointer(&running), &size)
-	return err == nil && running != 0, err
 }
 
 // ImageIO binds for the app-icon PNG thumbnails.
