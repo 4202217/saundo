@@ -51,6 +51,63 @@ func (a Auth) IsHAP() bool {
 	}
 }
 
+// Family is the receiver family. It is independent of Auth: a HomePod can
+// pair transiently or with a password and keeps the HomePod key and latency
+// profile. A Mac is the only family that uses the Events-Write audio key and
+// the wide latency range.
+type Family uint8
+
+const (
+	FamilyUnknown Family = iota
+	FamilyHomePod
+	FamilyMac
+	FamilyAppleTV
+	FamilyAirPort
+	FamilyOther
+)
+
+func (f Family) String() string {
+	switch f {
+	case FamilyHomePod:
+		return "homepod"
+	case FamilyMac:
+		return "mac"
+	case FamilyAppleTV:
+		return "appletv"
+	case FamilyAirPort:
+		return "airport"
+	case FamilyOther:
+		return "other"
+	default:
+		return "unknown"
+	}
+}
+
+// FamilyFor derives the receiver family from the `model` and `am` TXT values.
+// A missing model is unknown, not a guessed family; the pairing method is a
+// separate axis and never decides this.
+func FamilyFor(model, am string) Family {
+	m := strings.TrimSpace(model)
+	am = strings.TrimSpace(am)
+	if m == "" {
+		m = am
+	}
+	switch {
+	case strings.HasPrefix(am, "AirPort"), strings.HasPrefix(m, "AirPort"):
+		return FamilyAirPort
+	case strings.HasPrefix(m, "AudioAccessory"):
+		return FamilyHomePod
+	case strings.HasPrefix(m, "Mac"):
+		return FamilyMac
+	case strings.HasPrefix(m, "AppleTV"):
+		return FamilyAppleTV
+	case m == "":
+		return FamilyUnknown
+	default:
+		return FamilyOther
+	}
+}
+
 // Device is one AirPlay receiver as discovery sees it.
 type Device struct {
 	// ID is the `deviceid` TXT value, a colon-separated MAC address.
@@ -69,12 +126,17 @@ type Device struct {
 	SF       uint64
 	// AM is the `am` TXT value.
 	AM string
-	// PasswordRequired is the `pw` TXT value.
+	// PasswordRequired reports that the receiver gates AirPlay with a
+	// password, from `pw=true` or `sf` bit 7. `pw` is the AP1 digest gate;
+	// `sf` bit 7 is the HAP gate.
 	PasswordRequired bool
 	// AirPlay2 is true when the device advertises an AirPlay 2 service.
 	AirPlay2 bool
 	// Auth is the pairing path chosen from the advertisement.
 	Auth Auth
+	// Family is the receiver family derived from model/am. It is orthogonal
+	// to Auth: a HomePod may pair transiently or with a password.
+	Family Family
 	// GroupName is the AirPlay group the device belongs to, when the
 	// advertisement carries one. Members of a group receive audio only when
 	// the whole group is addressed.

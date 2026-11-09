@@ -85,6 +85,7 @@ func manualDevice(e Entry, hasPassword bool) device.Device {
 		Port:     e.Port,
 		Model:    model,
 		Auth:     ManualAuth(e.Type, hasPassword),
+		Family:   device.FamilyFor(model, ""),
 		AirPlay2: e.Type == TypeAirPlay2,
 		Online:   true,
 	}
@@ -114,6 +115,7 @@ func offlineDevice(e Entry) device.Device {
 		ID:       e.Key,
 		Name:     e.DisplayName(),
 		Model:    model,
+		Family:   device.FamilyFor(model, ""),
 		AirPlay2: e.AirPlay2,
 		Online:   false,
 	}

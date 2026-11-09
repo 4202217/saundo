@@ -156,6 +156,13 @@ The wire-level protocol — discovery and auth selection, pairing, the encrypted
 uncompressed ALAC frames, not the compression algorithm. The encoder is about
 40 lines.
 
+**Receiver family is separate from pairing method.** `device.Auth` selects the
+pairing flow; `device.Family` selects the audio key, latency profile, and
+request headers. A HomePod that gates AirPlay with a password still uses the
+HomePod `shk` and configured latency; only a `Mac` model uses the
+Events-Write key and the wide latency range. Discovery derives the family from
+`model`/`am`; an unknown model is not guessed from the auth method.
+
 **NTP by default, PTP for HomePod and macOS.** The C++ blueprint uses NTP and
 was verified against HomePod and Apple TV, but a standalone HomePod on software
 27 keeps its own PTP grandmaster and ignores an NTP-timed stream. A macOS
@@ -180,7 +187,7 @@ path for Apple TV.
 
 **Event channel and keep-alive.** This is the most likely cause of "connected but silent." Response headers must be minimal, and every event must be decrypted and answered with 200. Cover it with the C++ blueprint and fake-receiver tests.
 
-**Pairing path differences.** Apple TV uses PIN plus pair-verify; HomePod uses transient pairing; a password-protected Mac uses HAP password pairing and a Digest replay on the session SETUP. The audio key source differs per family. Use test vectors for each path; the profiles are in [devices.md](devices.md).
+**Pairing path differences.** Apple TV uses PIN plus pair-verify; HomePod uses transient pairing by default; a password-protected receiver uses HAP password pairing. A password-protected Mac also answers the session SETUP with a Digest challenge. The model, not the pairing method, selects the audio key and latency profile. Use test vectors for each path; the profiles are in [devices.md](devices.md).
 
 **ALAC frame format.** Receivers require ALAC; PCM produces silence. Follow the C++ bit layout and byte-compare with the fake receiver.
 

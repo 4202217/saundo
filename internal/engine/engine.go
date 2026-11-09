@@ -157,6 +157,7 @@ type transport interface {
 	SetPaused(paused bool) bool
 	SetIdentity(id sender.Identity)
 	SetAuth(auth device.Auth, airplay2 bool, deviceID, credsJSON, password string)
+	SetFamily(family device.Family)
 	SetMemberAuth(m device.Device, credsJSON, password string)
 	Rings() []*ring.Buffer
 	SetPTPClock(clock sender.PTPClock)
@@ -197,8 +198,10 @@ func (s *session) SetIdentity(id sender.Identity) { s.sender.SetIdentity(id) }
 func (s *session) SetAuth(a device.Auth, ap2 bool, id, creds, pw string) {
 	s.sender.SetAuth(a, ap2, id, creds, pw)
 }
+func (s *session) SetFamily(family device.Family) { s.sender.SetFamily(family) }
 func (s *session) SetMemberAuth(m device.Device, credsJSON, password string) {
 	s.sender.SetAuth(m.Auth, m.Auth.IsHAP(), m.ID, credsJSON, password)
+	s.sender.SetFamily(m.Family)
 }
 func (s *session) Rings() []*ring.Buffer         { return nil }
 func (s *session) SetPTPClock(c sender.PTPClock) { s.sender.SetPTPClock(c) }
@@ -1116,6 +1119,7 @@ func (e *Engine) connect(d device.Device) {
 		}
 	} else {
 		tr.SetAuth(d.Auth, airplay2, d.ID, e.creds.Load(d.ID), password)
+		tr.SetFamily(d.Family)
 	}
 	if rings := tr.Rings(); len(rings) > 0 {
 		e.attachMemberRings(rings)

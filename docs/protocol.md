@@ -14,7 +14,7 @@ Browse mDNS for `_raop._tcp` and `_airplay._tcp`. Parse `deviceid`, `features`, 
 
 - `pw=true`: password authentication (`AuthPassword`).
 - `am=AirPort*`: auth-setup (`AuthSetup`, untested path).
-- HAP feature bits: Apple TV uses on-screen PIN; HomePod uses transient; a Mac with `sf` bit 7 (Require Password) uses HAP password pairing.
+- HAP feature bits: Apple TV uses on-screen PIN; HomePod uses transient by default; a receiver with `sf` bit 7 (Require Password) uses HAP password pairing. The model, not the pairing method, selects the family profile (§2.5): a password-gated HomePod is not a Mac.
 - No auth bit: plain RTSP.
 - `AppleTV3,x` model strings map to `AuthLegacyPin` and fail fast with a FairPlay message (see [devices.md](devices.md)).
 
@@ -44,12 +44,14 @@ Without TXT records there are no feature bits, including the PTP bit. A manual s
 4. `pair-verify` M1 through M3: X25519 plus Ed25519 signatures, nonces `PV-Msg02` and `PV-Msg03`.
 5. `sharedSecret = X25519 ECDH`, 32 bytes.
 
-### 2.3 HAP password — Mac with Require Password
+### 2.3 HAP password — receiver with Require Password
 
 1. `POST /pair-setup`, Method=0, State=1, **no Flags**, no `/pair-pin-start`.
 2. M3 carries the receiver password as the SRP secret; M4 verifies.
 3. M5/M6 exchange long-term keys, then pair-verify as usual — all before any AP2 traffic.
 4. Transient pairing (`Flags=0x10`) is rejected by this receiver with TLV error 3.
+
+The tested case is a Mac. A HomePod can gate AirPlay the same way; it runs the same HAP password flow but keeps the HomePod key and latency profile (§2.5).
 
 ### 2.4 Long-term credentials
 
@@ -61,7 +63,7 @@ Encrypted with DPAPI and indexed by the receiver's `deviceid`. Stored credential
 
 ### 2.5 Audio key derivation
 
-Two rules, one per receiver family:
+Two rules, one per receiver family. The pairing method does not select the rule; a HomePod that paired with a password still uses the first rule:
 
 - HomePod: both `shk` and the audio ChaCha20 key are the **first 32 bytes of `sharedSecret`, with no HKDF**. The transient K is 64 bytes and must be truncated.
 - Password-paired Mac: `shk` is the **Events-Write key** (HKDF over the full shared secret).

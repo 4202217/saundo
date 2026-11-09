@@ -94,6 +94,14 @@ func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *
 	r.sender.SetClock(func() time.Time { return r.now })
 	r.sender.SetInputFormat(44100)
 	r.sender.SetAuth(auth, airplay2, "AA:BB:CC:DD:EE:FF", "", "")
+	switch mode {
+	case modeTransient:
+		r.sender.SetFamily(device.FamilyHomePod)
+	case modePIN:
+		r.sender.SetFamily(device.FamilyAppleTV)
+	case modePassword:
+		r.sender.SetFamily(device.FamilyMac)
+	}
 	return r
 }
 
@@ -285,6 +293,7 @@ type fakeReceiver struct {
 	receiverVolume    int64
 	arrivalRenderMS   int64
 	requests          map[string]int
+	seen              []request
 	setParams         []string
 	commands          []string
 	sessionSetup      map[string]any
@@ -381,6 +390,7 @@ func (f *fakeReceiver) reply(req request, code int, contentType string, body []b
 }
 
 func (f *fakeReceiver) dispatch(req request) {
+	f.seen = append(f.seen, req)
 	key := req.method + " " + req.uri
 	switch {
 	case req.method == "POST" && req.uri == "/pair-pin-start":

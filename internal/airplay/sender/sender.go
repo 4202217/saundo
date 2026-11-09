@@ -351,6 +351,7 @@ type Sender struct {
 	timingPeers []string
 
 	authMethod                   device.Auth
+	family                       device.Family
 	airplay2                     bool
 	deviceID                     string
 	credsJSON                    string
@@ -456,6 +457,11 @@ func (s *Sender) SetAuth(auth device.Auth, airplay2 bool, deviceID, credsJSON, p
 	s.credsJSON = credsJSON
 	s.digestPassword = password
 }
+
+// SetFamily selects the receiver family used for key derivation, latency,
+// and request headers. It is independent of SetAuth: a HomePod can pair
+// transiently or with a password and keeps the HomePod profile.
+func (s *Sender) SetFamily(family device.Family) { s.family = family }
 
 // AttachRing supplies the PCM ring the sender pulls from while streaming.
 func (s *Sender) AttachRing(r *ring.Buffer) { s.ring = r }

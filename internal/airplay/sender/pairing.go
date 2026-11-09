@@ -94,7 +94,7 @@ func (s *Sender) httpPost(uri, contentType string, body []byte) {
 	b.WriteString("User-Agent: " + clientUserAgent + "\r\n")
 	b.WriteString("Connection: keep-alive\r\n")
 	hkp := "3"
-	if s.authMethod == device.AuthHAPTransient {
+	if s.family == device.FamilyHomePod || s.authMethod == device.AuthHAPTransient {
 		hkp = "4"
 	}
 	b.WriteString("X-Apple-HKP: " + hkp + "\r\n")
@@ -191,7 +191,11 @@ func (s *Sender) onPairingResponse(code int, headers map[string]string, body str
 			return
 		}
 		if code == 403 {
-			s.fail(fmtError("%s refused pairing. On a Mac, set AirDrop & Handoff > AirPlay Receiver > Allow AirPlay for Everyone and turn off Require Password. On an Apple TV, set AirPlay & HomeKit > Allow Access to Anyone on the Same Network. A HomePod needs to be set up in the Home app first.", s.name))
+			if s.family == device.FamilyHomePod {
+				s.fail(fmtError("%s refused pairing. In the Home app, allow AirPlay for this network and check the saved AirPlay password.", s.name))
+			} else {
+				s.fail(fmtError("%s refused pairing. On a Mac, set AirDrop & Handoff > AirPlay Receiver > Allow AirPlay for Everyone and turn off Require Password. On an Apple TV, set AirPlay & HomeKit > Allow Access to Anyone on the Same Network. A HomePod needs to be set up in the Home app first.", s.name))
+			}
 		} else if code == 470 {
 			s.fail(fmtError("%s needs to be paired with a PIN, but it didn't show one. Set AirPlay access to Anyone on the Same Network and try again.", s.name))
 		} else {

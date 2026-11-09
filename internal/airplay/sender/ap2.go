@@ -31,14 +31,14 @@ func (s *Sender) sendAP2RTSPAttempt(method, uri, contentType string, body []byte
 		b.WriteString("Authorization: " + crypto.DigestAuthResponse(
 			method, uri, s.digestUsername(), s.digestRealm, s.digestPassword, s.digestNonce) + "\r\n")
 	}
-	if s.authMethod == device.AuthHAPPassword {
+	if s.family == device.FamilyMac {
 		b.WriteString("X-Apple-ProtocolVersion: 1\r\n")
 		if s.ap2 != nil && s.ap2.sessionUUID != "" {
 			b.WriteString("X-Apple-Session-ID: " + strings.ToLower(s.ap2.sessionUUID) + "\r\n")
 		}
 	}
 	if method == "SETUP" {
-		if s.authMethod == device.AuthHAPPassword {
+		if s.family == device.FamilyMac {
 			b.WriteString("X-Apple-Stream-ID: 1\r\n")
 		} else {
 			b.WriteString("X-Apple-StreamID: 1\r\n")
@@ -159,8 +159,10 @@ func (s *Sender) sendSetPeers() {
 func (s *Sender) sendAP2SetupStream() {
 	// HomePod clamps the shared secret to 32 bytes for the ChaCha key. A
 	// password-paired Mac uses the Events-Write key (pyatv's macOS profile).
+	// The family, not the pairing method, decides: a password-protected
+	// HomePod keeps the HomePod key.
 	var key []byte
-	if s.authMethod == device.AuthHAPPassword && len(s.ap2.eventIn) == 32 {
+	if s.family == device.FamilyMac && len(s.ap2.eventIn) == 32 {
 		key = s.ap2.eventIn
 	} else {
 		key = s.ap2.sharedSecret
@@ -178,7 +180,7 @@ func (s *Sender) sendAP2SetupStream() {
 	// latency.
 	samples := int64(float64(s.latencyMS)*raopRate/1000 + 0.5)
 	latencyMin, latencyMax := samples, samples
-	if s.authMethod == device.AuthHAPPassword {
+	if s.family == device.FamilyMac {
 		latencyMin, latencyMax = 11025, 88200
 		samples = 66150
 	}
