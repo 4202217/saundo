@@ -118,7 +118,11 @@ func (a *App) newSettingsWindow() *mygo.Window {
 		e.PreventDefault()
 		w.Hide()
 	})
-	w.OnShow(func() { a.settingsEntered = false })
+	// The log dialog belongs to this window; a reopened window starts without it.
+	w.OnShow(func() {
+		a.settingsEntered = false
+		a.showLog = false
+	})
 	return w
 }
 
@@ -133,6 +137,7 @@ func (a *App) settingsView(c *ui.Context) {
 		})
 	})
 	a.updateNotesDialog(c, p)
+	a.logDialog(c, p)
 }
 
 // settingsTitleBar draws the window's title bar under the system's window

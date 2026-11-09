@@ -57,8 +57,9 @@ diagnostics log button is in the flyout footer.
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
   (`engine.go:249,748-773`; the meter Push is `silence.go:33-52`; resume
   `stream.go:76-98`).
-- Diagnostics card: the 诊断日志 footer button opens a log dialog whose 复制
-  button puts the visible log on the clipboard (`flyout.go:762-793`).
+- Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log
+  dialog whose 复制 button puts the visible log on the clipboard
+  (`log_dialog.go:11-42`).
 
 ## How to get to it (user POV)
 
