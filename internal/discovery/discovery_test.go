@@ -1,7 +1,9 @@
 package discovery
 
 import (
+	"errors"
 	"net"
+	"net/netip"
 	"os"
 	"sync"
 	"testing"
@@ -242,6 +244,112 @@ func TestNormalizeDeviceID(t *testing.T) {
 	}
 	if got := normalizeDeviceID("aa:bb:cc:dd:ee:ff"); got != "AA:BB:CC:DD:EE:FF" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+// TestQueryMarksTheLocalReceiver pins the advertisement rule: a receiver
+// advertising one of this host's own addresses is marked Local, so the rest
+// of the app can keep it out of the target list.
+func TestQueryMarksTheLocalReceiver(t *testing.T) {
+	prev := mdnsQuery
+	mdnsQuery = func(p *mdns.QueryParam) error {
+		if p.Service != airplayService {
+			return nil
+		}
+		p.Entries <- &mdns.ServiceEntry{
+			Name:   "MacBook Air._airplay._tcp.local.",
+			AddrV4: net.IPv4(192, 168, 1, 10),
+			Port:   7000,
+			InfoFields: []string{
+				"deviceid=02:8F:B8:25:3A:B2",
+				"model=Mac14,2",
+				"features=0x4A7FCA00,0x3C354B00",
+				"sf=0x284",
+			},
+		}
+		return nil
+	}
+	defer func() { mdnsQuery = prev }()
+
+	s := New(0, 0)
+	s.unicastEvery = 0
+	s.interfaceAddrs = func() ([]net.Addr, error) {
+		return []net.Addr{&net.IPNet{IP: net.IPv4(192, 168, 1, 10), Mask: net.CIDRMask(24, 32)}}, nil
+	}
+	s.queryOnce()
+
+	got := s.Snapshot()
+	if len(got) != 1 {
+		t.Fatalf("snapshot = %+v, want one receiver", got)
+	}
+	if !got[0].Local {
+		t.Fatalf("the receiver at this host's address is not marked local: %+v", got[0])
+	}
+}
+
+// TestLocalAddressesKeepTheLastSetOnReadError pins the unknown-not-empty
+// rule: a failed enumeration must not turn the local receiver back into a
+// candidate.
+func TestLocalAddressesKeepTheLastSetOnReadError(t *testing.T) {
+	s := New(0, 0)
+	s.interfaceAddrs = func() ([]net.Addr, error) {
+		return []net.Addr{&net.IPNet{IP: net.IPv4(10, 0, 0, 5), Mask: net.CIDRMask(24, 32)}}, nil
+	}
+	if !localHost(s.localAddresses(), "10.0.0.5") {
+		t.Fatal("a successful read did not mark the host address")
+	}
+	s.interfaceAddrs = func() ([]net.Addr, error) { return nil, errors.New("no interfaces") }
+	if !localHost(s.localAddresses(), "10.0.0.5") {
+		t.Fatal("a failed read dropped the last known local addresses")
+	}
+}
+
+// TestLocalHostMatchesOnlyIPs pins the comparison: exact IPs match, a
+// hostname or another address does not, and IPv4-mapped forms unify.
+func TestLocalHostMatchesOnlyIPs(t *testing.T) {
+	set := map[netip.Addr]struct{}{netip.MustParseAddr("192.168.1.10"): {}}
+	cases := []struct {
+		host string
+		want bool
+	}{
+		{"192.168.1.10", true},
+		{"::ffff:192.168.1.10", true},
+		{"192.168.1.11", false},
+		{"MacBook.local", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		if got := localHost(set, c.host); got != c.want {
+			t.Errorf("localHost(%q) = %v, want %v", c.host, got, c.want)
+		}
+	}
+	if localHost(nil, "192.168.1.10") {
+		t.Error("an unknown local set marked an address")
+	}
+}
+
+// TestMergeKeepsLocalFlag pins that a later sighting carries the flag into
+// the merged device.
+func TestMergeKeepsLocalFlag(t *testing.T) {
+	s := New(0, 0)
+	d, ok := parseEntry(&mdns.ServiceEntry{
+		Name:   "MacBook Air._airplay._tcp.local.",
+		AddrV4: net.IPv4(192, 168, 1, 10),
+		Port:   7000,
+		InfoFields: []string{
+			"deviceid=02:8F:B8:25:3A:B2",
+			"model=Mac14,2",
+			"features=0x4A7FCA00,0x3C354B00",
+		},
+	}, airplayService)
+	if !ok {
+		t.Fatal("entry rejected")
+	}
+	d.Local = true
+	s.merge(d)
+	got := s.Snapshot()
+	if len(got) != 1 || !got[0].Local {
+		t.Fatalf("merge dropped the local flag: %+v", got)
 	}
 }
 

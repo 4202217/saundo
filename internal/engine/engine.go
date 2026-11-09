@@ -1062,6 +1062,16 @@ func (e *Engine) handleCommand(cmd command) {
 // connect starts a session with d. It keeps reconnectPending: only a
 // successful launch or a user disconnect clears it.
 func (e *Engine) connect(d device.Device) {
+	// A receiver on this host cannot be a target: the sender and receiver
+	// would share one audio path, and the receiver refuses the session
+	// anyway. Discovery and merge mark the classified device; the sender's
+	// socket check covers a manual row whose host is this machine.
+	if d.Local {
+		e.lastError = "本机正在运行声渡，不能作为接收器。"
+		e.logf("refusing the local receiver %s", d.Name)
+		e.publish()
+		return
+	}
 	// A new connect supersedes the previous session's PIN dialog; a pairing
 	// that needs a code raises PinRequired again on its own.
 	e.pinRequired = false
@@ -1548,6 +1558,13 @@ func (e *Engine) maybeAutoConnect() bool {
 	}
 	target, found := e.target(key)
 	if !found || !target.Device.Online {
+		return false
+	}
+	if target.Device.Local {
+		// A stored flag can outlive the receiver becoming local. Skip it
+		// instead of publishing a launch failure every start.
+		e.autoTried = true
+		e.logf("auto-connect target %s is the local receiver; skipping", target.Device.Name)
 		return false
 	}
 	e.autoTried = true

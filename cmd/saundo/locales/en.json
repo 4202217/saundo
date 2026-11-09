@@ -254,6 +254,7 @@
   "receiverEmptyHiddenHint": "Enable it again in the hidden group below.",
   "receiverEmptyAllHiddenTitle": "All receivers are hidden",
   "receiverDiscoveryHint": "AirPlay receivers on your network appear here automatically.",
+  "receiverChipLocal": "Local",
   "receiverChipManual": "Manual",
   "receiverChipAuto": "At launch",
   "receiverChipHidden": "Hidden",

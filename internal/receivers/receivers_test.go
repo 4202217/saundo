@@ -54,6 +54,44 @@ func TestMergeJoinsRememberedManualAndFirstSightings(t *testing.T) {
 	}
 }
 
+// TestMergeHidesTheLocalReceiver pins the local rule: a receiver on this
+// host is forced into the hidden group, loses any auto-connect flag, and
+// never reaches the flyout list.
+func TestMergeHidesTheLocalReceiver(t *testing.T) {
+	reg := Registry{Entries: []Entry{{
+		Key: "AA:00", Kind: KindDiscovered, Name: "本机",
+		Hidden: false, AutoConnect: true,
+	}}}
+	d := discovered("AA:00", "本机", "192.168.1.10", 7000)
+	d.Local = true
+	targets := Merge(reg, []device.Device{d}, nil)
+	if len(targets) != 1 {
+		t.Fatalf("targets = %+v, want one row", targets)
+	}
+	tg := targets[0]
+	if !tg.Entry.Hidden || tg.Entry.AutoConnect {
+		t.Fatalf("local entry = %+v, want hidden and no auto-connect", tg.Entry)
+	}
+	v := tg.View(false)
+	if !v.Local || !v.Hidden || v.AutoConnect {
+		t.Fatalf("local view = %+v, want local, hidden, no auto-connect", v)
+	}
+	if got := Visible(targets, ""); len(got) != 0 {
+		t.Fatalf("local receiver leaked into the flyout: %+v", got)
+	}
+}
+
+// TestMergeHidesAFreshLocalSighting covers the first sighting, before the
+// engine has remembered the receiver.
+func TestMergeHidesAFreshLocalSighting(t *testing.T) {
+	d := discovered("AA:01", "本机", "192.168.1.10", 7000)
+	d.Local = true
+	targets := Merge(Registry{}, []device.Device{d}, nil)
+	if len(targets) != 1 || !targets[0].Entry.Hidden {
+		t.Fatalf("fresh local sighting = %+v, want a hidden row", targets)
+	}
+}
+
 func TestMergeKeepsRememberedRowOffline(t *testing.T) {
 	reg := Registry{Entries: []Entry{
 		{Key: "AA:00", Kind: KindDiscovered, Name: "客厅", Model: "AudioAccessory5,1", AirPlay2: true},

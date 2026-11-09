@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # Verification
 
@@ -1904,3 +1904,42 @@ and the verification map is corrected.
   published the stable release. The public feed serves the signed 0.6.0
   manifest; the installer and dmg URLs follow to 200. A live update from an
   installed 0.5.0 build is still owed.
+
+## 2026-11-10 — the local AirPlay receiver is not a target
+
+- **Finding.** On a MacBook Air running the sender, discovery listed the
+  MacBook Air's own AirPlay receiver (`02:8F:B8:25:3A:B2`,
+  `192.168.31.200`, the host's en0 address). HAP pairing, pair-verify, the
+  encrypted control channel, and `GET /info` returned 200; the AP2 session
+  SETUP returned 401 with the Digest challenge, and the authenticated replay
+  returned 400. The log shows the same stop at 2026-11-07 13:38 and
+  2026-11-10 00:24, with five reconnect attempts each. The receiver's
+  deviceid is not the hardware MAC (`1c:57:dc:68:ce:e8`), so discovery
+  compares the advertised address with the host's interface addresses. The
+  same MacBook Air completed the replay and streamed from another machine on
+  2026-11-01, so the Mac profile is unchanged and the receiver's own host is
+  the difference. A local target would also share one audio path and loop.
+- **Fix.** `device.Device.Local` carries the fact from discovery.
+  `receivers.Merge` forces a local row into the hidden group and clears its
+  auto-connect flag; the settings page draws it with a 本机 chip and no
+  enable switch or expander; the flyout never lists it; and
+  `Engine.connect` refuses it. The sender also compares the connected
+  socket's local and peer addresses and stops before pairing, which covers a
+  manual row whose host is this machine and a failed interface read.
+- **Pinned by** `TestQueryMarksTheLocalReceiver`,
+  `TestLocalAddressesKeepTheLastSetOnReadError`,
+  `TestLocalHostMatchesOnlyIPs`, `TestMergeKeepsLocalFlag`,
+  `TestMergeHidesTheLocalReceiver`, `TestMergeHidesAFreshLocalSighting`,
+  `TestReceiverPageLocalRowIsDisabled`, `TestConnectRefusesTheLocalReceiver`,
+  `TestAutoConnectSkipsTheLocalReceiver`, and
+  `TestRefusesASessionToThisHost`.
+- **Checks.** `make check` passed: gofmt, i18n check (326 messages in en and
+  zh-CN), `go vet ./...`, `go tool mygo vet .`, every package test,
+  `verify-map`, and the windows/amd64 and darwin/arm64 platform gate.
+  `go tool mygo generate cmd/saundo` wrote the `receiverChipLocal`
+  accessors. `make build` produced the 0.6.0-13 build and relaunched it.
+- **Live (2026-11-10).** The rebuilt app ran on the MacBook Air. The flyout
+  listed one receiver, the HomePods stereo group, and no MacBook Air row.
+  The 接收器 page showed MacBook Air in the 已隐藏 group with the 本机 chip,
+  no enable switch, and no chevron. Window captures:
+  `/tmp/saundo-verify/flyout.png` and `/tmp/saundo-verify/settings.png`.

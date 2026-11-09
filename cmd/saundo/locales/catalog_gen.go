@@ -1614,6 +1614,16 @@ func (msgs Messages) ReceiverDiscoveryHint() string {
 	return Catalog.Format(msgs.locale, "receiverDiscoveryHint", nil)
 }
 
+// ReceiverChipLocal says "Local"
+// in the language the app shows.
+func ReceiverChipLocal() string { return In(i18n.Locale()).ReceiverChipLocal() }
+
+// ReceiverChipLocal says "Local"
+// in the language of msgs.
+func (msgs Messages) ReceiverChipLocal() string {
+	return Catalog.Format(msgs.locale, "receiverChipLocal", nil)
+}
+
 // ReceiverChipManual says "Manual"
 // in the language the app shows.
 func ReceiverChipManual() string { return In(i18n.Locale()).ReceiverChipManual() }

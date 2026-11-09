@@ -43,11 +43,17 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 				d = claimedDevice(d, seen)
 				delete(live, seen.ID)
 			}
+			if d.Local {
+				e = localEntry(e)
+			}
 			out = append(out, Target{Device: d, Entry: e})
 			continue
 		}
 		if d, ok := live[e.Key]; ok {
 			delete(live, d.ID)
+			if d.Local {
+				e = localEntry(e)
+			}
 			out = append(out, Target{Device: d, Entry: e})
 			continue
 		}
@@ -56,7 +62,11 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 	for id, d := range live {
 		// A first sighting. The engine persists it as a remembered entry;
 		// the zero entry here keeps the pure function side-effect free.
-		out = append(out, Target{Device: d, Entry: Entry{Key: id, Kind: KindDiscovered}})
+		entry := Entry{Key: id, Kind: KindDiscovered}
+		if d.Local {
+			entry = localEntry(entry)
+		}
+		out = append(out, Target{Device: d, Entry: entry})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i].Entry, out[j].Entry
@@ -67,6 +77,15 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		return a.Key < b.Key
 	})
 	return out
+}
+
+// localEntry is the row a receiver on this host gets: the hidden group and
+// no auto-connect. The sender cannot target its own host, so the row exists
+// only to show that the receiver was seen and is not usable.
+func localEntry(e Entry) Entry {
+	e.Hidden = true
+	e.AutoConnect = false
+	return e
 }
 
 // manualDevice builds the wire description of a typed-in receiver. The

@@ -59,6 +59,7 @@ func (s *Service) unicastOnce() {
 	if len(hosts) == 0 {
 		return
 	}
+	local := s.localAddresses()
 	sem := make(chan struct{}, unicastConcurrency)
 	var wg sync.WaitGroup
 	for _, host := range hosts {
@@ -78,6 +79,7 @@ func (s *Service) unicastOnce() {
 					}
 					for _, e := range entries {
 						if d, ok := parseEntry(e, service); ok {
+							d.Local = localHost(local, d.Host)
 							s.merge(d)
 						}
 					}

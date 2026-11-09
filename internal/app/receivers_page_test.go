@@ -83,6 +83,44 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	}
 }
 
+// localReceiverFixture is the page with one receiver: this host's own
+// AirPlay endpoint, already forced into the hidden group.
+func localReceiverFixture() *App {
+	a := previewApp()
+	a.page = pageReceivers
+	a.receiverHiddenOpen = true
+	const key = "02:8F:B8:25:3A:B2"
+	a.snap.Receivers = []receivers.View{{
+		Key: key, Name: "MacBook Air", Kind: receivers.KindDiscovered,
+		Model: "Mac14,2", Online: true, Hidden: true, Local: true,
+		Device: device.Device{ID: key, Name: "MacBook Air", Host: "192.168.31.200", Port: 7000,
+			Model: "Mac14,2", Online: true, Local: true},
+		Entry: receivers.Entry{Key: key, Kind: receivers.KindDiscovered, Name: "MacBook Air", Hidden: true},
+	}}
+	a.snap.Devices = nil
+	return a
+}
+
+// TestReceiverPageLocalRowIsDisabled pins the local row's shape: the 本机
+// chip in the hidden group, with no enable switch and no expander, even when
+// a stale open flag is set.
+func TestReceiverPageLocalRowIsDisabled(t *testing.T) {
+	a := localReceiverFixture()
+	a.receiverOpen = map[string]bool{"02:8F:B8:25:3A:B2": true}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{"MacBook Air", locales.ReceiverChipLocal(), locales.ReceiverGroupHidden()} {
+		if !tt.HasText(want) {
+			t.Fatalf("local row is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+	if _, ok := tt.Find(locales.ReceiverEnableSwitch()); ok {
+		t.Fatal("the local row still offers the enable switch")
+	}
+	if tt.HasText(locales.ReceiverAutoToggle()) {
+		t.Fatal("the local row expanded its body")
+	}
+}
+
 // TestReceiverPageEmptyListShowsDiscoveryHint pins the empty page to plain
 // prose: one discovery line where the list would be, the add row, and no
 // 已启用 head at zero rows.

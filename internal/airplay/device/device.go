@@ -156,6 +156,12 @@ type Device struct {
 	// fills it in snapshots; a stored device reads as offline. A stereo group
 	// is online only when both members are online.
 	Online bool
+	// Local reports that the advertised address belongs to the machine
+	// running saundo. Discovery fills it in; a stored device reads as false.
+	// A local receiver is never a target: the sender and its own receiver
+	// share one audio path, so the stream would loop, and macOS refuses the
+	// session SETUP anyway.
+	Local bool
 }
 
 // IsStereoGroup reports whether d is a synthesized stereo-pair target.

@@ -13,6 +13,7 @@ import (
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/ring"
 	"saundo/internal/capture"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -211,6 +212,44 @@ func TestConnectAppliesRememberedVolume(t *testing.T) {
 	}
 	if len(h.fake.volumes) == 0 || h.fake.volumes[len(h.fake.volumes)-1] != 42 {
 		t.Fatalf("remembered volume not applied: %v", h.fake.volumes)
+	}
+}
+
+// TestConnectRefusesTheLocalReceiver pins the guard every entry point passes
+// through: a receiver on this host never starts a session, and the row
+// explains why.
+func TestConnectRefusesTheLocalReceiver(t *testing.T) {
+	h := newHarness(t)
+	h.e.setDevices([]device.Device{{
+		ID: testDeviceID, Name: "本机", Host: "192.0.2.10", Port: 7000,
+		Model: "Mac14,2", Auth: device.AuthHAPPassword, AirPlay2: true,
+		Online: true, Local: true,
+	}})
+	h.connect()
+	if h.sessions != 0 || h.fake != nil {
+		t.Fatalf("a local receiver started a session (sessions=%d)", h.sessions)
+	}
+	if err := h.e.Snapshot().Error; !strings.Contains(err, "本机") {
+		t.Fatalf("error = %q, want the local receiver message", err)
+	}
+}
+
+// TestAutoConnectSkipsTheLocalReceiver pins the launch path: a stored flag
+// that points at the local receiver does not connect or publish an error.
+func TestAutoConnectSkipsTheLocalReceiver(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	d := onlineDevice()
+	d.Local = true
+	h.e.setDevices([]device.Device{d})
+	if h.sessions != 0 || h.fake != nil {
+		t.Fatalf("auto-connect started the local receiver (sessions=%d)", h.sessions)
+	}
+	if !h.e.autoTried {
+		t.Fatal("the launch wait did not end after skipping the local receiver")
+	}
+	if err := h.e.Snapshot().Error; err != "" {
+		t.Fatalf("skipping the local receiver published an error: %q", err)
 	}
 }
 

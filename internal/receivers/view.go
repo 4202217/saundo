@@ -13,6 +13,7 @@ type View struct {
 	Model       string
 	Online      bool
 	Hidden      bool
+	Local       bool
 	AutoConnect bool
 	DelayMS     int
 	Stereo      bool
@@ -36,6 +37,7 @@ func (t Target) View(hasPassword bool) View {
 		Model:       t.Device.Model,
 		Online:      t.Device.Online,
 		Hidden:      e.Hidden,
+		Local:       t.Device.Local,
 		AutoConnect: e.AutoConnect,
 		DelayMS:     e.DelayMS,
 		Stereo:      t.Device.IsStereoGroup() || e.IsGroup(),
