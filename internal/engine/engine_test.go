@@ -866,6 +866,29 @@ func TestTrayAnimationCommandPersists(t *testing.T) {
 	}
 }
 
+func TestFlyoutPopoverCommandPersists(t *testing.T) {
+	h := newHarness(t)
+	if h.e.buildSnapshot().FlyoutPopover {
+		t.Fatal("snapshot turned the popover flyout on by itself")
+	}
+	h.e.handleCommand(command{kind: cmdFlyoutPopover, value: 1})
+	if !h.e.buildSnapshot().FlyoutPopover {
+		t.Fatal("snapshot did not turn the popover flyout on")
+	}
+	h.flushSettings()
+	if !h.e.sets.Load().FlyoutPopover {
+		t.Fatal("popover flyout on was not saved")
+	}
+	h.e.handleCommand(command{kind: cmdFlyoutPopover, value: 0})
+	if h.e.buildSnapshot().FlyoutPopover {
+		t.Fatal("snapshot kept the popover flyout on")
+	}
+	h.flushSettings()
+	if h.e.sets.Load().FlyoutPopover {
+		t.Fatal("popover flyout off was not saved")
+	}
+}
+
 func TestNowPlayingCommandForwards(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

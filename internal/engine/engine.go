@@ -1799,6 +1799,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		LampCover:          e.setsValue.Lamp.Cover,
 		LampPreset:         lamp.Normalize(e.setsValue.Lamp.Preset),
 		TrayAnimation:      e.setsValue.TrayAnimation,
+		FlyoutPopover:      e.setsValue.FlyoutPopover,
 		CaptureEndpoint:    e.captureEndpoint,
 		CaptureName:        e.captureName,
 		CaptureRate:        e.captureRate,
