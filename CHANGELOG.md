@@ -5,7 +5,7 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
-## 0.6.0-beta.1 - 2026-11-09
+## 0.6.0 - 2026-11-09
 
 ### Added
 
@@ -54,6 +54,17 @@ release notes.
   not the card's arrow selection, so the preview and the top display
   cannot disagree.
 - The window title follows a language change.
+- On macOS, the capture tap no longer reopens on a false device-stopped
+  signal; the aggregate liveness probe was removed.
+- The tray panel style setting survives an engine snapshot, so the toggle
+  no longer appears to revert.
+- The tray panel's update-ready chip uses the ready wording instead of the
+  restart action.
+- The release copy review's fixes: the capture description and receiver
+  port hint fit at the default width, the macOS build says computer and
+  local output instead of PC, the update-failed line keeps its reason
+  localized, and the receiver launch chip, Chinese receiver and license
+  terms, and About notices match the copy standard.
 
 ## 0.5.0 - 2026-11-07
 

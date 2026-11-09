@@ -3,22 +3,27 @@
 ## Sub-features
 
 - mDNS browse on the LAN; `_raop`/`_airplay` advertisements merge into one
-  device row; the subtitle shows model and pairing path.
+  device row; the subtitle shows the model plus an auth label for PIN,
+  password, unsupported, or auth-required receivers. Transient and open
+  receivers show `model · AirPlay 2` or `AirPlay 1`.
 - Directed fallback every fifth cycle (15 s at the 3 s interval): a unicast
   DNS-SD query on UDP 5353 to the Windows ARP neighbors and the remembered
   receiver hosts, for both `_airplay._tcp` and `_raop._tcp`, feeding the same
   parse and merge path. It finds HomePods that miss multicast. Windows only:
   macOS has no ARP neighbor table (`neighbors_other.go`), so the directed
   pass probes remembered hosts only.
-- A discovered row stores its last host, port, and `lastSeen`; a
+- A discovered row stores its last host, port, and `lastSeen`; an inactive
   `stereo:<tsid>` unseen for 24 h is pruned with its auto-connect flag, while
-  a group without `lastSeen` gets the full grace.
+  a group without `lastSeen` gets the full grace. The active/reconnect target
+  is force-added and is not pruned while the engine owns it.
 - Offline marking after about three missed query cycles
   (`staleAfter = 3×interval + timeout`) and pruning after 90 s. Neither
-  surface lists an offline remembered row: `Manageable`
+  surface lists an inactive offline remembered row: `Manageable`
   (`receivers/merge.go:133-146`) drops it, and its saved settings return when
-  it is seen again. The 离线 row action survives only in the UI fixture and
-  the unreachable `flyout.go` branch, not in the live app.
+  it is seen again. The active session's row stays while the engine owns it:
+  settings shows `离线`, the flyout shows the disconnect/retry action. The
+  offline action is reachable only in the auto-reconnect-off, device-closed
+  state; the UI fixture covers it, and it was not seen live.
 - Stereo-group collapse (`tsid`): one row named `HomePods` with the subtitle
   `<model> · 立体声组 2/2`, leader first, member rows hidden, group offline
   unless both members are online.
@@ -28,8 +33,10 @@
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  attempts, then 自动重连 5 次后停止 (`engine.go:258-262`, budget at
-  `:238-239`, give-up message at `:1131`).
+  failed connect attempts, then 自动重连 5 次后停止 (`engine.go:258-262`,
+  budget at `:238-239`, give-up message at `:1131`). A receiver that is not
+  discovered is retried every 5 s without consuming the budget, so a
+  receiver that vanishes mid-session does not reach the give-up message.
 - A failed attempt clears its error on the next connect or disconnect
   (`engine.go:851`, `:1025`), and other online rows stay connectable in the
   error phase (`flyout.go:251-267`; `TestRowActionKeepsOtherReceiversConnectable`).
@@ -66,8 +73,9 @@ by 断开连接 and confirm `session stopped` plus the row returning to 连接.
 
 Proven end state: the flyout shows 正在通过 `<name>` 播放 with the
 `ALAC · 44.1 kHz · PTP · 已同步 · 延迟 N ms` line (PTP on HomePod/Mac), and
-the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK` every 2 s. The 已连接
-chip is the settings connection page and sidebar, not a flyout row.
+the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK` every 2 s on AP2 (AP1
+uses one probe then 25 s). The 已连接 chip is the settings connection page and
+sidebar, not a flyout row.
 
 ## Gotchas
 
@@ -89,6 +97,11 @@ chip is the settings connection page and sidebar, not a flyout row.
   and timing requests go unanswered (UI reports a PTP timeout). On macOS the
   equivalent is Local Network permission: mDNS, RTSP, and PTP are dropped
   until the user allows the app.
+- The live recipe's doctor and capture scripts and `%APPDATA%` log are
+  Windows-only. On macOS the log is
+  `~/Library/Application Support/saundo/saundo.log`, window proof is
+  `screencapture -x`, and `SAUNDO_UNICAST_BROWSE` cannot exercise an ARP table
+  (none exists).
 - FairPlay receivers (Xiaomi/Redmi `AppleTV3,2`) accept SETUP and produce
   no sound — the app must fail fast with the FairPlay message; that is the
   correct behavior, not a bug.

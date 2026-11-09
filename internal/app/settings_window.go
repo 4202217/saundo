@@ -555,7 +555,7 @@ func (a *App) updateVersionSub(c *ui.Context, p palette) {
 		ui.Text(c, a.currentVersionLabel()+" · "+a.channelLabel()).FontSize(11.5).TextColor(p.muted).SingleLine()
 		switch {
 		case a.upd.phase == updateFailed && a.upd.up == nil:
-			ui.Text(c, locales.SettingsCheckFailed()+" · "+a.upd.err).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
+			ui.Text(c, locales.SettingsCheckFailed()).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
 		case a.upd.checked:
 			ok := ui.Row(c).Gap(3).Shrink(0)
 			ok.Children(func() {

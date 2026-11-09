@@ -104,7 +104,7 @@ func (a *App) updateChipLabel() string {
 	case updateDownloading:
 		return locales.FlyoutUpdateDownloading(int(a.updateProgress() * 100))
 	case updateReady:
-		return locales.FlyoutUpdateReady()
+		return locales.UpdateReadyShort()
 	}
 	return locales.FlyoutUpdateAvailable(a.upd.version)
 }
