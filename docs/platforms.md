@@ -37,7 +37,7 @@ the seams and the rules for extending them. The code map:
 | Now playing | `nowplaying.Read` and the control/snapshot set (`nowplaying.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
 | Neighbor table | `discovery.neighborHosts` | `neighbors_windows.go`: `GetIpNetTable` | fail-closed empty (remembered endpoints cover offline connect) | `neighbors_other.go`: fail-closed |
 | Engine wiring | injected function fields (`engine.go:290` `captureStartFn`, `engine.go:395-398` the endpoint/mute set, `engine.go:374` `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
-| App wiring | `app.go:113-114` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` fails closed; `update.go` disables updates | stubs |
+| App wiring | `app.go:113-114` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `update.go` disables updates | stubs |
 
 ## Adding a feature
 
@@ -78,7 +78,7 @@ Core Audio property codes stay inside the leaf packages.
 | System audio capture | WASAPI shared-mode loopback | Core Audio process tap + private aggregate device (macOS 14.4+) |
 | Per-application capture | process-loopback device (Windows 10 2004+) | not implemented; the seam is ready (`capture.Config.ProcessID`, `AppCaptureSupported`) |
 | Mute local on connect | render-endpoint mute; loopback interaction is driver-dependent | output-device mute; capture is unaffected either way |
-| Now Playing card | SMTC | not implemented; `nowplaying` fails closed and callers degrade |
+| Now Playing card | SMTC | MediaRemote adapter; the card follows the one system session (no switcher) |
 | Credentials at rest | DPAPI (per user) | login-Keychain master key + AES-256-GCM (per user) |
 | Receiver discovery | mDNS + the ARP neighbor table | mDNS; the neighbor table returns empty |
 | Auto-update | signed feed through `mygo.Updater` | disabled: the build is ad-hoc signed and the feed carries Windows assets; re-enable with a signed, notarized mac feed |
