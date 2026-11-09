@@ -1636,3 +1636,11 @@ and the verification map is corrected.
   manifests are unsigned because the update key is on the Windows PC; the
   CI draft signs with the repository secret and is verified in the draft
   verification commit.
+
+- **Draft verification (2026-11-09).** The release workflow (run
+  42615271600) passed `check`, `check-macos`, `draft`, `build`, and
+  `build-macos`. The draft carried `install.ps1`, the 0.6.0 installer, the
+  update archive, the three deltas, `update-windows-amd64.json`, the arm64
+  dmg, and `SHA256SUMS`; `sha256sum -c` passed for all six checksummed
+  files. The manifest names 0.6.0, is signed, and carries the ASCII English
+  notes. The tag stays on `14f27cc`; publishing is the remaining gate.
