@@ -2726,16 +2726,6 @@ func (msgs Messages) FlyoutUpdateDownloading(percent int) string {
 	return Catalog.Format(msgs.locale, "flyoutUpdateDownloading", map[string]any{"percent": percent})
 }
 
-// FlyoutUpdateReady says "Restart to install"
-// in the language the app shows.
-func FlyoutUpdateReady() string { return In(i18n.Locale()).FlyoutUpdateReady() }
-
-// FlyoutUpdateReady says "Restart to install"
-// in the language of msgs.
-func (msgs Messages) FlyoutUpdateReady() string {
-	return Catalog.Format(msgs.locale, "flyoutUpdateReady", nil)
-}
-
 // TrayCheckUpdates says "Check for updates…"
 // in the language the app shows.
 func TrayCheckUpdates() string { return In(i18n.Locale()).TrayCheckUpdates() }

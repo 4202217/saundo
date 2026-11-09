@@ -345,7 +345,6 @@
       }
     }
   },
-  "flyoutUpdateReady": "重启以完成安装",
   "trayCheckUpdates": "检查更新…",
   "updateCheckingShort": "检查中…",
   "updateUpToDateShort": "已是最新",
