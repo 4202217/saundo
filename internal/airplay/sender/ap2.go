@@ -211,19 +211,21 @@ func (s *Sender) sendAP2SetupStream() {
 
 func (s *Sender) handleAP2SetupStream(body []byte) {
 	s.serverPort, s.controlPort = 0, 0
-	receiverLatencyMS := 0
-	if root, err := crypto.Decode(body); err == nil {
-		if m, ok := root.(map[string]any); ok {
-			if streams, ok := m["streams"].([]any); ok && len(streams) > 0 {
-				if s0, ok := streams[0].(map[string]any); ok {
-					s.serverPort = uint16(plistInt(s0, "dataPort"))
-					s.controlPort = uint16(plistInt(s0, "controlPort"))
-					// The receiver reports its own output latency here. It is
-					// not the sender's presentation latency and must not be
-					// added to the configured latency.
-					receiverLatencyMS = int(plistInt(s0, "arrivalToRenderLatencyMs"))
-				}
+	setup, ok := parseStreamSetup(body)
+	if ok {
+		s.serverPort = setup.DataPort
+		s.controlPort = setup.ControlPort
+		// The receiver reports its own output latency here. It is not the
+		// sender's presentation latency and must not be added to the
+		// configured latency.
+		if setup.ReceiverLatencyMS > 0 {
+			s.receiverLatencyMS = setup.ReceiverLatencyMS
+			if s.events.ReceiverLatencyChanged != nil {
+				s.events.ReceiverLatencyChanged(setup.ReceiverLatencyMS)
 			}
+		}
+		if setup.WiFi.Valid {
+			s.wifi = setup.WiFi
 		}
 	}
 	if s.serverPort == 0 {
@@ -234,31 +236,32 @@ func (s *Sender) handleAP2SetupStream(body []byte) {
 		s.controlPort = s.serverPort
 	}
 	s.timingPort = s.serverPort
-	if receiverLatencyMS > 0 {
-		s.receiverLatencyMS = receiverLatencyMS
-		if s.events.ReceiverLatencyChanged != nil {
-			s.events.ReceiverLatencyChanged(receiverLatencyMS)
-		}
-	}
 	s.info("stream SETUP ok, dataPort=%d controlPort=%d", s.serverPort, s.controlPort)
 	s.readyToStream()
 }
 
 func plistInt(m map[string]any, key string) int64 {
+	v, _ := plistIntOK(m, key)
+	return v
+}
+
+// plistIntOK is plistInt with the presence of a usable value made explicit.
+// A missing key or an unexpected type is unknown, not zero.
+func plistIntOK(m map[string]any, key string) (int64, bool) {
 	switch v := m[key].(type) {
 	case int64:
-		return v
+		return v, true
 	case int:
-		return int64(v)
+		return int64(v), true
 	case uint64:
-		return int64(v)
+		return int64(v), true
 	case float64:
-		return int64(v)
+		return int64(v), true
 	case bool:
 		if v {
-			return 1
+			return 1, true
 		}
-		return 0
+		return 0, true
 	}
-	return 0
+	return 0, false
 }

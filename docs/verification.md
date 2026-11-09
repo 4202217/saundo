@@ -30,6 +30,11 @@ live state:
   should show the takeover state, the first should keep streaming, and
   neither should re-enter the reconnect loop. The single-machine two-session
   probe and the engine test cover the classification.
+- The diagnostics data in a live session: the SETUP `wiFiMetrics` object and
+  its band values, the sender's resend/late/underrun counters and buffer time
+  over a real session, and a stereo pair's worst/sum aggregation. The parsing
+  and aggregation are pinned by the sender and engine tests; no live device
+  has reported `wiFiMetrics` yet, and no UI consumes the model.
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.

@@ -42,8 +42,9 @@ func (r *Linear) InputRate() int { return r.inputRate }
 // Resample fills dst with exactly len(dst)/2 stereo frames at 44100 Hz. pull
 // supplies interleaved source samples and returns how many it wrote; when it
 // has nothing, the remaining destination frames are silence so the receiver
-// timeline keeps moving. It returns the number of source frames that were
-// available (not the number of destination frames written).
+// timeline keeps moving. It returns the number of destination frames produced
+// from real input; a short return means the rest of dst was padded with
+// silence.
 //
 // dst length must be even. A zero-length dst is a no-op.
 func (r *Linear) Resample(dst []int16, pull func([]int16) int) int {

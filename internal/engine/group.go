@@ -405,6 +405,16 @@ func (g *groupTransport) PTP() (active, ready bool, offsetMS float64) {
 	return true, ready, 0
 }
 
+// Stats returns every member's counters in member order. The engine folds
+// them into the diagnostics group rules.
+func (g *groupTransport) Stats() []sender.Stats {
+	stats := make([]sender.Stats, 0, len(g.members))
+	for _, m := range g.members {
+		stats = append(stats, m.sender.Stats())
+	}
+	return stats
+}
+
 func (g *groupTransport) memberLaunched(idx int, ok bool, err string) {
 	if g.stopping {
 		return
