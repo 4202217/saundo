@@ -1603,3 +1603,36 @@ above.
   capture. Connect/disconnect, settings switches, ambient-light actions,
   and update install were not driven because the operator's session was
   streaming; the headless matrix and protocol tests cover those paths.
+
+## 2026-11-09 — 0.6.0 stable release
+
+The stable release is the 0.6.0-beta.1 UI plus four changes: the engine
+snapshot carries the flyout style, the macOS aggregate liveness false
+positives are gone, the release copy review's blocking findings are fixed,
+and the verification map is corrected.
+
+- **Maintainer pre-release test (2026-11-09).** The 0.6.0 release request is
+  the maintainer's confirmation. The running app streamed to the HomePods
+  stereo pair through the audit; the rebuilt app (19:30) logged no further
+  "aggregate device stopped" lines through 19:49.
+- **UI review (2026-11-09).** The 196-frame matrix rendered at
+  `/tmp/saundo-ui-review` (zh-CN/en, light/dark). An independent reviewer on
+  a different model found two P0 truncations (the capture description and
+  the receiver port hint), four P1 terminology issues (the Chinese receiver
+  term, PC in the macOS build, the raw update error, the launch chip), and
+  P2 polish. The P0/P1 and the terminology P2s are fixed in `0789520` and
+  pinned; the flagged frames were re-rendered and read back. The pure-polish
+  P2s (latency unit copy, update date label, mute "or quit", quotes, one
+  Chinese full stop, What's new case, the plural hidden hint, redundant
+  subtitles) are a follow-up.
+- **Verification map (2026-11-09).** All six feature pages were audited from
+  source and corrected in `b3e4eaa`; `go run ./scripts/verify-map` passes.
+  The live pass was not re-driven because the app was streaming; the beta's
+  live audit and the maintainer's test cover the same surfaces.
+- **Candidate builds (2026-11-09).** `mygo build -platform windows/amd64
+  -skip-installer` produced a 0.6.0 exe; `mygo build -platform darwin/arm64
+  -skip-build-command -sign -` produced the app and dmg with the adapter at
+  `Contents/Resources/adapter` and Info.plist 0.6.0. The local update
+  manifests are unsigned because the update key is on the Windows PC; the
+  CI draft signs with the repository secret and is verified in the draft
+  verification commit.
