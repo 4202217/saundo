@@ -47,8 +47,6 @@ live state:
 - The Now Playing card's app icon drawing in the live flyout (2026-11-09):
   the shell identity resolved live, but no session was on screen at capture
   time. `TestNowPlayingHeadShowsAppIconWhenAvailable` covers the card.
-- A live macOS capture reconnect after the aggregate-liveness check
-  (2026-11-09).
 - Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
   a measured left/right offset on a physical pair.
 - Silence pauses longer than 60 s.
@@ -817,7 +815,7 @@ Audio streamed normally. Four issues surfaced:
 - The tray animates `stream` and `connect` with 12 frames at 100 ms. The eyes stay static; only the mouth moves: the five stream bars ride a traveling sine wave, and the three connect dots pulse in brightness and size. The 托盘动画 switch in 通用 turns it off; Reduce Motion (Windows animation effects off) holds the static face even while the switch is on.
 - The static stream icon is animation frame 0, and the static connect icon is three uniform 2.6 px dots. Switching the animation on or off therefore does not change the mouth size.
 - Measured on the 4K 200% taskbar: `Tray.SetIcon` averaged 0.5 to 0.8 ms per frame. GDI objects stayed at 53 across 20-second runs, with no handle leak. Explorer CPU with the taskbar visible ranged from 1.6 percent of one core for the static icon to 4.8 percent for the 100 ms animation over 20-second samples; the figure is noisy and the app-side cost stayed under 1 percent. A 60 ms frame interval produced a 10 ms worst-case call, so 100 ms is the default.
-- `TestTrayAnimationDefaultsOnAndRoundTrips`, `TestTrayAnimationSettingPersists`, `TestTrayAnimationCommandPersists`, `TestTrayAnimationFaces`, and `TestSettingsPagesRender` pin the default, the app and engine copies of the switch, the animated faces, and the settings row. Not verified: a live HomePod run of the final settings toggle; the timing above was measured in the prototype's demo mode, which uses the same animator and `SetIcon` path.
+- `TestTrayAnimationDefaultsOnAndRoundTrips`, `TestTrayAnimationSettingPersists`, `TestTrayAnimationCommandUpdatesSnapshotOnly`, `TestTrayAnimationFaces`, and `TestSettingsPagesRender` pin the default, the app copy and the engine snapshot of the switch, the animated faces, and the settings row. Not verified: a live HomePod run of the final settings toggle; the timing above was measured in the prototype's demo mode, which uses the same animator and `SetIcon` path.
 
 ## Latency modes (2026-11-03)
 
@@ -1503,16 +1501,25 @@ Third-party review of the darwin port. The defects fixed in this pass:
   `cmd` and `exited`; `ensure` now holds the mutex, and the functional
   test and transport commands time out after 5 s. A non-data adapter line
   no longer clears the session (`TestParseStreamLineIgnoresNonDataEvents`).
-- **Capture.** The pump compares the default device id directly and checks
-  `DeviceRunningSomewhere` on the aggregate, so a device that goes away is
-  noticed, not only a default-device change. The tap description and its
-  UUID are released after use. `OutputDevices` no longer indexes an empty
-  device list. `DeviceForUID` no longer creates an autoreleased NSString
-  outside a pool.
+- **Capture.** The pump compares the default device id directly. The tap
+  description and its UUID are released after use. `OutputDevices` no
+  longer indexes an empty device list. `DeviceForUID` no longer creates an
+  autoreleased NSString outside a pool. The `DeviceRunningSomewhere`
+  liveness check added in this pass was removed after a live HomePod stream
+  logged 2029 false "aggregate device stopped" errors in a few minutes
+  while audio kept flowing: the property is not a liveness signal for a
+  private tap aggregate. A true stream-liveness signal is still owed.
 - **Windows behavior.** The flyout keeps `Shadow: true` in the rounded
   style. `App.Focus()` is restored on Windows and Linux through
   `focus_other.go` and skipped only on macOS. The flyout-style snapshot
   sync no longer depends on the tray animation changing.
+- **Popover activation, known limitation.** mygo's `showPopover` calls
+  `activateIgnoringOtherApps` for a tray flyout, so an open settings window
+  comes forward with the app. v0.8.0, v0.8.3, and main offer no
+  nonactivating option; `ShowInactive` takes the same path. Left unfixed
+  for now by request: a workaround that lowered the settings window's
+  level through `NativeHandle()` was removed. A proper fix needs a mygo
+  option.
 
 **Checks run (2026-11-09, this tree).** `gofmt -l .` clean; `go build
 ./...`, `go vet ./...`, `go tool mygo vet .`, `go test ./...` (21 packages
@@ -1527,8 +1534,8 @@ clean-checkout case, and produced `saundo.exe`. The darwin build produced
 `Contents/Resources/adapter/`.
 
 **Not verified here.** The review ran on macOS. The Windows flyout shadow
-and tray focus, and a live macOS reconnect after the aggregate-liveness
-check, still need a run on their platforms.
+and tray focus still need a run on their platform. The tray popover still
+raises an open settings window, a known limitation above.
 
 ## 2026-11-09 — Windows side of the darwin port
 
@@ -1852,3 +1859,48 @@ The independent review confirmed eight issues. The fixes and their pins:
   go vet, mygo vet, every package test, the verification map, and both
   platform builds. `mingw32-make build` produced `0.6.0-beta.1` and
   relaunched the app.
+## 2026-11-09 — 0.6.0 stable release
+
+The stable release is the 0.6.0-beta.1 UI plus four changes: the engine
+snapshot carries the flyout style, the macOS aggregate liveness false
+positives are gone, the release copy review's blocking findings are fixed,
+and the verification map is corrected.
+
+- **Maintainer pre-release test (2026-11-09).** The 0.6.0 release request is
+  the maintainer's confirmation. The running app streamed to the HomePods
+  stereo pair through the audit; the rebuilt app (19:30) logged no further
+  "aggregate device stopped" lines through 19:49.
+- **UI review (2026-11-09).** The 196-frame matrix rendered at
+  `/tmp/saundo-ui-review` (zh-CN/en, light/dark). An independent reviewer on
+  a different model found two P0 truncations (the capture description and
+  the receiver port hint), four P1 terminology issues (the Chinese receiver
+  term, PC in the macOS build, the raw update error, the launch chip), and
+  P2 polish. The P0/P1 and the terminology P2s are fixed in `0789520` and
+  pinned; the flagged frames were re-rendered and read back. The pure-polish
+  P2s (latency unit copy, update date label, mute "or quit", quotes, one
+  Chinese full stop, What's new case, the plural hidden hint, redundant
+  subtitles) are a follow-up.
+- **Verification map (2026-11-09).** All six feature pages were audited from
+  source and corrected in `b3e4eaa`; `go run ./scripts/verify-map` passes.
+  The live pass was not re-driven because the app was streaming; the beta's
+  live audit and the maintainer's test cover the same surfaces.
+- **Candidate builds (2026-11-09).** `mygo build -platform windows/amd64
+  -skip-installer` produced a 0.6.0 exe; `mygo build -platform darwin/arm64
+  -skip-build-command -sign -` produced the app and dmg with the adapter at
+  `Contents/Resources/adapter` and Info.plist 0.6.0. The local update
+  manifests are unsigned because the update key is on the Windows PC; the
+  CI draft signs with the repository secret and is verified in the draft
+  verification commit.
+
+- **Draft verification (2026-11-09).** The release workflow (run
+  42615271600) passed `check`, `check-macos`, `draft`, `build`, and
+  `build-macos`. The draft carried `install.ps1`, the 0.6.0 installer, the
+  update archive, the three deltas, `update-windows-amd64.json`, the arm64
+  dmg, and `SHA256SUMS`; `sha256sum -c` passed for all six checksummed
+  files. The manifest names 0.6.0, is signed, and carries the ASCII English
+  notes. The tag stays on `14f27cc`; publishing is the remaining gate.
+
+- **Publish (2026-11-09).** `gh release edit v0.6.0 --draft=false`
+  published the stable release. The public feed serves the signed 0.6.0
+  manifest; the installer and dmg URLs follow to 200. A live update from an
+  installed 0.5.0 build is still owed.

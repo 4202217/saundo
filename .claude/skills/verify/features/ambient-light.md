@@ -11,7 +11,8 @@ per receiver.
 - 氛围灯 settings page and the flyout's ambient card. The card is always
   present; the flyout head carries the section label and the power action
   (关灯 when lit, 开灯 when dark), while the desk-lamp glyph is on the
-  settings card head only. The row carries the compact 封面/模板 priority
+  settings card head and the settings sidebar, not in the flyout head. The
+  row carries the compact 封面/模板 priority
   segment left of the chevron. The settings page puts a 颜色来源 row
   (封面 / 模板) at its right, under the 72-DIP preview and its name, and its
   head keeps the HomePod 专属 tag. The tray menu has no
@@ -130,6 +131,9 @@ Live, with a HomePod at software 27.2 or later and Sound Glow on:
 8. Restart the app while the light is off. It stays off; 开灯 restores it.
 9. Repeat with a stereo pair: each capable member repaints and goes dark.
 
+Both probes need the app stopped: they bind PTP UDP 319/320, which a running
+instance owns. Do not run them while it streams.
+
 The playback-state probe (muted, 27.2) is:
 
 ```bash
@@ -160,6 +164,9 @@ darkens and restores the display without stopping the stream; the choice
 and the off state survive a settings-window close/reopen and an app restart.
 
 ## Gotchas
+
+- The `SAUNDO_PLAYBACK_STATE_TEST` and `SAUNDO_PLACEHOLDER_TEST` probes need
+  the app stopped: they bind PTP UDP 319/320, which a running instance owns.
 
 - Sound Glow off leaves the top white. That is the HomePod setting, not the
   app; the app cannot enable it.

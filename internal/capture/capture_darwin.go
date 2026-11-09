@@ -239,17 +239,10 @@ func (st *stream) pump(s *Source, follow bool) error {
 			return errStopped
 		default:
 		}
-		if !time.Now().Before(nextCheck) {
+		if follow && !time.Now().Before(nextCheck) {
 			nextCheck = time.Now().Add(openCheckEvery)
-			if follow {
-				if id, _, _, err := darwin.DefaultOutputDevice(); err == nil && id != st.outputID {
-					return errDefaultDeviceChanged
-				}
-			}
-			// A stopped aggregate means the device went away. A silent one
-			// keeps running, so quiet audio does not trigger this.
-			if running, err := darwin.DeviceRunningSomewhere(st.aggID); err == nil && !running {
-				return errors.New("capture: the aggregate device stopped")
+			if id, _, _, err := darwin.DefaultOutputDevice(); err == nil && id != st.outputID {
+				return errDefaultDeviceChanged
 			}
 		}
 	}

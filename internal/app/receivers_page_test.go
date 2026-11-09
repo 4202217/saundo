@@ -71,7 +71,7 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	for _, want := range []string{
 		"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。",
 		"已启用", "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
-		"自动连接", "手动添加", "添加接收器", "已隐藏", "卧室 HomePod mini",
+		"启动时", "手动添加", "添加接收器", "已隐藏", "卧室 HomePod mini",
 		"AudioAccessory5,1 · 192.168.1.20:7000",
 		"AirPort Express · 192.168.1.32:5000",
 		"AudioAccessory5,1 · 立体声组 2/2",
@@ -325,7 +325,7 @@ func TestReceiverAddDialogRenders(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		"添加接收器", "填写名称、地址与认证方式。",
-		"名称", "类型", "AirPort Express", "IP 地址或主机名", "端口", "通常为 5000 或 7000",
+		"名称", "类型", "AirPort Express", "IP 地址或主机名", "端口", "5000 或 7000",
 		"密码认证", "无", "取消", "添加",
 	} {
 		if !tt.HasText(want) {
