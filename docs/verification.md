@@ -26,6 +26,10 @@ live state:
 - Local output mute in the live app: the engine session path passed
   (`TestLiveMuteLocal`); the settings-window switch itself has only headless
   coverage.
+- A two-computer takeover with both apps auto-reconnecting: the second
+  should show the takeover state, the first should keep streaming, and
+  neither should re-enter the reconnect loop. The single-machine two-session
+  probe and the engine test cover the classification.
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
@@ -1763,3 +1767,53 @@ The independent review confirmed eight issues. The fixes and their pins:
   be cleared. Pinned by `TestHomePodRowHidesPasswordOption`,
   `TestManualAndMacRowsKeepPasswordOption`, and `TestReceiverPasswordEditable`.
 - **Checks.** `mingw32-make check` is green.
+
+## Session takeover (2026-11-09)
+
+- **The takeover signal is a clean control close.** A second sender's session
+  displaced the active one on a HomePod R stereo pair member
+  (`192.168.31.164:7000`, `AudioAccessory5,1` 27.2, group `HomePods`). The
+  displaced session received a normal `POST /command` with
+  `type: updateInfo`, then the control TCP connection closed with an empty
+  error. There was no `hijackID` and no takeover-typed command; the winner
+  stayed streaming. The same sequence repeated on three takeovers.
+- **Reproduction.** The app is single-instance, so `TestLiveTakeoverProbe`
+  runs two sender sessions in one process, both muted and with an empty ring,
+  and restarts the closed side twice. Run it with
+  `SAUNDO_TAKEOVER_TEST=1 go test ./internal/airplay/sender -run
+  TestLiveTakeoverProbe -v`.
+- **Fix.** A clean control close during streaming is now `Preempted`, not a
+  retryable failure. `Sender` stops the session and reports the event;
+  `Engine.onPreempted` sets `Snapshot.TakenOver`, clears the pending
+  reconnect, and publishes. A stereo group forwards each member's preemption
+  to the same callback, so one member's takeover stops the pair. The UI shows
+  已被其他设备接管 / Taken over by another device and offers 重新连接 /
+  Reconnect. A close carrying an error still takes the retryable failure
+  path; a clean close during pairing or handshake stays a start failure.
+- **The stereo group path missed the first fix.** The first one-old, one-new
+  live test logged `session taken over` immediately followed by
+  `reconnect scheduled in 1s`. `openSession` wired `Preempted`, but
+  `groupTransport.memberEvents` did not, so a displaced stereo group member
+  still reconnected. `memberEvents` now forwards the member's preemption to
+  `Engine.onPreempted`, and `openGroupSession` wires it.
+- **Mixed pair (2026-11-09).** One old build and one new build: the old
+  reclaimed the device, and the new logged `session taken over` with no
+  `reconnect scheduled` after it and showed 已被其他设备接管. A manual
+  reconnect from the new produced clean handshake closes, which still take
+  the start-failure retry path before streaming; the new then conceded again
+  once it reached streaming. The old build never concedes, so a mixed pair
+  always settles with the old streaming.
+- **Pinned by** `TestCleanControlCloseDuringStreamingPreempts`,
+  `TestControlCloseWithErrorIsNotPreemption`, `TestTakeoverStopsReconnect`,
+  `TestGroupForwardsPreemption`, and the `phaseOf` takeover case.
+- **Still owed.** A two-computer run with both apps auto-reconnecting, both
+  on this build. That is the full acceptance: the second connect wins and
+  neither side retries.
+- **Checks.** `mingw32-make check` is green after the group fix: gofmt, i18n
+  check (325 messages in en and zh-CN), go vet, mygo vet, every package test
+  including `TestGroupForwardsPreemption`, the verification map, and both
+  platform builds. The live probe after the first fix logged
+  `preempted="receiver closed the session"` on each displaced session and
+  passed in 55.8 s. `mingw32-make build` produced `0.6.0-beta.1` and
+  relaunched the app. The mixed-pair retest passed with no reconnect after
+  the takeover; the two-new-version run is still pending.

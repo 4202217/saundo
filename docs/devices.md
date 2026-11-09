@@ -13,6 +13,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 - Latency: `latencyMin` = `latencyMax` = 8820 (200 ms) unless the user configured another value. The stream SETUP response reports `arrivalToRenderLatencyMs`, the receiver's own output latency; a stereo pair reported 69 ms live on 2026-11-09. It is not the sender's presentation latency and is not added to the configured latency. saundo records it for the settings connection card and diagnostics.
 - `SETRATEANCHORTIME` returns plist `status: -12782` and is ignored on realtime streams.
 - Event-channel keys derive from the SRP shared secret; feedback every 2 s.
+- **Session takeover.** A second sender's session displaces the active one. The displaced sender's control connection closes cleanly with no error and no takeover command; the winner keeps streaming. A HomePod does not send `hijackID` to the loser. The sender treats a clean close during streaming as terminal and does not reconnect. Observed on a stereo pair member `AudioAccessory5,1` 27.2 on 2026-11-09 (protocol.md §11).
 - **Directed discovery.** Multicast is intermittent on this network: the
   2026-11-06 failure report described an 8-second browse that saw only the
   MacBook Air and the Redmi, and three repeated 2-second browse runs during

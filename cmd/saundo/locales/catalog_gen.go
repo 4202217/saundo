@@ -266,6 +266,16 @@ func (msgs Messages) StatusReconnecting() string {
 	return Catalog.Format(msgs.locale, "statusReconnecting", nil)
 }
 
+// StatusTakenOver says "Taken over by another device"
+// in the language the app shows.
+func StatusTakenOver() string { return In(i18n.Locale()).StatusTakenOver() }
+
+// StatusTakenOver says "Taken over by another device"
+// in the language of msgs.
+func (msgs Messages) StatusTakenOver() string {
+	return Catalog.Format(msgs.locale, "statusTakenOver", nil)
+}
+
 // StatusConnecting says "Connecting…"
 // in the language the app shows.
 func StatusConnecting() string { return In(i18n.Locale()).StatusConnecting() }
@@ -678,6 +688,16 @@ func ActionRetry() string { return In(i18n.Locale()).ActionRetry() }
 // in the language of msgs.
 func (msgs Messages) ActionRetry() string {
 	return Catalog.Format(msgs.locale, "actionRetry", nil)
+}
+
+// ActionReconnect says "Reconnect"
+// in the language the app shows.
+func ActionReconnect() string { return In(i18n.Locale()).ActionReconnect() }
+
+// ActionReconnect says "Reconnect"
+// in the language of msgs.
+func (msgs Messages) ActionReconnect() string {
+	return Catalog.Format(msgs.locale, "actionReconnect", nil)
 }
 
 // ActionDisconnect says "Disconnect"

@@ -959,6 +959,7 @@ func TestPhaseOf(t *testing.T) {
 		{"reconnecting", engine.Snapshot{State: sender.StateIdle, Reconnecting: true}, phaseConnecting},
 		{"streaming", engine.Snapshot{State: sender.StateStreaming}, phaseStreaming},
 		{"failed", engine.Snapshot{State: sender.StateIdle, Error: "boom"}, phaseError},
+		{"taken over", engine.Snapshot{State: sender.StateIdle, TakenOver: true}, phaseError},
 		{"streaming after an error", engine.Snapshot{State: sender.StateStreaming, Error: "boom"}, phaseStreaming},
 	}
 	for _, tc := range cases {

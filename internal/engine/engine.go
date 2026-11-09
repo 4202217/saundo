@@ -33,6 +33,7 @@ type Snapshot struct {
 	State            sender.State
 	ConnectedName    string
 	Error            string
+	TakenOver        bool
 	PinRequired      bool
 	PinDevice        string
 	PasswordRequired bool
@@ -311,6 +312,7 @@ type Engine struct {
 	selectedID       string
 	connectedName    string
 	lastError        string
+	takenOver        bool
 	pinRequired      bool
 	pinDevice        string
 	passwordRequired bool
@@ -454,6 +456,7 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 	s := sender.New(host, sender.Events{
 		Launched:               e.onLaunched,
 		Closed:                 e.onClosed,
+		Preempted:              e.onPreempted,
 		PinRequired:            e.onPinRequired,
 		CredentialsObtained:    e.onCredentials,
 		StateChanged:           e.onStateChanged,
@@ -867,6 +870,7 @@ func (e *Engine) handleCommand(cmd command) {
 		// A cancel or a disconnect ends the attempt, so its failure is stale.
 		// Clear it before reconnectPendingOff publishes the idle snapshot.
 		e.lastError = ""
+		e.takenOver = false
 		e.reconnectWanted = false
 		e.reconnectPendingOff()
 		if e.tr != nil && e.tr.Active() {
@@ -1041,6 +1045,7 @@ func (e *Engine) connect(d device.Device) {
 	// A new attempt starts clean. The previous receiver's failure must not
 	// keep the flyout in its error phase while this attempt runs.
 	e.lastError = ""
+	e.takenOver = false
 	if d.IsStereoGroup() && (!d.Online || len(d.Members) != 2) {
 		e.lastError = "立体声组需要两台成员都在线"
 		e.publish()
@@ -1194,7 +1199,7 @@ func (e *Engine) attemptReconnect() {
 }
 
 func (e *Engine) reconnectShouldRetry() bool {
-	return !e.userDisconnect && !e.stopping && e.setsValue.Reconnect && e.selectedID != ""
+	return !e.userDisconnect && !e.stopping && !e.takenOver && e.setsValue.Reconnect && e.selectedID != ""
 }
 
 // prepareLampImage renders the selected template on the engine goroutine, so
@@ -1278,6 +1283,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 			e.markSettingsDirty()
 		}
 		e.lastError = ""
+		e.takenOver = false
 		e.reconnectWanted = true
 		e.reconnectNum = 0
 		e.reconnectAt = time.Time{}
@@ -1319,6 +1325,23 @@ func (e *Engine) onClosed() {
 	if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
 		e.planReconnect()
 	}
+	e.publish()
+}
+
+// onPreempted records that another sender took over the receiver. A takeover
+// is terminal: it must not schedule the reconnect that would fight the new
+// sender for the device.
+func (e *Engine) onPreempted(reason string) {
+	e.takenOver = true
+	e.reconnectWanted = false
+	e.reconnectNum = 0
+	e.reconnectAt = time.Time{}
+	e.connectedName = ""
+	e.receiverLatency = 0
+	e.endDropSession()
+	e.lastError = ""
+	e.restoreLocalMute()
+	e.logf("session taken over: %s", reason)
 	e.publish()
 }
 
@@ -1866,6 +1889,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		State:              state,
 		ConnectedName:      e.connectedName,
 		Error:              e.lastError,
+		TakenOver:          e.takenOver,
 		PinRequired:        e.pinRequired,
 		PinDevice:          e.pinDevice,
 		PasswordRequired:   e.passwordRequired,

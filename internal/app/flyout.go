@@ -271,7 +271,11 @@ func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, act
 	case actionCancel:
 		textButton(c, p, locales.ActionCancel(), nil, p.ctl, func() { a.disconnect() })
 	case actionRetry:
-		textButton(c, p, locales.ActionRetry(), iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
+		label := locales.ActionRetry()
+		if a.snap.TakenOver {
+			label = locales.ActionReconnect()
+		}
+		textButton(c, p, label, iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
 	case actionDisconnect:
 		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.disconnect() })
 	case actionOffline:
@@ -717,6 +721,9 @@ func (a *App) syncText() string {
 }
 
 func (a *App) phaseLabel() string {
+	if a.snap.TakenOver {
+		return locales.StatusTakenOver()
+	}
 	if phaseOf(a.snap) == phaseError {
 		return locales.StatusConnectionFailed()
 	}

@@ -101,6 +101,9 @@ type Events struct {
 	Launched func(ok bool, err string)
 	// Closed reports that the session ended.
 	Closed func()
+	// Preempted reports that another sender took over the receiver. The
+	// session is finished and must not be retried automatically.
+	Preempted func(reason string)
 	// PinRequired asks the UI for the receiver's 4-digit code.
 	PinRequired func(deviceName string)
 	// CredentialsObtained carries a first pairing's long-term credentials for
@@ -683,6 +686,31 @@ func (s *Sender) fail(why string) {
 	}
 }
 
+// preempt ends a streaming session that the receiver handed to another
+// sender. The receiver closes the displaced control channel cleanly, so this
+// is a terminal outcome, not a retryable failure.
+func (s *Sender) preempt(why string) {
+	s.warn("session taken over: %s", why)
+	s.setState(StateIdle)
+	s.stopTimers()
+	s.resetStartState()
+	s.io.TCPClose(raopio.TCPControl, false)
+	s.rtspConnected = false
+	s.releaseSockets()
+	for i := range s.backlog {
+		s.backlog[i] = nil
+	}
+	for i := range s.backlogSeq {
+		s.backlogSeq[i] = -1
+	}
+	if s.events.Preempted != nil {
+		s.events.Preempted(why)
+	}
+	if s.events.Closed != nil {
+		s.events.Closed()
+	}
+}
+
 func (s *Sender) stopTimers() {
 	s.pacer.disarm()
 	s.sync.disarm()
@@ -769,6 +797,10 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		}
 		if ev.Err != "" {
 			s.fail(ev.Err)
+			return
+		}
+		if s.state == StateStreaming {
+			s.preempt("receiver closed the session")
 			return
 		}
 		wasStarting := s.state != StateStreaming
