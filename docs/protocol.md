@@ -97,6 +97,8 @@ Order (a wrong order usually produces "connected but silent" or a drop after 30 
 7. `SETUP` stream with the ALAC plist (table below).
 8. The response provides `dataPort` and `controlPort`. It may also carry `arrivalToRenderLatencyMs`, the receiver's own arrival-to-render latency in milliseconds. The value is diagnostic; it is not the sender's presentation latency and is not added to it. Do not send another RECORD; start streaming.
 
+**Wi-Fi metrics.** The response's first stream object may also carry `wiFiMetrics` (capital F) with `rssi` (integer dBm), `ssid` (string), and `wifiBand` (`1` = 2.4 GHz, `2` = 5 GHz, `3` = 6 GHz). It is a device-side snapshot that can be up to 30 minutes old, not a live signal reading; a session that starts within 30 seconds, or a receiver with metrics collection off, omits it. saundo parses the object during the stream SETUP and records it in the engine snapshot; an absent object is unknown, and the app never polls `/metrics` or `/info` for it. The band enumeration is the receiver's; a value outside 1–3 reads unknown. The live capture that confirms this object is pending (see [verification.md](verification.md)).
+
 **Digest challenge.** A password-protected Mac answers the session SETUP with 401 and `WWW-Authenticate: Digest realm="airplay"`. Replay the identical request with the RFC 2069 digest — username `AirPlay`, no qop — adding `Authorization`. The replay returns 200.
 
 Stream SETUP fields:

@@ -48,6 +48,7 @@ type fakeTransport struct {
 	initialPct   float64
 	hasInitial   bool
 	rings        []*ring.Buffer
+	stats        []sender.Stats
 }
 
 func newFakeTransport(ev sender.Events) *fakeTransport {
@@ -110,6 +111,7 @@ func (f *fakeTransport) SetPlaybackState(playing bool) {
 	f.playback = append(f.playback, playing)
 }
 func (f *fakeTransport) PTP() (bool, bool, float64) { return false, false, 0 }
+func (f *fakeTransport) Stats() []sender.Stats      { return f.stats }
 
 // launch simulates the sender reporting a launch result.
 func (f *fakeTransport) launch(ok bool, err string) {

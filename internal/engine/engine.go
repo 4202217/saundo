@@ -69,6 +69,7 @@ type Snapshot struct {
 	CaptureProcessPID  uint32
 	CaptureProcessName string
 	DroppedSamples     uint64
+	Diagnostics        Diagnostics
 	StrictAuth         bool
 	PTPActive          bool
 	PTPReady           bool
@@ -174,6 +175,9 @@ type transport interface {
 	SetLampArtwork(data []byte, mime string, on bool)
 	SetPlaybackState(playing bool)
 	PTP() (active, ready bool, offsetMS float64)
+	// Stats returns one sender.Stats per member session. A single receiver
+	// returns one; a stereo pair returns both, in member order.
+	Stats() []sender.Stats
 }
 
 // session is the production transport.
@@ -230,6 +234,7 @@ func (s *session) PTP() (active, ready bool, offsetMS float64) {
 	st := s.ptp.Stats()
 	return true, st.Ready, st.OffsetNS / 1e6
 }
+func (s *session) Stats() []sender.Stats { return []sender.Stats{s.sender.Stats()} }
 
 // ptpFeatureBit is the receiver feature that advertises PTP support.
 const ptpFeatureBit = 1 << 41
@@ -281,13 +286,18 @@ type Engine struct {
 	level         *analyze.Meter
 	silence       *silenceMeter
 	memberRings   []*ring.Buffer
-	discovery     *discovery.Service
-	tr            transport
-	stopSession   func()
-	capture       captureSource
-	captureInfo   chan captureInfo
-	captureResult chan captureStart
-	mute          localMute
+	memberDropped uint64
+	// memberDropBase is each member ring's counter at the last fold. Its delta
+	// is summed for the diagnostics group overflow; DroppedSamples stays the
+	// max, which is what stability uses.
+	memberDropBase map[*ring.Buffer]uint64
+	discovery      *discovery.Service
+	tr             transport
+	stopSession    func()
+	capture        captureSource
+	captureInfo    chan captureInfo
+	captureResult  chan captureStart
+	mute           localMute
 
 	commands       chan command
 	quit           chan struct{}
@@ -330,25 +340,31 @@ type Engine struct {
 	sessionDropped    uint64
 	lastRawDropped    uint64
 	dropSessionActive bool
-	setsValue         settings.Settings
-	captureEndpoint   string
-	captureName       string
-	captureProcess    uint32
-	captureRate       int
-	captureRunning    bool
-	captureError      string
-	captureStarting   bool
-	captureQueued     bool
-	captureGen        int
-	userDisconnect    bool
-	reconnectWanted   bool
-	reconnectAt       time.Time
-	reconnectNum      int
-	lastMissingLogAt  time.Time
-	settingsDirtyAt   time.Time
-	audioPaused       bool
-	pauseUnsupported  bool
-	autoTried         bool
+	// sessionStartedAt is when the current session reached streaming, for
+	// diagnostics uptime. Zero when no session streams.
+	sessionStartedAt time.Time
+	// reconnectCount is how many automatic retries the current target has
+	// needed. A user connect or disconnect starts a new count.
+	reconnectCount   int
+	setsValue        settings.Settings
+	captureEndpoint  string
+	captureName      string
+	captureProcess   uint32
+	captureRate      int
+	captureRunning   bool
+	captureError     string
+	captureStarting  bool
+	captureQueued    bool
+	captureGen       int
+	userDisconnect   bool
+	reconnectWanted  bool
+	reconnectAt      time.Time
+	reconnectNum     int
+	lastMissingLogAt time.Time
+	settingsDirtyAt  time.Time
+	audioPaused      bool
+	pauseUnsupported bool
+	autoTried        bool
 
 	// lampJPEG renders a preset; tests replace it. lampImage is the encoded
 	// image for lampImagePreset, kept off the sender's tick path.
@@ -815,6 +831,7 @@ func (e *Engine) closeSession() {
 	e.detachMemberRings()
 	e.audioPaused = false
 	e.pauseUnsupported = false
+	e.sessionStartedAt = time.Time{}
 	if e.silence != nil {
 		e.silence.SetPaused(false)
 	}
@@ -834,8 +851,11 @@ func (e *Engine) attachMemberRings(rings []*ring.Buffer) {
 		return
 	}
 	e.captureSink.Remove(e.ring)
+	e.memberDropBase = make(map[*ring.Buffer]uint64, len(rings))
+	e.memberDropped = 0
 	for _, r := range rings {
 		r.Reset()
+		e.memberDropBase[r] = 0
 		e.captureSink.Add(r)
 	}
 	e.memberRings = rings
@@ -849,6 +869,8 @@ func (e *Engine) detachMemberRings() {
 		e.captureSink.Remove(r)
 	}
 	e.memberRings = nil
+	e.memberDropped = 0
+	e.memberDropBase = nil
 	e.ring.Reset()
 	e.captureSink.Add(e.ring)
 }
@@ -859,6 +881,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.autoTried = true
 		if t, ok := e.target(cmd.deviceID); ok {
 			e.userDisconnect = false
+			e.reconnectCount = 0
 			e.connect(t.Device)
 		} else {
 			e.lastError = "未找到设备，请刷新后重试"
@@ -867,6 +890,7 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdDisconnect:
 		e.autoTried = true
 		e.userDisconnect = true
+		e.reconnectCount = 0
 		// A cancel or a disconnect ends the attempt, so its failure is stale.
 		// Clear it before reconnectPendingOff publishes the idle snapshot.
 		e.lastError = ""
@@ -1195,6 +1219,7 @@ func (e *Engine) attemptReconnect() {
 		return
 	}
 	e.lastMissingLogAt = time.Time{}
+	e.reconnectCount++
 	e.connect(d)
 }
 
@@ -1277,6 +1302,7 @@ func (e *Engine) lampTargetCapable() bool {
 
 func (e *Engine) onLaunched(ok bool, err string) {
 	if ok {
+		e.sessionStartedAt = e.now()
 		e.connectedName = e.nameFor(e.selectedID)
 		if e.setsValue.LastDeviceID != e.selectedID {
 			e.setsValue.LastDeviceID = e.selectedID
@@ -1306,6 +1332,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.restoreLocalMute()
 		e.connectedName = ""
 		e.receiverLatency = 0
+		e.sessionStartedAt = time.Time{}
 		e.endDropSession()
 		e.lastError = err
 		e.logf("session failed: %s", err)
@@ -1319,6 +1346,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 func (e *Engine) onClosed() {
 	e.connectedName = ""
 	e.receiverLatency = 0
+	e.sessionStartedAt = time.Time{}
 	e.endDropSession()
 	e.pinRequired = false
 	e.clearPasswordPrompt()
@@ -1338,6 +1366,7 @@ func (e *Engine) onPreempted(reason string) {
 	e.reconnectAt = time.Time{}
 	e.connectedName = ""
 	e.receiverLatency = 0
+	e.sessionStartedAt = time.Time{}
 	e.endDropSession()
 	e.lastError = ""
 	e.restoreLocalMute()
@@ -1388,6 +1417,13 @@ func (e *Engine) onStateChanged(state sender.State) {
 func (e *Engine) beginDropSession() {
 	e.sessionDropped = 0
 	e.lastRawDropped = 0
+	e.memberDropped = 0
+	if e.memberDropBase == nil {
+		e.memberDropBase = make(map[*ring.Buffer]uint64, len(e.memberRings))
+	}
+	for _, r := range e.memberRings {
+		e.memberDropBase[r] = r.Dropped()
+	}
 	if e.captureSink != nil {
 		e.lastRawDropped = e.captureSink.Dropped()
 	}
@@ -1398,6 +1434,8 @@ func (e *Engine) endDropSession() {
 	e.dropSessionActive = false
 	e.sessionDropped = 0
 	e.lastRawDropped = 0
+	e.memberDropped = 0
+	e.memberDropBase = nil
 }
 
 // foldCaptureDrops adds the sink's new drops to the session total. A raw
@@ -1412,6 +1450,17 @@ func (e *Engine) foldCaptureDrops() {
 		e.sessionDropped += raw - e.lastRawDropped
 	}
 	e.lastRawDropped = raw
+	for _, r := range e.memberRings {
+		if e.memberDropBase == nil {
+			e.memberDropBase = make(map[*ring.Buffer]uint64, len(e.memberRings))
+		}
+		base := e.memberDropBase[r]
+		memberRaw := r.Dropped()
+		if memberRaw >= base {
+			e.memberDropped += memberRaw - base
+		}
+		e.memberDropBase[r] = memberRaw
+	}
 }
 
 // resetCaptureSink folds the drops accrued before a capture reset into the
@@ -1424,6 +1473,9 @@ func (e *Engine) resetCaptureSink() {
 	e.foldCaptureDrops()
 	e.captureSink.Reset()
 	e.lastRawDropped = 0
+	for _, r := range e.memberRings {
+		e.memberDropBase[r] = 0
+	}
 }
 
 // onReceiverVolume adopts the receiver's own volume when its hardware knob
@@ -1882,6 +1934,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 	copy(devs, e.devices)
 	views := make([]receivers.View, len(e.receiversViews))
 	copy(views, e.receiversViews)
+	now := e.now()
+	diagnostics := e.buildDiagnostics(now, dropped)
 	return Snapshot{
 		Devices:            devs,
 		Receivers:          views,
@@ -1917,6 +1971,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		CaptureRunning:     e.captureRunning,
 		CaptureError:       e.captureError,
 		DroppedSamples:     dropped,
+		Diagnostics:        diagnostics,
 		StrictAuth:         e.setsValue.StrictReceiverAuth,
 		PTPActive:          ptpActive,
 		PTPReady:           ptpReady,
@@ -1937,6 +1992,44 @@ func (e *Engine) publish() {
 	if e.onChange != nil {
 		e.onChange(snap)
 	}
+}
+
+// buildDiagnostics folds the active transport's per-member counters into the
+// page model. The group shape comes from the selected target, not from the
+// stats' length, so a pair whose member is missing still reads as a pair.
+func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
+	kind, size, name := GroupNone, 0, ""
+	if dev, ok := e.find(e.selectedID); ok {
+		if dev.IsStereoGroup() {
+			kind = GroupStereo
+			size = len(dev.Members)
+			name = dev.GroupName
+			if name == "" {
+				name = dev.Name
+			}
+		} else {
+			kind = GroupSingle
+			size = 1
+		}
+	}
+	var uptime time.Duration
+	if !e.sessionStartedAt.IsZero() {
+		uptime = now.Sub(e.sessionStartedAt)
+		if uptime < 0 {
+			uptime = 0
+		}
+	}
+	var members []sender.Stats
+	if e.tr != nil {
+		members = e.tr.Stats()
+	}
+	overflow := dropped
+	if kind == GroupStereo && len(e.memberRings) > 0 {
+		// The group's 欠载 / 溢出 row sums the members; DroppedSamples stays
+		// the max because stability is a session state, not a total.
+		overflow = e.memberDropped
+	}
+	return aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, overflow, now)
 }
 
 func clamp(v, lo, hi float64) float64 {

@@ -37,6 +37,7 @@ func (s *Sender) onPacerTick() {
 	if gap := target - s.framesSent; gap >= framesPerPacket {
 		s.pacerLagFrames = gap
 		s.pacerLagStreak++
+		s.lateTicks++
 		if s.pacerLagStreak == pacerLagWarnStreak {
 			s.warn("sender cannot keep up: %d frames behind after %d late pacer ticks", s.pacerLagFrames, s.pacerLagStreak)
 		}
@@ -96,7 +97,10 @@ func (s *Sender) applyPause(paused bool) {
 
 func (s *Sender) sendAudioPacket() {
 	var frames [framesPerPacket * channels]int16
-	s.fillFrames(frames[:])
+	available := s.fillFrames(frames[:])
+	if available < framesPerPacket {
+		s.underruns++
+	}
 
 	var header [12]byte
 	header[0] = 0x80
@@ -128,6 +132,7 @@ func (s *Sender) sendAudioPacket() {
 	pkt = append(pkt, header[:]...)
 	pkt = append(pkt, wire...)
 	_ = s.io.UDPSend(raopio.UDPAudio, raopio.Endpoint{IP: s.hostIP, Port: s.serverPort}, pkt)
+	s.sentBlocks++
 
 	slot := int(s.seq) & (backlogSize - 1)
 	s.backlog[slot] = append(s.backlog[slot][:0], pkt...)
@@ -187,7 +192,9 @@ func (s *Sender) sendSyncPacket(first bool) {
 		binary.BigEndian.PutUint64(pkt[8:16], network)
 		binary.BigEndian.PutUint32(pkt[16:20], now-s.latency)
 		binary.BigEndian.PutUint64(pkt[20:28], id)
-		_ = s.io.UDPSend(raopio.UDPControl, raopio.Endpoint{IP: s.hostIP, Port: s.controlPort}, pkt)
+		if err := s.io.UDPSend(raopio.UDPControl, raopio.Endpoint{IP: s.hostIP, Port: s.controlPort}, pkt); err == nil {
+			s.lastSync = s.now()
+		}
 		return
 	}
 	elapsed := s.elapsedFrames(s.now())
@@ -207,7 +214,9 @@ func (s *Sender) sendSyncPacket(first bool) {
 	binary.BigEndian.PutUint32(pkt[8:12], uint32(curNTP>>32))
 	binary.BigEndian.PutUint32(pkt[12:16], uint32(curNTP))
 	binary.BigEndian.PutUint32(pkt[16:20], now)
-	_ = s.io.UDPSend(raopio.UDPControl, raopio.Endpoint{IP: s.hostIP, Port: s.controlPort}, pkt)
+	if err := s.io.UDPSend(raopio.UDPControl, raopio.Endpoint{IP: s.hostIP, Port: s.controlPort}, pkt); err == nil {
+		s.lastSync = s.now()
+	}
 }
 
 // onControlDatagram answers type 0x55 retransmit requests from the backlog,
@@ -231,7 +240,9 @@ func (s *Sender) onControlDatagram(dg []byte, from raopio.Endpoint) {
 		resp[0], resp[1] = 0x80, 0xD6
 		binary.BigEndian.PutUint16(resp[2:4], seq)
 		resp = append(resp, s.backlog[slot]...)
-		_ = s.io.UDPSend(raopio.UDPControl, from, resp)
+		if err := s.io.UDPSend(raopio.UDPControl, from, resp); err == nil {
+			s.retransmits++
+		}
 	}
 }
 

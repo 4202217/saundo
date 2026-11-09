@@ -240,6 +240,13 @@ type Sender struct {
 	// receiverLatencyMS is the receiver's own arrival-to-render latency from
 	// its stream SETUP response. 0 means it did not report one.
 	receiverLatencyMS int
+	// Diagnostic counters for the current session. They reset on Start.
+	retransmits uint64
+	lateTicks   uint64
+	underruns   uint64
+	sentBlocks  uint64
+	lastSync    time.Time
+	wifi        WiFiMetrics
 
 	rtspConnected bool
 	udpBound      bool
@@ -569,6 +576,9 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
+	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks = 0, 0, 0, 0
+	s.lastSync = time.Time{}
+	s.wifi = WiFiMetrics{}
 	if s.resampler == nil {
 		s.resampler = resample.NewLinear(s.inputRate)
 	} else {
