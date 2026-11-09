@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
+	"saundo/internal/airplay/device"
 	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
@@ -274,8 +275,10 @@ func (a *App) receiverRowBody(c *ui.Context, p palette, v receivers.View, hidden
 			})
 		rowLine(c, p)
 		a.receiverDelayRow(c, p, v, hiddenGroup)
-		rowLine(c, p)
-		a.receiverPasswordRow(c, p, v, hiddenGroup)
+		if receiverPasswordEditable(v) {
+			rowLine(c, p)
+			a.receiverPasswordRow(c, p, v, hiddenGroup)
+		}
 	})
 }
 
@@ -480,6 +483,25 @@ func (a *App) scheduleReceiverDelay(key string, ms int) {
 			}
 		})
 	})
+}
+
+// receiverPasswordEditable reports whether the receiver can use a user-set
+// password. A HomePod or Apple TV pairs with a PIN, not a receiver password;
+// a manual row always offers the control so the user can set or clear one. A
+// saved password also keeps the row reachable so it can be cleared.
+func receiverPasswordEditable(v receivers.View) bool {
+	if v.Kind == receivers.KindManual || v.PasswordSet {
+		return true
+	}
+	family := v.Device.Family
+	if family == device.FamilyUnknown {
+		family = device.FamilyFor(v.Model, v.Device.AM)
+	}
+	switch family {
+	case device.FamilyHomePod, device.FamilyAppleTV:
+		return false
+	}
+	return v.Device.Auth == device.AuthHAPPassword || v.Device.Auth == device.AuthPassword
 }
 
 func (a *App) receiverPasswordRow(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {

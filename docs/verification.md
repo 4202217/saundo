@@ -1757,4 +1757,9 @@ The independent review confirmed eight issues. The fixes and their pins:
 - **Still owed.** A live HomePod with an AirPlay password was not
   configured; the device observation remains pending. The profile is recorded
   in [devices.md](devices.md).
+- **PIN-paired rows no longer offer a password.** The receiver settings
+  hide the 接收器密码 row for HomePod and Apple TV families and show it for a
+  Mac or a manual row. A saved password keeps the row reachable so it can
+  be cleared. Pinned by `TestHomePodRowHidesPasswordOption`,
+  `TestManualAndMacRowsKeepPasswordOption`, and `TestReceiverPasswordEditable`.
 - **Checks.** `mingw32-make check` is green.
