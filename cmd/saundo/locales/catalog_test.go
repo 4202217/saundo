@@ -195,7 +195,6 @@ func TestRowHintsHaveNoTerminalPunctuation(t *testing.T) {
 		"settingsSenderNameDesc",
 		"settingsLaunchAtStartDesc",
 		"settingsTrayAnimationDesc",
-		"settingsFlyoutPopoverDesc",
 		"settingsLanguageDesc",
 		"settingsThemeDesc",
 		"settingsPlaybackControlsDesc",

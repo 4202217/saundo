@@ -17,8 +17,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   登录时自动启动 (a `HKCU\...\Run` value named `com.saundo.app` in the
   packaged build; a macOS login item on darwin), 托盘动画, language, and
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
-  once). On macOS the page also carries the 托盘面板气泡样式 / Tray panel as
-  popover row (`flyoutStyleSetting`); it is hidden on Windows.
+  once).
 - 连接 page: a health card for the current receiver (identity, state, and
   while streaming 延迟模式, 接收器处理, and 稳定性; the two latency values
   name different stages and are never summed; 稳定性 reads 良好 or 有卡顿;

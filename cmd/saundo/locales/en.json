@@ -557,7 +557,5 @@
   "flyoutLampCollapse": "Hide colors",
   "receiverEmptyTitle": "No receivers yet",
   "versionLocalTag": "Local build",
-  "settingsShowInPanel": "Show in tray panel",
-  "settingsFlyoutPopover": "Tray panel as a popover",
-  "settingsFlyoutPopoverDesc": "Off keeps the app's default rounded style"
+  "settingsShowInPanel": "Show in tray panel"
 }

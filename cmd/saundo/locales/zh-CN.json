@@ -470,7 +470,5 @@
   "flyoutLampCollapse": "收起配色",
   "receiverEmptyTitle": "暂无接收器",
   "versionLocalTag": "本地构建",
-  "settingsShowInPanel": "托盘面板中显示",
-  "settingsFlyoutPopover": "托盘面板气泡样式",
-  "settingsFlyoutPopoverDesc": "关闭时保持应用默认的圆角样式"
+  "settingsShowInPanel": "托盘面板中显示"
 }

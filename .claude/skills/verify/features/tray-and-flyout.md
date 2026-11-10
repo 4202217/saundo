@@ -81,13 +81,9 @@ outside click and a UIA invoke, not an Escape press.
   screen grab can miss it; use PrintWindow (capture-window.ps1), and expect
   class `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`) — a
   capture reporting ~420 px (or a 1.25× multiple of it under DPI
-  virtualization) is correct; 480 was an old design value. On macOS with
-  the tray-panel-as-popover style on, the window is a system popover, not
-  `MyGoFlyoutShadow` (`flyout_window.go`). That style activates the app
-  inside mygo (showPopover calls activateIgnoringOtherApps), so an open
-  settings window comes forward; the known limitation is in
-  docs/platforms.md. The default rounded style is a nonactivating panel and
-  does not.
+  virtualization) is correct; 480 was an old design value. On macOS the
+  rounded flyout is a nonactivating panel, so an open settings window does
+  not come forward (`flyout_window.go`).
 - On Windows `showWindow` calls `mygo.App.Focus()` through `focus_other.go`;
   on macOS it is a no-op (`focus_darwin.go`). The Windows tray focus was not
   exercised live, so the proven end state does not cover it.

@@ -56,7 +56,6 @@ type Snapshot struct {
 	LampCover      bool
 	LampPreset     string
 	TrayAnimation  bool
-	FlyoutPopover  bool
 	LatencyMS      int
 	// ReceiverLatencyMS is the receiver's own arrival-to-render latency from
 	// its stream SETUP response. 0 means the receiver did not report one.
@@ -92,7 +91,6 @@ const (
 	cmdReconnect
 	cmdLamp
 	cmdTrayAnimation
-	cmdFlyoutPopover
 	cmdMuteLocal
 	cmdNowPlaying
 	cmdLatency
@@ -639,15 +637,6 @@ func (e *Engine) SetTrayAnimation(on bool) {
 	e.send(command{kind: cmdTrayAnimation, value: v})
 }
 
-// SetFlyoutPopover toggles the popover-style flyout preference (macOS).
-func (e *Engine) SetFlyoutPopover(on bool) {
-	v := 0.0
-	if on {
-		v = 1
-	}
-	e.send(command{kind: cmdFlyoutPopover, value: v})
-}
-
 // SetMuteLocal turns the local-output mute on or off for this and later
 // sessions. Turning it on while streaming mutes at once; turning it off
 // restores the endpoint.
@@ -1030,10 +1019,6 @@ func (e *Engine) handleCommand(cmd command) {
 		e.publish()
 	case cmdTrayAnimation:
 		e.setsValue.TrayAnimation = cmd.value != 0
-		e.markSettingsDirty()
-		e.publish()
-	case cmdFlyoutPopover:
-		e.setsValue.FlyoutPopover = cmd.value != 0
 		e.markSettingsDirty()
 		e.publish()
 	case cmdMuteLocal:
@@ -1984,7 +1969,6 @@ func (e *Engine) buildSnapshot() Snapshot {
 		LampCover:          e.setsValue.Lamp.Cover,
 		LampPreset:         lamp.Normalize(e.setsValue.Lamp.Preset),
 		TrayAnimation:      e.setsValue.TrayAnimation,
-		FlyoutPopover:      e.setsValue.FlyoutPopover,
 		CaptureEndpoint:    e.captureEndpoint,
 		CaptureName:        e.captureName,
 		CaptureRate:        e.captureRate,
