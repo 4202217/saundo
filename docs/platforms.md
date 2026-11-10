@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # Multi-platform development
 
@@ -84,6 +84,7 @@ Core Audio property codes stay inside the leaf packages.
 | Auto-update | signed feed through `mygo.Updater` | disabled: the build is ad-hoc signed and the feed carries Windows assets; re-enable with a signed, notarized mac feed |
 | Packaging | `saundo.exe` + NSIS installer | `saundo.app` + dmg, Info.plist from `mygo.json` `macos.infoPlist`, ad-hoc signed unless `SAUNDO_MAC_SIGN_IDENTITY` names one |
 | Flyout style | system-rounded flyout with its window shadow | rounded flyout or NSPopover; the style setting is macOS-only |
+| Receiver glyphs | filled system-style set (default) or line set | same; the 接收器图标 setting and both glyph sets ship on every platform (`icons_sf_gen.go`) |
 
 ## macOS runtime notes
 

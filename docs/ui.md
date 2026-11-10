@@ -86,7 +86,7 @@ Implementation notes: smoothing the selection color needs a custom row column, b
 - A session taken over by another sender keeps the error phase and uses the copy 已被其他设备接管 / Taken over by another device, with 重新连接 / Reconnect as the active row's action. The tray keeps the error face. A user connect or disconnect returns the idle face.
 - The tray animates the `stream` and `connect` faces at 12 frames per 100 ms while the 托盘动画 setting is on. Turning the setting off, or Windows animation effects (Reduce Motion), holds the static face. The static stream icon is animation frame 0, and the static connect icon is three uniform 2.6 px dots, so toggling does not change the mouth size.
 - The 32 px tray icon is monochrome — black on a light taskbar, white on a dark one — and redraws on `Tray.OnAppearanceChange`. The tooltip and tray menu carry the finer session state.
-- Device rows pick their icon by receiver model (`TestDeviceIconFollowsModel`).
+- Device rows pick their icon by receiver model (`TestDeviceIconFollowsModel`). The 通用 page's 接收器图标 row chooses between the filled system-style set, which is the default, and the line set (`TestIconStylePicksGlyphSet`); both sets ship on every platform (`TestSettingsIconStyleRowIsPresent`).
 
 ## Copy
 
