@@ -271,6 +271,8 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .field.placeholder { color: var(--muted); }
+  .field.select { justify-content: space-between; gap: 6px; cursor: pointer; }
+  .field.select .icon { width: 10px; height: 10px; color: var(--muted); }
   .chip-button {
     height: 28px; padding: 0 10px; border-radius: 14px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -455,7 +457,7 @@ const COPY = {
     rowA: '客厅 HomePod', rowASub: 'AudioAccessory5,1 · 192.168.1.20:7000',
     rowB: '卧室 HomePod mini', rowBSub: 'AudioAccessory5,1 · 192.168.1.21:7000',
     chipAuto: '自动连接',
-    autoTitle: '启动时自动连接', autoSub: '同一时间仅一台；启用一台会关闭其他接收器。',
+    autoTitle: '启动时自动连接', autoSub: '同一时间仅一台；启用一台会关闭其他接收器',
     delayTitle: 'DSP/DAC 延迟', delaySub: '补偿接收器的硬件音频延迟', delayValue: '200 ms',
     passwordTitle: '接收器密码', passwordSub: '已保存 · 用于 AirPlay 密码认证', passwordAction: '更改',
     hidden: '已隐藏',
@@ -468,16 +470,16 @@ const COPY = {
     senderTitle: 'Sender name', senderSub: 'The name receivers show',
     senderValue: 'saundo', save: 'Save',
     startTitle: 'Start at login', startSub: 'Stay quietly in the tray after you sign in',
-    languageTitle: 'Language', languageSub: 'The language of the interface and messages', languageValue: 'Follow system',
-    note: 'With “Mute this PC while connected” on, some audio devices mute capture too. Turn that switch off if the receiver goes silent.',
+    languageTitle: 'Language', languageSub: 'The interface and message language', languageValue: 'Follow system',
+    note: 'With “Mute local output while connected” on, some audio devices mute capture too. Turn that switch off if the receiver goes silent.',
     section: 'Enabled',
     addTitle: 'Add receiver',
     addSub: 'Fill in an IP address or hostname for receivers mDNS cannot find.',
     rowA: 'Living Room HomePod', rowASub: 'AudioAccessory5,1 · 192.168.1.20:7000',
     rowB: 'Bedroom HomePod mini', rowBSub: 'AudioAccessory5,1 · 192.168.1.21:7000',
     chipAuto: 'Auto-connect',
-    autoTitle: 'Connect at launch', autoSub: 'One receiver at a time; enabling one turns the others off.',
-    delayTitle: 'DSP/DAC delay', delaySub: 'Compensate the receiver\'s own audio buffering', delayValue: '200 ms',
+    autoTitle: 'Connect at launch', autoSub: 'One receiver at a time; enabling one turns the others off',
+    delayTitle: 'DSP/DAC delay', delaySub: 'Compensate the receiver\'s hardware audio delay', delayValue: '200 ms',
     passwordTitle: 'Receiver password', passwordSub: 'Saved · used for AirPlay password authentication', passwordAction: 'Change',
     hidden: 'Hidden',
     edgeTitle: 'No receivers yet',
@@ -506,7 +508,7 @@ function viewTarget() {
     settingRow('startTitle', 'startSub', function() { return '<span class="switch"></span>'; }) +
     '<div class="divider"></div>' +
     settingRow('languageTitle', 'languageSub', function() {
-      return '<span class="field">' + t('languageValue') + '</span>';
+      return '<span class="field select">' + t('languageValue') + icon('chevron') + '</span>';
     }) +
   '</div>' +
   '<div class="info-note">' + icon('info') + '<div class="lines">' + t('note') + '</div></div>';
@@ -549,6 +551,7 @@ function notesHTML() {
       '<li><b>动作阶梯</b> 26 row, 28 field commit, 30 card, 34 dialog.</li>' +
       '<li><b>对话框</b> panel radius 14 over the shared scrim (rgba(20,22,30,.22)); header, body, then the 34 DIP pills.</li>' +
       '<li><b>开关</b> 32x19 track, 15 knob: off is line, on is fg with a bg knob.</li>' +
+      '<li><b>选择器</b> 150x28, radius 7, 12.5 text, a 10 glyph chevron at the right.</li>' +
       '<li><b>分段</b> 30 track / 8 radius; the selected 26 segment is card in light and pill-hover in dark.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
