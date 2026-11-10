@@ -296,7 +296,7 @@
   "volumeLabel": "音量",
   "settingsNavUpdates": "更新",
   "pageUpdatesDesc": "版本、自动检查与安装。",
-  "pageAboutDesc": "版本、项目链接、许可与诊断日志。",
+  "pageAboutDesc": "版本、项目链接、许可证与诊断日志。",
   "settingsCurrentVersion": "当前版本",
   "settingsAutoUpdateDesc": "启动后检查一次，此后每天一次",
   "settingsAutoDownload": "自动下载并安装",
@@ -451,7 +451,7 @@
   "settingsLampHomePodOnly": "HomePod 专属",
   "settingsLampSoundGlowHint": "需在“家庭”App 的 HomePod 设置中开启“声音光晕”，否则顶屏只显示白灯。",
   "settingsLampStandby": "自动关闭氛围灯",
-  "settingsLampStandbyDesc": "没有播放 {n} 分钟后关闭。",
+  "settingsLampStandbyDesc": "没有播放 {n} 分钟后关闭",
   "@settingsLampStandbyDesc": {
     "placeholders": {
       "n": {
@@ -459,7 +459,7 @@
       }
     }
   },
-  "settingsLampStandbyOffDesc": "不自动关闭氛围灯，顶屏保持常亮。",
+  "settingsLampStandbyOffDesc": "不自动关闭氛围灯，顶屏保持常亮",
   "settingsLampStandbyOffOption": "从不",
   "settingsLampStandbyMinutes": "{n} 分钟",
   "@settingsLampStandbyMinutes": {
