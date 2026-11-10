@@ -2,7 +2,7 @@
 
 The flyout's playback area: volume, latency segments, and the Now Playing
 media card. Capture status lives on the settings 采集 page, and the
-diagnostics log button is in the flyout footer.
+diagnostics log row lives on the settings 关于 page.
 
 ## Sub-features
 
@@ -17,7 +17,7 @@ diagnostics log button is in the flyout footer.
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
   value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
-  (`receivers.go:45-46,186-198`). The 托盘面板中显示 switch that hides the
+  (`receivers.go:41-47,299-311`). The 托盘面板中显示 switch that hides the
   segment row lives in the settings window's 音频 page latency-card header,
   not in the flyout.
 - Now Playing media card: a 16-DIP shell-resolved app icon and app name
@@ -50,13 +50,25 @@ diagnostics log button is in the flyout footer.
   plus the cover image while streaming, independent of the card's display
   setting.
 - Capture source: 系统声音 follows the platform default output (WASAPI on
-  Windows, the Core Audio tap on macOS) or pins a specific endpoint (a
-  queued async restart supersedes the in-flight one). The settings 采集状态
-  row names the endpoint and rate; the flyout does not.
-- Silence suspend: after 2 s of digital silence the pacer suspends (zero
+  Windows, the Core Audio tap on macOS), pins a specific endpoint, or on
+  Windows captures one application (`settings_window.go:859-863`; a queued
+  async restart supersedes the in-flight one). The settings 采集状态 row
+  names the endpoint and rate; the flyout does not.
+- Mute local output: the 连接 page's 连接后静音本机输出 switch mutes the
+  local render endpoint while streaming and restores it on disconnect, quit,
+  or switch-off, with a guard file for a crash
+  (`settings_window.go:609-643`; `internal/engine/mute.go`).
+- Takeover: a clean control close during streaming is terminal. The flyout
+  footer reads 已被其他设备接管 and the active receiver row offers
+  重新连接 (`flyout.go:272-277`; `docs/ui.md`).
+- Idle standby: after the configured silence threshold the engine sends
+  playback state 2, the top display goes dark, and the flyout lamp card
+  shows the 待机 chip (`engine.go:855-925`; see
+  [ambient-light.md](ambient-light.md)).
+- Silence suspend: after 5 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
-  (`engine.go:249,748-773`; the meter Push is `silence.go:33-52`; resume
+  (`engine.go:866-901`; the meter Push is `silence.go:33-52`; resume
   `stream.go:76-98`). AP2 only; an AP1 session keeps the continuous silence
   stream.
 - Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log

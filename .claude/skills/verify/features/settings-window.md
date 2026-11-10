@@ -51,9 +51,11 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   action, a 72-DIP preview of the current preset with its localized name, a
   颜色来源 row (封面 / 模板) whose segment sits at its right, a 模板 block
   whose six fixed 68-DIP tiles (暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白) wrap on a
-  narrow page, its 六组预设灯光颜色 description, and the Sound Glow reminder. Off dims the preview to
-  35% and disables the grid. The page and the flyout's ambient card read the
-  same global choice; see [ambient-light.md](ambient-light.md).
+  narrow page, its 六组预设灯光颜色 description, the Sound Glow reminder, and
+  the 自动关闭氛围灯 row (from 从不 to 30 分钟, default 30). Off dims the
+  preview to 35% and disables the grid and the standby select. The page and
+  the flyout's ambient card read the same global choice; see
+  [ambient-light.md](ambient-light.md).
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and per-app
   capture (application list built from window titles + audio sessions). Both
   pickers are 220 DIP wide, for device and app names. The status keeps the
@@ -75,8 +77,10 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   the release-notes dialog, which holds the release history — see
   [updates.md](updates.md).
 - 关于 page: the identity card shows the app's smile mark and the version
-  line. Below it are the project links and the license/notices rows, and the
-  version line never shows the git describe suffix.
+  line. Below it are the project links, the 诊断日志 card whose row opens the
+  log dialog in this window (view and copy its last 200 lines), and the
+  license/notices rows; the version line never shows the git describe
+  suffix. A reopened settings window dismisses the log dialog.
 
 ## How to get to it (user POV)
 
@@ -145,5 +149,5 @@ change in the flyout).
   but the settings preview shows the live or sample card.
 - The receiver track info is always pushed while streaming; the display
   switch does not gate it.
-- Passwords never render back — dots only (`receivers_page.go:489-492`). A
+- Passwords never render back — dots only (`receivers_page.go:523-527`). A
   page showing a stored password verbatim is a bug.

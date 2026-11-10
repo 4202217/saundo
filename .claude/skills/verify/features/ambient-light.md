@@ -28,7 +28,8 @@ per receiver.
   the pushed cover. Cover priority runs the cover through the same Lab
   k-means the receiver uses for `MediaColors` (`lamp.CoverPreset`) and
   paints the three-color glow. With no cover yet it
-  paints a neutral cover tile with the media glyph; the receiver's own
+  paints a neutral cover tile with the media glyph, and the row shows the
+  无媒体 / No media chip (`lamp.go:307-321`); the receiver's own
   fresh-session placeholder is a white center on a dark ring and is not
   previewed. Template priority paints the selected template's three-color
   glow; the carrier itself is not shown.
@@ -80,8 +81,10 @@ per receiver.
   with a 从不/1/5/10/30 minute select (default 30). Five seconds of digital
   silence stops the RTP pacer, and once the configured idle time has passed
   since the last push the engine sends playback state 2. The first audible
-  sample sends state 1 and resumes. The flyout chip reads 待机, the power
-  action 开灯, and the footer 已待机 · 播放声音即唤醒.
+  sample sends state 1 and resumes; pressing 开灯 while the display is dark
+  relights it immediately and holds it on until the next sound
+  (`lamp.go:226-236`; `engine.go:1152-1155`). The flyout chip reads 待机,
+  the power action 开灯, and the footer 已待机 · 播放声音即唤醒.
 
 ## How to get to it (user POV)
 
