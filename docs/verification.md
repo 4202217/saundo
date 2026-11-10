@@ -755,6 +755,10 @@ and the verification map is corrected.
   `SHA256SUMS`; `sha256sum -c` passed for all six checksummed files. The
   manifest names 0.6.1, is signed, and carries the ASCII English notes. The
   tag stays on `abe977b`; publishing is the remaining gate.
+- **Publish (2026-11-11).** `gh release edit v0.6.1 --draft=false` published
+  the stable release. The public feed serves the signed 0.6.1 manifest with
+  the English notes, and the installer and update archive URLs return 200. A
+  live update from an installed 0.6.0 build is still owed.
 
 ## Graduated
 
