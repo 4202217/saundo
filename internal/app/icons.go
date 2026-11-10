@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+
+	"saundo/internal/settings"
 )
 
 // The icons are single-colour SVGs: ui.Icon tints them with the text color,
@@ -89,4 +91,14 @@ func deviceIcon(model string) *ui.SVG {
 	default:
 		return iconSpeaker
 	}
+}
+
+// deviceIconFor picks the glyph for a row from the chosen icon style and also
+// knows whether the row is a stereo group. Filled uses the system-style set;
+// Line keeps the shipped line icons.
+func deviceIconFor(style settings.IconStyle, model string, stereo bool) *ui.SVG {
+	if style == settings.IconStyleFilled {
+		return systemDeviceIcon(model, stereo)
+	}
+	return deviceIcon(model)
 }

@@ -220,6 +220,10 @@
   "themeSystem": "Follow system",
   "themeLight": "Light",
   "themeDark": "Dark",
+  "settingsIconStyle": "Receiver icons",
+  "settingsIconStyleDesc": "Filled is the default.",
+  "iconStyleFilled": "Filled",
+  "iconStyleLine": "Line",
   "settingsAbout": "About",
   "settingsAboutBrand": "Saundo",
   "settingsAutoUpdate": "Check automatically",
@@ -558,6 +562,6 @@
   "receiverEmptyTitle": "No receivers yet",
   "versionLocalTag": "Local build",
   "settingsShowInPanel": "Show in tray panel",
-  "settingsFlyoutPopover": "Tray panel as popover",
-  "settingsFlyoutPopoverDesc": "Show the tray panel as a system popover; off keeps the rounded style."
+  "settingsFlyoutPopover": "Tray panel as a popover",
+  "settingsFlyoutPopoverDesc": "Off keeps the app's default rounded style."
 }
