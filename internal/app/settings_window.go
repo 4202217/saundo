@@ -333,32 +333,7 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 				a.setTheme(choice)
 			}
 		})
-		rowLine(c, p)
-		settingRow(c, p, locales.SettingsIconStyle(), locales.SettingsIconStyleDesc(), func() {
-			seg := a.iconStyleIndex()
-			items := []segmentItem{
-				{locales.IconStyleFilled(), nil},
-				{locales.IconStyleLine(), nil},
-			}
-			if segmented(c, p, &seg, items, 200, false, locales.SettingsIconStyle()).Changed() {
-				a.setIconStyle(iconStyleAt(seg))
-			}
-		})
 	})
-}
-
-func (a *App) iconStyleIndex() int {
-	if a.iconStyle == settings.IconStyleLine {
-		return 1
-	}
-	return 0
-}
-
-func iconStyleAt(i int) settings.IconStyle {
-	if i == 1 {
-		return settings.IconStyleLine
-	}
-	return settings.IconStyleFilled
 }
 
 // nowPlayingPage is the settings page for the panel's media card. The display
@@ -922,7 +897,7 @@ func (a *App) connectionHealthCard(c *ui.Context, p palette, d device.Device) {
 	card := ui.Column(c).Margin(12, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
 		ui.Row(c).Height(56).Padding(0, 14).Gap(10).Children(func() {
-			a.deviceGlyph(c, p, d, false)
+			deviceGlyph(c, p, d, false)
 			ui.Column(c).Grow(1).Gap(2).Children(func() {
 				ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
 				ui.Text(c, summarySub(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
