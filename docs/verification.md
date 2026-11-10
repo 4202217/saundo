@@ -730,6 +730,13 @@ and the verification map is corrected.
   pending list.
 - **Maintainer pre-release test (2026-11-11).** The 0.6.1 release request is
   the maintainer's confirmation that the build was tested on their own PC.
+- **Draft verification (2026-11-11).** The release workflow (run
+  42854757255) passed `check`, `check-macos`, `draft`, `build`, and
+  `build-macos`. The draft carries `install.ps1`, the installer, the update
+  archive, three deltas, `update-windows-amd64.json`, the arm64 dmg, and
+  `SHA256SUMS`; `sha256sum -c` passed for all six checksummed files. The
+  manifest names 0.6.1, is signed, and carries the ASCII English notes. The
+  tag stays on `abe977b`; publishing is the remaining gate.
 
 ## Graduated
 
