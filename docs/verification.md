@@ -23,9 +23,10 @@ live state:
 
 - Apple TV on-screen PIN pairing and stored-credential reconnect — the
   remaining definition-of-done gap.
-- A 30-minute 100 ms app soak with a stable audio device and no other app
-  takeover. The 5-minute run is clean; the 30-minute run was invalidated by a
-  worktree instance takeover and a remote-audio device invalidation.
+- A 30-minute soak at the 200 ms production preset with a stable audio
+  device and no other app takeover. The 100 ms soak is withdrawn: the
+  2026-11-10 latency-floor entry below shows the HomePod mini pair breaks up
+  below roughly 200 ms whatever the sender.
 - Local output mute in the live app: the engine session path passed
   (`TestLiveMuteLocal`); the settings-window switch itself has only headless
   coverage.
@@ -1995,3 +1996,37 @@ and the verification map is corrected.
   `TestFlyoutLampShowsStandby`.
 - **Still pending.** A two hour idle soak, the 30 minute default on a live
   pair, and a live capture of the flyout's 待机 chip.
+
+## 2026-11-10 — Presentation latency floor on a HomePod mini pair
+
+- **What was measured.** With a steady 1 kHz tone the presentation latency
+  was swept on the `HomePods` stereo pair (two `AudioAccessory5,1` members).
+  At 100 ms the breakup was severe, at 160 ms frequent and regular, at 180 ms
+  mild, and at 200 ms it was gone with music and only faintly present on the
+  tone in the 8x configuration. The artifact is a periodic burst, not random
+  loss, and its interval shortens as the declared latency drops.
+- **Sender counters stayed clean.** A temporary diagnostic build logged
+  underruns, retransmits, late ticks, and the capture ring once a second.
+  For the whole 160 ms run both members reported
+  `underruns=0 retransmits=0 lateTicks=0`, the receiver sent no retransmit
+  request at all, and the ring oscillated between 0 and 10 ms, one WASAPI
+  period. Every packet left on schedule, in sequence, with the correct
+  352-frame timestamp step.
+- **Ruled out one variable at a time.** Capture device (`Realtek Digital
+  Output` and `PHL 27E2F7901`, both 48 kHz, behaved identically), PTP
+  activation at RECORD versus the legacy SETPEERS round trip, duplicate
+  copies (1x, 2x, 8x), the timing-anchor cadence (100 ms to 1 s), and the 1 s
+  volume poll (disabled for the test). Eight copies made the artifact
+  markedly worse at 180 ms: at 352 frames per packet that is 1000 packets
+  per second per member, and the receiver's receive path becomes the
+  bottleneck.
+- **Conclusion.** The HomePod mini render pipeline produces the artifact
+  itself once the declared latency is below roughly 200 ms; the sender
+  delivers a complete stream with exact timing. Production stays at the
+  200 ms preset (`LatencyLow`). Unisson's reference sender runs HomePod at
+  about 99 ms with 8x redundancy over 36.5 ms compressed ALAC blocks
+  (about 220 packets per second), NTP anchors about once a second, and a
+  ppm drift loop; matching that would need a compressed ALAC encoder and
+  larger blocks first, not a timing tweak.
+- **Not established.** Which receiver-internal buffer underruns, and whether
+  larger, compressed blocks would move the floor below 200 ms.
