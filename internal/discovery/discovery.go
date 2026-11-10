@@ -5,6 +5,8 @@
 package discovery
 
 import (
+	"io"
+	"log"
 	"net"
 	"net/netip"
 	"sort"
@@ -17,6 +19,22 @@ import (
 
 	"saundo/internal/airplay/device"
 )
+
+// quietMDNS drops the IPv6 bind failures the mDNS client retries on every
+// query when the host has no usable IPv6 multicast. Other mDNS messages
+// still reach the app log.
+type quietMDNS struct{ out io.Writer }
+
+func (w quietMDNS) Write(p []byte) (int, error) {
+	s := string(p)
+	if strings.Contains(s, "Failed to bind to udp6 port") ||
+		strings.Contains(s, "Failed to listen to both unicast and multicast on IPv6") {
+		return len(p), nil
+	}
+	return w.out.Write(p)
+}
+
+var mdnsLog = log.New(quietMDNS{out: log.Default().Writer()}, "", log.LstdFlags)
 
 const (
 	raopService    = "_raop._tcp"
@@ -224,6 +242,7 @@ func (s *Service) queryOnce() {
 				Domain:  "local.",
 				Timeout: s.queryTimeout,
 				Entries: entries,
+				Logger:  mdnsLog,
 			})
 			close(entries)
 			read.Wait()
