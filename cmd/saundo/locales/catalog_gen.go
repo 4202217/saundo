@@ -1342,46 +1342,6 @@ func (msgs Messages) ThemeDark() string {
 	return Catalog.Format(msgs.locale, "themeDark", nil)
 }
 
-// SettingsIconStyle says "Receiver icons"
-// in the language the app shows.
-func SettingsIconStyle() string { return In(i18n.Locale()).SettingsIconStyle() }
-
-// SettingsIconStyle says "Receiver icons"
-// in the language of msgs.
-func (msgs Messages) SettingsIconStyle() string {
-	return Catalog.Format(msgs.locale, "settingsIconStyle", nil)
-}
-
-// SettingsIconStyleDesc says "Filled is the default"
-// in the language the app shows.
-func SettingsIconStyleDesc() string { return In(i18n.Locale()).SettingsIconStyleDesc() }
-
-// SettingsIconStyleDesc says "Filled is the default"
-// in the language of msgs.
-func (msgs Messages) SettingsIconStyleDesc() string {
-	return Catalog.Format(msgs.locale, "settingsIconStyleDesc", nil)
-}
-
-// IconStyleFilled says "Filled"
-// in the language the app shows.
-func IconStyleFilled() string { return In(i18n.Locale()).IconStyleFilled() }
-
-// IconStyleFilled says "Filled"
-// in the language of msgs.
-func (msgs Messages) IconStyleFilled() string {
-	return Catalog.Format(msgs.locale, "iconStyleFilled", nil)
-}
-
-// IconStyleLine says "Line"
-// in the language the app shows.
-func IconStyleLine() string { return In(i18n.Locale()).IconStyleLine() }
-
-// IconStyleLine says "Line"
-// in the language of msgs.
-func (msgs Messages) IconStyleLine() string {
-	return Catalog.Format(msgs.locale, "iconStyleLine", nil)
-}
-
 // SettingsAbout says "About"
 // in the language the app shows.
 func SettingsAbout() string { return In(i18n.Locale()).SettingsAbout() }

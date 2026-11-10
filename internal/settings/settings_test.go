@@ -53,37 +53,6 @@ func TestTrayAnimationDefaultsOnAndRoundTrips(t *testing.T) {
 	}
 }
 
-func TestIconStyleDefaultsToFilledAndRoundTrips(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "settings.json")
-	s := NewStoreAt(path)
-	if got := s.Load().IconStyle; got != IconStyleFilled {
-		t.Fatalf("default icon style = %q, want filled", got)
-	}
-	for _, tc := range []struct {
-		stored string
-		want   IconStyle
-	}{
-		{"neon", IconStyleFilled},
-		{"system", IconStyleFilled},
-		{"classic", IconStyleLine},
-	} {
-		if err := os.WriteFile(path, []byte(`{"name":"x","iconStyle":"`+tc.stored+`"}`), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if got := s.Load().IconStyle; got != tc.want {
-			t.Fatalf("stored icon style %q = %q, want %q", tc.stored, got, tc.want)
-		}
-	}
-	cfg := s.Load()
-	cfg.IconStyle = IconStyleLine
-	if err := s.Save(cfg); err != nil {
-		t.Fatal(err)
-	}
-	if got := s.Load().IconStyle; got != IconStyleLine {
-		t.Fatalf("icon style after save = %q, want line", got)
-	}
-}
-
 func TestThemeDefaultsToSystemAndRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	s := NewStoreAt(path)

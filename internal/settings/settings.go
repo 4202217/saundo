@@ -40,15 +40,6 @@ const (
 	DefaultLatencyCustomMS = 700
 )
 
-// IconStyle is the glyph set receiver rows draw. Filled is the solid
-// system-style set; Line is the classic outline set.
-type IconStyle string
-
-const (
-	IconStyleFilled IconStyle = "filled"
-	IconStyleLine   IconStyle = "line"
-)
-
 // LampSettings is the global ambient-light choice. The light is always part
 // of the app; Off is the manual "关灯" state. Cover chooses the media cover;
 // when it is off, Preset renders one of the six templates. LegacyEnabled
@@ -118,7 +109,6 @@ type Settings struct {
 	Lamp                LampSettings       `json:"lamp"`
 	TrayAnimation       bool               `json:"trayAnimation"`
 	FlyoutPopover       bool               `json:"flyoutPopover"`
-	IconStyle           IconStyle          `json:"iconStyle"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
 	Theme               ThemeMode          `json:"theme"`
@@ -151,7 +141,6 @@ func Default() Settings {
 		Reconnect:           true,
 		TrayAnimation:       true,
 		FlyoutPopover:       false,
-		IconStyle:           IconStyleFilled,
 		Theme:               ThemeSystem,
 		Lamp:                LampSettings{Cover: true, Preset: lamp.DefaultID},
 	}
@@ -252,16 +241,6 @@ func (s *Store) loadLocked() Settings {
 	case CoverNone, CoverPlaceholder, CoverMedia:
 	default:
 		out.CoverMode = CoverMedia
-	}
-	// The settings file briefly stored system and classic; keep a local
-	// file's choice when it still carries one of those names.
-	switch out.IconStyle {
-	case IconStyleFilled, "system":
-		out.IconStyle = IconStyleFilled
-	case IconStyleLine, "classic":
-		out.IconStyle = IconStyleLine
-	default:
-		out.IconStyle = IconStyleFilled
 	}
 	// The old switch stored "enabled"; invert it once and drop the field.
 	if out.Lamp.LegacyEnabled != nil {

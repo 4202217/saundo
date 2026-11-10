@@ -198,7 +198,6 @@ func TestRowHintsHaveNoTerminalPunctuation(t *testing.T) {
 		"settingsFlyoutPopoverDesc",
 		"settingsLanguageDesc",
 		"settingsThemeDesc",
-		"settingsIconStyleDesc",
 		"settingsPlaybackControlsDesc",
 		"settingsCoverColorsDesc",
 		"settingsAudioLevelDesc",

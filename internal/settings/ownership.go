@@ -18,7 +18,6 @@ var (
 		"MuteLocalOnConnect",
 		"TrayAnimation",
 		"FlyoutPopover",
-		"IconStyle",
 		"LaunchAtStart",
 		"Language",
 		"Theme",

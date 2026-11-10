@@ -196,7 +196,7 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 			AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(d.Name)
 		pick.OnClick(func() { a.selID = d.ID })
 		pick.Children(func() {
-			a.deviceGlyph(c, p, d, selected)
+			deviceGlyph(c, p, d, selected)
 
 			ui.Column(c).Grow(1).Gap(1).Children(func() {
 				ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
@@ -210,7 +210,7 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 
 // deviceGlyph is the round silhouette with the online dot, shared by the
 // flyout rows and the settings summary.
-func (a *App) deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
+func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
 	color := p.fg2
 	if selected {
 		color = p.accent
@@ -220,7 +220,7 @@ func (a *App) deviceGlyph(c *ui.Context, p palette, d device.Device, selected bo
 		g.Background(p.card)
 	}
 	g.Children(func() {
-		ui.Icon(c, deviceIconFor(a.iconStyle, d.Model, d.IsStereoGroup())).Size(16, 16).TextColor(color)
+		ui.Icon(c, deviceIcon(d.Model, d.IsStereoGroup())).Size(16, 16).TextColor(color)
 		if d.Online {
 			ring := p.card
 			if selected {

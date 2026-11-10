@@ -483,7 +483,9 @@ var sfIcons = func() map[string]*ui.SVG {
 	return m
 }()
 
-func systemDeviceIcon(model string, stereo bool) *ui.SVG {
+// deviceIcon picks the filled glyph by receiver family, Mac form, and whether
+// the row is a stereo group.
+func deviceIcon(model string, stereo bool) *ui.SVG {
 	switch {
 	case strings.HasPrefix(model, "AudioAccessory"):
 		mini := strings.HasPrefix(model, "AudioAccessory5")

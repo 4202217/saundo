@@ -148,7 +148,6 @@ type App struct {
 	lampExpanded        bool
 	trayAnimation       bool
 	flyoutPopover       bool
-	iconStyle           settings.IconStyle
 	autoUpdate          bool
 	beta                bool
 	showLog             bool
@@ -210,7 +209,6 @@ func Run() error {
 	a.launchAtStart = cfg.LaunchAtStart
 	a.trayAnimation = cfg.TrayAnimation
 	a.flyoutPopover = cfg.FlyoutPopover
-	a.iconStyle = cfg.IconStyle
 	a.captureChoice = cfg.CaptureEndpointName
 	if a.captureChoice == "" {
 		a.captureChoice = locales.CaptureFollowSystem()
@@ -930,14 +928,6 @@ func (a *App) setLaunchAtStart(on bool) {
 		a.cfg.LaunchAtStart = !on
 		a.saveSettings()
 	}
-}
-
-// setIconStyle persists the receiver glyph style. The flyout and the
-// receivers page read it on their next build.
-func (a *App) setIconStyle(style settings.IconStyle) {
-	a.iconStyle = style
-	a.cfg.IconStyle = style
-	a.saveSettings()
 }
 
 // setTrayAnimation persists the tray animation preference and starts or
