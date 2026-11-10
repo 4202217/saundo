@@ -720,7 +720,13 @@ func (f *fakeReceiver) handleAudio(data []byte) {
 	if len(data) < 12 {
 		f.r.t.Fatalf("short audio packet %d", len(data))
 	}
-	f.audioSeqs = append(f.audioSeqs, binary.BigEndian.Uint16(data[2:4]))
+	seq := binary.BigEndian.Uint16(data[2:4])
+	f.audioSeqs = append(f.audioSeqs, seq)
+	if len(f.audioSeqs) > 1 && f.audioSeqs[len(f.audioSeqs)-2] == seq {
+		// A redundancy copy: record the wire packet, but do not decode it or
+		// advance the audio nonce, mirroring the receiver's sequence dedup.
+		return
+	}
 	f.audioTS = append(f.audioTS, binary.BigEndian.Uint32(data[4:8]))
 	f.audioMarker = append(f.audioMarker, data[1])
 	payload := data[12:]

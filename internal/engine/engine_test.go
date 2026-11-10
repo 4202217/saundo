@@ -1200,3 +1200,71 @@ func TestLatencySettingsReachStore(t *testing.T) {
 		t.Fatal("the engine's save wrote the app-owned show switch")
 	}
 }
+
+func TestLaunchAutoConnectUsesCachedGroup(t *testing.T) {
+	h := newHarness(t)
+	h.e.reg.Put(receivers.Entry{
+		Key: "stereo:tsid", Kind: receivers.KindDiscovered, Name: "Pair",
+		Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true,
+		AutoConnect: true,
+		Members: []receivers.Member{
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true},
+		},
+	})
+	h.e.discovered = nil
+	h.e.rebuildTargets()
+	if !h.e.maybeAutoConnect() {
+		t.Fatal("launch auto-connect did not use the cached group")
+	}
+	waitFor(t, func() bool { return h.e.selectedID == "stereo:tsid" })
+}
+
+func TestOnClosedRemembersRetransmitRatio(t *testing.T) {
+	h := newHarness(t)
+	const key = "AA:00"
+	h.e.reg.Put(receivers.Entry{Key: key, Kind: receivers.KindDiscovered})
+	h.e.selectedID = key
+	h.e.snap.Diagnostics = Diagnostics{Retransmits: 4, SentBlocks: 100}
+	h.e.onClosed()
+	entry, ok := h.e.reg.Get(key)
+	if !ok || entry.LastRetransmits != 4 || entry.LastSentBlocks != 100 {
+		t.Fatalf("remembered stats = %+v, ok=%v", entry, ok)
+	}
+}
+
+func TestRememberDiscoveredCachesGroupMembers(t *testing.T) {
+	h := newHarness(t)
+	group := device.Device{
+		ID: "stereo:tsid", Name: "Pair", StereoID: "tsid",
+		Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1",
+		AirPlay2: true, Auth: device.AuthHAPTransient, Online: true,
+		Members: []device.Device{
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Auth: device.AuthHAPTransient, Features: 1 << 41},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Auth: device.AuthHAPTransient, Features: 1 << 41},
+		},
+	}
+	h.e.setDevices([]device.Device{group})
+	entry, ok := h.e.reg.Get("stereo:tsid")
+	if !ok || len(entry.Members) != 2 || entry.Members[1].Host != "192.0.2.11" {
+		t.Fatalf("remembered group = %+v, ok=%v", entry, ok)
+	}
+	if entry.Members[1].Features != 1<<41 || entry.Members[1].Auth != device.AuthHAPTransient {
+		t.Fatalf("member capabilities = %+v", entry.Members[1])
+	}
+}
+
+func TestCaptureErrorLogsOncePerMinute(t *testing.T) {
+	h := newHarness(t)
+	before := len(h.e.log.Lines())
+	err := errors.New("capture: no audio output device")
+	h.e.applyCaptureInfo(captureInfo{err: err})
+	h.e.applyCaptureInfo(captureInfo{err: err})
+	if got := len(h.e.log.Lines()) - before; got != 1 {
+		t.Fatalf("capture error log lines = %d, want 1", got)
+	}
+	h.e.applyCaptureInfo(captureInfo{name: "扬声器", rate: 48000})
+	if got := h.e.Snapshot().CaptureError; got != "" {
+		t.Fatalf("stale capture error after recovery: %q", got)
+	}
+}

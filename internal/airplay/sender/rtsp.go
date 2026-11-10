@@ -173,7 +173,7 @@ func (s *Sender) onRTSPData(data []byte) {
 		case p.http:
 			s.onPairingResponse(code, headers, body)
 		default:
-			s.handleResponse(p.method, code, headers)
+			s.handleResponse(p.method, code, headers, body)
 		}
 		if s.state == StateIdle {
 			return
@@ -234,7 +234,7 @@ func (s *Sender) handleAP2DigestChallenge(p pendingReq, headers map[string]strin
 	p.replay()
 }
 
-func (s *Sender) handleResponse(method string, code int, headers map[string]string) {
+func (s *Sender) handleResponse(method string, code int, headers map[string]string, body string) {
 	switch method {
 	case "SET_PARAMETER":
 		if code != 200 {
@@ -242,6 +242,9 @@ func (s *Sender) handleResponse(method string, code int, headers map[string]stri
 		}
 		return
 	case "POST":
+		if s.events.FeedbackBody != nil {
+			s.events.FeedbackBody([]byte(body))
+		}
 		if code == 200 {
 			if !s.feedback.active {
 				s.feedback.interval = feedbackInterval
@@ -253,6 +256,9 @@ func (s *Sender) handleResponse(method string, code int, headers map[string]stri
 		}
 		return
 	case "FEEDBACK", "TEARDOWN", "GET":
+		if method == "FEEDBACK" && s.events.FeedbackBody != nil {
+			s.events.FeedbackBody([]byte(body))
+		}
 		return
 	}
 
@@ -608,6 +614,9 @@ func (s *Sender) beginPlayback(epoch time.Time) {
 	}
 
 	s.pacer.arm(now)
+	for i := 0; i < s.prefill; i++ {
+		s.sendAudioPacket()
+	}
 	if s.pauseWanted {
 		s.applyPause(true)
 	}
