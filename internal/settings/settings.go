@@ -108,7 +108,6 @@ type Settings struct {
 	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
 	Lamp                LampSettings       `json:"lamp"`
 	TrayAnimation       bool               `json:"trayAnimation"`
-	FlyoutPopover       bool               `json:"flyoutPopover"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
 	Theme               ThemeMode          `json:"theme"`
@@ -140,7 +139,6 @@ func Default() Settings {
 		MuteLocalOnConnect:  true,
 		Reconnect:           true,
 		TrayAnimation:       true,
-		FlyoutPopover:       false,
 		Theme:               ThemeSystem,
 		Lamp:                LampSettings{Cover: true, Preset: lamp.DefaultID},
 	}

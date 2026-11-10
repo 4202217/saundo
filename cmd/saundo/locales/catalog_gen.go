@@ -3311,23 +3311,3 @@ func SettingsShowInPanel() string { return In(i18n.Locale()).SettingsShowInPanel
 func (msgs Messages) SettingsShowInPanel() string {
 	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
 }
-
-// SettingsFlyoutPopover says "Tray panel as a popover"
-// in the language the app shows.
-func SettingsFlyoutPopover() string { return In(i18n.Locale()).SettingsFlyoutPopover() }
-
-// SettingsFlyoutPopover says "Tray panel as a popover"
-// in the language of msgs.
-func (msgs Messages) SettingsFlyoutPopover() string {
-	return Catalog.Format(msgs.locale, "settingsFlyoutPopover", nil)
-}
-
-// SettingsFlyoutPopoverDesc says "Off keeps the app's default rounded style"
-// in the language the app shows.
-func SettingsFlyoutPopoverDesc() string { return In(i18n.Locale()).SettingsFlyoutPopoverDesc() }
-
-// SettingsFlyoutPopoverDesc says "Off keeps the app's default rounded style"
-// in the language of msgs.
-func (msgs Messages) SettingsFlyoutPopoverDesc() string {
-	return Catalog.Format(msgs.locale, "settingsFlyoutPopoverDesc", nil)
-}
