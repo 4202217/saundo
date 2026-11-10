@@ -220,7 +220,7 @@ func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
 		g.Background(p.card)
 	}
 	g.Children(func() {
-		ui.Icon(c, deviceIcon(d.Model)).Size(16, 16).TextColor(color)
+		ui.Icon(c, deviceIcon(d.Model, d.IsStereoGroup())).Size(16, 16).TextColor(color)
 		if d.Online {
 			ring := p.card
 			if selected {

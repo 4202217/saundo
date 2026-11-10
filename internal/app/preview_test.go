@@ -363,6 +363,13 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-connection-640-light", connection640.settingsView, 640, 420, false)
 	save("settings-connection-640-dark", connection640.settingsView, 640, 420, true)
 
+	// The general page at the 640 minimum, scrolled to its last rows, where
+	// the icon-style subtitle has the least width.
+	general640 := fixture()
+	general640.page = pageGeneral
+	saveScrolled("settings-general-640-bottom-light", general640.settingsView, 640, 420, false, 400)
+	saveScrolled("settings-general-640-bottom-dark", general640.settingsView, 640, 420, true, 400)
+
 	connectionUnknown := fixture()
 	connectionUnknown.page = pageConnection
 	connectionUnknown.snap.ReceiverLatencyMS = 0
@@ -634,7 +641,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 
 	mac := fixture()
 	mac.snap.Devices = []device.Device{{
-		ID: "AA:BB:CC:DD:EE:09", Name: "MacBook", Model: "Mac",
+		ID: "AA:BB:CC:DD:EE:09", Name: "MacBook", Model: "Mac14,2",
 		Auth: device.AuthHAPPassword, AirPlay2: true, Online: true,
 	}}
 	mac.snap.SelectedID = ""

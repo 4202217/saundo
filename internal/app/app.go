@@ -149,7 +149,6 @@ type App struct {
 	standbyEnabled      bool
 	standbyMinutes      int
 	trayAnimation       bool
-	flyoutPopover       bool
 	autoUpdate          bool
 	beta                bool
 	showLog             bool
@@ -210,7 +209,6 @@ func Run() error {
 	a.reconnect = cfg.Reconnect
 	a.launchAtStart = cfg.LaunchAtStart
 	a.trayAnimation = cfg.TrayAnimation
-	a.flyoutPopover = cfg.FlyoutPopover
 	a.captureChoice = cfg.CaptureEndpointName
 	if a.captureChoice == "" {
 		a.captureChoice = locales.CaptureFollowSystem()
@@ -725,8 +723,6 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	// choice back over the engine's.
 	a.cfg.Lamp = settings.LampSettings{Off: a.lampOff, Cover: a.lampCover, Preset: a.lampPreset}
 	a.cfg.Standby = settings.StandbySettings{Enabled: a.standbyEnabled, IdleMinutes: a.standbyMinutes}
-	a.flyoutPopover = snap.FlyoutPopover
-	a.cfg.FlyoutPopover = snap.FlyoutPopover
 	if a.trayAnimation != snap.TrayAnimation {
 		a.trayAnimation = snap.TrayAnimation
 		a.syncTrayAnimator()
