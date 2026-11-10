@@ -65,7 +65,7 @@ The interface speaks to the person using it, not about how it is built.
 - Latency uses one formatter, `settings.LatencyText`. Below 1000 ms it prints `700 ms`. At or above 1000 ms it prints seconds with one decimal, `1.5 s`. Slider scale endpoints follow the same rule.
 - Volume prints as an integer percent.
 - Sample rates print as `44.1 kHz` or `48 kHz`.
-- Chinese copy uses full-width punctuation. A page description ends with `。`. English labels and menu items use sentence case, except product names.
+- Chinese copy uses full-width punctuation. Prose ends with `。` / `.`: page descriptions, card body text, notes, dialog copy, status lines, and empty states. A settings-row subtitle, a link description, and a chip label carry no terminal punctuation. English labels and menu items use sentence case, except product names.
 - The ellipsis is the single character `…`, with no space before it.
 - An IP address, a port, and a version number use their own digits and units. Do not localize them.
 
