@@ -345,26 +345,28 @@ type Engine struct {
 	sessionStartedAt time.Time
 	// reconnectCount is how many automatic retries the current target has
 	// needed. A user connect or disconnect starts a new count.
-	reconnectCount   int
-	setsValue        settings.Settings
-	captureEndpoint  string
-	captureName      string
-	captureProcess   uint32
-	captureRate      int
-	captureRunning   bool
-	captureError     string
-	captureStarting  bool
-	captureQueued    bool
-	captureGen       int
-	userDisconnect   bool
-	reconnectWanted  bool
-	reconnectAt      time.Time
-	reconnectNum     int
-	lastMissingLogAt time.Time
-	settingsDirtyAt  time.Time
-	audioPaused      bool
-	pauseUnsupported bool
-	autoTried        bool
+	reconnectCount       int
+	setsValue            settings.Settings
+	captureEndpoint      string
+	captureName          string
+	captureProcess       uint32
+	captureRate          int
+	captureRunning       bool
+	captureError         string
+	captureErrorLogged   string
+	captureErrorLoggedAt time.Time
+	captureStarting      bool
+	captureQueued        bool
+	captureGen           int
+	userDisconnect       bool
+	reconnectWanted      bool
+	reconnectAt          time.Time
+	reconnectNum         int
+	lastMissingLogAt     time.Time
+	settingsDirtyAt      time.Time
+	audioPaused          bool
+	pauseUnsupported     bool
+	autoTried            bool
 
 	// lampJPEG renders a preset; tests replace it. lampImage is the encoded
 	// image for lampImagePreset, kept off the sender's tick path.
@@ -480,6 +482,9 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 		ReceiverLatencyChanged: e.onReceiverLatency,
 	}, e.senderLog)
 	s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
+	entry, _ := e.reg.Get(d.ID)
+	s.SetDuplicates(receivers.DuplicatesFor(entry))
+	s.SetPrefill(2)
 	s.AttachRing(e.ring)
 	// One gate for the session: it owns the single start trim and the start
 	// epoch. A lone receiver keeps the newest capture cushion and starts as
@@ -1354,6 +1359,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 }
 
 func (e *Engine) onClosed() {
+	e.rememberSessionStats()
 	e.connectedName = ""
 	e.receiverLatency = 0
 	e.sessionStartedAt = time.Time{}
@@ -1370,6 +1376,7 @@ func (e *Engine) onClosed() {
 // is terminal: it must not schedule the reconnect that would fight the new
 // sender for the device.
 func (e *Engine) onPreempted(reason string) {
+	e.rememberSessionStats()
 	e.takenOver = true
 	e.reconnectWanted = false
 	e.reconnectNum = 0
@@ -1382,6 +1389,24 @@ func (e *Engine) onPreempted(reason string) {
 	e.restoreLocalMute()
 	e.logf("session taken over: %s", reason)
 	e.publish()
+}
+
+// rememberSessionStats stores the session's retransmit ratio for the next
+// launch's duplicate policy.
+func (e *Engine) rememberSessionStats() {
+	key := e.selectedID
+	if key == "" {
+		return
+	}
+	entry, ok := e.reg.Get(key)
+	if !ok {
+		return
+	}
+	diag := e.snap.Diagnostics
+	entry.LastRetransmits = diag.Retransmits
+	entry.LastSentBlocks = diag.SentBlocks
+	e.reg.Put(entry)
+	e.saveRegistry()
 }
 
 // clearPasswordPrompt drops the first-connect password prompt.
@@ -1557,19 +1582,29 @@ func (e *Engine) maybeAutoConnect() bool {
 		return false
 	}
 	target, found := e.target(key)
-	if !found || !target.Device.Online {
+	if !found {
 		return false
 	}
-	if target.Device.Local {
+	d := target.Device
+	if !d.Online {
+		// The registry remembers the address, so a launch does not have to
+		// wait for mDNS. Discovery keeps running and replaces this view.
+		cached, ok := receivers.CachedDevice(target.Entry, e.hasPassword(target.Entry.Key))
+		if !ok {
+			return false
+		}
+		d = cached
+	}
+	if d.Local {
 		// A stored flag can outlive the receiver becoming local. Skip it
 		// instead of publishing a launch failure every start.
 		e.autoTried = true
-		e.logf("auto-connect target %s is the local receiver; skipping", target.Device.Name)
+		e.logf("auto-connect target %s is the local receiver; skipping", d.Name)
 		return false
 	}
 	e.autoTried = true
 	e.userDisconnect = false
-	e.connect(target.Device)
+	e.connect(d)
 	return true
 }
 
@@ -1597,7 +1632,9 @@ func (e *Engine) rememberDiscovered() {
 			e.reg.Put(receivers.Entry{
 				Key: d.ID, Kind: receivers.KindDiscovered,
 				Name: d.Name, Model: d.Model, AirPlay2: d.AirPlay2,
-				Host: d.Host, Port: d.Port, LastSeen: now,
+				Features: d.Features, SF: d.SF, Auth: d.Auth,
+				Members: memberEntries(d.Members),
+				Host:    d.Host, Port: d.Port, LastSeen: now,
 			})
 			changed = true
 			continue
@@ -1624,6 +1661,22 @@ func (e *Engine) rememberDiscovered() {
 		// leader's endpoint, which rediscovers the pair.
 		if d.Host != "" && d.Port != 0 && (entry.Host != d.Host || entry.Port != d.Port) {
 			entry.Host, entry.Port = d.Host, d.Port
+			entryChanged = true
+		}
+		if d.Features != 0 && entry.Features != d.Features {
+			entry.Features = d.Features
+			entryChanged = true
+		}
+		if d.SF != 0 && entry.SF != d.SF {
+			entry.SF = d.SF
+			entryChanged = true
+		}
+		if d.Auth != device.AuthNone && entry.Auth != d.Auth {
+			entry.Auth = d.Auth
+			entryChanged = true
+		}
+		if members := memberEntries(d.Members); len(members) > 0 && !membersEqual(entry.Members, members) {
+			entry.Members = members
 			entryChanged = true
 		}
 		if entry.LastSeen.IsZero() || now.Sub(entry.LastSeen) >= lastSeenWriteEvery {
@@ -1668,6 +1721,41 @@ func (e *Engine) saveRegistry() {
 	}
 }
 
+// memberEntries caches a stereo pair's speaker addresses and capability
+// fields in the registry so the next launch can connect without discovery.
+func memberEntries(members []device.Device) []receivers.Member {
+	if len(members) == 0 {
+		return nil
+	}
+	out := make([]receivers.Member, 0, len(members))
+	for _, m := range members {
+		out = append(out, receivers.Member{
+			ID:       m.ID,
+			Name:     m.Name,
+			Host:     m.Host,
+			Port:     m.Port,
+			Model:    m.Model,
+			AirPlay2: m.AirPlay2,
+			Features: m.Features,
+			SF:       m.SF,
+			Auth:     m.Auth,
+		})
+	}
+	return out
+}
+
+func membersEqual(a, b []receivers.Member) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // rebuildTargets re-projects the registry and discovery onto the row lists.
 // Presentation rules live in receivers; the engine supplies inputs.
 func (e *Engine) rebuildTargets() {
@@ -1692,6 +1780,11 @@ func receiverHosts(reg receivers.Registry) []string {
 	for _, entry := range reg.Entries {
 		if host := strings.TrimSpace(entry.Host); host != "" {
 			hosts = append(hosts, host)
+		}
+		for _, m := range entry.Members {
+			if host := strings.TrimSpace(m.Host); host != "" {
+				hosts = append(hosts, host)
+			}
 		}
 	}
 	return hosts
@@ -1858,6 +1951,8 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	e.capture = res.src
 	e.captureRunning = true
 	e.captureError = ""
+	e.captureErrorLogged = ""
+	e.captureErrorLoggedAt = time.Time{}
 	stats := res.src.Stats()
 	e.captureRate = stats.Rate
 	if e.level != nil {
@@ -1903,9 +1998,18 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 	}
 	if info.err != nil {
 		e.captureError = info.err.Error()
-		e.logf("capture error: %v", info.err)
+		now := e.now()
+		// A missing device retries on the capture goroutine; log the first
+		// occurrence and then at most once a minute, not on every retry.
+		if e.captureErrorLogged != e.captureError || now.Sub(e.captureErrorLoggedAt) >= time.Minute {
+			e.logf("capture error: %v", info.err)
+			e.captureErrorLogged = e.captureError
+			e.captureErrorLoggedAt = now
+		}
 	} else {
 		e.captureError = ""
+		e.captureErrorLogged = ""
+		e.captureErrorLoggedAt = time.Time{}
 	}
 	e.publish()
 }

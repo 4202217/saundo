@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # AirPlay 2 wire protocol
 
@@ -93,7 +93,7 @@ Order (a wrong order usually produces "connected but silent" or a drop after 30 
 3. The response contains `eventPort`.
 4. Connect the event channel (§5); the receiver initiates the reverse connection.
 5. `RECORD` with an empty body and standard RTSP headers; it goes after session SETUP and before stream SETUP.
-6. On a PTP session, send SETPEERS and wait for the clock to be ready (§7) before the stream SETUP.
+6. On a PTP session, SETPEERS is a no-op; activate the PTP follower as soon as RECORD is answered and wait for the clock to be ready (§7) before the stream SETUP.
 7. `SETUP` stream with the ALAC plist (table below).
 8. The response provides `dataPort` and `controlPort`. It may also carry `arrivalToRenderLatencyMs`, the receiver's own arrival-to-render latency in milliseconds. The value is diagnostic; it is not the sender's presentation latency and is not added to it. Do not send another RECORD; start streaming.
 
@@ -145,7 +145,7 @@ Also send `POST /feedback RTSP/1.0` with `CSeq`, `User-Agent`, `DACP-ID`, `Activ
 - AirPlay 2: every **2 seconds** (pyatv `FEEDBACK_INTERVAL`, verified against HomePod 27).
 - AirPlay 1: one probe, then every 25 seconds while the receiver answers 200.
 
-Feedback is not the keep-alive; the event channel is. Implement both.
+Feedback is not the keep-alive; the event channel is. Implement both. The AP2 `/feedback` response body is a 55-byte bplist containing `{"streams": []}` on HomePod 27.2; it carries no queue, late, or underrun telemetry. Use the sender's own counters and the stream SETUP's `arrivalToRenderLatencyMs` for diagnostics.
 
 ## 6. RTP streaming
 

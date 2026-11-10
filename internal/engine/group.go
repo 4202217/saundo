@@ -10,6 +10,7 @@ import (
 	"saundo/internal/airplay/ptp"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/ring"
+	"saundo/internal/receivers"
 )
 
 // groupTransport runs one AirPlay 2 session per member of a stereo pair. A
@@ -107,6 +108,9 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		idx := i
 		s := sender.New(host, g.memberEvents(idx), e.senderLog)
 		s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
+		entry, _ := e.reg.Get(d.ID)
+		s.SetDuplicates(receivers.DuplicatesFor(entry))
+		s.SetPrefill(2)
 		s.AttachRing(memberRing)
 		s.SetStartGate(gate)
 		if d.StereoID != "" {
