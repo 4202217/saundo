@@ -147,6 +147,10 @@
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
   "themeDark": "深色",
+  "settingsIconStyle": "接收器图标",
+  "settingsIconStyleDesc": "默认使用实心图标。",
+  "iconStyleFilled": "实心",
+  "iconStyleLine": "线性",
   "settingsAbout": "关于",
   "settingsAboutBrand": "声渡 · Saundo",
   "settingsAutoUpdate": "自动检查更新",
@@ -472,5 +476,5 @@
   "versionLocalTag": "本地构建",
   "settingsShowInPanel": "托盘面板中显示",
   "settingsFlyoutPopover": "托盘面板气泡样式",
-  "settingsFlyoutPopoverDesc": "以系统气泡样式显示托盘面板；关闭时保持圆角。"
+  "settingsFlyoutPopoverDesc": "关闭时保持应用默认的圆角样式。"
 }

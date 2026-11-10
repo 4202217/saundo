@@ -59,6 +59,7 @@ func previewApp() *App {
 		appIDs:            []string{"0", "1234"},
 		appChoice:         locales.CaptureAllSystem(),
 		nameDraft:         "声渡",
+		iconStyle:         settings.IconStyleFilled,
 		latency:           200,
 		latencyMode:       "low",
 		latencyCustom:     700,
@@ -187,7 +188,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		page settingsPage
 		want []string
 	}{
-		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
+		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观", "接收器图标", "实心", "线性"}},
 		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复。"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
@@ -1194,6 +1195,62 @@ func TestDeviceIconFollowsModel(t *testing.T) {
 		if got := deviceIcon(tc.model); got != tc.want {
 			t.Errorf("deviceIcon(%q) is not the expected icon", tc.model)
 		}
+	}
+}
+
+func TestIconStylePicksGlyphSet(t *testing.T) {
+	if got := deviceIconFor(settings.IconStyleLine, "AudioAccessory5,1", false); got != iconSpeaker {
+		t.Fatal("the line style must keep the shipped speaker glyph")
+	}
+	if got := deviceIconFor(settings.IconStyleFilled, "AudioAccessory5,1", false); got == iconSpeaker {
+		t.Fatal("the filled style must use the system glyph set")
+	}
+}
+
+func TestFilledIconStyleDrawsStereoPairs(t *testing.T) {
+	one := deviceIconFor(settings.IconStyleFilled, "AudioAccessory5,1", false)
+	pair := deviceIconFor(settings.IconStyleFilled, "AudioAccessory5,1", true)
+	if one == pair {
+		t.Fatal("a stereo pair should use its own glyph")
+	}
+}
+
+func TestSettingsIconStyleRowIsPresent(t *testing.T) {
+	a := previewApp()
+	a.page = pageGeneral
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsIconStyle(),
+		locales.SettingsIconStyleDesc(),
+		locales.IconStyleFilled(),
+		locales.IconStyleLine(),
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("icon style row is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+}
+
+func TestIconStyleChoosesFromTheRow(t *testing.T) {
+	a := previewApp()
+	a.sets = settings.NewStoreAt(filepath.Join(t.TempDir(), "settings.json"))
+	a.page = pageGeneral
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	tt.Scroll(600, 300, 0, 120)
+	tt.Frame()
+	if err := tt.Click(locales.IconStyleLine()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.iconStyle != settings.IconStyleLine {
+		t.Fatalf("app style = %q, want line", a.iconStyle)
+	}
+	if a.cfg.IconStyle != settings.IconStyleLine {
+		t.Fatalf("config style = %q, want line", a.cfg.IconStyle)
+	}
+	if got := a.sets.Load().IconStyle; got != settings.IconStyleLine {
+		t.Fatalf("saved style = %q, want line", got)
 	}
 }
 
