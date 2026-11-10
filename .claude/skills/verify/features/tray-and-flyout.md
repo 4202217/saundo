@@ -56,10 +56,12 @@ powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/
 powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
 ```
 
-Find the icon through UI Automation: the overflow flyout names the button
-by its first tooltip, which is the localized brand (`声渡` under zh-CN,
-`Saundo` under en), not `saundo`. Invoke it and watch the main window handle
-appear/vanish (`MyGoFlyoutShadow`). A second launch must exit 0 and leave
+Find the icon through UI Automation: the tray button's class is
+`SystemTray.NormalButton` and its accessible name is the localized brand
+followed by the live tooltip (`声渡 声渡 · 正在通过 HomePods 播放` under
+zh-CN, `Saundo ...` under en), so match the class and a name prefix, not an
+exact `saundo`. Invoke it and watch the main window handle appear/vanish
+(`MyGoFlyoutShadow`). A second launch must exit 0 and leave
 one process —
 checking `$?` after launching `bin/saundo.exe` documents the handover. Animation frames
 are pinned headless by `TestTrayAnimationFaces`; the app toggle by
@@ -83,9 +85,10 @@ outside click and a UIA invoke, not an Escape press.
 - The flyout is frameless and transparent: a WS_POPUP/WS_EX_TOOLWINDOW
   window drawn through DirectComposition, not WS_EX_LAYERED. A plain
   screen grab can miss it; use PrintWindow (capture-window.ps1), and expect
-  class `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`) — a
-  capture reporting ~420 px (or a 1.25× multiple of it under DPI
-  virtualization) is correct; 480 was an old design value. On macOS the
+  class `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`); the
+  script is DPI-aware, so it captures the full window at the monitor scale
+  (1050 px at 250%), not a cropped DIP-sized bitmap. 480 was an old design
+  value. On macOS the
   rounded flyout is a nonactivating panel, so an open settings window does
   not come forward (`flyout_window.go`).
 - On Windows `showWindow` calls `mygo.App.Focus()` through `focus_other.go`;

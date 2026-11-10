@@ -87,7 +87,7 @@ public class WinEnum {
 "@
 $wins = [WinEnum]::Of([uint32]$p.Id)
 $flyout = $wins | Where-Object { $_ -like "MyGoFlyoutShadow|*" }
-$settings = $wins | Where-Object { $_ -like "MyGoWindow|*saundo*" }
+$settings = $wins | Where-Object { $_ -like "MyGoWindow|*" }
 if ($flyout) {
     Line "OK" ("flyout window: {0}" -f ($flyout -join "; "))
 } else {

@@ -37,8 +37,8 @@ gates still apply.
 - Read the owning files: `ui_kit.go` for shared widgets, `flyout.go`,
   `settings_window.go`, `receivers_page.go`, `lamp.go`, the dialogs, and the
   tests that pin the strings.
-- The live app: `.claude/skills/verify/SKILL.md`. The capture is
-  DPI-virtualized and can crop the right edge; the headless matrix is the full
+- The live app: `.claude/skills/verify/SKILL.md`. The capture script is
+  DPI-aware and records the full window; the headless matrix is the full
   visual record.
 
 ## 2. Write the findings
@@ -126,7 +126,7 @@ user-visible result.
   row. Use the `locales` accessor or assert the absence of the old string.
 - `catalog_gen.go` is generated. Edit the JSON, then run
   `go tool mygo generate cmd/saundo`.
-- The live capture is DPI-virtualized; the headless matrix is the full visual.
+- The live capture script is DPI-aware; the headless matrix is the full visual.
 - `mingw32-make` needs `$HOME/mingw64/bin` on PATH. The wrapper at
   `$HOME/bin/mingw32-make` covers a shell that started before the PATH change.
 - The preview matrix covers zh-CN and en; check both, light and dark.
