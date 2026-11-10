@@ -167,7 +167,13 @@ func (s *Sender) onPairingResponse(code int, headers map[string]string, body str
 	if s.pairStage == pairAP2Record {
 		s.info("AP2 RECORD reply (%d), proceeding to stream SETUP", code)
 		if s.ptpClock != nil {
-			s.sendSetPeers()
+			// SETPEERS is a no-op on a PTP session, and the receiver can take
+			// hundreds of milliseconds to answer it. Activate the follower now
+			// and let the PTP readiness gate the stream SETUP directly.
+			s.ptpClock.Activate()
+			s.pairStage = pairAP2WaitPTP
+			s.ptpWaitUntil = s.now().Add(30 * time.Second)
+			s.timeout.arm(s.now())
 			return
 		}
 		s.sendAP2SetupStream()

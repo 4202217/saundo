@@ -51,22 +51,49 @@ const (
 	groupKeyPrefix  = "stereo:"
 )
 
+// Member is one speaker of a remembered stereo pair. Discovery supplies the
+// addresses; keeping them lets the next launch connect the pair without
+// waiting for mDNS.
+type Member struct {
+	ID       string      `json:"id,omitempty"`
+	Name     string      `json:"name,omitempty"`
+	Host     string      `json:"host,omitempty"`
+	Port     uint16      `json:"port,omitempty"`
+	Model    string      `json:"model,omitempty"`
+	AirPlay2 bool        `json:"airPlay2,omitempty"`
+	Features uint64      `json:"features,omitempty"`
+	SF       uint64      `json:"sf,omitempty"`
+	Auth     device.Auth `json:"auth,omitempty"`
+}
+
 // Entry is one receiver's persisted configuration. Key is the identity the
 // engine, the UI rows, and the credential store share, and it never changes:
 // the deviceid for a discovered receiver, "stereo:<tsid>" for a remembered
 // stereo pair, "m:<uuid>" for a manual receiver.
 type Entry struct {
-	Key         string `json:"key"`
-	Kind        Kind   `json:"kind"`
-	Type        Type   `json:"type,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Host        string `json:"host,omitempty"`
-	Port        uint16 `json:"port,omitempty"`
-	Model       string `json:"model,omitempty"`
-	AirPlay2    bool   `json:"airPlay2,omitempty"`
-	Hidden      bool   `json:"hidden,omitempty"`
-	AutoConnect bool   `json:"autoConnect,omitempty"`
-	DelayMS     int    `json:"delayMs,omitempty"`
+	Key      string `json:"key"`
+	Kind     Kind   `json:"kind"`
+	Type     Type   `json:"type,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Host     string `json:"host,omitempty"`
+	Port     uint16 `json:"port,omitempty"`
+	Model    string `json:"model,omitempty"`
+	AirPlay2 bool   `json:"airPlay2,omitempty"`
+	// Features and SF are the last advertised bitfields, cached so a launch
+	// can route a remembered receiver to PTP or NTP without discovery.
+	Features uint64      `json:"features,omitempty"`
+	SF       uint64      `json:"sf,omitempty"`
+	Auth     device.Auth `json:"auth,omitempty"`
+	// Members caches a stereo pair's speaker addresses so the next launch can
+	// connect without waiting for discovery. Empty for a single receiver.
+	Members     []Member `json:"members,omitempty"`
+	Hidden      bool     `json:"hidden,omitempty"`
+	AutoConnect bool     `json:"autoConnect,omitempty"`
+	DelayMS     int      `json:"delayMs,omitempty"`
+	// LastRetransmits and LastSentBlocks drive the next session's duplicate
+	// count: clean sessions get one copy, lossy ones two or three.
+	LastRetransmits uint64 `json:"lastRetransmits,omitempty"`
+	LastSentBlocks  uint64 `json:"lastSentBlocks,omitempty"`
 	// LastSeen is the last time discovery saw this receiver. A remembered
 	// stereo group unseen for GroupGrace is pruned because a split and
 	// re-merge mints a new tsid, so the old key never returns.
@@ -170,6 +197,92 @@ func (e Entry) DisplayName() string {
 		return e.Host
 	}
 	return e.Key
+}
+
+// CachedDevice builds the wire description of a remembered receiver from its
+// persisted fields, so a launch can connect before discovery answers. The
+// bool is false when the entry has no usable address.
+func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
+	if e.Host == "" || e.Port == 0 {
+		return device.Device{}, false
+	}
+	if e.IsGroup() && len(e.Members) == 0 {
+		// The first sighting of a pair has only the leader's address. Wait
+		// for discovery instead of connecting a lone speaker by mistake.
+		return device.Device{}, false
+	}
+	model := e.Model
+	if model == "" {
+		model = manualModel(TypeAirPlay2)
+	}
+	auth := e.Auth
+	if auth == device.AuthNone {
+		switch {
+		case hasPassword:
+			auth = device.AuthHAPPassword
+		case e.AirPlay2:
+			auth = device.AuthHAPTransient
+		}
+	}
+	d := device.Device{
+		ID:       e.Key,
+		Name:     e.DisplayName(),
+		Host:     e.Host,
+		Port:     e.Port,
+		Model:    model,
+		Features: e.Features,
+		SF:       e.SF,
+		AirPlay2: e.AirPlay2,
+		Auth:     auth,
+		Family:   device.FamilyFor(model, ""),
+		Online:   true,
+	}
+	if e.IsGroup() && len(e.Members) > 0 {
+		d.StereoID = strings.TrimPrefix(e.Key, groupKeyPrefix)
+		d.Members = make([]device.Device, 0, len(e.Members))
+		for _, m := range e.Members {
+			mm := m.Model
+			if mm == "" {
+				mm = model
+			}
+			ma := m.Auth
+			if ma == device.AuthNone {
+				ma = auth
+			}
+			d.Members = append(d.Members, device.Device{
+				ID:       m.ID,
+				Name:     m.Name,
+				Host:     m.Host,
+				Port:     m.Port,
+				Model:    mm,
+				Features: m.Features,
+				SF:       m.SF,
+				AirPlay2: m.AirPlay2,
+				Auth:     ma,
+				Family:   device.FamilyFor(mm, ""),
+				Online:   true,
+			})
+		}
+	}
+	return d, true
+}
+
+// DuplicatesFor picks the extra audio copies the next session should send.
+// A first session or a lossy one gets one extra copy, a clean one none, and
+// a session above 3% retransmits gets two.
+func DuplicatesFor(e Entry) int {
+	if e.LastSentBlocks == 0 {
+		return 1
+	}
+	ratio := float64(e.LastRetransmits) / float64(e.LastSentBlocks)
+	switch {
+	case ratio > 0.03:
+		return 2
+	case ratio > 0:
+		return 1
+	default:
+		return 0
+	}
 }
 
 // ClampedDelay brings a stored or user-entered delay into 0..MaxDelayMS.

@@ -118,6 +118,9 @@ type Events struct {
 	// latency in milliseconds from its stream SETUP response. An absent field
 	// is not reported.
 	ReceiverLatencyChanged func(ms int)
+	// FeedbackBody reports the body of a /feedback reply. The receiver may
+	// include queue or underrun telemetry; an empty body is not an error.
+	FeedbackBody func([]byte)
 }
 
 // PTPClock is the receiver-synchronized clock a HomePod on software 27
@@ -245,8 +248,14 @@ type Sender struct {
 	lateTicks   uint64
 	underruns   uint64
 	sentBlocks  uint64
-	lastSync    time.Time
-	wifi        WiFiMetrics
+	// duplicates is the number of extra copies of each audio packet. Zero is
+	// the production default; the lossy-network probe drives it.
+	duplicates int
+	// prefill sends this many extra audio packets at the start epoch, filling
+	// the receiver's buffer before the first network jitter arrives.
+	prefill  int
+	lastSync time.Time
+	wifi     WiFiMetrics
 
 	rtspConnected bool
 	udpBound      bool
@@ -503,6 +512,35 @@ func (s *Sender) SetLatency(ms int) {
 		ms = 2000
 	}
 	s.latencyMS = ms
+}
+
+// setDuplicates sets how many extra copies of each audio packet go on the
+// wire. The receiver dedups by RTP sequence, so the copies are idempotent.
+// Zero is the production default; the lossy-network probe drives it.
+func (s *Sender) setDuplicates(n int) {
+	if n < 0 {
+		n = 0
+	}
+	if n > 7 {
+		n = 7
+	}
+	s.duplicates = n
+}
+
+// SetDuplicates sets how many extra copies of each audio packet go on the
+// wire. One extra copy is the normal weak-network safety net.
+func (s *Sender) SetDuplicates(n int) { s.setDuplicates(n) }
+
+// SetPrefill sends n extra audio packets as playback begins, so the receiver
+// has a few packets buffered before the first jittered packet arrives.
+func (s *Sender) SetPrefill(n int) {
+	if n < 0 {
+		n = 0
+	}
+	if n > 8 {
+		n = 8
+	}
+	s.prefill = n
 }
 
 // ReceiverLatencyMS returns the receiver's reported arrival-to-render latency

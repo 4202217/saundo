@@ -153,6 +153,12 @@ func (s *Sender) sendSetPeers() {
 		return
 	}
 	s.pairStage = pairAP2SetPeers
+	if s.ptpClock != nil {
+		// SETPEERS is a no-op on a PTP session, and the receiver's clock is
+		// already running. Activate the follower with the request instead of
+		// waiting for the reply, so its three exchanges overlap the round trip.
+		s.ptpClock.Activate()
+	}
 	s.sendAP2RTSP("SETPEERS", s.rtspURI(), "application/x-apple-binary-plist", body)
 }
 
