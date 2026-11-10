@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-10 -->
+<!-- reviewed-through: 2026-11-11 -->
 
 # Implementation overview
 
@@ -77,7 +77,7 @@ flyout cannot move the preview away from the top display.
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; disabled on darwin until a signed mac feed exists), the tray flyout window creation (`flyout_window.go`), tray and menu icons, receiver glyphs (the filled set in `icons_sf_gen.go`), the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
 | `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy, the capture retry backoff, snapshots |
-| `internal/discovery` | mDNS browse plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking, and local marking when an advertised address belongs to this host (`device.Device.Local`) |
+| `internal/discovery` | mDNS browse through a logger that drops the client's repeated IPv6 bind failures, plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking, and local marking when an advertised address belongs to this host (`device.Device.Local`) |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), the macOS Core Audio process tap aggregated with the output device (`capture_darwin.go`) and its device mute (`mute_darwin.go`), format conversion (`convert.go`), the 30-second device-retry backoff, and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/darwin` | The macOS FFI layer, pure Go through purego: the Objective-C bridge (`objc.go`), the login-Keychain SecItem calls (`keychain.go`), Core Audio bindings (`coreaudio.go`), and LaunchServices app identity (`appinfo.go`). Serves the darwin leaves only; the UI keeps to mygo |
 | `internal/audio/ring` | Bounded overwrite-oldest SPSC `Buffer` and multi-sink `Fanout` (`KeepNewest` trim, drop counters) |
@@ -89,7 +89,7 @@ flyout cannot move the preview away from the top display.
 | `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
 | `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON on Windows (`dpapi_windows.go`), Keychain-master-key AES-256-GCM on macOS (`dpapi_darwin.go`) |
-| `internal/airplay/device` | Receiver description, auth method, receiver family, and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
+| `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
 | `internal/lamp` | Six three-color palette templates whose 600×600 carriers are flat color fields, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the local-receiver rule (forced hidden, no auto-connect), the manual-receiver spec, the settings migration, the cached stereo members and cached-device builder, and the duplicate policy. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) with shell-resolved app names and icons (`appidentity_windows.go`); macOS reads the system session through the vendored MediaRemote adapter (`nowplaying_darwin.go`, `native/mediaremote-adapter`) with LaunchServices identity; transport commands (per-platform build split) |
@@ -102,7 +102,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, and the receiver-management commands
+`SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, `SetTrayAnimation`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
@@ -123,8 +123,9 @@ engine calls it on the event loop and folds it once per publish. The engine
 owns the group rules: Wi-Fi, late ticks, and buffer take the worst member,
 resends and underruns sum, the overflow figure sums the members' session
 drops, and stability uses the max drop the connection card already shows. A
-stereo pair's clock reads PTP master and its offset and drift show —. The
-engine folds the model on each snapshot publish; no UI consumes it yet. The
+stereo pair reports the oldest member's sync age, and `SyncValid` is false
+when any member has not sent a timing packet. The engine folds the model on
+each snapshot publish; no UI consumes it yet. The
 Wi-Fi object is the
 stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and
 `wifiBand` 1/2/3 for 2.4/5/6 GHz); it is a device-side snapshot that can be up
@@ -142,8 +143,9 @@ The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
 settings survive the pair going offline. Exactly one entry carries
 `AutoConnect`; at launch the engine connects that target once, immediately
-for a manual row and on the first snapshot that reports a discovered one
-online. A user connect or disconnect ends the launch wait, and a failed
+for a manual row or a remembered row with a cached address, members,
+features, and auth, and otherwise on the first snapshot that reports the
+discovered row online. A user connect or disconnect ends the launch wait, and a failed
 launch falls into the ordinary reconnect policy. The global
 `settings.AutoConnect` flag is a migration input only.
 
@@ -208,7 +210,7 @@ mode.
 
 All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saundo/` on macOS:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to DPAPI.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, cached member addresses, feature/auth bits, the last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM.

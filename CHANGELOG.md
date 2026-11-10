@@ -5,6 +5,60 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.6.1 - 2026-11-11
+
+### Added
+
+- Ambient light idle standby. After the chosen period without playback
+  (Never, 1, 5, 10, or 30 minutes; 30 by default) the HomePod top display
+  turns off, and the first sound turns it on again. The tray panel shows a
+  Standby chip, and its footer says the display wakes when sound plays.
+- The connection page health card. It shows the receiver's own reported
+  processing time and the session's stability. A stereo pair reports the
+  higher member's time; a receiver that reports none reads Not reported.
+  Latency mode and receiver processing measure different stages and are
+  never added.
+- The filled receiver glyphs for HomePod, HomePod mini, Apple TV, AirPort
+  Express, and the Mac laptop, mini, studio, and desktop forms. A Mac's form
+  follows its model identifier.
+- Session takeover. When another device takes over the receiver, the app
+  shows Taken over by another device and offers Reconnect instead of
+  reconnecting in a loop.
+- A receiver that runs on this computer is never a target. It appears in the
+  hidden group with a Local chip, is never auto-connected, and the app
+  refuses to connect to it.
+- The diagnostic log moves to the About page, which opens it over the
+  settings window.
+
+### Changed
+
+- Launch is faster. The receiver group, its features, and its authentication
+  are cached, so auto-connect starts without waiting for discovery.
+- The sender chooses one, two, or three packet copies from the last
+  session's retransmit rate and sends two prefill packets, which cuts
+  retransmits on a lossy link.
+- The macOS tray panel style setting is removed; the rounded flyout is the
+  only style.
+- The receiver password row appears only for a Mac, a manual receiver, or a
+  row with a saved password that can still be cleared; a PIN-paired HomePod
+  or Apple TV with no saved password hides it.
+- The tray panel footer carries the face, the phase, and the update chip.
+- Settings row hints carry no final period, and the language and appearance
+  subtitles are shorter.
+
+### Fixed
+
+- The update channel stays on the chosen setting after a restart instead of
+  reverting to Beta.
+- A HomePod that uses an AirPlay password keeps the HomePod profile; the
+  receiver profile follows the receiver's family, not its pairing method.
+- A capture device that becomes invalid retries with growing delays and logs
+  at most once a minute instead of every two seconds.
+- The stability readout counts only drops from the current session, so an
+  idle capture overflow no longer marks a clean session as Stuttering.
+- On a network without IPv6, discovery no longer floods the log with bind
+  failures.
+
 ## 0.6.0 - 2026-11-09
 
 ### Added

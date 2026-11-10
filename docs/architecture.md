@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-10 -->
+<!-- reviewed-through: 2026-11-11 -->
 
 # saundo Architecture and Technology Selection
 
@@ -37,9 +37,9 @@ Multi-room stereo pairs, application-level capture, and an AirPlay 1 fallback ar
 | TLV8 | In-house | Standard library | HAP pairing, 255-byte fragmentation |
 | bplist | In-house | Standard library | Only the types used by AirPlay SETUP |
 | Audio codec | In-house uncompressed ALAC | Standard library | No full ALAC encoder needed |
-| Discovery | hashicorp/mdns | MIT | Actively maintained; Windows DNS-SD fallback |
+| Discovery | hashicorp/mdns | MIT | Actively maintained; multicast browse plus `miekg/dns` directed queries over the ARP table |
 | Capture | In-house WASAPI and Core Audio bindings | Standard library | WASAPI loopback on Windows; Core Audio process tap on macOS. Reference AirFlash `wasapi.rs` and mygo's WASAPI output |
-| Timing | NTP + PTP follower | Standard library | NTP for Apple TV and macOS; PTP follower for HomePod software 27, which keeps its own grandmaster |
+| Timing | NTP + PTP follower | Standard library | NTP for Apple TV; PTP follower for HomePod software 27 and macOS, which keep their own grandmaster; the sender is PTP master for stereo pairs |
 | Credentials | DPAPI on Windows, Keychain on macOS | OS API | DPAPI through syscall; Keychain through purego |
 
 Rejected:
@@ -129,14 +129,15 @@ GPLv3+ (dual-licensed with a commercial option), last commit 2026-10-29. It uses
                                     │ HomePod / ATV   │
                                     └─────────────────┘
 
-Cross-cutting: Settings (JSON), Receiver registry (JSON), Credentials (DPAPI), Diagnostics (logs and metrics)
+Cross-cutting: Settings (JSON), Receiver registry (JSON), Credentials (OS secret store), Diagnostics (logs and metrics)
 ```
 
 The diagram shows the Windows leaves. macOS replaces WASAPI with the Core Audio process tap, DPAPI with the Keychain, and the NSIS installer with a dmg; the sender, engine, and UI above the seams are the same.
 
-There are three concurrency roles:
+There are four concurrency roles:
 
 - The mygo UI main thread.
+- The engine goroutine, which owns session lifecycle, timers, the settings merge, and snapshot publishing.
 - The sender event-loop goroutine, which owns all protocol sockets and timers.
 - The capture goroutine, which owns WASAPI capture and ring-buffer writes.
 
