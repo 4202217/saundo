@@ -29,9 +29,10 @@ live state:
   device and no other app takeover. The 100 ms soak is withdrawn: the
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
   mini pair breaks up below roughly 200 ms whatever the sender.
-- Local output mute in the live app: the engine session path passed
-  (`TestLiveMuteLocal`); the settings-window switch itself has only headless
-  coverage.
+- Local output mute: the connection page showed the switch on with
+  本机已静音；断开或退出时恢复 during the 2026-11-11 live pass, and the
+  engine session path passed (`TestLiveMuteLocal`); toggling the switch
+  itself has only headless coverage.
 - A two-computer takeover with both apps auto-reconnecting: the second
   should show the takeover state, the first should keep streaming, and
   neither should re-enter the reconnect loop. The single-machine two-session
@@ -85,8 +86,6 @@ live state:
   against both HomePods (`TestLiveUnicastQuery`), but the app's first sighting
   of the re-merged group and the stale-group prune are pinned by headless
   engine tests only.
-- A live visual look at the connection health card: the rebuilt app logged
-  the pair's 69 ms, but the open settings page was not captured.
 - A live HomePod gated by an AirPlay password: the family split is pinned
   headlessly, but no password-protected HomePod has been configured.
 - Ambient light, off behavior: whether audible audio keeps playing while
@@ -724,10 +723,29 @@ and the verification map is corrected.
   the missing takeover render (added). No P0 or terminology finding remains.
 - **Verification skill audit (2026-11-11).** Six feature pages were read
   from source and corrected in `51312ab`; `go run ./scripts/verify-map`
-  prints "map ok". The live pass was not driven: the running instance was
-  streaming to the HomePods, and a drive would interrupt the session. The
-  maintainer's pre-release test covers the build; the gap stays in the
-  pending list.
+  prints "map ok".
+- **Live pass (2026-11-11).** The 0.6.1 build (pid 62152, version 0.6.1)
+  was launched in the tray and driven through UI Automation. Observed: the
+  tray button's live accessible name, the flyout opening and Escape
+  dismissal, the streaming flyout with the HomePods stereo pair, the filled
+  glyph, volume, the 200 ms latency row, the 无媒体 chip, and the footer;
+  the settings window at its 640 DIP minimum on 通用, 连接, 接收器, 音频,
+  氛围灯, 关于, and 更新; the connection health card live (接收器处理
+  最高 69 ms, 稳定性 良好, 本次会话); the diagnostic log dialog with its
+  200 lines and 复制/关闭; the ambient standby row at 640 (10 分钟, the
+  copy fits); and 更新 reading 0.6.1 · 稳定版 ✓ 已是最新. A 断开连接 then
+  连接 cycle stopped both members and restored both streams. Not driven:
+  the pairing dialogs, volume and latency changes, the update install, the
+  standby dark state, takeover, the tray menu, and language switching.
+  Evidence: `.audit/release-0.6.1/live/` (`doctor.txt`, the flyout and page
+  PNGs, `log.txt`).
+- **Harness fixes (2026-11-11).** The live pass exposed three verification
+  harness defects, fixed and re-run here: the doctor matched the settings
+  window by an English title and missed `设置 · 声渡` (now by class); the
+  capture script was DPI-virtualized and cropped a flyout at monitor scale
+  (now DPI-aware, 1050x1048 px from a 420 DIP panel); and the tray page
+  described an exact brand accessible name, while the button's name is the
+  brand plus the live tooltip (now matched by class and prefix).
 - **Maintainer pre-release test (2026-11-11).** The 0.6.1 release request is
   the maintainer's confirmation that the build was tested on their own PC.
 - **Draft verification (2026-11-11).** The release workflow (run

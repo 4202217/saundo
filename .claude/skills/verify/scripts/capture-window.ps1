@@ -13,6 +13,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Make this process DPI-aware so GetWindowRect and PrintWindow use physical
+# pixels. Without it a 125% display captures a 420 DIP panel into a 420 px
+# bitmap and crops the right and bottom of the window.
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class WinCapDpi {
+    [DllImport("shcore.dll")] public static extern int SetProcessDpiAwareness(int value);
+}
+"@
+[WinCapDpi]::SetProcessDpiAwareness(2) | Out-Null
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
 using System;
