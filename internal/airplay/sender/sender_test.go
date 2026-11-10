@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"saundo/internal/airplay/creds"
-	"saundo/internal/airplay/crypto"
 	"saundo/internal/airplay/device"
 	raopio "saundo/internal/airplay/io"
 	"saundo/internal/audio/ring"
@@ -159,11 +158,10 @@ func TestAP2TransientStreamsAndKeepsAlive(t *testing.T) {
 	}
 }
 
-func TestStereoGroupSessionCarriesGroupUUIDAndAllTimingPeers(t *testing.T) {
+func TestStereoGroupSessionCarriesGroupUUIDAndPTPTimeline(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	const tsid = "00000000-0000-4000-8000-000000000000"
 	r.sender.SetGroupUUID(tsid)
-	r.sender.SetTimingPeers([]string{"192.0.2.10", "192.0.2.11"})
 	r.sender.SetPTPClock(readyClock{})
 	rb, _ := fillRing(44100)
 	r.sender.AttachRing(rb)
@@ -174,19 +172,34 @@ func TestStereoGroupSessionCarriesGroupUUIDAndAllTimingPeers(t *testing.T) {
 	if got := r.rx.sessionSetup["groupUUID"]; got != tsid {
 		t.Fatalf("groupUUID = %v, want %q", got, tsid)
 	}
-	root, err := crypto.Decode(r.rx.setPeersBody)
-	if err != nil {
-		t.Fatalf("SETPEERS body: %v", err)
+	// SETPEERS is a no-op on a PTP session; the receiver's grandmaster
+	// supplies the timeline, so the sender must not spend a round trip on it.
+	if len(r.rx.setPeersBody) != 0 {
+		t.Fatalf("unexpected SETPEERS on a PTP session: % x", r.rx.setPeersBody)
 	}
-	got, _ := root.([]any)
-	want := []string{"192.0.2.10", "192.0.2.11", "192.168.1.10"}
-	if len(got) != len(want) {
-		t.Fatalf("SETPEERS = %v, want %v", got, want)
+}
+
+func TestDuplicateCopiesAndPrefill(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.sender.SetDuplicates(1)
+	r.sender.SetPrefill(2)
+	rb, _ := fillRing(44100)
+	r.sender.AttachRing(rb)
+	r.start()
+	requireLaunched(t, r)
+
+	// Two prefilled blocks, two copies each, before the pacer's first tick.
+	if got := len(r.rx.audioSeqs); got != 4 {
+		t.Fatalf("wire packets after prefill = %d, want 4", got)
 	}
-	for i, host := range want {
-		if got[i] != host {
-			t.Fatalf("SETPEERS[%d] = %v, want %q", i, got[i], host)
-		}
+	if got := len(r.rx.audioPkts); got != 2 {
+		t.Fatalf("decoded blocks after prefill = %d, want 2", got)
+	}
+	if r.rx.audioSeqs[0] != r.rx.audioSeqs[1] || r.rx.audioSeqs[2] != r.rx.audioSeqs[3] {
+		t.Fatalf("duplicate sequence numbers = %v", r.rx.audioSeqs)
+	}
+	if r.rx.audioSeqs[0] == r.rx.audioSeqs[2] {
+		t.Fatal("prefilled blocks shared a sequence number")
 	}
 }
 

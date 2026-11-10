@@ -23,6 +23,9 @@ live state:
 
 - Apple TV on-screen PIN pairing and stored-credential reconnect — the
   remaining definition-of-done gap.
+- A 30-minute 100 ms app soak with a stable audio device and no other app
+  takeover. The 5-minute run is clean; the 30-minute run was invalidated by a
+  worktree instance takeover and a remote-audio device invalidation.
 - Local output mute in the live app: the engine session path passed
   (`TestLiveMuteLocal`); the settings-window switch itself has only headless
   coverage.
@@ -106,6 +109,17 @@ live state:
   and the sender artwork tests pin the re-push path, not the receiver side.
 - Ambient light, takeover: another controller taking over the session, and
   whether the light needs clearing.
+
+## Latency, loss, and connect sweep (2026-11-10)
+
+- HomePod R on software 27.2 reported 69 ms `arrivalToRenderLatencyMs` in every session. The sender held 90 and 100 ms presentation latency for 60 seconds with zero retransmits, underruns, or late ticks; 80 ms produced one retransmit in 15 seconds.
+- A lossy wrapper at 100 ms: 3% loss gave 58 retransmits with one copy, 1 with two, and zero at 5% with three; 90 ms at 1% gave 22 with one and one with two; 150 ms at 5% gave 99 with one and three with two.
+- A 20 ms jitter plus 3% loss at 100 ms gave 431 retransmits with one copy and 176 with three; 200 ms with two copies gave 238. Every session stayed streaming with zero sender underruns and late ticks.
+- A two-packet prefill at 80/90 ms under jitter plus loss gave 240/184/260/168 retransmits for one/two copies; clean 80/90 ms stayed at zero. Each prefill session showed one late tick.
+- The AP2 `/feedback` body is `{"streams": []}`; the receiver exposes no queue or underrun telemetry.
+- The cached pair auto-connect reached streaming in 1.92 seconds, down from 3.4 seconds; the 100 ms app session stayed stable, though the room audio was silent and the engine suspended RTP (`audio idle`).
+- A 30-minute app run was invalid after 20:03:22: another worktree instance took over, and at 20:04:07 the remote audio device was invalidated (`0x88890004`), producing 589 capture errors. The 5-minute run before it was clean.
+- `go test ./internal/airplay/sender/ ./internal/receivers/ ./internal/engine/ ./internal/capture/` passed; `mingw32-make build` produced 0.6.0-16-ge0ecf21-dirty.
 
 ## Automated checks
 

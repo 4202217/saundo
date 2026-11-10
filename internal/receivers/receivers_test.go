@@ -554,3 +554,61 @@ func (f *fakePasswords) SavePassword(key, password string) error {
 func (f *fakePasswords) LoadPassword(key string) string  { return f.values[key] }
 func (f *fakePasswords) DeletePassword(key string) error { delete(f.values, key); return nil }
 func (f *fakePasswords) HasPassword(key string) bool     { _, ok := f.values[key]; return ok }
+
+func TestCachedDeviceGroupUsesMembers(t *testing.T) {
+	e := Entry{
+		Key: "stereo:tsid", Name: "Pair", Host: "192.0.2.10", Port: 7000,
+		Model: "AudioAccessory5,1", AirPlay2: true, Features: 1 << 41,
+		Auth: device.AuthHAPTransient,
+		Members: []Member{
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Features: 1 << 41, Auth: device.AuthHAPTransient},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Features: 1 << 41, Auth: device.AuthHAPTransient},
+		},
+	}
+	d, ok := CachedDevice(e, false)
+	if !ok {
+		t.Fatal("CachedDevice rejected a complete group")
+	}
+	if d.StereoID != "tsid" || len(d.Members) != 2 || !d.Online {
+		t.Fatalf("cached group = %+v", d)
+	}
+	if d.Members[1].Host != "192.0.2.11" || d.Members[1].Port != 7000 {
+		t.Fatalf("member R = %+v", d.Members[1])
+	}
+	if d.Features != 1<<41 || d.Auth != device.AuthHAPTransient {
+		t.Fatalf("cached group capabilities = features %#x auth %v", d.Features, d.Auth)
+	}
+}
+
+func TestCachedDeviceGroupWithoutMembersWaits(t *testing.T) {
+	e := Entry{Key: "stereo:tsid", Host: "192.0.2.10", Port: 7000, AirPlay2: true}
+	if d, ok := CachedDevice(e, false); ok {
+		t.Fatalf("group without members produced %+v", d)
+	}
+}
+
+func TestCachedDeviceUsesPasswordAuth(t *testing.T) {
+	e := Entry{Key: "AA:00", Host: "192.0.2.10", Port: 7000, AirPlay2: true}
+	d, ok := CachedDevice(e, true)
+	if !ok || d.Auth != device.AuthHAPPassword {
+		t.Fatalf("cached device = %+v, ok=%v", d, ok)
+	}
+}
+
+func TestDuplicatesFor(t *testing.T) {
+	cases := []struct {
+		sent, retransmits uint64
+		want              int
+	}{
+		{0, 0, 1},
+		{1000, 0, 0},
+		{1000, 1, 1},
+		{1000, 40, 2},
+	}
+	for _, c := range cases {
+		got := DuplicatesFor(Entry{LastSentBlocks: c.sent, LastRetransmits: c.retransmits})
+		if got != c.want {
+			t.Fatalf("DuplicatesFor(sent=%d, retransmits=%d) = %d, want %d", c.sent, c.retransmits, got, c.want)
+		}
+	}
+}

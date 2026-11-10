@@ -16,7 +16,11 @@ import (
 const (
 	openCheckEvery  = 500 * time.Millisecond
 	retryDelayFirst = 200 * time.Millisecond
-	retryDelayMax   = 2 * time.Second
+	// A missing output device is usually a dock, a remote-audio session, or a
+	// driver reload. Retry slowly so a long absence does not flood the log or
+	// spin on WASAPI activation; a device that returns is picked up on the
+	// next attempt.
+	retryDelayMax = 30 * time.Second
 )
 
 var (

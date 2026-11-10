@@ -131,7 +131,9 @@ func (s *Sender) sendAudioPacket() {
 	pkt := make([]byte, 0, len(header)+len(wire))
 	pkt = append(pkt, header[:]...)
 	pkt = append(pkt, wire...)
-	_ = s.io.UDPSend(raopio.UDPAudio, raopio.Endpoint{IP: s.hostIP, Port: s.serverPort}, pkt)
+	for i := 0; i <= s.duplicates; i++ {
+		_ = s.io.UDPSend(raopio.UDPAudio, raopio.Endpoint{IP: s.hostIP, Port: s.serverPort}, pkt)
+	}
 	s.sentBlocks++
 
 	slot := int(s.seq) & (backlogSize - 1)
