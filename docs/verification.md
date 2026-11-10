@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-10 -->
+<!-- reviewed-through: 2026-11-11 -->
 
 # Verification
 
@@ -2030,3 +2030,21 @@ and the verification map is corrected.
   larger blocks first, not a timing tweak.
 - **Not established.** Which receiver-internal buffer underruns, and whether
   larger, compressed blocks would move the floor below 200 ms.
+
+## 2026-11-11 — 0.6.1 UI mockup templates
+
+- **Templates.** Both assets under `.claude/skills/ui-mockup/assets/` now
+  describe the shipped interface. The settings template carries the current
+  language and delay subtitles, no terminal periods on row hints, the
+  shipped mute caveat, and the 150x28 select as its sample language row. The
+  flyout template drops the footer's diagnostic-log button (the log is on the
+  settings About page), adds the idle-standby state (待机 chip, Standby
+  footer), and matches the catalog copy. The height rule is unchanged: 459
+  base, 150 media card, 44 latency row, 90 ambient section, 48 error bar, 53
+  for the expanded grid.
+- **Renders.** 44 frames at `.audit/release-0.6.1/mockups/`: the settings
+  target, normal, and edge states and the flyout idle, streaming, standby,
+  empty, and error states, in zh-CN and English, light and dark, plus the
+  media card and the ambient cover, template, and expanded states. Every
+  frame was inspected for clipping, overflow, and wrapped copy; none was
+  found.
