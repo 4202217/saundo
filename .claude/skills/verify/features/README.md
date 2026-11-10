@@ -14,11 +14,12 @@ page's Gotchas; never weaken the journey to make it pass.
 | [Discovery and connect](discovery-and-connect.md) | Flyout device card | Live app + protocol tests |
 | [Session controls](session-controls.md) | Flyout playback card | Headless UI + live app |
 | [Tray and flyout](tray-and-flyout.md) | Tray icon, panel behavior | Live app |
-| [Settings window](settings-window.md) | `设置 · saundo`, nine pages | Headless UI + live app |
+| [Settings window](settings-window.md) | `设置 · 声渡`, nine pages | Headless UI + live app |
 | [Ambient light](ambient-light.md) | Settings 氛围灯 page, flyout ambient card | Headless UI + live app |
 | [Updates](updates.md) | Settings 更新 page, notes dialog | Headless UI + live app |
 
 Cross-cutting states that touch several features: silence suspend (the pacer
-pauses after 2 s of digital silence), the 3 s streaming-snapshot hold during
-a latency restart, and Reduce Motion (Windows animation effects off) — check
-the relevant page's Gotchas before concluding a bug.
+pauses after 5 s of digital silence), the idle standby that darkens the top
+display after the configured silence threshold, the 3 s streaming-snapshot
+hold during a latency restart, and Reduce Motion (Windows animation effects
+off) — check the relevant page's Gotchas before concluding a bug.

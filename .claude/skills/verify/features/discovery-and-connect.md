@@ -19,7 +19,7 @@
 - Offline marking after about three missed query cycles
   (`staleAfter = 3×interval + timeout`) and pruning after 90 s. Neither
   surface lists an inactive offline remembered row: `Manageable`
-  (`receivers/merge.go:133-146`) drops it, and its saved settings return when
+  (`receivers/merge.go:159-167`) drops it, and its saved settings return when
   it is seen again. The active session's row stays while the engine owns it:
   settings shows `离线`, the flyout shows the disconnect/retry action. The
   offline action is reachable only in the auto-reconnect-off, device-closed
@@ -27,19 +27,33 @@
 - Stereo-group collapse (`tsid`): one row named `HomePods` with the subtitle
   `<model> · 立体声组 2/2`, leader first, member rows hidden, group offline
   unless both members are online.
+- Local receiver: an advertisement whose address belongs to this host is
+  marked Local (`discovery.go:235`, `unicast.go:82`), forced into the hidden
+  group with its auto-connect flag cleared (`merge.go:82-88`), drawn with
+  the 本机 chip and no switch or expander (`receivers_page.go:217-230,335-336`),
+  and never listed in the flyout. The engine refuses to connect it
+  (`engine.go:1204-1208`), the launch auto-connect skips it
+  (`engine.go:1762-1767`), and the sender stops a session whose socket local
+  and peer addresses match (`sender.go:809-815`). A sender and its own
+  receiver would share one audio path and loop.
 - Connect paths by auth kind: HAP transient (fixed PIN `3939`, stops at M4),
   on-screen PIN (配对码 dialog, Apple TV), receiver password (masked dialog on
   first connect, stored per device), legacy FairPlay fail-fast
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  failed connect attempts, then 自动重连 5 次后停止 (`engine.go:258-262`,
-  budget at `:238-239`, give-up message at `:1131`). A receiver that is not
+  failed connect attempts, then 自动重连 5 次后停止 (`engine.go:288-292`,
+  budget at `:259-260`, give-up message at `:1324`). A receiver that is not
   discovered is retried every 5 s without consuming the budget, so a
   receiver that vanishes mid-session does not reach the give-up message.
+- Takeover is terminal: a clean control close during streaming stops the
+  reconnect (`engine.go:1372-1374,1539-1554`), the status reads
+  已被其他设备接管, and the active row offers 重新连接
+  (`flyout.go:272-276`; `app.go:990-992`). A close carrying an error stays
+  retryable.
 - A failed attempt clears its error on the next connect or disconnect
-  (`engine.go:851`, `:1025`), and other online rows stay connectable in the
-  error phase (`flyout.go:251-267`; `TestRowActionKeepsOtherReceiversConnectable`).
+  (`engine.go:1216`, `:1020`), and other online rows stay connectable in the
+  error phase (`flyout.go:244-286`; `TestRowActionKeepsOtherReceiversConnectable`).
 
 ## How to get to it (user POV)
 

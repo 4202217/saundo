@@ -21,21 +21,25 @@
   section, so three device rows with no media measure 487. There is no
   flexible spacer; the playback card follows the device card. The resize
   grows the flyout upward from the tray anchor (`fitFlyout`,
-  `app.go:769-779`), pinned by `TestFlyoutHeightForDeviceRows`,
+  `app.go:772-782`), pinned by `TestFlyoutHeightForDeviceRows`,
   `TestFlyoutKeepsPlaybackGap`, and `TestFlyoutTargetHeightFitsPlayback`.
 - Ambient light card: a permanent 44-DIP row under the playback card, with
-  a 32-DIP preview, the preset name, and a rotating chevron.
-  Expanding shows a 10-per-row grid of 30-DIP swatches, up to four rows,
-  scrolling past that. The card has no on/off switch; the power action dims
-  the top display, and the settings page owns the light choice. See
+  a 32-DIP preview, the source name (or the preset name), a 待机 chip while
+  the standby holds the display dark, a compact 封面/模板 segment, and a
+  rotating chevron only in template priority. Expanding shows a 10-per-row
+  grid of 30-DIP swatches, up to four rows, scrolling past that. The card
+  has no on/off switch; the power action turns the light on and off. See
   [ambient-light.md](ambient-light.md).
+- Update chip: the footer's trailing 22-DIP chip opens the settings 更新
+  page, and the tray tooltip appends the available or ready version while
+  an update waits.
 - Faces: idle-open while disconnected, smile while connected but silent,
   stream while streaming, connect while connecting, error on failure; the
   flyout footer shares them (`faceOf`).
 - Silent start: login launch and `--tray` hide the panel; the tooltip is
   the localized brand plus the status while connecting or streaming
   (`声渡 · 正在通过 <name> 播放` under zh-CN, `Saundo · Streaming to <name>`
-  under en).
+  under en), plus the update suffix while one is available or ready.
 - Single instance: a second launch hands its command line over and exits 0.
 
 ## How to get to it (user POV)

@@ -13,14 +13,16 @@ returns when a signed, notarized mac feed exists.
 
 - Update check against the public feed
   (`update-windows-amd64.json` on the releases URL, fetched without
-  credentials, 10 s after launch then every 24 h — `update.go:356-381`,
-  timer at `:362`, ticker at `:370`); every non-manual check returns early
-  when the automatic-check preference is off (`update.go:112-115`). States:
+  credentials, 10 s after launch then every 24 h — `update.go:359-384`,
+  timer at `:365`, ticker at `:373`); every non-manual check returns early
+  when the automatic-check preference is off (`update.go:115-118`). States:
   checking, up to date, available, downloading (with progress), ready,
   failed.
 - 更新 page in the settings window: channel (stable/beta), automatic check
   and download toggles, a check-now action, the primary action button
-  (Install / Restart now / Retry by state), and a Cancel link button.
+  (Install / Restart now / Retry by state), a Cancel link button, and the
+  S1 card's What's New, Skip this version, and Remind me later links beside
+  the byte and percent progress row (`settings_window.go:458-477`).
 - Release-notes dialog: the offered version's notes plus, when fetchable,
   the history of every version since the running build — from `CHANGELOG.md`
   in English and `CHANGELOG.zh-CN.md` when the app language starts with
@@ -28,16 +30,21 @@ returns when a signed, notarized mac feed exists.
   fetched entry replaces the signed manifest's English notes for the offered
   version (`TestNotesEntriesUseTheLocalizedChangelog`), and a language
   switch refetches the history (`TestLanguageSwitchRefetchesHistory`). The
-  fetch starts when the update is found
+  head's range select switches between the history since this build and the
+  latest version only, and the older entries render as folded rows with a
+  history link (`update_dialog.go:36-45,115-132`). The fetch starts when the
+  update is found
   (`TestFoundUpdatePrefetchesTheLocalizedNotes`), and a non-English dialog
   shows the loading row rather than flashing English
   (`TestNotesDialogHidesTheEnglishNotesWhileLoading`).
 - Install downloads, verifies the signature, and swaps the files in place
   (the running exe is renamed aside — no installer process runs, the app
   keeps running). A separate 立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:668-702`, chip at
-  `:674-688`) shares state with the settings page; clicking it opens the
-  更新 page.
+- Update chip in the flyout **footer** (`flyout.go:671-693`, chip at
+  `:677-691`) shares state with the settings page; clicking it opens the
+  更新 page. A waiting update also draws a dot on the 更新 sidebar item, and
+  the tray tooltip and menu carry the check action and the available version
+  (`settings_window.go:203-206`; `app.go:883,902-908`; docs/ui.md).
 
 ## How to get to it (user POV)
 
