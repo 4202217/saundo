@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-10 -->
+<!-- reviewed-through: 2026-11-11 -->
 
 # AirPlay 2 wire protocol
 
@@ -24,7 +24,7 @@ The engine enables the AP2 path for every HAP pairing (`AuthHAPTransient`, `Auth
 
 A receiver typed into the settings 接收器 page has no advertisement, so the engine synthesizes its description from the declared type. AirPort Express uses auth-setup; AirPlay 2 uses HAP transient pairing, or HAP password pairing when a password is stored; AirPlay 1 uses the plaintext path, or digest password authentication when a password is stored. The control port defaults to 5000 for AirPort Express and AirPlay 1 and 7000 for AirPlay 2. A manual AirPlay 2 row without a password attempts transient pairing; a receiver that requires a password rejects it, so the password must be stored on the row.
 
-Without TXT records there are no feature bits, including the PTP bit. A manual session therefore always runs NTP. A receiver that requires PTP (HomePod software 27, macOS) must be discovered; the add dialog has no PTP override. The password is stored in DPAPI under the `password:<key>` namespace, consumed locally by HAP SRP or the AP1 Digest computation, and never written to the diagnostic log.
+Without TXT records there are no feature bits, including the PTP bit. A manual session therefore always runs NTP. A receiver that requires PTP (HomePod software 27, macOS) must be discovered; the add dialog has no PTP override. The password is stored in the OS secret store (DPAPI on Windows, the Keychain-backed store on macOS) under the `password:<key>` namespace, consumed locally by HAP SRP or the AP1 Digest computation, and never written to the diagnostic log.
 
 ## 2. Pairing
 
@@ -59,7 +59,7 @@ The tested case is a Mac. A HomePod can gate AirPlay the same way; it runs the s
 {"atvId":"<hex>","clientId":"<uuid>","ltpk":"<hex>","ltsk":"<hex>"}
 ```
 
-Encrypted with DPAPI and indexed by the receiver's `deviceid`. Stored credentials skip pair-setup on reconnect; the session runs pair-verify directly.
+Encrypted with the OS secret store (DPAPI on Windows, the Keychain-backed store on macOS) and indexed by the receiver's `deviceid`. Stored credentials skip pair-setup on reconnect; the session runs pair-verify directly.
 
 ### 2.5 Audio key derivation
 
@@ -167,6 +167,8 @@ RTP header, 12 bytes: `0x80, 0xE0` on the first packet (marker set), `0x60` afte
 
 Pacing uses a token bucket at 44100 frames per second, about one tick per 8 ms. While a stream is active, push silence when the ring is empty. Keep a recent packet backlog for `0x55` retransmit requests; a retransmit is answered with the original packet.
 
+At the start epoch the sender sends two prefill packets. Each audio packet carries extra copies chosen from the previous session's retransmit ratio: the first session and any lossy session send an extra copy, a clean session sends none, and a session above roughly 3% loss sends two extras. A receiver deduplicates by RTP sequence number, so extra copies cost bandwidth, not duplicated audio.
+
 **Silence suspend.** After 5 s of digital silence the engine suspends the audio pacer and the sender sends no RTP, while sync, feedback, volume polling, and the event channel keep running — the receiver underruns silently instead of losing the session. On the first audible block the sender re-anchors `framesSent` to the elapsed wall clock, trims the ring to the 50 ms start cushion, rebuilds the resampler, and re-arms the pacer. `SETRATEANCHORTIME` is not part of this: a HomePod answers it on realtime streams with plist `status: -12782` and ignores it — the method is for buffered streams, and the realtime stream takes its timeline from the UDP sync channel. The suspend is AP2-only; an AirPlay 1 session keeps the continuous silence stream.
 
 ## 7. Timing
@@ -180,7 +182,7 @@ Used for receivers that accept it. A 20-byte sync packet (type `0xD4`) carries t
 HomePod software 27 and macOS receivers keep their own PTP grandmaster and silently ignore an NTP-timed stream: they accept an NTP session SETUP and RECORD, then never answer the stream SETUP. When the receiver advertises feature bit 41 (models `AudioAccessory*`, `Mac*`), the session runs PTP:
 
 - Session SETUP carries `timingProtocol: PTP`, `timingPeerInfo`, and `timingPeerList` with the sender's clock ID.
-- After RECORD, send SETPEERS and activate the follower; the stream SETUP waits until the clock is ready.
+- After RECORD, activate the follower without a SETPEERS round trip; the stream SETUP waits until the clock is ready.
 - The follower binds UDP 319 and 320, subscribes to Announce/Sync/Follow_Up/Delay_Resp, answers peer-delay requests, and estimates the offset from Sync/Follow_Up pairs plus Delay_Resp. Readiness requires three exchanges over at least 250 ms with a fresh offset. If the ports are firewall-blocked, the session fails before the stream SETUP with a firewall hint.
 - The receiver's PTP clock is boot-relative, not Unix epoch; only the measured offset matters.
 - The handshake deadline extends to 30 seconds while waiting for the clock: after a 30-minute session the receiver needed more than 10 seconds to re-establish PTP.
@@ -203,7 +205,7 @@ A HomePod stereo pair is not one session:
 
 - Group members share `tsid`; `igl=1` marks the leader (`gcgl` only says the group contains its leader). Discovery collapses the members into one logical target, `stereo:<tsid>`, named from `gpn` (decode its RFC 1035 `\DDD` escapes first), leader first; the group is online only when both members are online.
 - Open one AP2 session **per member**; each session SETUP carries `groupUUID = tsid`.
-- SETPEERS lists every member address plus the sender.
+- SETPEERS is skipped on every PTP session (single and pair); each member's follower activates from its RECORD reply.
 - Capture fans out into one ring per member (`ring.Fanout`); the group reports streaming only when every member's session launched.
 
 ## 9. Session lifecycle and start gate
@@ -212,7 +214,7 @@ A HomePod stereo pair is not one session:
 Idle
   → Connecting         TCP connect
   → Pairing            pair-setup / pair-verify / PIN / password
-  → Handshake          GET /info → session SETUP → event channel → RECORD → SETPEERS/PTP wait → stream SETUP
+  → Handshake          GET /info → session SETUP → event channel → RECORD → PTP activate and wait → stream SETUP
   → Streaming          RTP + ALAC + feedback + sync
   → Idle               TEARDOWN / error / user stop
 ```
@@ -254,7 +256,9 @@ Content-Length: <n>
   {type: "updateMRPlaybackState", params: {mrPlaybackState: 2}}
   ```
 
-  `mrPlaybackState` is `1` playing and `2` paused. The receiver's AirPlay command processor applies it to the main session; `NowPlayingCap` observes the MediaRemote `isPlaying` change and clears the LED effect, so `SoundBoardFramework.MediaRenderer` stops the Sound Glow and the top display goes dark. The command does not stop the RTP stream. Measured on a muted HomePod mini `AudioAccessory5,1` 27.2 on 2026-11-07: a tide palette cover lit the display, state 2 turned it off, state 1 lit it again, state 2 turned it off again, with `framesSent` rising 1.50M → 2.38M and no session close. On a stereo pair the state reaches both members; a state `1` on the follower can leave its renderer white, and only a new session restores it, so a sender should avoid a redundant state `1` and resend the artwork after a resume. The on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) remains a local-only path, but it is no longer the only way to turn the LEDs off.
+  `mrPlaybackState` is `1` playing and `2` paused. The receiver's AirPlay command processor applies it to the main session; `NowPlayingCap` observes the MediaRemote `isPlaying` change and clears the LED effect, so `SoundBoardFramework.MediaRenderer` stops the Sound Glow and the top display goes dark. The command does not stop the RTP stream.
+
+  **Idle standby** uses the same command. After five seconds without an audible block the engine suspends the pacer; once the configured standby threshold (1, 5, 10, or 30 minutes, default 30) has passed since the last RTP push, the sender sends state `2` and the top display goes dark while the session stays up. The first audible block sends state `1`, resends the artwork, and resumes the pacer. The clock counts from the last RTP packet, not from the silence meter, so a manual light action or a late packet does not lengthen or shorten the threshold. Measured on a muted HomePod mini `AudioAccessory5,1` 27.2 on 2026-11-07: a tide palette cover lit the display, state 2 turned it off, state 1 lit it again, state 2 turned it off again, with `framesSent` rising 1.50M → 2.38M and no session close. On a stereo pair the state reaches both members; a state `1` on the follower can leave its renderer white, and only a new session restores it, so a sender should avoid a redundant state `1` and resend the artwork after a resume. The on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) remains a local-only path, but it is no longer the only way to turn the LEDs off.
 - A song's own cover competes for the artwork slot: a template owns it; cover priority hands it to the receiver track-info cover. The playback state is independent of that slot: with state 2 the display is dark whatever image is attached, and state 1 restores the current image. Clearing the sender's slot only stops future sends; the receiver keeps the last image.
 - The setting cannot be discovered over the protocol; `TopDisplayCapable` accepts the HomePod family at 27.2 or later.
 
