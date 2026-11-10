@@ -146,6 +146,8 @@ type App struct {
 	lampCover           bool
 	lampPreset          string
 	lampExpanded        bool
+	standbyEnabled      bool
+	standbyMinutes      int
 	trayAnimation       bool
 	flyoutPopover       bool
 	autoUpdate          bool
@@ -229,6 +231,8 @@ func Run() error {
 	a.lampOff = cfg.Lamp.Off
 	a.lampCover = cfg.Lamp.Cover
 	a.lampPreset = lamp.Normalize(cfg.Lamp.Preset)
+	a.standbyEnabled = cfg.Standby.Enabled
+	a.standbyMinutes = settings.NormalizeStandbyMinutes(cfg.Standby.IdleMinutes)
 	a.appNames = []string{locales.CaptureAllSystem()}
 	a.appIDs = []string{"0"}
 	a.appChoice = locales.CaptureAllSystem()
@@ -714,10 +718,13 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.lampOff = snap.LampOff
 	a.lampCover = snap.LampCover
 	a.lampPreset = lamp.Normalize(snap.LampPreset)
+	a.standbyEnabled = snap.StandbyEnabled
+	a.standbyMinutes = settings.NormalizeStandbyMinutes(snap.StandbyMinutes)
 	// The engine owns the lamp fields. Mirror them here so an app-only save
 	// (theme, update preferences, launch at login) cannot write a stale lamp
 	// choice back over the engine's.
 	a.cfg.Lamp = settings.LampSettings{Off: a.lampOff, Cover: a.lampCover, Preset: a.lampPreset}
+	a.cfg.Standby = settings.StandbySettings{Enabled: a.standbyEnabled, IdleMinutes: a.standbyMinutes}
 	a.flyoutPopover = snap.FlyoutPopover
 	a.cfg.FlyoutPopover = snap.FlyoutPopover
 	if a.trayAnimation != snap.TrayAnimation {
@@ -996,6 +1003,9 @@ func (a *App) statusText() string {
 	case sender.StatePairing:
 		return locales.StatusPairing()
 	case sender.StateStreaming:
+		if a.snap.Standby {
+			return locales.StatusStandby()
+		}
 		if a.snap.ConnectedName != "" {
 			return locales.StatusStreamingTo(a.snap.ConnectedName)
 		}

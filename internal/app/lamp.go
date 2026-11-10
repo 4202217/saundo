@@ -157,6 +157,53 @@ func (a *App) chooseLampPreset(id string) {
 	a.fitFlyout()
 }
 
+// standbyMinutes are the offered idle thresholds. The select also carries a
+// never option, which stores Enabled false.
+var standbyMinutes = []int{1, 5, 10, 30}
+
+// standbyOptions is the idle threshold select: never, then the four values.
+func standbyOptions() []string {
+	opts := []string{locales.SettingsLampStandbyOffOption()}
+	for _, m := range standbyMinutes {
+		opts = append(opts, locales.SettingsLampStandbyMinutes(m))
+	}
+	return opts
+}
+
+// standbyLabel is the select's current value.
+func (a *App) standbyLabel() string {
+	if !a.standbyEnabled {
+		return locales.SettingsLampStandbyOffOption()
+	}
+	return locales.SettingsLampStandbyMinutes(settings.NormalizeStandbyMinutes(a.standbyMinutes))
+}
+
+// standbySubtitle names the threshold, or the never state.
+func (a *App) standbySubtitle() string {
+	if !a.standbyEnabled {
+		return locales.SettingsLampStandbyOffDesc()
+	}
+	return locales.SettingsLampStandbyDesc(settings.NormalizeStandbyMinutes(a.standbyMinutes))
+}
+
+// setStandbyChoice maps one select value to the engine setting. The never
+// option disables standby; a minute value enables it with that threshold.
+func (a *App) setStandbyChoice(label string) {
+	enabled, minutes := false, 30
+	for _, m := range standbyMinutes {
+		if label == locales.SettingsLampStandbyMinutes(m) {
+			enabled, minutes = true, m
+			break
+		}
+	}
+	a.standbyEnabled = enabled
+	a.standbyMinutes = minutes
+	a.cfg.Standby = settings.StandbySettings{Enabled: enabled, IdleMinutes: minutes}
+	if a.eng != nil {
+		a.eng.SetStandby(enabled, minutes)
+	}
+}
+
 func (a *App) toggleLampExpanded() {
 	a.lampExpanded = !a.lampExpanded
 	a.fitFlyout()
@@ -171,18 +218,27 @@ func (a *App) collapseLampList() {
 // lampPowerButton is the momentary 关灯/开灯 action. The color and the card
 // dim carry the state; there is no toggle.
 func (a *App) lampPowerButton(c *ui.Context, p palette) {
+	dark := a.lampOff || a.snap.Standby
 	label := locales.LampTurnOff()
-	if a.lampOff {
+	if dark {
 		label = locales.LampTurnOn()
 	}
 	btn := ui.ButtonBase(c).Size(26, 26).Radius(7).Center().Shrink(0).
 		Cursor(ui.CursorPointer).Label(label)
-	btn.OnClick(func() { a.setLampOff(!a.lampOff) })
+	btn.OnClick(func() {
+		if a.snap.Standby && !a.lampOff {
+			// Standby is automatic; turning the light on holds it until the
+			// next sound instead of writing the manual off state.
+			a.setLampOff(false)
+			return
+		}
+		a.setLampOff(!a.lampOff)
+	})
 	if btn.Hovered() {
 		btn.Background(p.pill)
 	}
 	color := p.fg
-	if a.lampOff {
+	if dark {
 		color = p.accent
 	}
 	btn.Children(func() {
@@ -254,6 +310,8 @@ func (a *App) lampStatusChip(c *ui.Context, p palette) {
 	switch {
 	case a.lampOff:
 		label = locales.LampOffStatus()
+	case a.snap.Standby:
+		label = locales.LampStandbyStatus()
 	case a.lampCover && !a.nowLampOK:
 		label = locales.LampNoMedia()
 	}
@@ -375,6 +433,15 @@ func (a *App) lampPage(c *ui.Context, p palette) {
 					a.lampTile(c, p, preset.ID)
 				}
 			})
+		})
+
+		rowLine(c, p)
+		settingRowColors(c, p, locales.SettingsLampStandby(), a.standbySubtitle(), titleColor, p.muted, func() {
+			choice := a.standbyLabel()
+			sel := fieldSelect(c, p, &choice, standbyOptions(), locales.SettingsLampStandby()).Disabled(!on)
+			if sel.Changed() {
+				a.setStandbyChoice(choice)
+			}
 		})
 	})
 	ui.Column(c).Margin(8, 0, 0, 2).Children(func() {

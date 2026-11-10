@@ -290,3 +290,38 @@ func TestCoverModeDefaultsToMedia(t *testing.T) {
 		t.Fatalf("stored cover mode = %q, want placeholder", got)
 	}
 }
+
+func TestStandbyDefaultsOnWithThirtyMinutes(t *testing.T) {
+	got := NewStoreAt(filepath.Join(t.TempDir(), "settings.json")).Load()
+	if !got.Standby.Enabled || got.Standby.IdleMinutes != 30 {
+		t.Fatalf("standby defaults = %+v, want enabled + 30 minutes", got.Standby)
+	}
+}
+
+func TestStandbyIdleMinutesNormalize(t *testing.T) {
+	cases := map[int]int{-5: 30, 0: 30, 1: 1, 5: 5, 7: 30, 10: 10, 30: 30, 60: 30}
+	for stored, want := range cases {
+		path := filepath.Join(t.TempDir(), "settings.json")
+		body := `{"standby":{"idleMinutes":` + strconv.Itoa(stored) + `}}`
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if got := NewStoreAt(path).Load().Standby.IdleMinutes; got != want {
+			t.Errorf("stored %d minutes = %d, want %d", stored, got, want)
+		}
+	}
+}
+
+func TestStandbyOffSurvivesLoad(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"standby":{"enabled":false,"idleMinutes":5}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := NewStoreAt(path).Load()
+	if got.Standby.Enabled {
+		t.Fatal("stored standby off was reset on load")
+	}
+	if got.Standby.IdleMinutes != 5 {
+		t.Fatalf("idle minutes = %d, want 5", got.Standby.IdleMinutes)
+	}
+}

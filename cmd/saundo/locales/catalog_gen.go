@@ -326,6 +326,16 @@ func (msgs Messages) StatusStreaming() string {
 	return Catalog.Format(msgs.locale, "statusStreaming", nil)
 }
 
+// StatusStandby says "Standby · wakes when sound plays"
+// in the language the app shows.
+func StatusStandby() string { return In(i18n.Locale()).StatusStandby() }
+
+// StatusStandby says "Standby · wakes when sound plays"
+// in the language of msgs.
+func (msgs Messages) StatusStandby() string {
+	return Catalog.Format(msgs.locale, "statusStandby", nil)
+}
+
 // StatusDisconnected says "Not connected"
 // in the language the app shows.
 func StatusDisconnected() string { return In(i18n.Locale()).StatusDisconnected() }
@@ -3092,6 +3102,56 @@ func (msgs Messages) SettingsLampSoundGlowHint() string {
 	return Catalog.Format(msgs.locale, "settingsLampSoundGlowHint", nil)
 }
 
+// SettingsLampStandby says "Turn off automatically"
+// in the language the app shows.
+func SettingsLampStandby() string { return In(i18n.Locale()).SettingsLampStandby() }
+
+// SettingsLampStandby says "Turn off automatically"
+// in the language of msgs.
+func (msgs Messages) SettingsLampStandby() string {
+	return Catalog.Format(msgs.locale, "settingsLampStandby", nil)
+}
+
+// SettingsLampStandbyDesc says "Turns off after {n} minutes without playback."
+// in the language the app shows.
+func SettingsLampStandbyDesc(n int) string { return In(i18n.Locale()).SettingsLampStandbyDesc(n) }
+
+// SettingsLampStandbyDesc says "Turns off after {n} minutes without playback."
+// in the language of msgs.
+func (msgs Messages) SettingsLampStandbyDesc(n int) string {
+	return Catalog.Format(msgs.locale, "settingsLampStandbyDesc", map[string]any{"n": n})
+}
+
+// SettingsLampStandbyOffDesc says "Never turns off automatically; the display stays lit."
+// in the language the app shows.
+func SettingsLampStandbyOffDesc() string { return In(i18n.Locale()).SettingsLampStandbyOffDesc() }
+
+// SettingsLampStandbyOffDesc says "Never turns off automatically; the display stays lit."
+// in the language of msgs.
+func (msgs Messages) SettingsLampStandbyOffDesc() string {
+	return Catalog.Format(msgs.locale, "settingsLampStandbyOffDesc", nil)
+}
+
+// SettingsLampStandbyOffOption says "Never"
+// in the language the app shows.
+func SettingsLampStandbyOffOption() string { return In(i18n.Locale()).SettingsLampStandbyOffOption() }
+
+// SettingsLampStandbyOffOption says "Never"
+// in the language of msgs.
+func (msgs Messages) SettingsLampStandbyOffOption() string {
+	return Catalog.Format(msgs.locale, "settingsLampStandbyOffOption", nil)
+}
+
+// SettingsLampStandbyMinutes says "{n} min"
+// in the language the app shows.
+func SettingsLampStandbyMinutes(n int) string { return In(i18n.Locale()).SettingsLampStandbyMinutes(n) }
+
+// SettingsLampStandbyMinutes says "{n} min"
+// in the language of msgs.
+func (msgs Messages) SettingsLampStandbyMinutes(n int) string {
+	return Catalog.Format(msgs.locale, "settingsLampStandbyMinutes", map[string]any{"n": n})
+}
+
 // LampTurnOff says "Turn off"
 // in the language the app shows.
 func LampTurnOff() string { return In(i18n.Locale()).LampTurnOff() }
@@ -3120,6 +3180,16 @@ func LampOffStatus() string { return In(i18n.Locale()).LampOffStatus() }
 // in the language of msgs.
 func (msgs Messages) LampOffStatus() string {
 	return Catalog.Format(msgs.locale, "lampOffStatus", nil)
+}
+
+// LampStandbyStatus says "Standby"
+// in the language the app shows.
+func LampStandbyStatus() string { return In(i18n.Locale()).LampStandbyStatus() }
+
+// LampStandbyStatus says "Standby"
+// in the language of msgs.
+func (msgs Messages) LampStandbyStatus() string {
+	return Catalog.Format(msgs.locale, "lampStandbyStatus", nil)
 }
 
 // LampNoMedia says "No media"

@@ -43,6 +43,7 @@ var (
 		"StrictReceiverAuth",
 		"Reconnect",
 		"Lamp",
+		"Standby",
 	}
 
 	storeOwnedFields = []string{

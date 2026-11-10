@@ -50,6 +50,12 @@ live state:
 - Audible output and the 50 ms cushion under real WASAPI scheduling jitter;
   a measured left/right offset on a physical pair.
 - Silence pauses longer than 60 s.
+- The ambient light's idle standby's long tail: a two hour idle soak, the
+  30 minute default on a live pair, and a live capture of the flyout's 待机
+  chip. The 1 minute and 5 minute dark states, the state 2 to state 1 round
+  trip, and the stereo pair were verified on 2026-11-10 (see the last dated
+  entry); the phase, command sequence, and settings are pinned by
+  `internal/engine/standby_test.go`.
 - Device churn while the adaptive-height flyout is open, and its upward growth.
 - The tray menu's 设置… entry, and a settings-window redraw driven by an
   engine snapshot change.
@@ -1943,3 +1949,35 @@ and the verification map is corrected.
   The 接收器 page showed MacBook Air in the 已隐藏 group with the 本机 chip,
   no enable switch, and no chevron. Window captures:
   `/tmp/saundo-verify/flyout.png` and `/tmp/saundo-verify/settings.png`.
+
+
+## 2026-11-10 — HomePod idle standby
+
+- **What changed.** The ambient light page's idle standby turns the HomePod
+  top display dark after a configurable period with no RTP push. Five
+  seconds of digital silence stops the pacer, and the standby clock counts
+  from that last push. The first audible sample sends playback state 1,
+  restores the artwork, and resumes the pacer. The setting offers 从不, 1,
+  5, 10, and 30 minutes, default 30.
+- **Live run.** App `0.6.0-16-ge0ecf21-dirty`, stereo pair `HomePods`
+  (`HomePod L` and `HomePod R`) streaming 44.1 kHz encrypted ALAC captured
+  from `Mi Monitor (NVIDIA High Definition Audio)` at 48 kHz. The threshold
+  was 1 minute. At `20:46:24.941` the engine logged
+  `audio idle for 5s, stream suspended`. At `20:47:24.957` it logged
+  `standby: lamp off after 1m0s idle on HomePods`. Both top displays went
+  dark, the session stayed up, and the event channel kept answering. At
+  `20:47:42.462` the user played a sound; the engine logged `audio resumed`
+  and `standby: lamp on`, and both displays lit again with the audio. The
+  user confirmed both observations.
+- **Earlier threshold.** At `20:09:12` the log recorded
+  `standby: lamp off after 5m0s idle on HomePods`, so the 5 minute setting
+  also darkened the pair.
+- **Evidence.** The log copies, the settings with the 1 minute threshold,
+  the receiver registry, and the settings-window capture are under
+  `/tmp/saundo-verify/20261110-2047/` (`saundo-dark.log`,
+  `saundo-resume.log`, `settings.json`, `receivers.json`,
+  `settings-dark.png`). The flyout was hidden during the dark capture; the
+  chip, power action, and footer are pinned by
+  `TestFlyoutLampShowsStandby`.
+- **Still pending.** A two hour idle soak, the 30 minute default on a live
+  pair, and a live capture of the flyout's 待机 chip.

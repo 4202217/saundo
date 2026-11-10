@@ -335,6 +335,16 @@ func (g *groupTransport) SetPaused(paused bool) bool {
 	return applied
 }
 
+// Pushing reports whether any member is still sending RTP.
+func (g *groupTransport) Pushing() bool {
+	for _, m := range g.members {
+		if m.sender.Pushing() {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *groupTransport) SetStrictReceiverAuth(strict bool) {
 	for _, m := range g.members {
 		m.sender.SetStrictReceiverAuth(strict)

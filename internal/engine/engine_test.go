@@ -46,6 +46,7 @@ type fakeTransport struct {
 	waitingPin   bool
 	pauses       []bool
 	pauseOK      bool
+	pushing      bool
 	initialPct   float64
 	hasInitial   bool
 	rings        []*ring.Buffer
@@ -53,7 +54,7 @@ type fakeTransport struct {
 }
 
 func newFakeTransport(ev sender.Events) *fakeTransport {
-	return &fakeTransport{evs: make(chan raopio.Event, 16), ev: ev, pauseOK: true}
+	return &fakeTransport{evs: make(chan raopio.Event, 16), ev: ev, pauseOK: true, pushing: true}
 }
 
 func (f *fakeTransport) Events() <-chan raopio.Event { return f.evs }
@@ -64,6 +65,7 @@ func (f *fakeTransport) Start(host string, port uint16, name string) {
 func (f *fakeTransport) Stop() {
 	f.stopped = true
 	f.state = sender.StateIdle
+	f.pushing = false
 }
 func (f *fakeTransport) Active() bool             { return f.state != sender.StateIdle }
 func (f *fakeTransport) State() sender.State      { return f.state }
@@ -72,8 +74,12 @@ func (f *fakeTransport) Tick()                    {}
 func (f *fakeTransport) NextDeadline() time.Time  { return time.Time{} }
 func (f *fakeTransport) SetPaused(paused bool) bool {
 	f.pauses = append(f.pauses, paused)
+	if f.pauseOK {
+		f.pushing = !paused
+	}
 	return f.pauseOK
 }
+func (f *fakeTransport) Pushing() bool                  { return f.pushing }
 func (f *fakeTransport) SetIdentity(id sender.Identity) { f.identity = id }
 func (f *fakeTransport) SetAuth(a device.Auth, ap2 bool, id, creds, pw string) {
 	f.authDev = id
@@ -118,8 +124,10 @@ func (f *fakeTransport) Stats() []sender.Stats      { return f.stats }
 func (f *fakeTransport) launch(ok bool, err string) {
 	if ok {
 		f.state = sender.StateStreaming
+		f.pushing = true
 	} else {
 		f.state = sender.StateIdle
+		f.pushing = false
 	}
 	f.ev.Launched(ok, err)
 }
@@ -310,6 +318,15 @@ func TestReceiverLatencyUpdatesSnapshot(t *testing.T) {
 	}
 }
 
+// overflowRing fills the ring with half-second blocks and pushes one beyond
+// its capacity, so the drop counter is nonzero whatever the ring size.
+func overflowRing(b *ring.Buffer) {
+	block := make([]int16, 48000)
+	for i := 0; i <= b.Capacity()/len(block); i++ {
+		b.Push(block)
+	}
+}
+
 // TestSessionDroppedSamplesExcludeIdleOverflow pins the "this session" scope:
 // capture runs before a stream and the ring discards its oldest samples with
 // no sink draining it, so a clean session must not inherit those drops.
@@ -319,9 +336,7 @@ func TestSessionDroppedSamplesExcludeIdleOverflow(t *testing.T) {
 	fanout.Add(h.e.ring)
 	h.e.captureSink = fanout
 
-	for i := 0; i < 12; i++ {
-		h.e.ring.Push(make([]int16, 48000))
-	}
+	overflowRing(h.e.ring)
 	if fanout.Dropped() == 0 {
 		t.Fatal("precondition: the idle ring never dropped")
 	}
@@ -352,9 +367,7 @@ func TestSessionDroppedSamplesSurviveCaptureReset(t *testing.T) {
 	h.connect()
 	h.launch()
 
-	for i := 0; i < 9; i++ {
-		h.e.ring.Push(make([]int16, 48000))
-	}
+	overflowRing(h.e.ring)
 	h.e.publish()
 	before := h.e.Snapshot().DroppedSamples
 	if before == 0 {
@@ -367,9 +380,7 @@ func TestSessionDroppedSamplesSurviveCaptureReset(t *testing.T) {
 		t.Fatalf("session drops after reset = %d, want the pre-reset %d", got, before)
 	}
 
-	for i := 0; i < 9; i++ {
-		h.e.ring.Push(make([]int16, 48000))
-	}
+	overflowRing(h.e.ring)
 	h.e.publish()
 	if got := h.e.Snapshot().DroppedSamples; got <= before {
 		t.Fatalf("post-reset drops = %d, want more than %d", got, before)
@@ -387,9 +398,7 @@ func TestSessionDropsBeginAtStreamingState(t *testing.T) {
 	h.addDevice()
 	h.connect()
 
-	for i := 0; i < 12; i++ {
-		h.e.ring.Push(make([]int16, 48000))
-	}
+	overflowRing(h.e.ring)
 	h.fake.state = sender.StateStreaming
 	h.e.onStateChanged(sender.StateStreaming)
 	if got := h.e.Snapshot().DroppedSamples; got != 0 {

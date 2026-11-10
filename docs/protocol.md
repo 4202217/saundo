@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-09 -->
+<!-- reviewed-through: 2026-11-10 -->
 
 # AirPlay 2 wire protocol
 
@@ -167,7 +167,7 @@ RTP header, 12 bytes: `0x80, 0xE0` on the first packet (marker set), `0x60` afte
 
 Pacing uses a token bucket at 44100 frames per second, about one tick per 8 ms. While a stream is active, push silence when the ring is empty. Keep a recent packet backlog for `0x55` retransmit requests; a retransmit is answered with the original packet.
 
-**Silence suspend.** After 2 s of digital silence the engine suspends the audio pacer and the sender sends no RTP, while sync, feedback, volume polling, and the event channel keep running — the receiver underruns silently instead of losing the session. On the first audible block the sender re-anchors `framesSent` to the elapsed wall clock, trims the ring to the 50 ms start cushion, rebuilds the resampler, and re-arms the pacer. `SETRATEANCHORTIME` is not part of this: a HomePod answers it on realtime streams with plist `status: -12782` and ignores it — the method is for buffered streams, and the realtime stream takes its timeline from the UDP sync channel. The suspend is AP2-only; an AirPlay 1 session keeps the continuous silence stream.
+**Silence suspend.** After 5 s of digital silence the engine suspends the audio pacer and the sender sends no RTP, while sync, feedback, volume polling, and the event channel keep running — the receiver underruns silently instead of losing the session. On the first audible block the sender re-anchors `framesSent` to the elapsed wall clock, trims the ring to the 50 ms start cushion, rebuilds the resampler, and re-arms the pacer. `SETRATEANCHORTIME` is not part of this: a HomePod answers it on realtime streams with plist `status: -12782` and ignores it — the method is for buffered streams, and the realtime stream takes its timeline from the UDP sync channel. The suspend is AP2-only; an AirPlay 1 session keeps the continuous silence stream.
 
 ## 7. Timing
 

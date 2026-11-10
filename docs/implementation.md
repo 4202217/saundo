@@ -75,8 +75,8 @@ flyout cannot move the preview away from the top display.
 | Package | Responsibility |
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
-| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`), the log dialog (`log_dialog.go`), the ambient-light page (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; disabled on darwin until a signed mac feed exists), the tray flyout window creation and the style hot-swap (`flyout_window.go`), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), snapshots |
+| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; disabled on darwin until a signed mac feed exists), the tray flyout window creation and the style hot-swap (`flyout_window.go`), tray and menu icons, the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
+| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), snapshots |
 | `internal/discovery` | mDNS browse plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking, and local marking when an advertised address belongs to this host (`device.Device.Local`) |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), per-app process loopback (`app_windows.go`), the macOS Core Audio process tap aggregated with the output device (`capture_darwin.go`) and its device mute (`mute_darwin.go`), format conversion (`convert.go`), and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/darwin` | The macOS FFI layer, pure Go through purego: the Objective-C bridge (`objc.go`), the login-Keychain SecItem calls (`keychain.go`), Core Audio bindings (`coreaudio.go`), and LaunchServices app identity (`appinfo.go`). Serves the darwin leaves only; the UI keeps to mygo |
@@ -94,7 +94,7 @@ flyout cannot move the preview away from the top display.
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the local-receiver rule (forced hidden, no auto-connect), the manual-receiver spec, and the settings migration. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) with shell-resolved app names and icons (`appidentity_windows.go`); macOS reads the system session through the vendored MediaRemote adapter (`nowplaying_darwin.go`, `native/mediaremote-adapter`) with LaunchServices identity; transport commands (per-platform build split) |
 | `native/mediaremote-adapter` | Vendored BSD-3 helper (CMake, ObjC): a framework that reads Now Playing inside `/usr/bin/perl`, because MediaRemote rejects third-party processes since macOS 15.4; built by `scripts/build-adapter.sh` into `cmd/saundo/resources/darwin-arm64/adapter` — see [platforms.md](platforms.md) |
-| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`), the local-output mute (`muteLocalOnConnect`), the flyout style (`flyoutPopover`, macOS), and the ambient light (`lamp.off`, `lamp.cover`, `lamp.preset`) all default on, with cover priority and the dune template; the receiver push is unconditional |
+| `internal/settings` | JSON configuration store; the Now Playing panel options (`showNowPlayingPanel`, `playbackControls`, `coverColors`, `coverMode` (none/placeholder/media), `audioLevel`), the local-output mute (`muteLocalOnConnect`), the flyout style (`flyoutPopover`, macOS), the ambient light (`lamp.off`, `lamp.cover`, `lamp.preset`), and the idle standby (`standby.enabled`, `standby.idleMinutes`) all default on, with cover priority, the dune template, and a 30 minute standby; the receiver push is unconditional |
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
@@ -102,7 +102,7 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
-`SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, and the receiver-management commands
+`SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
@@ -113,7 +113,8 @@ snapshot carries both lists: `Devices` (the flyout, with hidden receivers
 filtered out while the active session's row stays) and `Receivers` (every row
 with its settings, no secrets — only whether a password exists); it also
 carries `LampOff`, `LampCover`, and `LampPreset`, which both lamp surfaces
-read.
+read, and `Standby` (the live dark phase) with the configured
+`StandbyEnabled` and `StandbyMinutes`.
 
 `Snapshot.Diagnostics` is the diagnostics model. The sender exposes
 `Stats` (retransmits served, late pacer ticks, underruns, sent blocks, last
@@ -179,11 +180,14 @@ mode.
    readiness → stream SETUP → streaming.
 4. Capture starts, or the fanout attaches one ring per pair member; the
    `StartGate` trims every ring to the newest 50 ms cushion and seals the
-   shared start epoch; RTP flows at 44100 frames per second.
+   shared start epoch; RTP flows at 44100 frames per second. The ring holds
+   eight seconds at 48 kHz stereo, enough for the 5 second silence policy.
 5. While streaming: feedback every 2 s, receiver-volume polling, sync
-   packets, and event-channel replies run on the sender's timers; after 2 s
+   packets, and event-channel replies run on the sender's timers; after 5 s
    of digital silence the engine suspends the pacer until the next audible
-   block. The engine reapplies the ambient light once the session streams:
+   block, and after the configured idle threshold counted from the last RTP
+   push it turns the top display dark; the next audible block restores both.
+   The engine reapplies the ambient light once the session streams:
    the manual 关灯 sends the paused playback state; cover priority hands the
    slot to the media cover and keeps the display lit, and a template owns the
    slot with its image. A media pause keeps the current light. With cover

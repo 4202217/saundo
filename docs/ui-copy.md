@@ -19,6 +19,8 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target, and its row is the only place `本机` / `local` appears.
 
+The ambient light is turned off with 关灯 or 关闭氛围灯. Do not use 熄灯.
+
 ## Latency and stability
 
 | Concept | Chinese | English | Do not use |
@@ -37,6 +39,7 @@ The two latency values measure different stages. Never draw them as one bar, nev
 | Connecting | 正在连接… / Connecting… | 连接中 / Connecting |
 | Reconnecting | 正在重连… / Reconnecting… | 重连中 / Reconnecting |
 | Streaming | 正在通过 {name} 播放 / Streaming to {name} | 正在播放 / Streaming |
+| Standby | 已待机 · 播放声音即唤醒 / Standby · wakes when sound plays | 待机 / Standby |
 | Connected | 已连接 / Connected | 已连接 / Connected |
 | Disconnected | 未连接 / Not connected | 未连接 / Not connected |
 | Failed | 连接失败 / Connection failed | 连接失败 / Connection failed |

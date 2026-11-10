@@ -47,7 +47,8 @@ per receiver.
   starts; the artwork POST command is not used.
 - The light follows the cover, not the play/pause state: a paused track
   keeps the current light, and a new cover (a track change) updates it. The
-  only way to darken the display is the manual 关灯 action.
+  manual 关灯 action and the idle standby are the two ways to darken the
+  display; a media pause itself does not.
 - 关灯 posts the updateMRPlaybackState command with `mrPlaybackState` 2;
   开灯 posts state 1 and then resends the current cover. A new session
   assumes playing and does not send a redundant state 1. The state is
@@ -75,6 +76,12 @@ per receiver.
   to every member.
 - Sound Glow must be enabled on the HomePod's own settings. Without it the
   top stays white.
+- Idle standby: one row at the bottom of the settings page, 自动关闭氛围灯,
+  with a 从不/1/5/10/30 minute select (default 30). Five seconds of digital
+  silence stops the RTP pacer, and once the configured idle time has passed
+  since the last push the engine sends playback state 2. The first audible
+  sample sends state 1 and resumes. The flyout chip reads 待机, the power
+  action 开灯, and the footer 已待机 · 播放声音即唤醒.
 
 ## How to get to it (user POV)
 
@@ -90,7 +97,7 @@ collapsed until it is clicked.
 Headless UI:
 
 ```bash
-go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish|TestLampTemplateTilesKeepTheirSize|TestLampPreviewFollowsThePushedSessionNotTheCard' -v ./internal/app/
+go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish|TestLampTemplateTilesKeepTheirSize|TestLampPreviewFollowsThePushedSessionNotTheCard|TestSettingsLampStandbySelect|TestFlyoutLampShowsStandby' -v ./internal/app/
 ```
 
 Renderer, cover palette, and settings:
@@ -105,7 +112,7 @@ Sender and engine:
 
 ```bash
 go test -run 'TestSetLampArtworkSendsCover|TestSetLampArtworkWaitsForStreaming|TestSetLampArtworkDuplicateIsNoOp|TestSetLampArtworkDoesNotTouchDMAPText|TestSetLampArtworkClearSendsNothing|TestSetPlaybackStateSendsCommand|TestSetPlaybackStateWaitsForStreaming|TestSetPlaybackStateAssumesPlayingOnSessionStart|TestSetPlaybackStateResumesWithTheCover|TestMediaCoverWinsWhenLampIsOff|TestLampCoverWinsWhileOn' -v ./internal/airplay/sender/
-go test -run 'TestLampOffOnAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToDefault|TestLampCoverKeepsPlayingOnPause|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestGroupArtworkFansOutToBothCapableMembers|TestGroupArtworkSkipsIncapableMember' -v ./internal/engine/
+go test -run 'TestLampOffOnAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToDefault|TestLampCoverKeepsPlayingOnPause|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestGroupArtworkFansOutToBothCapableMembers|TestGroupArtworkSkipsIncapableMember|TestStandbyDarkensAtThresholdAndResumesOnSound|TestLastPushTracksTheStreamNotSilence' -v ./internal/engine/
 ```
 
 Live, with a HomePod at software 27.2 or later and Sound Glow on:
@@ -133,6 +140,20 @@ Live, with a HomePod at software 27.2 or later and Sound Glow on:
 
 Both probes need the app stopped: they bind PTP UDP 319/320, which a running
 instance owns. Do not run them while it streams.
+
+Idle standby on a stereo pair (verified 2026-11-10):
+
+1. Set 设置 → 氛围灯 → 自动关闭氛围灯 to 1 分钟.
+2. Connect, play, and confirm both displays are lit.
+3. Stop playback and stay quiet. After 5 s the log reads
+   `audio idle for 5s, stream suspended`; one minute after the last push it
+   reads `standby: lamp off after 1m0s idle on HomePods`, and both displays
+   go dark. The session stays up; the flyout chip reads 待机 and the footer
+   `已待机 · 播放声音即唤醒`.
+4. Play a sound. The log reads `audio resumed` and `standby: lamp on`; both
+   displays light and the audio resumes.
+5. Set the select back to 30 分钟. The flyout is hidden while the settings
+   window is open; capture it separately if the chip is the evidence.
 
 The playback-state probe (muted, 27.2) is:
 

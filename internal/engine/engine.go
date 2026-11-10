@@ -47,9 +47,15 @@ type Snapshot struct {
 	Name             string
 	Reconnect        bool
 	Reconnecting     bool
-	// AudioIdle is true while the engine has suspended RTP after sustained
-	// digital silence. The session stays connected.
-	AudioIdle      bool
+	// AudioIdle is true while the engine has suspended the audio after
+	// sustained digital silence, either with the lamp lit or dark. The session
+	// stays connected.
+	AudioIdle bool
+	// Standby is true while the top display is dark and the session is alive.
+	// StandbyEnabled and StandbyMinutes carry the setting itself.
+	Standby        bool
+	StandbyEnabled bool
+	StandbyMinutes int
 	MuteLocal      MuteLocalState
 	MuteLocalError string
 	LampOff        bool
@@ -91,6 +97,7 @@ const (
 	cmdName
 	cmdReconnect
 	cmdLamp
+	cmdStandby
 	cmdTrayAnimation
 	cmdFlyoutPopover
 	cmdMuteLocal
@@ -117,6 +124,7 @@ type command struct {
 	reconnect bool
 	show      bool
 	lampCover bool
+	minutes   int
 	spec      receivers.Spec
 	patch     receivers.Patch
 }
@@ -157,6 +165,8 @@ type transport interface {
 	// SetPaused suspends or resumes the audio pacer. It reports whether the
 	// transport applied the request.
 	SetPaused(paused bool) bool
+	// Pushing reports whether the realtime stream is currently sending RTP.
+	Pushing() bool
 	SetIdentity(id sender.Identity)
 	SetAuth(auth device.Auth, airplay2 bool, deviceID, credsJSON, password string)
 	SetFamily(family device.Family)
@@ -199,6 +209,7 @@ func (s *session) HandleEvent(ev raopio.Event)    { s.sender.HandleEvent(ev) }
 func (s *session) Tick()                          { s.sender.Tick() }
 func (s *session) NextDeadline() time.Time        { return s.sender.NextDeadline() }
 func (s *session) SetPaused(paused bool) bool     { return s.sender.SetPaused(paused) }
+func (s *session) Pushing() bool                  { return s.sender.Pushing() }
 func (s *session) SetIdentity(id sender.Identity) { s.sender.SetIdentity(id) }
 func (s *session) SetAuth(a device.Auth, ap2 bool, id, creds, pw string) {
 	s.sender.SetAuth(a, ap2, id, creds, pw)
@@ -255,11 +266,20 @@ const maxReconnectAttempts = 5
 const settingsSaveDebounce = 500 * time.Millisecond
 
 // audioPauseAfter is how long the capture stream must be digitally silent
-// before the engine suspends the audio pacer. Two seconds keeps a gap between
-// tracks streaming while stopping a real pause quickly.
+// before the engine suspends the audio pacer. Five seconds keeps longer track
+// gaps and silent passages streaming while stopping a real pause quickly.
 const (
-	audioPauseAfter = 2 * time.Second
+	audioPauseAfter = 5 * time.Second
 	audioPausePoll  = 25 * time.Millisecond
+)
+
+// idlePhase is the session's state after sustained digital silence.
+type idlePhase uint8
+
+const (
+	idleActive    idlePhase = iota // audible audio, or a session that just started
+	idleSuspended                  // RTP stopped, session alive
+	idleDark                       // lamp off, session alive
 )
 
 // lastSeenWriteEvery bounds how often a discovery sighting rewrites
@@ -362,7 +382,11 @@ type Engine struct {
 	reconnectNum     int
 	lastMissingLogAt time.Time
 	settingsDirtyAt  time.Time
-	audioPaused      bool
+	idle             idlePhase
+	standbyHoldAt    time.Time
+	darkBaseline     time.Time
+	lastPushAt       time.Time
+	connectAuto      bool
 	pauseUnsupported bool
 	autoTried        bool
 
@@ -388,12 +412,15 @@ type Engine struct {
 func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *receivers.Store, log *diagnostics.Log, onChange func(Snapshot)) *Engine {
 	cfg := sets.Load()
 	e := &Engine{
-		sets:            sets,
-		creds:           credsStore,
-		recvStore:       recvStore,
-		log:             log,
-		onChange:        onChange,
-		ring:            ring.New(48000 * 2 * 4),
+		sets:      sets,
+		creds:     credsStore,
+		recvStore: recvStore,
+		log:       log,
+		onChange:  onChange,
+		// Eight seconds at 48 kHz stereo: the ring must outlast the 5 s
+		// silence policy, so a pause never overflows it with silence and the
+		// drop counter keeps meaning real capture overflow.
+		ring:            ring.New(48000 * 2 * 8),
 		captureInfo:     make(chan captureInfo, 8),
 		captureResult:   make(chan captureStart, 4),
 		commands:        make(chan command, 32),
@@ -671,6 +698,12 @@ func (e *Engine) SetLamp(off, cover bool, preset string) {
 	e.send(command{kind: cmdLamp, value: v, text: preset, lampCover: cover})
 }
 
+// SetStandby turns the ambient light's idle standby on or off and picks its
+// idle threshold in minutes. Unknown values fall back to 30 minutes.
+func (e *Engine) SetStandby(enabled bool, minutes int) {
+	e.send(command{kind: cmdStandby, show: enabled, minutes: minutes})
+}
+
 func (e *Engine) send(cmd command) {
 	select {
 	case e.commands <- cmd:
@@ -750,9 +783,10 @@ func (e *Engine) nextWake() time.Time {
 			wake = dl
 		}
 	}
-	// While the audio is suspended the pacer is disarmed, so poll for the
-	// first audible capture block instead of waiting for the sender's timers.
-	if e.audioPaused && e.tr != nil && e.tr.State() == sender.StateStreaming {
+	// While the session is idle the pacer is disarmed, so poll for the first
+	// audible capture block instead of waiting for the sender's timers. The
+	// same poll drives the dark threshold.
+	if e.idle != idleActive && e.tr != nil && e.tr.State() == sender.StateStreaming {
 		poll := e.now().Add(audioPausePoll)
 		if wake.IsZero() || poll.Before(wake) {
 			wake = poll
@@ -776,37 +810,125 @@ func (e *Engine) onWake() {
 	if !e.settingsDirtyAt.IsZero() && !now.Before(e.settingsDirtyAt) {
 		e.saveSettingsNow()
 	}
-	e.updateAudioPause(now)
+	e.updateIdlePhase(now)
 	if e.tr != nil {
 		e.tr.Tick()
 	}
 }
 
-// updateAudioPause suspends the audio pacer after a sustained digital silence
-// and resumes it on the first audible block. The sender keeps its sync,
-// feedback, volume, and event timers running while the stream is suspended,
-// so the receiver's timeline and session stay alive without any RTP.
-func (e *Engine) updateAudioPause(now time.Time) {
+// idlePhase derives the session's idle phase from whether the stream is
+// pushing RTP. The 5 s silence policy below is what stops the push; the phase
+// reports the result, so the standby clock follows the actual stream state and
+// not a property of the captured audio.
+func (e *Engine) idlePhase(now time.Time) idlePhase {
 	if e.tr == nil || e.tr.State() != sender.StateStreaming || e.pauseUnsupported {
+		return idleActive
+	}
+	if e.tr.Pushing() {
+		return idleActive
+	}
+	if e.darkEligible() && now.Sub(e.darkBase()) >= e.standbyAfter() {
+		return idleDark
+	}
+	return idleSuspended
+}
+
+// darkEligible reports whether the receiver and the settings allow the top
+// display to go dark.
+func (e *Engine) darkEligible() bool {
+	return !e.setsValue.Lamp.Off &&
+		e.setsValue.Standby.Enabled &&
+		!e.pauseUnsupported &&
+		e.lampTargetCapable() &&
+		e.standbyHoldAt.IsZero()
+}
+
+// darkBase is when the current idle stretch started for the dark threshold:
+// the last RTP push, or the session start a user connect carries. An automatic
+// reconnect carries no baseline, so it counts from the last push and an idle PC
+// does not wake the room.
+func (e *Engine) darkBase() time.Time {
+	base := e.lastPushAt
+	if e.darkBaseline.After(base) {
+		base = e.darkBaseline
+	}
+	if base.IsZero() {
+		base = e.now()
+	}
+	return base
+}
+
+// standbyAfter is the configured idle threshold.
+func (e *Engine) standbyAfter() time.Duration {
+	return time.Duration(settings.NormalizeStandbyMinutes(e.setsValue.Standby.IdleMinutes)) * time.Minute
+}
+
+// updateIdlePhase runs the silence policy and then the standby transition.
+// The policy stops the pacer after audioPauseAfter of digital silence and
+// resumes it on the first audible block. The standby clock counts from the
+// last RTP push, so it starts when the stream stops rather than when the
+// captured audio became quiet.
+func (e *Engine) updateIdlePhase(now time.Time) {
+	if !e.standbyHoldAt.IsZero() && e.silence.LastLoud().After(e.standbyHoldAt) {
+		e.standbyHoldAt = time.Time{}
+	}
+	if e.tr == nil || e.tr.State() != sender.StateStreaming || e.pauseUnsupported {
+		if phase := e.idlePhase(now); phase != e.idle {
+			e.idle = phase
+			e.publish()
+		}
 		return
 	}
-	loud := now.Sub(e.silence.LastLoud()) < audioPauseAfter
-	wanted := !loud
-	if wanted == e.audioPaused {
-		return
-	}
-	if !e.tr.SetPaused(wanted) {
-		// A legacy AirPlay 1 session keeps its continuous silence stream.
-		e.pauseUnsupported = true
-		return
-	}
-	e.audioPaused = wanted
-	e.silence.SetPaused(wanted)
-	if e.audioPaused {
-		e.logf("audio idle for %s, stream suspended", audioPauseAfter)
-	} else {
+
+	if e.tr.Pushing() {
+		if now.Sub(e.silence.LastLoud()) >= audioPauseAfter {
+			if !e.tr.SetPaused(true) {
+				// A legacy AirPlay 1 session keeps its continuous silence stream.
+				e.pauseUnsupported = true
+				e.idle = idleActive
+				e.publish()
+				return
+			}
+			e.silence.SetPaused(true)
+			e.logf("audio idle for %s, stream suspended", audioPauseAfter)
+		} else {
+			e.lastPushAt = now
+		}
+	} else if now.Sub(e.silence.LastLoud()) < audioPauseAfter {
+		if !e.tr.SetPaused(false) {
+			e.pauseUnsupported = true
+			e.idle = idleActive
+			e.publish()
+			return
+		}
+		e.silence.SetPaused(false)
+		e.lastPushAt = now
 		e.logf("audio resumed")
 	}
+
+	phase := e.idlePhase(now)
+	if phase == e.idle {
+		return
+	}
+	prev := e.idle
+	switch phase {
+	case idleActive:
+		if prev == idleDark {
+			// State 1 reopens the Now Playing renderer and makes the sender
+			// resend the cover that state 2 dropped. The policy has re-armed
+			// the pacer; the sender sends its first packet on the next Tick.
+			e.tr.SetPlaybackState(true)
+			e.logf("standby: lamp on")
+		}
+	case idleSuspended, idleDark:
+		if phase == idleDark {
+			e.tr.SetPlaybackState(false)
+			e.logf("standby: lamp off after %s idle on %s", now.Sub(e.darkBase()).Round(time.Second), e.connectedName)
+		} else if prev == idleDark {
+			e.tr.SetPlaybackState(true)
+		}
+	}
+	e.idle = phase
 	e.publish()
 }
 
@@ -829,17 +951,24 @@ func (e *Engine) shutdown() {
 func (e *Engine) closeSession() {
 	e.restoreLocalMute()
 	e.detachMemberRings()
-	e.audioPaused = false
-	e.pauseUnsupported = false
+	e.resetIdle()
 	e.sessionStartedAt = time.Time{}
-	if e.silence != nil {
-		e.silence.SetPaused(false)
-	}
 	if e.stopSession != nil {
 		stop := e.stopSession
 		e.tr = nil
 		e.stopSession = nil
 		stop()
+	}
+}
+
+// resetIdle clears the per-session idle phase and its bookkeeping.
+func (e *Engine) resetIdle() {
+	e.idle = idleActive
+	e.standbyHoldAt = time.Time{}
+	e.darkBaseline = time.Time{}
+	e.pauseUnsupported = false
+	if e.silence != nil {
+		e.silence.SetPaused(false)
 	}
 }
 
@@ -882,6 +1011,7 @@ func (e *Engine) handleCommand(cmd command) {
 		if t, ok := e.target(cmd.deviceID); ok {
 			e.userDisconnect = false
 			e.reconnectCount = 0
+			e.connectAuto = false
 			e.connect(t.Device)
 		} else {
 			e.lastError = "未找到设备，请刷新后重试"
@@ -974,6 +1104,7 @@ func (e *Engine) handleCommand(cmd command) {
 				e.logf("latency apply: %s is offline; session left running", e.selectedID)
 			} else {
 				e.userDisconnect = false
+				e.connectAuto = false
 				e.connect(d)
 			}
 		}
@@ -1024,7 +1155,21 @@ func (e *Engine) handleCommand(cmd command) {
 			e.logf("ambient light: preset %q is unknown, using %q", cmd.text, preset)
 		}
 		e.setsValue.Lamp = settings.LampSettings{Off: cmd.value != 0, Cover: cmd.lampCover, Preset: preset}
+		now := e.now()
+		// A manual lamp action always wins over an existing dark phase; the
+		// next audible block ends the hold.
+		e.standbyHoldAt = now
 		e.prepareLampImage()
+		e.idle = e.idlePhase(now)
+		e.applyLamp()
+		e.markSettingsDirty()
+		e.publish()
+	case cmdStandby:
+		e.setsValue.Standby = settings.StandbySettings{
+			Enabled:     cmd.show,
+			IdleMinutes: settings.NormalizeStandbyMinutes(cmd.minutes),
+		}
+		e.idle = e.idlePhase(e.now())
 		e.applyLamp()
 		e.markSettingsDirty()
 		e.publish()
@@ -1230,6 +1375,7 @@ func (e *Engine) attemptReconnect() {
 	}
 	e.lastMissingLogAt = time.Time{}
 	e.reconnectCount++
+	e.connectAuto = true
 	e.connect(d)
 }
 
@@ -1257,9 +1403,10 @@ func (e *Engine) prepareLampImage() {
 // applyLamp applies the manual off state and the two lit modes. Off sends
 // the paused playback state, which stops the Now Playing renderer and turns
 // the top display dark without touching the audio. Cover hands the artwork
-// slot to the media cover; a template owns it. A media pause keeps the
-// current light. A receiver that cannot show top-display artwork is skipped
-// with one diagnostic line per session.
+// slot to the media cover; a template owns it. While the idle phase is dark,
+// the artwork goes first and the playback state stays paused, so the receiver
+// keeps the right image for the next state 1. A receiver that cannot show
+// top-display artwork is skipped with one diagnostic line per session.
 func (e *Engine) applyLamp() {
 	if e.tr == nil {
 		return
@@ -1276,10 +1423,11 @@ func (e *Engine) applyLamp() {
 		e.tr.SetPlaybackState(false)
 		return
 	}
+	playing := e.idle != idleDark
 	if e.setsValue.Lamp.Cover {
 		e.tr.SetLampArtwork(nil, "", false)
 		e.logf("ambient light: cover on %s", e.connectedName)
-		e.tr.SetPlaybackState(true)
+		e.tr.SetPlaybackState(playing)
 		return
 	}
 	preset := lamp.Normalize(e.setsValue.Lamp.Preset)
@@ -1288,7 +1436,7 @@ func (e *Engine) applyLamp() {
 	}
 	e.logf("ambient light: template %s (%d bytes) on %s", e.lampImagePreset, len(e.lampImage), e.connectedName)
 	e.tr.SetLampArtwork(e.lampImage, "image/jpeg", true)
-	e.tr.SetPlaybackState(true)
+	e.tr.SetPlaybackState(playing)
 }
 
 // lampTargetCapable fails closed: a missing target, an unknown model, or an
@@ -1312,7 +1460,21 @@ func (e *Engine) lampTargetCapable() bool {
 
 func (e *Engine) onLaunched(ok bool, err string) {
 	if ok {
-		e.sessionStartedAt = e.now()
+		now := e.now()
+		e.sessionStartedAt = now
+		// The dark threshold counts from the last RTP push. A user connect
+		// carries the session start as its baseline, so the light shows for a
+		// full idle period. An automatic reconnect carries none, so a PC that
+		// has not pushed for hours goes dark at once.
+		if e.connectAuto {
+			e.darkBaseline = time.Time{}
+		} else {
+			e.darkBaseline = now
+		}
+		e.connectAuto = false
+		if e.lastPushAt.IsZero() {
+			e.lastPushAt = now
+		}
 		e.connectedName = e.nameFor(e.selectedID)
 		if e.setsValue.LastDeviceID != e.selectedID {
 			e.setsValue.LastDeviceID = e.selectedID
@@ -1334,11 +1496,25 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		}
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
+		// The sender arms its pacer before reporting the launch. If the
+		// capture is already silent, stop it here so the stream never pushes a
+		// stale cushion, then derive the phase from the actual push state. The
+		// phase is computed before the lamp, so an automatic reconnect already
+		// past the threshold goes straight to dark with no state 1 flash.
+		if e.tr != nil && e.tr.Pushing() && now.Sub(e.silence.LastLoud()) >= audioPauseAfter {
+			if e.tr.SetPaused(true) {
+				e.silence.SetPaused(true)
+			} else {
+				e.pauseUnsupported = true
+			}
+		}
+		e.idle = e.idlePhase(now)
 		e.applyLamp()
 		if !e.dropSessionActive {
 			e.beginDropSession()
 		}
 	} else {
+		e.connectAuto = false
 		e.restoreLocalMute()
 		e.connectedName = ""
 		e.receiverLatency = 0
@@ -1378,6 +1554,9 @@ func (e *Engine) onPreempted(reason string) {
 	e.receiverLatency = 0
 	e.sessionStartedAt = time.Time{}
 	e.endDropSession()
+	// The receiver belongs to another sender now; nothing of this session can
+	// stay on, and the closed control channel cannot light the display.
+	e.resetIdle()
 	e.lastError = ""
 	e.restoreLocalMute()
 	e.logf("session taken over: %s", reason)
@@ -1569,6 +1748,7 @@ func (e *Engine) maybeAutoConnect() bool {
 	}
 	e.autoTried = true
 	e.userDisconnect = false
+	e.connectAuto = false
 	e.connect(target.Device)
 	return true
 }
@@ -1973,7 +2153,10 @@ func (e *Engine) buildSnapshot() Snapshot {
 		Name:               e.setsValue.Name,
 		Reconnect:          e.setsValue.Reconnect,
 		Reconnecting:       e.reconnectWanted && !e.reconnectAt.IsZero(),
-		AudioIdle:          e.audioPaused,
+		AudioIdle:          e.idle != idleActive,
+		Standby:            e.idle == idleDark,
+		StandbyEnabled:     e.setsValue.Standby.Enabled,
+		StandbyMinutes:     settings.NormalizeStandbyMinutes(e.setsValue.Standby.IdleMinutes),
 		MuteLocal:          e.mute.state,
 		MuteLocalError:     e.mute.err,
 		LatencyMS:          e.setsValue.LatencyMS,

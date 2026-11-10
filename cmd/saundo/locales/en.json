@@ -53,6 +53,7 @@
     }
   },
   "statusStreaming": "Streaming",
+  "statusStandby": "Standby · wakes when sound plays",
   "statusDisconnected": "Not connected",
   "statusConnectionFailed": "Connection failed",
   "deviceStereoGroup": "{model} · Stereo pair {n, number}/2",
@@ -536,9 +537,29 @@
   "settingsLampTemplatesDesc": "Six preset light colors; click to switch.",
   "settingsLampHomePodOnly": "HomePod only",
   "settingsLampSoundGlowHint": "Enable Sound Glow in the Home app's HomePod settings; without it the top display only shows white light.",
+  "settingsLampStandby": "Turn off automatically",
+  "settingsLampStandbyDesc": "Turns off after {n} minutes without playback.",
+  "@settingsLampStandbyDesc": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsLampStandbyOffDesc": "Never turns off automatically; the display stays lit.",
+  "settingsLampStandbyOffOption": "Never",
+  "settingsLampStandbyMinutes": "{n} min",
+  "@settingsLampStandbyMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "lampTurnOff": "Turn off",
   "lampTurnOn": "Turn on",
   "lampOffStatus": "Off",
+  "lampStandbyStatus": "Standby",
   "lampNoMedia": "No media",
   "lampPriority": "Color source",
   "lampPriorityDesc": "Follows the cover, or uses a fixed template.",
