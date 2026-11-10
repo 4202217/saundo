@@ -46,6 +46,7 @@
   "statusPairing": "正在配对…",
   "statusStreamingTo": "正在通过 {name} 播放",
   "statusStreaming": "正在播放",
+  "statusStandby": "已待机 · 播放声音即唤醒",
   "statusDisconnected": "未连接",
   "statusConnectionFailed": "连接失败",
   "deviceStereoGroup": "{model} · 立体声组 {n, number}/2",
@@ -449,9 +450,29 @@
   "settingsLampTemplatesDesc": "六组预设灯光颜色，点击切换。",
   "settingsLampHomePodOnly": "HomePod 专属",
   "settingsLampSoundGlowHint": "需在“家庭”App 的 HomePod 设置中开启“声音光晕”，否则顶屏只显示白灯。",
+  "settingsLampStandby": "自动关闭氛围灯",
+  "settingsLampStandbyDesc": "没有播放 {n} 分钟后关闭。",
+  "@settingsLampStandbyDesc": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsLampStandbyOffDesc": "不自动关闭氛围灯，顶屏保持常亮。",
+  "settingsLampStandbyOffOption": "从不",
+  "settingsLampStandbyMinutes": "{n} 分钟",
+  "@settingsLampStandbyMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "lampTurnOff": "关灯",
   "lampTurnOn": "开灯",
   "lampOffStatus": "已关灯",
+  "lampStandbyStatus": "待机",
   "lampNoMedia": "无媒体",
   "lampPriority": "颜色来源",
   "lampPriorityDesc": "跟随媒体封面，或使用固定模板。",

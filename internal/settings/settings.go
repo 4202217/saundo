@@ -40,6 +40,12 @@ const (
 	DefaultLatencyCustomMS = 700
 )
 
+// StandbySettings is the ambient light's idle standby.
+type StandbySettings struct {
+	Enabled     bool `json:"enabled"`
+	IdleMinutes int  `json:"idleMinutes"`
+}
+
 // LampSettings is the global ambient-light choice. The light is always part
 // of the app; Off is the manual "关灯" state. Cover chooses the media cover;
 // when it is off, Preset renders one of the six templates. LegacyEnabled
@@ -107,6 +113,7 @@ type Settings struct {
 	AudioLevel          bool               `json:"audioLevel"`
 	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
 	Lamp                LampSettings       `json:"lamp"`
+	Standby             StandbySettings    `json:"standby"`
 	TrayAnimation       bool               `json:"trayAnimation"`
 	FlyoutPopover       bool               `json:"flyoutPopover"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
@@ -143,6 +150,7 @@ func Default() Settings {
 		FlyoutPopover:       false,
 		Theme:               ThemeSystem,
 		Lamp:                LampSettings{Cover: true, Preset: lamp.DefaultID},
+		Standby:             StandbySettings{Enabled: true, IdleMinutes: 30},
 	}
 }
 
@@ -261,7 +269,18 @@ func (s *Store) loadLocked() Settings {
 			out.Lamp.Preset = lamp.DefaultID
 		}
 	}
+	out.Standby.IdleMinutes = NormalizeStandbyMinutes(out.Standby.IdleMinutes)
 	return out
+}
+
+// NormalizeStandbyMinutes maps an idle threshold to one of the offered values.
+// Anything else, including zero and negatives, becomes the half-hour default.
+func NormalizeStandbyMinutes(minutes int) int {
+	switch minutes {
+	case 1, 5, 10, 30:
+		return minutes
+	}
+	return 30
 }
 
 // LatencyModeForMS names the preset a stored millisecond value corresponds to.

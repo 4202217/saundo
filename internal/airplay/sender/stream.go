@@ -74,6 +74,12 @@ func (s *Sender) SetPaused(paused bool) bool {
 	return true
 }
 
+// Pushing reports whether the realtime stream is currently sending RTP. A
+// suspended pacer is not pushing, which is the state the idle standby counts.
+func (s *Sender) Pushing() bool {
+	return s.state == StateStreaming && !s.paused
+}
+
 func (s *Sender) applyPause(paused bool) {
 	if s.paused == paused {
 		return

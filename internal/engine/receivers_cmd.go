@@ -104,6 +104,10 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 	if patch.DelayMS != nil && delayBefore != delayAfter && e.isLive(key) {
 		if target, ok := e.target(key); ok {
 			e.userDisconnect = false
+			// A delay edit is a user action even when it lands while an
+			// automatic reconnect is still connecting. Start the standby
+			// clock at the new session so the light shows the restart.
+			e.connectAuto = false
 			e.connect(target.Device)
 		}
 	}

@@ -524,6 +524,22 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-lamp-off-light", lampOff.settingsView, 720, 500, false)
 	save("settings-lamp-off-dark", lampOff.settingsView, 720, 500, true)
 
+	// The standby row's other end: the select reads 从不 and the subtitle
+	// explains that the light stays on.
+	standbyOffSettings := fixture()
+	standbyOffSettings.page = pageLamp
+	standbyOffSettings.standbyEnabled = false
+	save("settings-lamp-standby-off-light", standbyOffSettings.settingsView, 720, 500, false)
+	save("settings-lamp-standby-off-dark", standbyOffSettings.settingsView, 720, 500, true)
+
+	// The flyout while the engine holds the top display dark.
+	standbyFly := fixture()
+	standbyFly.snap.Standby = true
+	save("flyout-lamp-standby-light", standbyFly.view, flyoutWidth,
+		visibleFlyoutHeight(standbyFly), false)
+	save("flyout-lamp-standby-dark", standbyFly.view, flyoutWidth,
+		visibleFlyoutHeight(standbyFly), true)
+
 	lampCollapsed := fixture()
 	save("flyout-lamp-collapsed-light", lampCollapsed.view, flyoutWidth,
 		visibleFlyoutHeight(lampCollapsed), false)

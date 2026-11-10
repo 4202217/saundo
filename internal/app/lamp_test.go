@@ -308,6 +308,70 @@ func TestSettingsLampPageOffRequiresTurningOn(t *testing.T) {
 	}
 }
 
+func TestSettingsLampStandbySelect(t *testing.T) {
+	a := previewApp()
+	a.page = pageLamp
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsLampStandby(),
+		locales.SettingsLampStandbyMinutes(30),
+		locales.SettingsLampStandbyDesc(30),
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("lamp page is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+
+	a.setStandbyChoice(locales.SettingsLampStandbyMinutes(5))
+	if !a.standbyEnabled || a.standbyMinutes != 5 {
+		t.Fatalf("standby = %v/%d, want on/5", a.standbyEnabled, a.standbyMinutes)
+	}
+	if a.cfg.Standby != (settings.StandbySettings{Enabled: true, IdleMinutes: 5}) {
+		t.Fatalf("app standby copy = %+v", a.cfg.Standby)
+	}
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText(locales.SettingsLampStandbyDesc(5)) {
+		t.Fatalf("lamp page did not follow the 5 minute choice; texts: %q", tt.Texts())
+	}
+
+	a.setStandbyChoice(locales.SettingsLampStandbyOffOption())
+	if a.standbyEnabled || a.standbyMinutes != 30 {
+		t.Fatalf("standby off = %v/%d, want false/30", a.standbyEnabled, a.standbyMinutes)
+	}
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText(locales.SettingsLampStandbyOffDesc()) {
+		t.Fatalf("lamp page is missing the never description; texts: %q", tt.Texts())
+	}
+}
+
+func TestFlyoutLampShowsStandby(t *testing.T) {
+	a := previewApp()
+	a.snap.Standby = true
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	for _, want := range []string{
+		locales.LampStandbyStatus(),
+		locales.LampTurnOn(),
+		locales.StatusStandby(),
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("standby flyout is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText(locales.LampTurnOff()) {
+		t.Fatalf("standby flyout still offers %q", locales.LampTurnOff())
+	}
+	if err := tt.Click(locales.LampTurnOn()); err != nil {
+		t.Fatal(err)
+	}
+	if a.lampOff {
+		t.Fatal("turning the light on during standby wrote the manual off state")
+	}
+	if !a.standbyEnabled || a.standbyMinutes != 30 {
+		t.Fatalf("turning the light on changed the standby setting: %v/%d", a.standbyEnabled, a.standbyMinutes)
+	}
+}
+
 func TestSettingsLampPageChoosesPreset(t *testing.T) {
 	a := previewApp()
 	a.page = pageLamp
@@ -328,15 +392,22 @@ func TestSettingsLampPageChoosesPreset(t *testing.T) {
 func TestLampSurfacesInEnglish(t *testing.T) {
 	withLocale(t, "en")
 	a := previewApp()
+	a.snap.Standby = true
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	for _, want := range []string{"Ambient light", "Cover", "Template", "Dune"} {
+	for _, want := range []string{
+		"Ambient light", "Cover", "Template", "Dune",
+		"Standby", "Turn on", "Standby · wakes when sound plays",
+	} {
 		if !tt.HasText(want) {
 			t.Fatalf("English flyout is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
 	a.page = pageLamp
 	tt = ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{"Ambient light", "HomePod only", "Color source", "Cover", "Template", "Dune"} {
+	for _, want := range []string{
+		"Ambient light", "HomePod only", "Color source", "Cover", "Template", "Dune",
+		locales.SettingsLampStandby(), locales.SettingsLampStandbyDesc(30), "30 min",
+	} {
 		if !tt.HasText(want) {
 			t.Fatalf("English lamp page is missing %q; texts: %q", want, tt.Texts())
 		}

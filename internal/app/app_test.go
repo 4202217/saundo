@@ -65,6 +65,8 @@ func previewApp() *App {
 		showLatencySwitch: true,
 		lampOff:           false,
 		lampPreset:        "dune",
+		standbyEnabled:    true,
+		standbyMinutes:    30,
 	}
 	a.selID = "AA:BB:CC:DD:EE:01"
 	a.snap = engine.Snapshot{
@@ -88,6 +90,8 @@ func previewApp() *App {
 		Reconnect:         true,
 		LampOff:           false,
 		LampPreset:        "dune",
+		StandbyEnabled:    true,
+		StandbyMinutes:    30,
 	}
 	a.reconnect = true
 	return a
