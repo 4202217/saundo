@@ -186,6 +186,62 @@ func readCatalog(t *testing.T, name string) map[string]string {
 	return out
 }
 
+// TestRowHintsHaveNoTerminalPunctuation pins the punctuation rule: a
+// settings-row subtitle and a link description are labels, not prose, so they
+// carry no final period. Page descriptions, card body text, notes, dialog
+// copy, and status lines keep sentence punctuation.
+func TestRowHintsHaveNoTerminalPunctuation(t *testing.T) {
+	keys := []string{
+		"settingsSenderNameDesc",
+		"settingsLaunchAtStartDesc",
+		"settingsTrayAnimationDesc",
+		"settingsFlyoutPopoverDesc",
+		"settingsLanguageDesc",
+		"settingsThemeDesc",
+		"settingsIconStyleDesc",
+		"settingsPlaybackControlsDesc",
+		"settingsCoverColorsDesc",
+		"settingsAudioLevelDesc",
+		"settingsCoverDesc",
+		"settingsAutoUpdateDesc",
+		"settingsAutoDownloadDesc",
+		"settingsChannelDesc",
+		"settingsReconnectDesc",
+		"settingsStrictAuthDesc",
+		"settingsMuteLocalDesc",
+		"settingsMuteLocalDescOn",
+		"settingsMuteLocalDescWaiting",
+		"settingsMuteLocalDescFailed",
+		"settingsAudioFormatDesc",
+		"settingsSyncModeDesc",
+		"settingsSystemOutputDesc",
+		"settingsAppCaptureDesc",
+		"settingsCaptureStatusDesc",
+		"receiverAutoToggleDesc",
+		"receiverDelayDesc",
+		"lampPriorityDesc",
+		"aboutHomeDesc",
+		"aboutReleasesDesc",
+		"aboutIssuesDesc",
+		"aboutLogDesc",
+		"aboutLicenseDesc",
+		"aboutNoticesDesc",
+	}
+	for _, loc := range []string{"en", "zh-CN"} {
+		catalog := readCatalog(t, loc+".json")
+		for _, key := range keys {
+			value, ok := catalog[key]
+			if !ok {
+				t.Errorf("%s.json is missing %q", loc, key)
+				continue
+			}
+			if strings.HasSuffix(value, ".") || strings.HasSuffix(value, "。") {
+				t.Errorf("%s.json %q ends with a period: %q", loc, key, value)
+			}
+		}
+	}
+}
+
 // TestVolumeValueRoundsToWholePercent keeps the receiver's fractional
 // feedback out of the readout.
 func TestVolumeValueRoundsToWholePercent(t *testing.T) {
