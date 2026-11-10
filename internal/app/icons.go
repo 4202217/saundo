@@ -1,10 +1,6 @@
 package app
 
-import (
-	"strings"
-
-	"github.com/egoist/mygo/ui"
-)
+import "github.com/egoist/mygo/ui"
 
 // The icons are single-colour SVGs: ui.Icon tints them with the text color,
 // so one definition serves both appearances.
@@ -20,8 +16,6 @@ var (
 	faceSearch   = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><circle cx="12.15" cy="15.4" r="1.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`)
 
 	iconSpeaker = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="5.5"/><path d="M9.5 18.5h5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></g></svg>`)
-	iconTV      = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="12" rx="2.5"/><path d="M10 9.2l4 2.3-4 2.3z" fill="currentColor" stroke="none"/></g></svg>`)
-	iconMac     = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2.5 18.5h19"/></g></svg>`)
 
 	iconLink         = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></g></svg>`)
 	iconUnlink       = iconSVG(`<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></g></svg>`)
@@ -76,17 +70,5 @@ func faceIcon(face string) *ui.SVG {
 		return faceIdleOpen
 	default:
 		return iconMark
-	}
-}
-
-// deviceIcon picks the silhouette from the model the receiver advertises.
-func deviceIcon(model string) *ui.SVG {
-	switch {
-	case strings.HasPrefix(model, "Mac"):
-		return iconMac
-	case strings.HasPrefix(model, "AppleTV"):
-		return iconTV
-	default:
-		return iconSpeaker
 	}
 }

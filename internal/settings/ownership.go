@@ -17,7 +17,6 @@ var (
 		"AudioLevel",
 		"MuteLocalOnConnect",
 		"TrayAnimation",
-		"FlyoutPopover",
 		"LaunchAtStart",
 		"Language",
 		"Theme",

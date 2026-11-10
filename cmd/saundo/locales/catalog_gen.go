@@ -1102,11 +1102,11 @@ func (msgs Messages) SettingsPlaybackControls() string {
 	return Catalog.Format(msgs.locale, "settingsPlaybackControls", nil)
 }
 
-// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next."
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next"
 // in the language the app shows.
 func SettingsPlaybackControlsDesc() string { return In(i18n.Locale()).SettingsPlaybackControlsDesc() }
 
-// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next."
+// SettingsPlaybackControlsDesc says "Show previous, play/pause, and next"
 // in the language of msgs.
 func (msgs Messages) SettingsPlaybackControlsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsPlaybackControlsDesc", nil)
@@ -1122,11 +1122,11 @@ func (msgs Messages) SettingsCoverColors() string {
 	return Catalog.Format(msgs.locale, "settingsCoverColors", nil)
 }
 
-// SettingsCoverColorsDesc says "Use the cover's colors for the progress bar and audio level."
+// SettingsCoverColorsDesc says "Use the cover's colors for the progress bar and audio level"
 // in the language the app shows.
 func SettingsCoverColorsDesc() string { return In(i18n.Locale()).SettingsCoverColorsDesc() }
 
-// SettingsCoverColorsDesc says "Use the cover's colors for the progress bar and audio level."
+// SettingsCoverColorsDesc says "Use the cover's colors for the progress bar and audio level"
 // in the language of msgs.
 func (msgs Messages) SettingsCoverColorsDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverColorsDesc", nil)
@@ -1142,11 +1142,11 @@ func (msgs Messages) SettingsCover() string {
 	return Catalog.Format(msgs.locale, "settingsCover", nil)
 }
 
-// SettingsCoverDesc says "What the media card shows on its left."
+// SettingsCoverDesc says "What the media card shows on its left"
 // in the language the app shows.
 func SettingsCoverDesc() string { return In(i18n.Locale()).SettingsCoverDesc() }
 
-// SettingsCoverDesc says "What the media card shows on its left."
+// SettingsCoverDesc says "What the media card shows on its left"
 // in the language of msgs.
 func (msgs Messages) SettingsCoverDesc() string {
 	return Catalog.Format(msgs.locale, "settingsCoverDesc", nil)
@@ -1192,11 +1192,11 @@ func (msgs Messages) SettingsAudioLevel() string {
 	return Catalog.Format(msgs.locale, "settingsAudioLevel", nil)
 }
 
-// SettingsAudioLevelDesc says "The five-band audio level follows playback."
+// SettingsAudioLevelDesc says "The five-band audio level follows playback"
 // in the language the app shows.
 func SettingsAudioLevelDesc() string { return In(i18n.Locale()).SettingsAudioLevelDesc() }
 
-// SettingsAudioLevelDesc says "The five-band audio level follows playback."
+// SettingsAudioLevelDesc says "The five-band audio level follows playback"
 // in the language of msgs.
 func (msgs Messages) SettingsAudioLevelDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAudioLevelDesc", nil)
@@ -1262,11 +1262,11 @@ func (msgs Messages) SettingsLanguage() string {
 	return Catalog.Format(msgs.locale, "settingsLanguage", nil)
 }
 
-// SettingsLanguageDesc says "The language of the interface and messages"
+// SettingsLanguageDesc says "The interface and message language"
 // in the language the app shows.
 func SettingsLanguageDesc() string { return In(i18n.Locale()).SettingsLanguageDesc() }
 
-// SettingsLanguageDesc says "The language of the interface and messages"
+// SettingsLanguageDesc says "The interface and message language"
 // in the language of msgs.
 func (msgs Messages) SettingsLanguageDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLanguageDesc", nil)
@@ -1312,11 +1312,11 @@ func (msgs Messages) SettingsTheme() string {
 	return Catalog.Format(msgs.locale, "settingsTheme", nil)
 }
 
-// SettingsThemeDesc says "Follow the system, or keep the interface light or dark"
+// SettingsThemeDesc says "Light, dark, or follow the system"
 // in the language the app shows.
 func SettingsThemeDesc() string { return In(i18n.Locale()).SettingsThemeDesc() }
 
-// SettingsThemeDesc says "Follow the system, or keep the interface light or dark"
+// SettingsThemeDesc says "Light, dark, or follow the system"
 // in the language of msgs.
 func (msgs Messages) SettingsThemeDesc() string {
 	return Catalog.Format(msgs.locale, "settingsThemeDesc", nil)
@@ -1422,11 +1422,11 @@ func (msgs Messages) SettingsReconnect() string {
 	return Catalog.Format(msgs.locale, "settingsReconnect", nil)
 }
 
-// SettingsReconnectDesc says "Retries automatically a few times before giving up."
+// SettingsReconnectDesc says "Retries automatically a few times before giving up"
 // in the language the app shows.
 func SettingsReconnectDesc() string { return In(i18n.Locale()).SettingsReconnectDesc() }
 
-// SettingsReconnectDesc says "Retries automatically a few times before giving up."
+// SettingsReconnectDesc says "Retries automatically a few times before giving up"
 // in the language of msgs.
 func (msgs Messages) SettingsReconnectDesc() string {
 	return Catalog.Format(msgs.locale, "settingsReconnectDesc", nil)
@@ -1442,11 +1442,11 @@ func (msgs Messages) SettingsStrictAuth() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuth", nil)
 }
 
-// SettingsStrictAuthDesc says "Disconnect when receiver verification fails."
+// SettingsStrictAuthDesc says "Disconnect when receiver verification fails"
 // in the language the app shows.
 func SettingsStrictAuthDesc() string { return In(i18n.Locale()).SettingsStrictAuthDesc() }
 
-// SettingsStrictAuthDesc says "Disconnect when receiver verification fails."
+// SettingsStrictAuthDesc says "Disconnect when receiver verification fails"
 // in the language of msgs.
 func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
@@ -1684,11 +1684,11 @@ func (msgs Messages) ReceiverAutoToggle() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggle", nil)
 }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off."
+// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off"
 // in the language the app shows.
 func ReceiverAutoToggleDesc() string { return In(i18n.Locale()).ReceiverAutoToggleDesc() }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off."
+// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off"
 // in the language of msgs.
 func (msgs Messages) ReceiverAutoToggleDesc() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)
@@ -2286,11 +2286,11 @@ func (msgs Messages) SettingsAudioFormat() string {
 	return Catalog.Format(msgs.locale, "settingsAudioFormat", nil)
 }
 
-// SettingsAudioFormatDesc says "Fixed format, compatible with AirPlay 2 receivers."
+// SettingsAudioFormatDesc says "Fixed format, compatible with AirPlay 2 receivers"
 // in the language the app shows.
 func SettingsAudioFormatDesc() string { return In(i18n.Locale()).SettingsAudioFormatDesc() }
 
-// SettingsAudioFormatDesc says "Fixed format, compatible with AirPlay 2 receivers."
+// SettingsAudioFormatDesc says "Fixed format, compatible with AirPlay 2 receivers"
 // in the language of msgs.
 func (msgs Messages) SettingsAudioFormatDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAudioFormatDesc", nil)
@@ -2316,11 +2316,11 @@ func (msgs Messages) SettingsSyncMode() string {
 	return Catalog.Format(msgs.locale, "settingsSyncMode", nil)
 }
 
-// SettingsSyncModeDesc says "Picks PTP or NTP automatically for the receiver."
+// SettingsSyncModeDesc says "Picks PTP or NTP automatically for the receiver"
 // in the language the app shows.
 func SettingsSyncModeDesc() string { return In(i18n.Locale()).SettingsSyncModeDesc() }
 
-// SettingsSyncModeDesc says "Picks PTP or NTP automatically for the receiver."
+// SettingsSyncModeDesc says "Picks PTP or NTP automatically for the receiver"
 // in the language of msgs.
 func (msgs Messages) SettingsSyncModeDesc() string {
 	return Catalog.Format(msgs.locale, "settingsSyncModeDesc", nil)
@@ -2346,41 +2346,41 @@ func (msgs Messages) SettingsMuteLocal() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocal", nil)
 }
 
-// SettingsMuteLocalDesc says "Avoids double audio; restored on disconnect or quit."
+// SettingsMuteLocalDesc says "Avoids double audio; restored on disconnect or quit"
 // in the language the app shows.
 func SettingsMuteLocalDesc() string { return In(i18n.Locale()).SettingsMuteLocalDesc() }
 
-// SettingsMuteLocalDesc says "Avoids double audio; restored on disconnect or quit."
+// SettingsMuteLocalDesc says "Avoids double audio; restored on disconnect or quit"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDesc() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDesc", nil)
 }
 
-// SettingsMuteLocalDescOn says "Local speakers are muted; they will be restored on disconnect."
+// SettingsMuteLocalDescOn says "Local speakers are muted; they will be restored on disconnect"
 // in the language the app shows.
 func SettingsMuteLocalDescOn() string { return In(i18n.Locale()).SettingsMuteLocalDescOn() }
 
-// SettingsMuteLocalDescOn says "Local speakers are muted; they will be restored on disconnect."
+// SettingsMuteLocalDescOn says "Local speakers are muted; they will be restored on disconnect"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDescOn() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDescOn", nil)
 }
 
-// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now."
+// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now"
 // in the language the app shows.
 func SettingsMuteLocalDescWaiting() string { return In(i18n.Locale()).SettingsMuteLocalDescWaiting() }
 
-// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now."
+// SettingsMuteLocalDescWaiting says "Applies when a receiver connects; not connected now"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDescWaiting() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDescWaiting", nil)
 }
 
-// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device."
+// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device"
 // in the language the app shows.
 func SettingsMuteLocalDescFailed() string { return In(i18n.Locale()).SettingsMuteLocalDescFailed() }
 
-// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device."
+// SettingsMuteLocalDescFailed says "Could not mute local output; check the audio device"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDescFailed() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDescFailed", nil)
@@ -3212,11 +3212,11 @@ func (msgs Messages) LampPriority() string {
 	return Catalog.Format(msgs.locale, "lampPriority", nil)
 }
 
-// LampPriorityDesc says "Follows the cover, or uses a fixed template."
+// LampPriorityDesc says "Follows the cover, or uses a fixed template"
 // in the language the app shows.
 func LampPriorityDesc() string { return In(i18n.Locale()).LampPriorityDesc() }
 
-// LampPriorityDesc says "Follows the cover, or uses a fixed template."
+// LampPriorityDesc says "Follows the cover, or uses a fixed template"
 // in the language of msgs.
 func (msgs Messages) LampPriorityDesc() string {
 	return Catalog.Format(msgs.locale, "lampPriorityDesc", nil)
@@ -3380,24 +3380,4 @@ func SettingsShowInPanel() string { return In(i18n.Locale()).SettingsShowInPanel
 // in the language of msgs.
 func (msgs Messages) SettingsShowInPanel() string {
 	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
-}
-
-// SettingsFlyoutPopover says "Tray panel as popover"
-// in the language the app shows.
-func SettingsFlyoutPopover() string { return In(i18n.Locale()).SettingsFlyoutPopover() }
-
-// SettingsFlyoutPopover says "Tray panel as popover"
-// in the language of msgs.
-func (msgs Messages) SettingsFlyoutPopover() string {
-	return Catalog.Format(msgs.locale, "settingsFlyoutPopover", nil)
-}
-
-// SettingsFlyoutPopoverDesc says "Show the tray panel as a system popover; off keeps the rounded style."
-// in the language the app shows.
-func SettingsFlyoutPopoverDesc() string { return In(i18n.Locale()).SettingsFlyoutPopoverDesc() }
-
-// SettingsFlyoutPopoverDesc says "Show the tray panel as a system popover; off keeps the rounded style."
-// in the language of msgs.
-func (msgs Messages) SettingsFlyoutPopoverDesc() string {
-	return Catalog.Format(msgs.locale, "settingsFlyoutPopoverDesc", nil)
 }

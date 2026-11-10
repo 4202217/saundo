@@ -192,10 +192,10 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复。"}},
+		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
-		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板。", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
+		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
 		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
 		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无", "默认", "媒体", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
@@ -1184,19 +1184,29 @@ func TestTrayIconFollowsPhase(t *testing.T) {
 
 func TestDeviceIconFollowsModel(t *testing.T) {
 	cases := []struct {
-		model string
-		want  *ui.SVG
+		model  string
+		stereo bool
+		want   *ui.SVG
 	}{
-		{"Mac14,2", iconMac},
-		{"MacBookPro18,3", iconMac},
-		{"AppleTV6,2", iconTV},
-		{"AppleTV3,2", iconTV},
-		{"AudioAccessory5,1", iconSpeaker},
-		{"", iconSpeaker},
+		{"Mac14,2", false, sfIcons["macbook"]},
+		{"MacBookPro18,3", false, sfIcons["macbook"]},
+		{"Macmini9,1", false, sfIcons["macmini"]},
+		{"Mac13,1", false, sfIcons["macstudio"]},
+		{"iMac21,1", false, sfIcons["desktop"]},
+		{"Mac99,99", false, sfIcons["desktop"]},
+		{"AppleTV6,2", false, sfIcons["appletv"]},
+		{"AppleTV3,2", false, sfIcons["appletv"]},
+		{"AirPort4,107", false, sfIcons["airport-express"]},
+		{"AudioAccessory5,1", false, sfIcons["homepod-mini"]},
+		{"AudioAccessory5,1", true, sfIcons["homepod-mini-pair"]},
+		{"AudioAccessory6,1", false, sfIcons["homepod"]},
+		{"AudioAccessory6,1", true, sfIcons["homepod-pair"]},
+		{"", false, sfIcons["hifispeaker"]},
+		{"SomeSpeaker", false, sfIcons["hifispeaker"]},
 	}
 	for _, tc := range cases {
-		if got := deviceIcon(tc.model); got != tc.want {
-			t.Errorf("deviceIcon(%q) is not the expected icon", tc.model)
+		if got := deviceIcon(tc.model, tc.stereo); got != tc.want {
+			t.Errorf("deviceIcon(%q, %v) is not the expected icon", tc.model, tc.stereo)
 		}
 	}
 }

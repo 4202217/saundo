@@ -2,7 +2,4 @@
 
 package app
 
-const (
-	flyoutStyleSetting = false
-	updatesSupported   = true
-)
+const updatesSupported = true

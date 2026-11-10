@@ -115,7 +115,6 @@ type Settings struct {
 	Lamp                LampSettings       `json:"lamp"`
 	Standby             StandbySettings    `json:"standby"`
 	TrayAnimation       bool               `json:"trayAnimation"`
-	FlyoutPopover       bool               `json:"flyoutPopover"`
 	LaunchAtStart       bool               `json:"launchAtStart"`
 	Language            string             `json:"language"`
 	Theme               ThemeMode          `json:"theme"`
@@ -147,7 +146,6 @@ func Default() Settings {
 		MuteLocalOnConnect:  true,
 		Reconnect:           true,
 		TrayAnimation:       true,
-		FlyoutPopover:       false,
 		Theme:               ThemeSystem,
 		Lamp:                LampSettings{Cover: true, Preset: lamp.DefaultID},
 		Standby:             StandbySettings{Enabled: true, IdleMinutes: 30},

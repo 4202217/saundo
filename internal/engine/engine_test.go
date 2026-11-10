@@ -1080,30 +1080,6 @@ func TestTrayAnimationCommandUpdatesSnapshotOnly(t *testing.T) {
 	}
 }
 
-// TestFlyoutPopoverCommandUpdatesSnapshotOnly pins the ownership split: the
-// engine reports the new state in its snapshot, but the app owns the
-// persistence and the engine's save leaves the stored value alone.
-func TestFlyoutPopoverCommandUpdatesSnapshotOnly(t *testing.T) {
-	h := newHarness(t)
-	cfg := h.e.sets.Load()
-	cfg.FlyoutPopover = false
-	if err := h.e.sets.Save(cfg); err != nil {
-		t.Fatal(err)
-	}
-	h.e.handleCommand(command{kind: cmdFlyoutPopover, value: 1})
-	if !h.e.buildSnapshot().FlyoutPopover {
-		t.Fatal("snapshot did not turn the popover flyout on")
-	}
-	h.flushSettings()
-	if h.e.sets.Load().FlyoutPopover {
-		t.Fatal("the engine's save wrote the app-owned popover flyout")
-	}
-	h.e.handleCommand(command{kind: cmdFlyoutPopover, value: 0})
-	if h.e.buildSnapshot().FlyoutPopover {
-		t.Fatal("snapshot kept the popover flyout on")
-	}
-}
-
 func TestNowPlayingCommandForwards(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

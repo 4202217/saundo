@@ -305,7 +305,7 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 		if hiddenGroup {
 			color = p.faint
 		}
-		ui.Icon(c, deviceIcon(v.Model)).Size(16, 16).TextColor(color)
+		ui.Icon(c, deviceIcon(v.Model, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
 		if v.Online && !hiddenGroup {
 			ring := p.card
 			if open {

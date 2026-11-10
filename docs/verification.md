@@ -42,8 +42,8 @@ live state:
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
 - The macOS port: `-race` (needs a C toolchain), per-app capture (the
-  `Config.ProcessID` seam is ready), signed/notarized mac updates (the mac
-  updater is disabled), and the flyout style setting is macOS-only.
+  `Config.ProcessID` seam is ready), and signed/notarized mac updates (the
+  mac updater is disabled).
 - The Windows tray focus after the focus seam split (2026-11-09): the
   flyout shadow and the locale-driven titles were confirmed by a live run;
   the focus call itself was not exercised.
