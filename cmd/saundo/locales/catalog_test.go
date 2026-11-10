@@ -218,6 +218,8 @@ func TestRowHintsHaveNoTerminalPunctuation(t *testing.T) {
 		"receiverAutoToggleDesc",
 		"receiverDelayDesc",
 		"lampPriorityDesc",
+		"settingsLampStandbyDesc",
+		"settingsLampStandbyOffDesc",
 		"aboutHomeDesc",
 		"aboutReleasesDesc",
 		"aboutIssuesDesc",

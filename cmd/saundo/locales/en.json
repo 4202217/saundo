@@ -538,7 +538,7 @@
   "settingsLampHomePodOnly": "HomePod only",
   "settingsLampSoundGlowHint": "Enable Sound Glow in the Home app's HomePod settings; without it the top display only shows white light.",
   "settingsLampStandby": "Turn off automatically",
-  "settingsLampStandbyDesc": "Turns off after {n} minutes without playback.",
+  "settingsLampStandbyDesc": "Turns off after {n} min of silence",
   "@settingsLampStandbyDesc": {
     "placeholders": {
       "n": {
@@ -546,7 +546,7 @@
       }
     }
   },
-  "settingsLampStandbyOffDesc": "Never turns off automatically; the display stays lit.",
+  "settingsLampStandbyOffDesc": "The display stays lit",
   "settingsLampStandbyOffOption": "Never",
   "settingsLampStandbyMinutes": "{n} min",
   "@settingsLampStandbyMinutes": {

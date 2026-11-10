@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-10 -->
+<!-- reviewed-through: 2026-11-11 -->
 
 # UI copy standard
 
@@ -17,7 +17,7 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | The light's target | 顶屏 | top display | 屏幕 |
 | A receiver on the machine running saundo | 本机 | local | 自身接收器, this device, this Mac as the chip |
 
-The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target, and its row is the only place `本机` / `local` appears.
+The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
 
 The ambient light is turned off with 关灯 or 关闭氛围灯. Do not use 熄灯.
 

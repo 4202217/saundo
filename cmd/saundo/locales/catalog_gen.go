@@ -3112,21 +3112,21 @@ func (msgs Messages) SettingsLampStandby() string {
 	return Catalog.Format(msgs.locale, "settingsLampStandby", nil)
 }
 
-// SettingsLampStandbyDesc says "Turns off after {n} minutes without playback."
+// SettingsLampStandbyDesc says "Turns off after {n} min of silence"
 // in the language the app shows.
 func SettingsLampStandbyDesc(n int) string { return In(i18n.Locale()).SettingsLampStandbyDesc(n) }
 
-// SettingsLampStandbyDesc says "Turns off after {n} minutes without playback."
+// SettingsLampStandbyDesc says "Turns off after {n} min of silence"
 // in the language of msgs.
 func (msgs Messages) SettingsLampStandbyDesc(n int) string {
 	return Catalog.Format(msgs.locale, "settingsLampStandbyDesc", map[string]any{"n": n})
 }
 
-// SettingsLampStandbyOffDesc says "Never turns off automatically; the display stays lit."
+// SettingsLampStandbyOffDesc says "The display stays lit"
 // in the language the app shows.
 func SettingsLampStandbyOffDesc() string { return In(i18n.Locale()).SettingsLampStandbyOffDesc() }
 
-// SettingsLampStandbyOffDesc says "Never turns off automatically; the display stays lit."
+// SettingsLampStandbyOffDesc says "The display stays lit"
 // in the language of msgs.
 func (msgs Messages) SettingsLampStandbyOffDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLampStandbyOffDesc", nil)

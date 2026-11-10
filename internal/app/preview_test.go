@@ -288,6 +288,13 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	failed.snap.ConnectedName = ""
 	save("flyout-error", failed.view, flyoutWidth, visibleFlyoutHeight(failed), false)
 
+	takenOver := fixture()
+	takenOver.snap.State = sender.StateIdle
+	takenOver.snap.TakenOver = true
+	takenOver.snap.ConnectedName = ""
+	save("flyout-taken-over-light", takenOver.view, flyoutWidth, visibleFlyoutHeight(takenOver), false)
+	save("flyout-taken-over-dark", takenOver.view, flyoutWidth, visibleFlyoutHeight(takenOver), true)
+
 	customFly := fixture()
 	customFly.latencyMode = settings.LatencyCustom
 	customFly.latencyCustom = 700
@@ -432,6 +439,13 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	darkSettings := fixture()
 	darkSettings.page = pageConnection
 	save("settings-connection-dark", darkSettings.settingsView, 720, 500, true)
+	takenOverSettings := fixture()
+	takenOverSettings.page = pageConnection
+	takenOverSettings.snap.State = sender.StateIdle
+	takenOverSettings.snap.TakenOver = true
+	save("settings-connection-taken-over-light", takenOverSettings.settingsView, 720, 500, false)
+	save("settings-connection-taken-over-dark", takenOverSettings.settingsView, 720, 500, true)
+	save("settings-connection-taken-over-640-light", takenOverSettings.settingsView, 640, 420, false)
 	darkAbout := fixture()
 	darkAbout.page = pageAbout
 	save("settings-about-dark", darkAbout.settingsView, 720, 500, true)
@@ -450,6 +464,14 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	receiversHidden.applyReceiverFixtures()
 	receiversHidden.receiverHiddenOpen = true
 	save("settings-receivers-hidden-light", receiversHidden.settingsView, 720, 500, false)
+
+	receiversLocal := localReceiverFixture()
+	receiversLocal.snap.SelectedID = ""
+	receiversLocal.snap.ConnectedName = ""
+	receiversLocal.snap.State = sender.StateIdle
+	receiversLocal.selID = ""
+	save("settings-receivers-local-light", receiversLocal.settingsView, 720, 500, false)
+	save("settings-receivers-local-dark", receiversLocal.settingsView, 720, 500, true)
 
 	receiversEmpty := fixture()
 	receiversEmpty.page = pageReceivers
@@ -538,6 +560,17 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	standbyOffSettings.standbyEnabled = false
 	save("settings-lamp-standby-off-light", standbyOffSettings.settingsView, 720, 500, false)
 	save("settings-lamp-standby-off-dark", standbyOffSettings.settingsView, 720, 500, true)
+
+	// The lamp page at the 640 DIP minimum, scrolled to the standby row.
+	lamp640 := fixture()
+	lamp640.page = pageLamp
+	saveScrolled("settings-lamp-640-bottom-light", lamp640.settingsView, 640, 420, false, 400)
+	saveScrolled("settings-lamp-640-bottom-dark", lamp640.settingsView, 640, 420, true, 400)
+	lamp640Off := fixture()
+	lamp640Off.page = pageLamp
+	lamp640Off.standbyEnabled = false
+	saveScrolled("settings-lamp-640-off-light", lamp640Off.settingsView, 640, 420, false, 400)
+	saveScrolled("settings-lamp-640-off-dark", lamp640Off.settingsView, 640, 420, true, 400)
 
 	// The flyout while the engine holds the top display dark.
 	standbyFly := fixture()
