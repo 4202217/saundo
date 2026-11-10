@@ -1252,11 +1252,11 @@ func (msgs Messages) SettingsLanguage() string {
 	return Catalog.Format(msgs.locale, "settingsLanguage", nil)
 }
 
-// SettingsLanguageDesc says "The language of the interface and messages"
+// SettingsLanguageDesc says "The interface and message language"
 // in the language the app shows.
 func SettingsLanguageDesc() string { return In(i18n.Locale()).SettingsLanguageDesc() }
 
-// SettingsLanguageDesc says "The language of the interface and messages"
+// SettingsLanguageDesc says "The interface and message language"
 // in the language of msgs.
 func (msgs Messages) SettingsLanguageDesc() string {
 	return Catalog.Format(msgs.locale, "settingsLanguageDesc", nil)
@@ -1302,11 +1302,11 @@ func (msgs Messages) SettingsTheme() string {
 	return Catalog.Format(msgs.locale, "settingsTheme", nil)
 }
 
-// SettingsThemeDesc says "Follow the system, or keep the interface light or dark"
+// SettingsThemeDesc says "Light, dark, or follow the system"
 // in the language the app shows.
 func SettingsThemeDesc() string { return In(i18n.Locale()).SettingsThemeDesc() }
 
-// SettingsThemeDesc says "Follow the system, or keep the interface light or dark"
+// SettingsThemeDesc says "Light, dark, or follow the system"
 // in the language of msgs.
 func (msgs Messages) SettingsThemeDesc() string {
 	return Catalog.Format(msgs.locale, "settingsThemeDesc", nil)
