@@ -156,6 +156,48 @@ type waveFormatExtensible struct {
 }
 
 var ksDataFormatSubtypeFloat = guid{0x00000003, 0x0000, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}}
+var ksDataFormatSubtypePCM = guid{0x00000001, 0x0000, 0x0010, [8]byte{0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}}
+
+// TestParseMixFormatExtensible pins the SubFormat offset. A
+// WAVEFORMATEXTENSIBLE appends wValidBitsPerSample (2 bytes) and
+// dwChannelMask (4 bytes) after cbSize, so the 16-byte GUID starts at byte 24.
+// Reading the tag from byte 18 instead would pick up the valid-bits word and
+// reject every extensible mix format.
+func TestParseMixFormatExtensible(t *testing.T) {
+	cases := []struct {
+		name       string
+		sub        guid
+		bits       uint16
+		blockAlign uint16
+	}{
+		{"pcm16", ksDataFormatSubtypePCM, 16, 4},
+		{"float32", ksDataFormatSubtypeFloat, 32, 8},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := waveFormatExtensible{
+				formatTag:      0xfffe,
+				channels:       2,
+				samplesPerSec:  48000,
+				avgBytesPerSec: 48000 * uint32(c.blockAlign),
+				blockAlign:     c.blockAlign,
+				bitsPerSample:  c.bits,
+				size:           22,
+				validBits:      c.bits,
+				channelMask:    0x3,
+				subFormat:      c.sub,
+			}
+			_, rate, blockAlign, err := parseMixFormat(uintptr(unsafe.Pointer(&f)))
+			if err != nil {
+				t.Fatalf("parseMixFormat: %v", err)
+			}
+			if rate != 48000 || blockAlign != int(c.blockAlign) {
+				t.Fatalf("rate=%d blockAlign=%d, want 48000/%d", rate, blockAlign, c.blockAlign)
+			}
+		})
+	}
+}
+
 var iidIAudioRenderClient = guid{0xf294acfc, 0x3146, 0x4483, [8]byte{0xa7, 0xbf, 0xad, 0xdc, 0xa7, 0xc2, 0x60, 0xe2}}
 
 // playTone renders a quiet 440 Hz sine on the default device for d, at a
