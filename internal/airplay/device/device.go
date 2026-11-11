@@ -122,8 +122,11 @@ type Device struct {
 	// OSVersion is the `osvers` TXT value, for example 27.2.
 	OSVersion string
 	// Features and SF are the parsed `features` and `sf` bit fields.
-	Features uint64
-	SF       uint64
+	// FeaturesUnknown marks a features value that did not parse, so a gate
+	// never treats unknown capabilities as absent ones.
+	Features        uint64
+	FeaturesUnknown bool
+	SF              uint64
 	// AM is the `am` TXT value.
 	AM string
 	// PasswordRequired reports that the receiver gates AirPlay with a
@@ -163,6 +166,14 @@ type Device struct {
 	// session SETUP anyway.
 	Local bool
 }
+
+// MinLatencyMS and MaxLatencyMS are the presentation-latency window shared by
+// the receiver registry and the sender, so the value the UI reports and the
+// value on the wire cannot drift apart.
+const (
+	MinLatencyMS = 20
+	MaxLatencyMS = 4000
+)
 
 // IsStereoGroup reports whether d is a synthesized stereo-pair target.
 func (d Device) IsStereoGroup() bool { return d.StereoID != "" && len(d.Members) > 0 }

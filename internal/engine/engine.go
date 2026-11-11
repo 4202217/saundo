@@ -190,13 +190,19 @@ type transport interface {
 
 // session is the production transport.
 type session struct {
-	host   *raopio.Host
-	sender *sender.Sender
-	ptp    *ptp.Follower
+	host     *raopio.Host
+	sender   *sender.Sender
+	ptp      *ptp.Follower
+	dead     chan struct{}
+	deadOnce sync.Once
 }
 
 func (s *session) Events() <-chan raopio.Event { return s.host.Events() }
-func (s *session) Dead() <-chan struct{}       { return nil }
+func (s *session) Dead() <-chan struct{}       { return s.dead }
+
+func (s *session) signalDead() {
+	s.deadOnce.Do(func() { close(s.dead) })
+}
 func (s *session) Start(host string, port uint16, name string) {
 	s.sender.Start(host, port, name)
 }
@@ -252,8 +258,15 @@ const ptpFeatureBit = 1 << 41
 // software 27 and macOS AirPlay receivers advertise the PTP bit and silently
 // ignore an NTP-timed stream; both use the same follower.
 func usesPTP(d device.Device) bool {
-	return d.Auth.IsHAP() && d.Features&ptpFeatureBit != 0 &&
-		(strings.HasPrefix(d.Model, "AudioAccessory") || strings.HasPrefix(d.Model, "Mac"))
+	if !d.Auth.IsHAP() {
+		return false
+	}
+	if !strings.HasPrefix(d.Model, "AudioAccessory") && !strings.HasPrefix(d.Model, "Mac") {
+		return false
+	}
+	// An unknown features value fails closed: these families keep their own
+	// PTP grandmaster, and an NTP-timed stream is silently ignored.
+	return d.FeaturesUnknown || d.Features&ptpFeatureBit != 0
 }
 
 // maxReconnectAttempts bounds automatic retries before giving up.
@@ -336,8 +349,13 @@ type Engine struct {
 	mu   sync.Mutex
 	snap Snapshot
 
-	devices          []device.Device
-	selectedID       string
+	devices    []device.Device
+	selectedID string
+	// activeHost, activePort, and activeMembers describe the session being
+	// opened, so a credentials callback can pin the endpoint it paired with.
+	activeHost       string
+	activePort       uint16
+	activeMembers    []device.Device
 	connectedName    string
 	lastError        string
 	takenOver        bool
@@ -451,6 +469,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 			e.passwords[entry.Key] = true
 		}
 	}
+	e.pinExistingCredentials()
 	e.newSession = e.openSession
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
@@ -496,16 +515,8 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 		c.Start()
 		clock = c
 	}
-	s := sender.New(host, sender.Events{
-		Launched:               e.onLaunched,
-		Closed:                 e.onClosed,
-		Preempted:              e.onPreempted,
-		PinRequired:            e.onPinRequired,
-		CredentialsObtained:    e.onCredentials,
-		StateChanged:           e.onStateChanged,
-		VolumeChanged:          e.onReceiverVolume,
-		ReceiverLatencyChanged: e.onReceiverLatency,
-	}, e.senderLog)
+	sess := &session{host: host, ptp: clock, dead: make(chan struct{})}
+	s := sender.New(host, e.sessionEvents(sess), e.senderLog)
 	s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 	entry, _ := e.reg.Get(d.ID)
 	s.SetDuplicates(receivers.DuplicatesFor(entry))
@@ -522,7 +533,7 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 	if clock != nil {
 		s.SetPTPClock(clock)
 	}
-	sess := &session{host: host, sender: s, ptp: clock}
+	sess.sender = s
 	return sess, func() {
 		s.Stop()
 		if clock != nil {
@@ -530,6 +541,33 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 		}
 		host.Close()
 	}, nil
+}
+
+// sessionEvents wires one single-receiver sender. The terminal callbacks also
+// signal dead, so the engine goroutine runs closeSession through the same
+// branch a stereo group uses, never from inside the sender callback.
+func (e *Engine) sessionEvents(sess *session) sender.Events {
+	return sender.Events{
+		Launched: func(ok bool, err string) {
+			if !ok {
+				sess.signalDead()
+			}
+			e.onLaunched(ok, err)
+		},
+		Closed: func() {
+			sess.signalDead()
+			e.onClosed()
+		},
+		Preempted: func(reason string) {
+			sess.signalDead()
+			e.onPreempted(reason)
+		},
+		PinRequired:            e.onPinRequired,
+		CredentialsObtained:    e.onCredentials,
+		StateChanged:           e.onStateChanged,
+		VolumeChanged:          e.onReceiverVolume,
+		ReceiverLatencyChanged: e.onReceiverLatency,
+	}
 }
 
 // Start launches discovery, capture, and the event loop.
@@ -1226,6 +1264,18 @@ func (e *Engine) connect(d device.Device) {
 		e.publish()
 		return
 	}
+	d = e.pinGroupMembers(d)
+	// A device id with stored credentials is pinned to the endpoint it was
+	// paired with. Discovery cannot authenticate an advertisement, so a
+	// different advertised address is refused before any key material is
+	// handed to the sender.
+	if entry, ok := e.reg.Get(d.ID); ok && entry.PairedHost != "" && entry.PairedPort != 0 &&
+		(d.Host != entry.PairedHost || d.Port != entry.PairedPort) {
+		e.lastError = d.Name + " 的地址与配对时不一致，已拒绝连接。"
+		e.logf("refusing %s: advertised %s:%d, paired %s:%d", d.Name, d.Host, d.Port, entry.PairedHost, entry.PairedPort)
+		e.publish()
+		return
+	}
 	password := ""
 	if !d.IsStereoGroup() && e.hasPassword(d.ID) {
 		password = e.passwordFor(d.ID)
@@ -1274,6 +1324,8 @@ func (e *Engine) connect(d device.Device) {
 	// The device being connected becomes the selection, so snapshots,
 	// per-device volume, and reconnect all follow the live session.
 	e.selectedID = d.ID
+	e.activeHost, e.activePort = d.Host, d.Port
+	e.activeMembers = d.Members
 	tr, stop, err := e.newSession(d)
 	if err != nil {
 		e.lastError = "无法建立会话：" + err.Error()
@@ -1367,6 +1419,14 @@ func (e *Engine) attemptReconnect() {
 	e.reconnectCount++
 	e.connectAuto = true
 	e.connect(d)
+	// connect can reject synchronously: a guard, a pin mismatch, or a failed
+	// session open. Those paths set lastError and never reach the asynchronous
+	// callbacks that arm the backoff, so re-arm here or the loop stops for
+	// good. A password prompt is not a failure and clears lastError; it waits
+	// for the user instead.
+	if e.lastError != "" && e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
+		e.planReconnect()
+	}
 }
 
 func (e *Engine) reconnectShouldRetry() bool {
@@ -1599,8 +1659,122 @@ func (e *Engine) onCredentials(deviceID, credsJSON string) {
 		e.logf("could not save credentials: %v", err)
 	} else {
 		e.logf("credentials saved for %s", deviceID)
+		e.pinPairedEndpoint(deviceID)
 	}
 	e.publish()
+}
+
+// pinPairedEndpoint records the address a fresh pairing used, so a later
+// advertisement cannot move that device id to another host.
+func (e *Engine) pinPairedEndpoint(deviceID string) {
+	host, port := e.activeHost, e.activePort
+	if deviceID != e.selectedID {
+		found := false
+		for _, m := range e.activeMembers {
+			if m.ID == deviceID {
+				host, port, found = m.Host, m.Port, true
+				break
+			}
+		}
+		if !found {
+			return
+		}
+	}
+	if host == "" || port == 0 {
+		return
+	}
+	if entry, ok := e.reg.Get(deviceID); ok {
+		if entry.PairedHost == host && entry.PairedPort == port {
+			return
+		}
+		entry.PairedHost, entry.PairedPort = host, port
+		e.reg.Put(entry)
+		e.saveRegistry()
+		return
+	}
+	for i := range e.reg.Entries {
+		entry := &e.reg.Entries[i]
+		for j := range entry.Members {
+			m := &entry.Members[j]
+			if m.ID != deviceID {
+				continue
+			}
+			if m.PairedHost == host && m.PairedPort == port {
+				return
+			}
+			m.PairedHost, m.PairedPort = host, port
+			e.saveRegistry()
+			return
+		}
+	}
+}
+
+// pinExistingCredentials pins a remembered receiver to the address it has on
+// disk. Credentials written before the pin existed have no better record of
+// the paired endpoint; pinning the last known address keeps a later
+// advertisement from moving them.
+func (e *Engine) pinExistingCredentials() {
+	changed := false
+	pin := func(key, host string, port uint16, set func(string, uint16)) {
+		if host == "" || port == 0 {
+			return
+		}
+		if e.creds.Load(key) == "" && !e.creds.HasPassword(key) {
+			return
+		}
+		set(host, port)
+		changed = true
+	}
+	for i := range e.reg.Entries {
+		entry := &e.reg.Entries[i]
+		if !entry.IsManual() && entry.PairedHost == "" {
+			pin(entry.Key, entry.Host, entry.Port, func(host string, port uint16) {
+				entry.PairedHost, entry.PairedPort = host, port
+			})
+		}
+		for j := range entry.Members {
+			m := &entry.Members[j]
+			if m.PairedHost != "" {
+				continue
+			}
+			pin(m.ID, m.Host, m.Port, func(host string, port uint16) {
+				m.PairedHost, m.PairedPort = host, port
+			})
+		}
+	}
+	if changed {
+		e.saveRegistry()
+	}
+}
+
+// pinGroupMembers applies each member's paired endpoint to a synthesized
+// stereo group before the session uses it.
+func (e *Engine) pinGroupMembers(d device.Device) device.Device {
+	if !d.IsStereoGroup() {
+		return d
+	}
+	entry, ok := e.reg.Get(d.ID)
+	if !ok || len(entry.Members) == 0 {
+		return d
+	}
+	pinned := make(map[string]receivers.Member, len(entry.Members))
+	for _, m := range entry.Members {
+		pinned[m.ID] = m
+	}
+	members := append([]device.Device(nil), d.Members...)
+	for i := range members {
+		m, ok := pinned[members[i].ID]
+		if !ok || m.PairedHost == "" || m.PairedPort == 0 {
+			continue
+		}
+		if members[i].Host != m.PairedHost || members[i].Port != m.PairedPort {
+			e.logf("member %s advertised %s:%d, paired %s:%d; using the paired endpoint",
+				members[i].Name, members[i].Host, members[i].Port, m.PairedHost, m.PairedPort)
+		}
+		members[i].Host, members[i].Port = m.PairedHost, m.PairedPort
+	}
+	d.Members = members
+	return d
 }
 
 func (e *Engine) onStateChanged(state sender.State) {
@@ -1797,7 +1971,8 @@ func (e *Engine) rememberDiscovered() {
 			e.reg.Put(receivers.Entry{
 				Key: d.ID, Kind: receivers.KindDiscovered,
 				Name: d.Name, Model: d.Model, AirPlay2: d.AirPlay2,
-				Features: d.Features, SF: d.SF, Auth: d.Auth,
+				Features: d.Features, FeaturesUnknown: d.FeaturesUnknown,
+				SF: d.SF, Auth: d.Auth,
 				Members: memberEntries(d.Members),
 				Host:    d.Host, Port: d.Port, LastSeen: now,
 			})
@@ -1830,6 +2005,10 @@ func (e *Engine) rememberDiscovered() {
 		}
 		if d.Features != 0 && entry.Features != d.Features {
 			entry.Features = d.Features
+			entryChanged = true
+		}
+		if entry.FeaturesUnknown != d.FeaturesUnknown {
+			entry.FeaturesUnknown = d.FeaturesUnknown
 			entryChanged = true
 		}
 		if d.SF != 0 && entry.SF != d.SF {
@@ -1895,15 +2074,16 @@ func memberEntries(members []device.Device) []receivers.Member {
 	out := make([]receivers.Member, 0, len(members))
 	for _, m := range members {
 		out = append(out, receivers.Member{
-			ID:       m.ID,
-			Name:     m.Name,
-			Host:     m.Host,
-			Port:     m.Port,
-			Model:    m.Model,
-			AirPlay2: m.AirPlay2,
-			Features: m.Features,
-			SF:       m.SF,
-			Auth:     m.Auth,
+			ID:              m.ID,
+			Name:            m.Name,
+			Host:            m.Host,
+			Port:            m.Port,
+			Model:           m.Model,
+			AirPlay2:        m.AirPlay2,
+			Features:        m.Features,
+			FeaturesUnknown: m.FeaturesUnknown,
+			SF:              m.SF,
+			Auth:            m.Auth,
 		})
 	}
 	return out
@@ -1943,11 +2123,15 @@ func (e *Engine) rebuildTargets() {
 func receiverHosts(reg receivers.Registry) []string {
 	hosts := make([]string, 0, len(reg.Entries))
 	for _, entry := range reg.Entries {
-		if host := strings.TrimSpace(entry.Host); host != "" {
+		if host, _ := entry.Endpoint(); strings.TrimSpace(host) != "" {
 			hosts = append(hosts, host)
 		}
 		for _, m := range entry.Members {
-			if host := strings.TrimSpace(m.Host); host != "" {
+			host := m.Host
+			if m.PairedHost != "" && m.PairedPort != 0 {
+				host = m.PairedHost
+			}
+			if host = strings.TrimSpace(host); host != "" {
 				hosts = append(hosts, host)
 			}
 		}

@@ -94,11 +94,15 @@ func New(queryInterval, queryTimeout time.Duration) *Service {
 		queryTimeout = 2 * time.Second
 	}
 	return &Service{
-		devices:        make(map[string]*seen),
-		updates:        make(chan []device.Device, 1),
-		queryInterval:  queryInterval,
-		queryTimeout:   queryTimeout,
-		staleAfter:     3*queryInterval + queryTimeout,
+		devices:       make(map[string]*seen),
+		updates:       make(chan []device.Device, 1),
+		queryInterval: queryInterval,
+		queryTimeout:  queryTimeout,
+		// The offline window must outlast a full directed-pass period plus its
+		// timeout. A receiver reachable only through that pass would otherwise
+		// flap offline between passes.
+		staleAfter: max(3*queryInterval+queryTimeout,
+			time.Duration(unicastEveryPasses)*queryInterval+queryTimeout),
 		dropAfter:      90 * time.Second,
 		now:            time.Now,
 		stop:           make(chan struct{}),
@@ -276,9 +280,12 @@ func (s *Service) merge(d device.Device) {
 	if d.OSVersion != "" {
 		merged.OSVersion = d.OSVersion
 	}
-	if d.Features != 0 {
+	if !d.FeaturesUnknown && d.Features != 0 {
 		merged.Features = d.Features
 	}
+	// One advertisement with a parsed features value makes the device known,
+	// even when the other service's record carried none.
+	merged.FeaturesUnknown = merged.FeaturesUnknown && d.FeaturesUnknown
 	if d.SF != 0 {
 		merged.SF = d.SF
 	}
@@ -422,11 +429,12 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 	if host == "" || e.Port <= 0 {
 		return device.Device{}, false
 	}
-	features := txt["features"]
-	if features == "" {
-		features = txt["ft"]
+	featuresTXT := txt["features"]
+	if featuresTXT == "" {
+		featuresTXT = txt["ft"]
 	}
-	sf := parseHex(txt["sf"])
+	featureBits, featuresOK := parseFeatures(featuresTXT)
+	sf, _ := parseHex(txt["sf"])
 	// A RAOP-only advertisement has no model field; `am` names the model.
 	model := txt["model"]
 	if model == "" {
@@ -440,7 +448,8 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 		Port:             uint16(e.Port),
 		Model:            model,
 		OSVersion:        strings.TrimSpace(txt["osvers"]),
-		Features:         parseFeatures(features),
+		Features:         featureBits,
+		FeaturesUnknown:  !featuresOK,
 		SF:               sf,
 		AM:               txt["am"],
 		PasswordRequired: strings.EqualFold(txt["pw"], "true") || strings.EqualFold(txt["pw"], "1") || sf&0x80 != 0,
@@ -564,24 +573,47 @@ func parseTXT(fields []string) map[string]string {
 	return out
 }
 
-// parseFeatures decodes "0xLOW,0xHIGH" or a single 0x value.
-func parseFeatures(s string) uint64 {
+// parseFeatures decodes "0xLOW,0xHIGH" or a single 0x value. The bool is
+// false when a word does not parse, so the caller keeps unknown distinct from
+// a legitimate zero.
+func parseFeatures(s string) (uint64, bool) {
+	s = strings.TrimSpace(s)
 	if s == "" {
-		return 0
+		return 0, false
 	}
 	parts := strings.Split(s, ",")
 	if len(parts) == 2 {
-		low, _ := strconv.ParseUint(strings.TrimPrefix(strings.TrimSpace(parts[0]), "0x"), 16, 32)
-		high, _ := strconv.ParseUint(strings.TrimPrefix(strings.TrimSpace(parts[1]), "0x"), 16, 32)
-		return high<<32 | low
+		low, ok1 := parseHexWord(parts[0])
+		high, ok2 := parseHexWord(parts[1])
+		if !ok1 || !ok2 {
+			return 0, false
+		}
+		return high<<32 | low, true
 	}
 	return parseHex(s)
 }
 
-func parseHex(s string) uint64 {
+// parseHexWord reads one 32-bit word of the two-part feature value. Both the
+// lowercase and uppercase prefix are accepted, and the word is always hex.
+func parseHexWord(s string) (uint64, bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return 0
+		return 0, false
+	}
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
+	}
+	v, err := strconv.ParseUint(s, 16, 32)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
+func parseHex(s string) (uint64, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, false
 	}
 	base := 10
 	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
@@ -590,8 +622,11 @@ func parseHex(s string) uint64 {
 	} else if strings.ContainsAny(s, "abcdefABCDEF") {
 		base = 16
 	}
-	v, _ := strconv.ParseUint(s, base, 64)
-	return v
+	v, err := strconv.ParseUint(s, base, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 const (
@@ -603,6 +638,14 @@ const (
 func chooseAuth(d device.Device) device.Auth {
 	if strings.HasPrefix(d.AM, "AirPort") {
 		return device.AuthSetup
+	}
+	if d.FeaturesUnknown && (strings.HasPrefix(d.Model, "AudioAccessory") || strings.HasPrefix(d.Model, "Mac")) {
+		// A failed features parse must not take the permissive AP1 path for a
+		// family that pairs over HAP.
+		if d.PasswordRequired {
+			return device.AuthHAPPassword
+		}
+		return device.AuthHAPTransient
 	}
 	hap := d.Features&featureHKPairing != 0 || d.Features&featureCoreUtils != 0
 	switch {

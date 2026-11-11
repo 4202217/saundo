@@ -109,6 +109,70 @@ func TestMergeKeepsRememberedRowOffline(t *testing.T) {
 	}
 }
 
+// TestMergePinsAPairedEndpoint pins the redirect defense: discovery cannot
+// authenticate an advertisement, so a paired device id never moves to the
+// address a later reply claims, while the rest of the advertisement updates.
+func TestMergePinsAPairedEndpoint(t *testing.T) {
+	reg := Registry{Entries: []Entry{{
+		Key: "AA:00", Kind: KindDiscovered, Name: "HomePod",
+		Host: "192.0.2.66", Port: 7000, PairedHost: "192.0.2.10", PairedPort: 7000,
+		Model: "AudioAccessory5,1", AirPlay2: true, Features: 1 << 41, Auth: device.AuthHAPTransient,
+	}}}
+	targets := Merge(reg, []device.Device{discovered("AA:00", "Renamed", "192.0.2.66", 7000)}, nil)
+	if len(targets) != 1 {
+		t.Fatalf("targets = %d, want 1", len(targets))
+	}
+	d := targets[0].Device
+	if d.Host != "192.0.2.10" || d.Port != 7000 {
+		t.Fatalf("paired endpoint moved to %s:%d", d.Host, d.Port)
+	}
+	if d.Name != "Renamed" {
+		t.Fatalf("name = %q, want the live advertisement", d.Name)
+	}
+}
+
+func TestCachedDeviceUsesPairedEndpoint(t *testing.T) {
+	e := Entry{
+		Key: "AA:00", Host: "192.0.2.66", Port: 7000,
+		PairedHost: "192.0.2.10", PairedPort: 7000, AirPlay2: true,
+	}
+	d, ok := CachedDevice(e, false)
+	if !ok {
+		t.Fatal("CachedDevice rejected a complete entry")
+	}
+	if d.Host != "192.0.2.10" || d.Port != 7000 {
+		t.Fatalf("cached endpoint = %s:%d, want the paired one", d.Host, d.Port)
+	}
+}
+
+// TestMergeKeepsOfflineCapabilities pins the remembered row's wire data: an
+// offline receiver must keep its cached endpoint, auth path, and features so
+// a connect or a restart cannot fall back to AP1 or NTP.
+func TestMergeKeepsOfflineCapabilities(t *testing.T) {
+	reg := Registry{Entries: []Entry{{
+		Key: "AA:00", Kind: KindDiscovered, Name: "HomePod",
+		Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1",
+		AirPlay2: true, Features: 1 << 41, Auth: device.AuthHAPTransient,
+	}}}
+	targets := Merge(reg, nil, nil)
+	if len(targets) != 1 {
+		t.Fatalf("targets = %d, want 1", len(targets))
+	}
+	d := targets[0].Device
+	if d.Online {
+		t.Fatal("offline row read as online")
+	}
+	if d.Host != "192.0.2.10" || d.Port != 7000 {
+		t.Fatalf("offline row lost its endpoint: %s:%d", d.Host, d.Port)
+	}
+	if d.Auth != device.AuthHAPTransient {
+		t.Fatalf("offline row auth = %v, want HAP transient", d.Auth)
+	}
+	if d.Features != 1<<41 {
+		t.Fatalf("offline row features = %#x, want the cached bits", d.Features)
+	}
+}
+
 // TestManageableDropsOfflineRememberedRows pins the display rule: a
 // remembered receiver with no live advertisement is not shown, while a
 // manual receiver and an online receiver are, and the active session's row
@@ -362,6 +426,58 @@ func TestStoreClampsStoredDelay(t *testing.T) {
 	}
 	if reg.Entries[0].DelayMS != MaxDelayMS {
 		t.Fatalf("stored delay = %d, want %d", reg.Entries[0].DelayMS, MaxDelayMS)
+	}
+}
+
+// TestMigrateSettingsRefusesCorruptSettings pins the startup path that used to
+// replace a corrupt settings.json with freshly minted defaults.
+// TestMigrateSettingsRefusesNewerSettingsSchema pins the startup path against
+// rewriting a document written by a newer build.
+func TestMigrateSettingsRefusesNewerSettingsSchema(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	seed := []byte(`{"version":999,"name":"x","futureKey":"keep-me"}`)
+	if err := os.WriteFile(path, seed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sets := settings.NewStoreAt(path)
+	secret := &fakePasswords{values: map[string]string{}}
+	reg := NewStoreAt(filepath.Join(dir, "receivers.json"))
+	if _, err := MigrateSettings(sets, secret, reg); err == nil {
+		t.Fatal("migration accepted a settings file from a newer schema")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(seed) {
+		t.Fatalf("newer settings file was rewritten: %q", got)
+	}
+}
+
+func TestMigrateSettingsRefusesCorruptSettings(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	corrupt := []byte(`{"passwords":`)
+	if err := os.WriteFile(path, corrupt, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sets := settings.NewStoreAt(path)
+	secret := &fakePasswords{values: map[string]string{}}
+	regPath := filepath.Join(dir, "receivers.json")
+	reg := NewStoreAt(regPath)
+	if _, err := MigrateSettings(sets, secret, reg); !errors.Is(err, settings.ErrCorrupt) {
+		t.Fatalf("migration error = %v, want ErrCorrupt", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(corrupt) {
+		t.Fatalf("settings.json was rewritten: %q", got)
+	}
+	if _, err := os.Stat(regPath); !os.IsNotExist(err) {
+		t.Fatalf("migration wrote the registry despite the corrupt settings: %v", err)
 	}
 }
 

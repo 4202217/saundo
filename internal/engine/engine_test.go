@@ -197,6 +197,9 @@ func TestUsesPTPSelectsHomePodAndMac(t *testing.T) {
 		{"homepod", device.Device{Model: "AudioAccessory5,1", Features: ptpFeatureBit, Auth: device.AuthHAPTransient}, true},
 		{"mac", device.Device{Model: "Mac14,2", Features: ptpFeatureBit, Auth: device.AuthHAPPassword}, true},
 		{"mac without ptp bit", device.Device{Model: "Mac14,2", Auth: device.AuthHAPPassword}, false},
+		{"unknown features on a homepod", device.Device{Model: "AudioAccessory6,1", FeaturesUnknown: true, Auth: device.AuthHAPTransient}, true},
+		{"unknown features on a mac", device.Device{Model: "Mac14,2", FeaturesUnknown: true, Auth: device.AuthHAPPassword}, true},
+		{"unknown features on a non-ptp family", device.Device{Model: "AppleTV6,2", FeaturesUnknown: true, Auth: device.AuthHAPPIN}, false},
 		{"non-ap2 mac", device.Device{Model: "Mac14,2", Features: ptpFeatureBit, Auth: device.AuthNone}, false},
 		{"fairplay tv", device.Device{Model: "AppleTV3,2", Auth: device.AuthLegacyPin}, false},
 	}
