@@ -3,6 +3,7 @@ package ptp
 import (
 	"encoding/binary"
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -60,6 +61,16 @@ func TestFollowerSecondStartIsIgnored(t *testing.T) {
 	}
 	// Let a second run's deferred close surface as a panic if one was spawned.
 	time.Sleep(100 * time.Millisecond)
+}
+
+// TestFollowerRejectsIPv6Peer pins the contract: the follower binds udp4, so
+// an IPv6 peer must be refused before the bind rather than silently sending
+// nothing.
+func TestFollowerRejectsIPv6Peer(t *testing.T) {
+	_, err := New("2001:db8::1")
+	if err == nil || !strings.Contains(err.Error(), "not IPv4") {
+		t.Fatalf("New(IPv6) error = %v, want a not-IPv4 error", err)
+	}
 }
 
 func TestTimestampRoundTrip(t *testing.T) {
