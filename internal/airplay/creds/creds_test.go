@@ -1,9 +1,9 @@
 package creds
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -59,31 +59,50 @@ func TestStoreRoundTrip(t *testing.T) {
 	}
 }
 
-func TestStoreRefusesCorruptFile(t *testing.T) {
+// TestCorruptStoreIsQuarantinedAndRebuilt pins the recovery: an unreadable
+// file is moved aside, reads stay empty, and the next save creates a fresh
+// store instead of failing forever.
+func TestCorruptStoreIsQuarantinedAndRebuilt(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "credentials.dat")
 	const blob = "not a DPAPI blob"
 	if err := os.WriteFile(path, []byte(blob), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	s := NewStoreAt(path)
-	if got := s.LoadPassword("AA:BB"); got != "" {
-		t.Fatalf("corrupt store read as %q", got)
+	if got := s.Load("AA:BB"); got != "" {
+		t.Fatalf("corrupt store load = %q, want empty", got)
 	}
-	if s.HasPassword("AA:BB") {
-		t.Fatal("corrupt store reports a password")
+	q := s.TakeQuarantine()
+	if !strings.HasPrefix(q, path+".corrupt-") {
+		t.Fatalf("quarantine path = %q, want %s.corrupt-*", q, path)
 	}
-	if err := s.SavePassword("AA:BB", "secret"); !errors.Is(err, ErrCorrupt) {
-		t.Fatalf("save error = %v, want ErrCorrupt", err)
-	}
-	if err := s.Save("AA:BB", `{"atvId":"00","clientId":"c","ltpk":"00","ltsk":"00"}`); !errors.Is(err, ErrCorrupt) {
-		t.Fatalf("HAP save error = %v, want ErrCorrupt", err)
-	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(q)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("quarantined file: %v", err)
 	}
 	if string(data) != blob {
-		t.Fatal("the corrupt credentials file was overwritten")
+		t.Fatal("the quarantined file does not hold the original bytes")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("the unreadable file still sits at the live path: %v", err)
+	}
+	if got := s.LoadPassword("AA:BB"); got != "" {
+		t.Fatalf("password after quarantine = %q, want empty", got)
+	}
+	if s.HasPassword("AA:BB") {
+		t.Fatal("quarantined store reports a password")
+	}
+	if err := s.SavePassword("AA:BB", "secret"); err != nil {
+		t.Fatalf("save password after quarantine: %v", err)
+	}
+	if got := s.LoadPassword("AA:BB"); got != "secret" {
+		t.Fatalf("password after rebuild = %q", got)
+	}
+	if err := s.Save("AA:BB", `{"atvId":"00","clientId":"c","ltpk":"00","ltsk":"00"}`); err != nil {
+		t.Fatalf("HAP save after quarantine: %v", err)
+	}
+	if s.TakeQuarantine() != "" {
+		t.Fatal("the store reported a second quarantine")
 	}
 }
 
