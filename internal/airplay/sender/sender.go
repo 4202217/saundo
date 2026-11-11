@@ -20,6 +20,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -647,12 +648,18 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.pendingDigestURI, s.pendingDigestVerb = "", ""
 	s.digestRetried = false
 
-	s.localTiming, _ = s.io.UDPBind(raopio.UDPTiming)
-	s.localControl, _ = s.io.UDPBind(raopio.UDPControl)
-	audioPort, _ := s.io.UDPBind(raopio.UDPAudio)
+	timingPort, timingErr := s.io.UDPBind(raopio.UDPTiming)
+	controlPort, controlErr := s.io.UDPBind(raopio.UDPControl)
+	audioPort, audioErr := s.io.UDPBind(raopio.UDPAudio)
+	s.localTiming, s.localControl = timingPort, controlPort
 	s.udpBound = true
-	if s.localTiming == 0 || s.localControl == 0 || audioPort == 0 {
-		s.warn("RAOP UDP bind failed")
+	bindErr := errors.Join(timingErr, controlErr, audioErr)
+	if bindErr != nil || s.localTiming == 0 || s.localControl == 0 || audioPort == 0 {
+		if bindErr != nil {
+			s.warn("RAOP UDP bind failed: %v", bindErr)
+		} else {
+			s.warn("RAOP UDP bind failed")
+		}
 		s.releaseSockets()
 		s.finishStartFailure("Could not bind UDP sockets")
 		return
