@@ -14,8 +14,11 @@ type Stats struct {
 	// Underruns counts audio packets padded with silence because the ring
 	// could not supply a full packet.
 	Underruns uint64
-	// SentBlocks counts audio packets attempted on the wire.
+	// SentBlocks counts audio packets at least one copy of which reached the
+	// host. SendErrors counts the datagrams the host refused, including a
+	// primary send whose duplicate still went out.
 	SentBlocks uint64
+	SendErrors uint64
 	// LastSync is when the last timing packet was sent. Zero means the
 	// session has not sent one.
 	LastSync time.Time
@@ -34,6 +37,7 @@ func (s *Sender) Stats() Stats {
 		LateTicks:   s.lateTicks,
 		Underruns:   s.underruns,
 		SentBlocks:  s.sentBlocks,
+		SendErrors:  s.sendErrors,
 		LastSync:    s.lastSync,
 		WiFi:        s.wifi,
 	}

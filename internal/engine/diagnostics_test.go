@@ -19,6 +19,7 @@ func TestDiagnosticsSingleAggregates(t *testing.T) {
 		LateTicks:   2,
 		Underruns:   1,
 		SentBlocks:  120,
+		SendErrors:  3,
 		LastSync:    lastSync,
 		BufferMS:    42,
 		BufferValid: true,
@@ -46,8 +47,8 @@ func TestDiagnosticsSingleAggregates(t *testing.T) {
 	if !d.SyncValid || d.SyncAge != 2*time.Minute+250*time.Millisecond {
 		t.Fatalf("sync = %v/%s, want 2m250ms", d.SyncValid, d.SyncAge)
 	}
-	if d.Retransmits != 4 || d.LateTicks != 2 || d.Underruns != 1 {
-		t.Fatalf("counters = %d/%d/%d, want 4/2/1", d.Retransmits, d.LateTicks, d.Underruns)
+	if d.Retransmits != 4 || d.LateTicks != 2 || d.Underruns != 1 || d.SendErrors != 3 {
+		t.Fatalf("counters = %d/%d/%d/%d, want 4/2/1/3", d.Retransmits, d.LateTicks, d.Underruns, d.SendErrors)
 	}
 	if !d.BufferValid || d.SendBufferMS != 42 {
 		t.Fatalf("buffer = %v/%f, want 42", d.BufferValid, d.SendBufferMS)
@@ -57,6 +58,19 @@ func TestDiagnosticsSingleAggregates(t *testing.T) {
 	}
 	if !d.Degraded {
 		t.Fatal("an underrun did not mark the session degraded")
+	}
+}
+
+// TestDiagnosticsSendErrorsDegrade pins the failing-socket signal: a session
+// whose audio datagrams never reach the host is not healthy even when no
+// sample was dropped and no packet was padded.
+func TestDiagnosticsSendErrorsDegrade(t *testing.T) {
+	d := aggregateDiagnostics([]sender.Stats{{SendErrors: 5}}, GroupSingle, 1, "", 0, 0, 0, time.Unix(101, 0))
+	if d.SendErrors != 5 {
+		t.Fatalf("send errors = %d, want 5", d.SendErrors)
+	}
+	if !d.Degraded {
+		t.Fatal("send errors did not mark the session degraded")
 	}
 }
 
