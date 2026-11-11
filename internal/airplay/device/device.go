@@ -114,7 +114,9 @@ type Device struct {
 	ID string
 	// Name is the friendly name from the service instance or TXT record.
 	Name string
-	// Host and Port are the RAOP control endpoint.
+	// Host and Port are the control endpoint for the receiver's auth path:
+	// the _airplay SRV port for HAP and open AirPlay 2, the _raop port for an
+	// AirPort or AP1 receiver.
 	Host string
 	Port uint16
 	// Model is the `model` TXT value, for example AppleTV6,2 or AudioAccessory5,1.

@@ -716,24 +716,91 @@ func TestPasswordProtectedMacMapsToHAPPassword(t *testing.T) {
 	}
 }
 
-func TestMergePrefersRAOPEndpointAndAirPlayName(t *testing.T) {
+// TestMergePrefersTheAirPlayEndpointForHAP pins the endpoint rule and its
+// order independence: a HAP receiver uses the _airplay SRV port whichever
+// browse replies last. Real records carry the same name on both services, so
+// the test asserts the endpoint only.
+func TestMergePrefersTheAirPlayEndpointForHAP(t *testing.T) {
+	parse := func(t *testing.T, name string, port int, service string) device.Device {
+		t.Helper()
+		d, ok := parseEntry(&mdns.ServiceEntry{
+			Name: name, AddrV4: net.IPv4(10, 0, 0, 2), Port: port,
+			InfoFields: []string{"deviceid=AA:BB:CC:DD:EE:FF", "model=AudioAccessory5,1", "features=0x4a7fca00,0x3c354b00"},
+		}, service)
+		if !ok {
+			t.Fatal("entry rejected")
+		}
+		return d
+	}
+	cases := []struct {
+		name  string
+		first func(*testing.T) device.Device
+		last  func(*testing.T) device.Device
+	}{
+		{"raop first", func(t *testing.T) device.Device { return parse(t, "AABBCCDDEEFF@Old Name", 5000, raopService) }, func(t *testing.T) device.Device { return parse(t, "New Name", 7000, airplayService) }},
+		{"airplay first", func(t *testing.T) device.Device { return parse(t, "New Name", 7000, airplayService) }, func(t *testing.T) device.Device { return parse(t, "AABBCCDDEEFF@Old Name", 5000, raopService) }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := New(0, 0)
+			s.merge(c.first(t))
+			s.merge(c.last(t))
+			got := s.Snapshot()
+			if len(got) != 1 {
+				t.Fatalf("devices = %d", len(got))
+			}
+			if got[0].Host != "10.0.0.2" || got[0].Port != 7000 {
+				t.Fatalf("endpoint = %s:%d, want the _airplay endpoint 10.0.0.2:7000", got[0].Host, got[0].Port)
+			}
+		})
+	}
+}
+
+// TestMergeLocalFlagSurvivesRemoteSighting pins the monotonic local rule: a
+// later remote-looking record must not re-enable a receiver on this host.
+func TestMergeLocalFlagSurvivesRemoteSighting(t *testing.T) {
 	s := New(0, 0)
-	raop, _ := parseEntry(&mdns.ServiceEntry{
-		Name: "AABBCCDDEEFF@Old Name", AddrV4: net.IPv4(10, 0, 0, 2), Port: 5000,
-		InfoFields: []string{"deviceid=AA:BB:CC:DD:EE:FF", "model=AudioAccessory5,1", "features=0x4a7fca00,0x3c354b00"},
-	}, raopService)
-	air, _ := parseEntry(&mdns.ServiceEntry{
-		Name: "New Name", AddrV4: net.IPv4(10, 0, 0, 2), Port: 7000,
-		InfoFields: []string{"deviceid=AA:BB:CC:DD:EE:FF", "model=AudioAccessory5,1", "features=0x4a7fca00,0x3c354b00"},
-	}, airplayService)
-	s.merge(raop)
-	s.merge(air)
+	local := device.Device{
+		ID: "AA:BB:CC:DD:EE:FF", Host: "10.0.0.2", Port: 7000,
+		Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Local: true,
+	}
+	remote := local
+	remote.Host = "10.0.0.3"
+	remote.Local = false
+	s.merge(local)
+	s.merge(remote)
 	got := s.Snapshot()
 	if len(got) != 1 {
 		t.Fatalf("devices = %d", len(got))
 	}
-	if got[0].Name != "New Name" || got[0].Port != 7000 {
-		t.Fatalf("merged = %+v", got[0])
+	if !got[0].Local {
+		t.Fatalf("local flag = false after a remote sighting: %+v", got[0])
+	}
+}
+
+// TestMergeFallsBackWhenThePreferredServiceGoesStale pins the freshness rule:
+// a lost _airplay reply must not keep its old address when the _raop record is
+// still refreshing the receiver.
+func TestMergeFallsBackWhenThePreferredServiceGoesStale(t *testing.T) {
+	s := New(0, 0)
+	base := time.Now()
+	s.now = func() time.Time { return base }
+	air := device.Device{
+		ID: "AA:BB:CC:DD:EE:FF", Host: "10.0.0.2", Port: 7000,
+		Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true,
+	}
+	raop := air
+	raop.Port = 5000
+	raop.AirPlay2 = false
+	s.merge(air)
+	base = base.Add(s.staleAfter + time.Second)
+	s.merge(raop)
+	got := s.Snapshot()
+	if len(got) != 1 {
+		t.Fatalf("devices = %d", len(got))
+	}
+	if got[0].Host != "10.0.0.2" || got[0].Port != 5000 {
+		t.Fatalf("endpoint = %s:%d, want the fresh _raop fallback 10.0.0.2:5000", got[0].Host, got[0].Port)
 	}
 }
 
