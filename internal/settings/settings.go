@@ -157,6 +157,7 @@ func Default() Settings {
 		CoverMode:           CoverMedia,
 		AudioLevel:          true,
 		MuteLocalOnConnect:  true,
+		StrictReceiverAuth:  true,
 		Reconnect:           true,
 		TrayAnimation:       true,
 		Theme:               ThemeSystem,
