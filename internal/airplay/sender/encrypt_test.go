@@ -7,14 +7,20 @@ import (
 )
 
 type audioRecordIO struct {
-	audio [][]byte
+	audio  [][]byte
+	events [][]byte
 }
 
 func (a *audioRecordIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
-func (a *audioRecordIO) TCPSend(raopio.TCPChannel, []byte) error            { return nil }
-func (a *audioRecordIO) TCPClose(raopio.TCPChannel, bool)                   {}
-func (a *audioRecordIO) UDPBind(ch raopio.UDPChannel) (uint16, error)       { return 5000 + uint16(ch), nil }
-func (a *audioRecordIO) UDPClose(raopio.UDPChannel)                         {}
+func (a *audioRecordIO) TCPSend(ch raopio.TCPChannel, data []byte) error {
+	if ch == raopio.TCPEvent {
+		a.events = append(a.events, append([]byte(nil), data...))
+	}
+	return nil
+}
+func (a *audioRecordIO) TCPClose(raopio.TCPChannel, bool)             {}
+func (a *audioRecordIO) UDPBind(ch raopio.UDPChannel) (uint16, error) { return 5000 + uint16(ch), nil }
+func (a *audioRecordIO) UDPClose(raopio.UDPChannel)                   {}
 
 func (a *audioRecordIO) UDPSend(ch raopio.UDPChannel, _ raopio.Endpoint, data []byte) error {
 	if ch == raopio.UDPAudio {

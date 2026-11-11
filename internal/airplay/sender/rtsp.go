@@ -400,9 +400,12 @@ func (s *Sender) onEventData(data []byte) {
 		s.eventRecvCtr++
 		plain, err := crypto.ChaCha20Poly1305Decrypt(s.ap2.eventIn, nonce, s.eventEncBuf[2:need], lp)
 		if err != nil {
-			s.warn("event-channel decrypt failed, dropping")
-			s.eventEncBuf = s.eventEncBuf[:0]
-			return
+			// The counter already advanced with the receiver's, so the next
+			// coalesced frame is still decryptable. Drop only this frame
+			// instead of the rest of the batch.
+			s.warn("event-channel decrypt failed, dropping frame")
+			s.eventEncBuf = s.eventEncBuf[need:]
+			continue
 		}
 		s.eventPlain = append(s.eventPlain, plain...)
 		s.eventEncBuf = s.eventEncBuf[need:]
