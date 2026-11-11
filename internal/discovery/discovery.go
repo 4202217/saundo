@@ -80,9 +80,58 @@ type Service struct {
 	localSet       map[netip.Addr]struct{}
 }
 
-type seen struct {
-	dev  device.Device
+type serviceEndpoint struct {
+	host string
+	port uint16
 	when time.Time
+}
+
+type seen struct {
+	dev     device.Device
+	when    time.Time
+	raop    serviceEndpoint
+	airplay serviceEndpoint
+}
+
+// recordEndpoint keeps each service's own SRV endpoint. The merge cannot pick
+// one at reply time: the _raop and _airplay browses race, and a later lost
+// reply must not leave the other service's stale address in place.
+func (e *seen) recordEndpoint(d device.Device, now time.Time) {
+	if d.Host == "" || d.Port == 0 {
+		return
+	}
+	ep := serviceEndpoint{host: d.Host, port: d.Port, when: now}
+	if d.AirPlay2 {
+		e.airplay = ep
+		return
+	}
+	e.raop = ep
+}
+
+// endpointFor chooses the control endpoint for the receiver's auth path. HAP
+// and open AirPlay 2 receivers use the _airplay SRV port; an AirPort or AP1
+// receiver uses _raop. A preferred endpoint older than the staleness window
+// falls back to the other service, so a lost _airplay reply cannot pin a
+// stale address.
+func (e *seen) endpointFor(dev device.Device, now time.Time, stale time.Duration) (string, uint16) {
+	preferAirPlay := dev.Auth.IsHAP() || (dev.AirPlay2 && dev.Auth == device.AuthNone)
+	preferred, fallback := e.raop, e.airplay
+	if preferAirPlay {
+		preferred, fallback = e.airplay, e.raop
+	}
+	fresh := func(ep serviceEndpoint) bool {
+		return ep.host != "" && ep.port != 0 && now.Sub(ep.when) < stale
+	}
+	if fresh(preferred) {
+		return preferred.host, preferred.port
+	}
+	if fresh(fallback) {
+		return fallback.host, fallback.port
+	}
+	if e.airplay.when.After(e.raop.when) {
+		return e.airplay.host, e.airplay.port
+	}
+	return e.raop.host, e.raop.port
 }
 
 // New returns a discovery service. Query timing is tunable for tests.
@@ -141,6 +190,7 @@ func (s *Service) Snapshot() []device.Device {
 	for _, d := range s.devices {
 		dev := d.dev
 		dev.Online = now.Sub(d.when) < s.staleAfter
+		dev.Host, dev.Port = d.endpointFor(dev, now, s.staleAfter)
 		if dev.StereoID != "" {
 			pairs[dev.StereoID] = append(pairs[dev.StereoID], dev)
 			continue
@@ -260,20 +310,21 @@ func (s *Service) queryOnce() {
 func (s *Service) merge(d device.Device) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	now := s.now()
 	prev, ok := s.devices[d.ID]
 	if !ok {
-		s.devices[d.ID] = &seen{dev: d, when: s.now()}
+		e := &seen{dev: d, when: now}
+		e.recordEndpoint(d, now)
+		s.devices[d.ID] = e
 		return
 	}
 	merged := prev.dev
 	if d.Name != "" {
 		merged.Name = d.Name
 	}
-	if d.Host != "" {
-		merged.Host = d.Host
-		merged.Port = d.Port
-	}
-	merged.Local = d.Local
+	// The local flag is a safety rule, not a fact about the last reply: one
+	// record from this host keeps the receiver out of the target list.
+	merged.Local = merged.Local || d.Local
 	if d.Model != "" {
 		merged.Model = d.Model
 	}
@@ -303,7 +354,9 @@ func (s *Service) merge(d device.Device) {
 	merged.AirPlay2 = merged.AirPlay2 || d.AirPlay2
 	merged.Family = device.FamilyFor(merged.Model, merged.AM)
 	merged.Auth = chooseAuth(merged)
-	s.devices[d.ID] = &seen{dev: merged, when: s.now()}
+	prev.dev = merged
+	prev.when = now
+	prev.recordEndpoint(d, now)
 }
 
 func (s *Service) prune() {
