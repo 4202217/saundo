@@ -17,7 +17,8 @@ diagnostics log row lives on the settings 关于 page.
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
   value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
-  (`receivers.go:41-47,299-311`). The 托盘面板中显示 switch that hides the
+  (`EffectiveLatencyMS`). The 托盘面板中显示 switch that
+  hides the
   segment row lives in the settings window's 音频 page latency-card header,
   not in the flyout.
 - Now Playing media card: a 16-DIP shell-resolved app icon and app name
@@ -27,7 +28,7 @@ diagnostics log row lives on the settings 关于 page.
   fixed-52-DIP-tall poster whose width follows
   the cover's aspect ratio (a 16:9 thumbnail gets a wider poster; the card
   height does not change); title and artist; a five-band meter delayed by
-  the selected presentation latency; and a full-width progress row. Enabled
+  the session's base latency; and a full-width progress row. Enabled
   transport controls (prev / play-pause / next) sit at the row's left as
   24-DIP circles in the session arrow's card style — card fill, muted
   12-DIP glyph, hover, 4 DIP apart, no filled primary — and call
@@ -60,15 +61,16 @@ diagnostics log row lives on the settings 关于 page.
   (`settings_window.go:609-643`; `internal/engine/mute.go`).
 - Takeover: a clean control close during streaming is terminal. The flyout
   footer reads 已被其他设备接管 and the active receiver row offers
-  重新连接 (`flyout.go:272-277`; `docs/ui.md`).
+  重新连接 (`flyout.go:716-719`; the row action at
+  `:280-284`; `docs/ui.md`).
 - Idle standby: after the configured silence threshold the engine sends
   playback state 2, the top display goes dark, and the flyout lamp card
-  shows the 待机 chip (`engine.go:855-925`; see
+  shows the 待机 chip (`engine.go:957-1019`; see
   [ambient-light.md](ambient-light.md)).
 - Silence suspend: after 5 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
-  (`engine.go:866-901`; the meter Push is `silence.go:33-52`; resume
+  (`engine.go:957-1019`; the meter Push is `silence.go:33-52`; resume
   `stream.go:76-98`). AP2 only; an AP1 session keeps the continuous silence
   stream.
 - Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log
