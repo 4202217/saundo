@@ -36,21 +36,22 @@ var Version = "dev"
 
 // App is the application's UI state, read and changed on the main thread.
 type App struct {
-	eng         *engine.Engine
-	sets        *settings.Store
-	cfg         settings.Settings
-	log         *diagnostics.Log
-	win         *mygo.Window
-	settingsWin *mygo.Window
-	tray        *mygo.Tray
-	trayMenu    *mygo.Menu
-	trayKey     trayIconKey
-	trayAnim    *trayAnimator
-	trayTip     string
-	menuKey     trayMenuKey
-	menuIcons   map[string]*mygo.MenuIcon
-	quitting    bool
-	flyoutH     int
+	eng                 *engine.Engine
+	sets                *settings.Store
+	cfg                 settings.Settings
+	settingsErrorLogged string
+	log                 *diagnostics.Log
+	win                 *mygo.Window
+	settingsWin         *mygo.Window
+	tray                *mygo.Tray
+	trayMenu            *mygo.Menu
+	trayKey             trayIconKey
+	trayAnim            *trayAnimator
+	trayTip             string
+	menuKey             trayMenuKey
+	menuIcons           map[string]*mygo.MenuIcon
+	quitting            bool
+	flyoutH             int
 
 	updates       updateEngine
 	upd           updateState
@@ -194,7 +195,9 @@ func Run() error {
 		// once so a later deliberate rename back to the legacy word sticks.
 		cfg.Name = "声渡"
 		cfg.NameMigrated = true
-		_ = a.sets.Save(cfg)
+		if err := a.sets.Save(cfg); err != nil {
+			a.log.Printf("settings save failed: %v", err)
+		}
 	}
 	a.cfg = cfg
 	mygo.App.SetLocale(cfg.Language)
