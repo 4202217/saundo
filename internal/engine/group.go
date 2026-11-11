@@ -429,6 +429,14 @@ func (g *groupTransport) Stats() []sender.Stats {
 	return stats
 }
 
+func (g *groupTransport) DroppedEvents() uint64 {
+	var dropped uint64
+	for _, m := range g.members {
+		dropped += m.host.Dropped()
+	}
+	return dropped
+}
+
 func (g *groupTransport) memberLaunched(idx int, ok bool, err string) {
 	if g.stopping {
 		return

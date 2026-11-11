@@ -74,6 +74,21 @@ func TestDiagnosticsSendErrorsDegrade(t *testing.T) {
 	}
 }
 
+// TestDiagnosticsDroppedEventsAreSurfaced pins the host counter's reader: a
+// session whose event queue lost datagrams reports it instead of the counter
+// existing with no caller.
+func TestDiagnosticsDroppedEventsAreSurfaced(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.fake.dropped = 7
+	h.launch()
+	h.e.publish()
+	if got := h.e.Snapshot().Diagnostics.DroppedEvents; got != 7 {
+		t.Fatalf("dropped events = %d, want 7", got)
+	}
+}
+
 func TestDiagnosticsStereoTakesWorstAndSums(t *testing.T) {
 	h := newHarness(t)
 	group := device.Device{
