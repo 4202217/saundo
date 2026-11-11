@@ -125,9 +125,9 @@ var handlerVTbl = activationVTbl{
 	completed: syscall.NewCallback(handlerActivateCompleted),
 }
 
-// The handler object is deliberately immortal: COM may hold and Release it
-// past the point the Go side stops caring, and one small block per capture
-// open is bounded by the restart logic.
+// The handler object stays reachable past its activation: COM may invoke a
+// very late callback carrying this pointer, and completed retains the object
+// so the allocator cannot recycle its address into a newer handler.
 type handlerObject struct {
 	vtbl *activationVTbl
 	ch   chan appClient
@@ -139,10 +139,65 @@ type appClient struct {
 }
 
 var (
-	handlerMu       sync.Mutex
-	pendingHandler  *handlerObject
-	pendingEndpoint uintptr
+	handlerMu sync.Mutex
+	// handlers routes a completion to the handler that owns it, keyed by the
+	// exact interface pointer handed to ActivateAudioInterfaceAsync. completed
+	// keeps retired handlers reachable against address reuse by a later
+	// allocation.
+	handlers  = map[uintptr]*handlerObject{}
+	completed = map[uintptr]*handlerObject{}
 )
+
+// registerHandler publishes h under the pointer COM echoes back as `this`.
+func registerHandler(h *handlerObject) uintptr {
+	this := uintptr(unsafe.Pointer(&h.vtbl))
+	handlerMu.Lock()
+	handlers[this] = h
+	handlerMu.Unlock()
+	return this
+}
+
+// retireHandler marks the activation finished and releases any client a late
+// callback already delivered into the now-unread channel.
+func retireHandler(this uintptr, h *handlerObject) {
+	handlerMu.Lock()
+	if handlers[this] == h {
+		delete(handlers, this)
+	}
+	completed[this] = h
+	handlerMu.Unlock()
+	for {
+		select {
+		case res := <-h.ch:
+			releaseDelivered(res)
+		default:
+			return
+		}
+	}
+}
+
+// deliverActivation routes one completion to its own handler. A missing or
+// retired handler, or a full channel, releases the interface instead of
+// leaking it.
+func deliverActivation(this uintptr, res appClient) {
+	handlerMu.Lock()
+	if h, ok := handlers[this]; ok {
+		select {
+		case h.ch <- res:
+			handlerMu.Unlock()
+			return
+		default:
+		}
+	}
+	handlerMu.Unlock()
+	releaseDelivered(res)
+}
+
+func releaseDelivered(res appClient) {
+	if res.client != 0 {
+		release(res.client)
+	}
+}
 
 func handlerAddRef() uintptr { return 1 }
 
@@ -176,15 +231,7 @@ func handlerActivateCompleted(this uintptr, operation uintptr) uintptr {
 	if hrCall == 0 && !failed(uintptr(hr)) && iface != 0 {
 		res.client = iface
 	}
-	handlerMu.Lock()
-	h := pendingHandler
-	handlerMu.Unlock()
-	if h != nil {
-		select {
-		case h.ch <- res:
-		default:
-		}
-	}
+	deliverActivation(this, res)
 	return 0 // S_OK
 }
 
@@ -199,16 +246,8 @@ func activateProcessLoopback(pid uint32) (uintptr, error) {
 	}{activationTypeProcessLoopback, pid, loopbackModeIncludeProcessTree}
 
 	handler := &handlerObject{vtbl: &handlerVTbl, ch: make(chan appClient, 1)}
-	handlerMu.Lock()
-	pendingHandler = handler
-	handlerMu.Unlock()
-	defer func() {
-		handlerMu.Lock()
-		if pendingHandler != nil && pendingHandler == handler {
-			pendingHandler = nil
-		}
-		handlerMu.Unlock()
-	}()
+	this := registerHandler(handler)
+	defer retireHandler(this, handler)
 
 	var pv struct {
 		vt       uint16
@@ -230,7 +269,7 @@ func activateProcessLoopback(pid uint32) (uintptr, error) {
 		uintptr(unsafe.Pointer(devicePath)),
 		uintptr(unsafe.Pointer(&iidIAudioClient)),
 		uintptr(unsafe.Pointer(&pv)),
-		uintptr(unsafe.Pointer(&handler.vtbl)),
+		this,
 		uintptr(unsafe.Pointer(&operation)),
 	)
 	if failed(hr) {
