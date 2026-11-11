@@ -47,6 +47,15 @@ func main() {
 	}
 }
 
+// goBinary honors the Makefile's GO override, so the gate works on a host
+// where go is not on PATH.
+func goBinary() string {
+	if v := os.Getenv("GO"); v != "" {
+		return v
+	}
+	return "go"
+}
+
 func run() error {
 	root, err := os.Getwd()
 	if err != nil {
@@ -61,7 +70,7 @@ func run() error {
 func checkBuilds(root string) error {
 	for _, t := range targets {
 		for _, args := range [][]string{{"build", "./..."}, {"vet", "./..."}} {
-			cmd := exec.Command("go", args...)
+			cmd := exec.Command(goBinary(), args...)
 			cmd.Dir = root
 			cmd.Env = envFor(t)
 			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr

@@ -66,20 +66,32 @@ func main() {
 		fmt.Fprintf(os.Stderr, "verify-map: %v\n", err)
 		os.Exit(2)
 	}
+	os.Exit(run(root))
+}
+
+// run performs the check and returns the process exit code. A missing or
+// unreadable map directory is a setup error, not an empty map: the checker
+// must fail closed when it cannot see what it is supposed to verify.
+func run(root string) int {
 	dir := filepath.Join(root, mapDir)
-	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-		fmt.Printf("no %s; nothing to check\n", mapDir)
-		return
+	fi, err := os.Stat(dir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "verify-map: map directory %s: %v\n", dir, err)
+		return 2
+	}
+	if !fi.IsDir() {
+		fmt.Fprintf(os.Stderr, "verify-map: map path %s is not a directory\n", dir)
+		return 2
 	}
 	ix, err := loadIndex(root)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "verify-map: %v\n", err)
-		os.Exit(2)
+		return 2
 	}
 	files, err := mapFiles(dir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "verify-map: %v\n", err)
-		os.Exit(2)
+		return 2
 	}
 
 	errors := 0
@@ -184,9 +196,10 @@ func main() {
 
 	if errors > 0 {
 		fmt.Printf("%d stale map assertion(s)\n", errors)
-		os.Exit(1)
+		return 1
 	}
 	fmt.Println("map ok: every test name, env gate, path, string, and symbol resolves")
+	return 0
 }
 
 // findRoot walks up from the working directory to the module root.

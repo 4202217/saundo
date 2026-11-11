@@ -48,9 +48,10 @@ fmt:
 # Build and vet windows/amd64 and darwin/arm64 on any host, and reject
 # OS-specific imports outside platform-tagged files.
 platforms:
-	$(GO) run ./scripts/check-platforms
+	GO="$(GO)" $(GO) run ./scripts/check-platforms
 
 check:
+	@command -v "$(GOFMT)" >/dev/null 2>&1 || { echo "gofmt not found; set GOFMT=... or put Go on PATH"; exit 1; }
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map && $(GO) run ./scripts/check-platforms
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms

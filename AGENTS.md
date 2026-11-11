@@ -52,7 +52,7 @@ go tool mygo vet .
 gofmt -l .
 ```
 
-If `go` is not on PATH, use `C:\Program Files\Go\bin\go.exe`, add that directory to PATH, or pass it to mingw32-make: `mingw32-make GO="C:\Program Files\Go\bin\go.exe" check`.
+If `go` is not on PATH, add its `bin` directory to PATH. Passing `GO=` alone is not enough for `check`: the gofmt gate and mygo's internal `go` calls resolve from PATH, so pair it with `GOFMT=` or, preferably, add the directory to PATH. On Windows the usual path is `C:\Program Files\Go\bin`.
 
 Run `mingw32-make check` (or all four commands) before declaring a milestone complete. A compiling binary is not a completed feature.
 
