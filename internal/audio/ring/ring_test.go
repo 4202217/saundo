@@ -159,3 +159,25 @@ func TestConcurrentProducerConsumer(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestPushPopDoNotAllocate(t *testing.T) {
+	b := New(4096)
+	block := make([]int16, 512)
+	out := make([]int16, 512)
+	b.Push(block)
+	b.Pop(out)
+	if got := testing.AllocsPerRun(1000, func() {
+		b.Push(block)
+		b.Pop(out)
+	}); got != 0 {
+		t.Fatalf("Push/Pop allocate %.1f times per run", got)
+	}
+}
+
+func TestOverwritePushDoesNotAllocate(t *testing.T) {
+	b := New(1024)
+	block := make([]int16, 4096)
+	if got := testing.AllocsPerRun(100, func() { b.Push(block) }); got != 0 {
+		t.Fatalf("an overwriting Push allocates %.1f times per run", got)
+	}
+}

@@ -18,7 +18,12 @@ import (
 // newHarnessWithStores wires the fake transport over explicit stores.
 func newHarnessWithStores(t *testing.T, sets *settings.Store, credsStore *creds.Store, reg *receivers.Store) *harness {
 	t.Helper()
-	h := &harness{e: NewWithReceivers(sets, credsStore, reg, &diagnostics.Log{}, nil), now: time.Now()}
+	return newHarnessWithLog(t, sets, credsStore, reg, &diagnostics.Log{})
+}
+
+func newHarnessWithLog(t *testing.T, sets *settings.Store, credsStore *creds.Store, reg *receivers.Store, log *diagnostics.Log) *harness {
+	t.Helper()
+	h := &harness{e: NewWithReceivers(sets, credsStore, reg, log, nil), now: time.Now()}
 	h.e.now = func() time.Time { return h.now }
 	// The mute worker owns the endpoint calls in production too; tests drive
 	// it in place of the event loop's select.

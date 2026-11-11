@@ -792,6 +792,32 @@ and the verification map is corrected.
   in-app 立即重启 button, and whether TCC audio capture and Keychain access
   survive the new ad-hoc cdhash. The pending list keeps the live update.
 
+## 2026-11-11 — macOS audio IO realtime safety
+
+- **Lock-free capture path.** The Core Audio IOProc takes no lock and
+  allocates nothing. It finds its stream through one atomic pointer,
+  converts into a scratch sized at open, and counts frames and pre-ring
+  drops with atomics. `internal/audio/ring` is a lock-free SPSC ring with
+  atomic sample slots and an atomic sink snapshot in the fanout; its Push
+  and Pop allocate nothing.
+- **Level analysis off the audio thread.** The silence meter pushes each
+  block into a 100 ms level-feed ring; `levelLoop` pops it and runs the
+  analyzer, whose mutex and history append must not run in the IOProc.
+- **Pins.** `TestIOProcPushDoesNotAllocate`,
+  `TestIOProcOversizedBufferIsDropped`, and
+  `TestIOProcPushAndStatsRace`; `TestSilenceMeterPushDoesNotAllocate` and
+  `TestLevelPumpFeedsTheMeter`; `TestPushPopDoNotAllocate`,
+  `TestOverwritePushDoesNotAllocate`, and `TestFanoutPushDoesNotAllocate`.
+  The ring, capture, and engine packages pass under `-race`.
+- **Live.** The rebuilt 0.6.1 app opened Core Audio capture, and quit and
+  relaunched cleanly; the log has no `fatal:` and no level-pump stop
+  timeout.
+- **Known gap.** `go test -race ./...` still trips a test-only race in
+  `TestMuteGuardRecoversAfterCrash` between the mute worker's startup
+  recovery and the test's injected muter. The production mute fields are
+  set once; this is unrelated to the IOProc path and stays for a separate
+  fix.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -27,17 +28,13 @@ var ioProcPtr = sync.OnceValue(func() uintptr {
 	return purego.NewCallback(ioProcEntry)
 })
 
-var (
-	ioRegistryMu sync.Mutex
-	ioRegistry   = map[uint32]*stream{}
-)
+// activeIO is the stream the IOProc serves. It is one atomic pointer rather
+// than a locked map because the IOProc runs on Core Audio's realtime thread.
+var activeIO atomic.Pointer[stream]
 
 func ioProcEntry(device uintptr, now *darwin.AudioTimeStamp, input *darwin.AudioBufferList,
 	inTime *darwin.AudioTimeStamp, output unsafe.Pointer, outTime *darwin.AudioTimeStamp) int32 {
-	ioRegistryMu.Lock()
-	st := ioRegistry[uint32(device)]
-	ioRegistryMu.Unlock()
-	if st != nil {
+	if st := activeIO.Load(); st != nil && st.aggID == uint32(device) {
 		st.push(input)
 	}
 	return 0
@@ -123,7 +120,9 @@ type stream struct {
 	conv     converter
 	tapID    uint32
 	procID   darwin.DeviceIOProcID
-	scratch  []int16
+	// scratch is allocated at open and only written by the audio thread. push
+	// never grows it; an oversized buffer is dropped and counted.
+	scratch []int16
 }
 
 // openStream taps the chosen output device (or the default one when id is
@@ -184,6 +183,7 @@ func openStream(s *Source) (strm *stream, err error) {
 	if strm.conv, strm.rate, err = converterForTapFormat(asbd); err != nil {
 		return nil, err
 	}
+	strm.scratch = makeScratch(strm.rate)
 
 	if strm.aggID, err = createTapAggregate(dev.UID, tapUID); err != nil {
 		return nil, err
@@ -192,9 +192,7 @@ func openStream(s *Source) (strm *stream, err error) {
 	if strm.procID, err = darwin.CreateDeviceIOProc(strm.aggID, ioProcPtr()); err != nil {
 		return nil, err
 	}
-	ioRegistryMu.Lock()
-	ioRegistry[strm.aggID] = strm
-	ioRegistryMu.Unlock()
+	activeIO.Store(strm)
 	if err = darwin.StartDevice(strm.aggID, strm.procID); err != nil {
 		return nil, err
 	}
@@ -204,11 +202,9 @@ func openStream(s *Source) (strm *stream, err error) {
 
 // close stops the stream and tears the aggregate, IOProc and tap down.
 func (st *stream) close() {
-	ioRegistryMu.Lock()
-	delete(ioRegistry, st.aggID)
-	ioRegistryMu.Unlock()
 	if st.procID != nil {
 		darwin.StopDevice(st.aggID, st.procID)
+		activeIO.CompareAndSwap(st, nil)
 		darwin.DestroyDeviceIOProc(st.aggID, st.procID)
 		st.procID = nil
 	}
@@ -250,7 +246,7 @@ func (st *stream) pump(s *Source, follow bool) error {
 
 // push converts one IO buffer to stereo int16 and drops it into the ring,
 // which discards its oldest samples when full, so capture never blocks. It
-// runs on the audio thread and must stay allocation-free in steady state.
+// runs on the audio thread and does not lock or allocate.
 func (st *stream) push(input *darwin.AudioBufferList) {
 	for i := 0; i < int(input.NumberBuffers); i++ {
 		buf := input.Buffer(i)
@@ -263,14 +259,27 @@ func (st *stream) push(input *darwin.AudioBufferList) {
 		if n == 0 {
 			continue
 		}
-		if cap(st.scratch) < n {
-			st.scratch = make([]int16, n+2048) // headroom for buffers of varying size
+		if n > len(st.scratch) {
+			st.src.addDropped(uint64(n))
+			continue
 		}
 		dst := st.scratch[:n]
 		st.conv.convert(dst, src)
 		st.src.cfg.Ring.Push(dst)
 		st.src.addFrames(uint32(frames))
 	}
+}
+
+// makeScratch returns the conversion buffer: half a second of stereo samples,
+// with a floor for low or unknown rates. A Core Audio IO buffer is much
+// smaller; an oversized one is dropped instead of allocated on the audio
+// thread.
+func makeScratch(rate int) []int16 {
+	n := rate
+	if n < 4096 {
+		n = 4096
+	}
+	return make([]int16, n)
 }
 
 // newGlobalTapDescription builds the CATapDescription of a stereo global tap
