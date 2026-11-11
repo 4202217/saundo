@@ -317,6 +317,54 @@ func TestLatencyAboveTwoSecondsReachesStreamSetup(t *testing.T) {
 	}
 }
 
+// TestUnpairedReceiverAuthWarnsOrFails pins both sides of the first-pairing
+// policy: strict fails on a bad receiver signature, permissive continues but
+// names the receiver in the warning.
+func TestUnpairedReceiverAuthWarnsOrFails(t *testing.T) {
+	start := func(t *testing.T, strict bool) *rig {
+		t.Helper()
+		r := newRig(t, modePIN, device.AuthHAPPIN, true, nil)
+		r.sender.SetStrictReceiverAuth(strict)
+		r.rx.verifySignSeed = crypto.RandomBytes(32)
+		r.start()
+		r.sender.SubmitPin("1234")
+		r.step()
+		r.sender.Tick()
+		return r
+	}
+
+	t.Run("strict fails", func(t *testing.T) {
+		r := start(t, true)
+		if r.rx.pairVerifyM3Seen {
+			t.Fatal("strict mode offered the client signature to an unproven receiver")
+		}
+		if len(r.launched) == 0 || r.launched[0].ok {
+			t.Fatalf("launch results = %+v, want a failure", r.launched)
+		}
+		if !strings.Contains(r.launched[0].err, "receiver not authenticated") {
+			t.Fatalf("error = %q, want the receiver-not-authenticated message", r.launched[0].err)
+		}
+	})
+
+	t.Run("permissive warns with the receiver name", func(t *testing.T) {
+		r := start(t, false)
+		requireLaunched(t, r)
+		found := false
+		for _, line := range r.logs {
+			if !strings.Contains(line, "pair-verify signature did not verify, continuing") {
+				continue
+			}
+			found = true
+			if !strings.Contains(line, "FakeBox") {
+				t.Fatalf("permissive warning does not name the receiver: %q", line)
+			}
+		}
+		if !found {
+			t.Fatal("permissive mode did not emit the verification warning")
+		}
+	})
+}
+
 // TestStoredPairingRequiresTheReceiverProof pins the redirect defense at the
 // sender boundary: with stored credentials in hand, a receiver that cannot
 // prove it holds the stored long-term key must never receive the client's

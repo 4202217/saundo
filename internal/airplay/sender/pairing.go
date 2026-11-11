@@ -334,7 +334,7 @@ func (s *Sender) handlePairSetupM4(body []byte) {
 			}
 			return
 		}
-		s.warn("server pairing proof did not verify, continuing")
+		s.warn("%q: server pairing proof did not verify, continuing", s.name)
 	}
 	if s.authMethod == device.AuthHAPTransient {
 		s.ap2.sharedSecret = s.ap2.srp.SessionKey()
@@ -516,7 +516,7 @@ func (s *Sender) handlePairVerifyM2(body []byte) {
 			s.fail("The device's pair-verify signature did not verify (receiver not authenticated)")
 			return
 		}
-		s.warn("pair-verify signature did not verify, continuing")
+		s.warn("%q: pair-verify signature did not verify, continuing", s.name)
 	}
 
 	info := append(append(append([]byte{}, s.ap2.verifyPub...), s.ap2.pairingID...), sessionPub...)
