@@ -883,6 +883,13 @@ and the verification map is corrected.
   deltas from 0.6.1, 0.6.0, and 0.5.0.
 - **Maintainer pre-release test (2026-11-12).** The 0.6.2 release request is
   the maintainer's confirmation that the build was tested on their own PC.
+- **Draft verification (2026-11-12).** The release workflow (run 43060976433)
+  passed `check`, `check-macos`, `draft`, `build`, and `build-macos`. The
+  draft carries `install.ps1`, `install.sh`, the installer, both update
+  archives, three Windows deltas, the arm64 dmg, both signed manifests, and
+  `SHA256SUMS`; `sha256sum -c` passed for every checksummed file. Both
+  manifests name 0.6.2, are signed, and carry the ASCII English notes. The
+  tag stays on `b71e96d`; publishing is the remaining gate.
 
 ## Graduated
 
