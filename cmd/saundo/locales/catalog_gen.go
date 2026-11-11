@@ -1110,6 +1110,16 @@ func (msgs Messages) PageNowPlayingDesc() string {
 	return Catalog.Format(msgs.locale, "pageNowPlayingDesc", nil)
 }
 
+// SettingsNowPlayingSampleApp says "Apple Music"
+// in the language the app shows.
+func SettingsNowPlayingSampleApp() string { return In(i18n.Locale()).SettingsNowPlayingSampleApp() }
+
+// SettingsNowPlayingSampleApp says "Apple Music"
+// in the language of msgs.
+func (msgs Messages) SettingsNowPlayingSampleApp() string {
+	return Catalog.Format(msgs.locale, "settingsNowPlayingSampleApp", nil)
+}
+
 // SettingsNowPlayingSampleTitle says "Night Ferry"
 // in the language the app shows.
 func SettingsNowPlayingSampleTitle() string { return In(i18n.Locale()).SettingsNowPlayingSampleTitle() }
