@@ -36,7 +36,7 @@ saundo captures whatever the system is playing — WASAPI loopback on Windows, a
 
 Not for you if you need video or screen mirroring (this is audio only), or if your receiver requires Apple FairPlay — some TVs do. saundo detects that class of receiver and fails fast instead of connecting silently.
 
-Runs on Windows 10 and 11 and on macOS 14.4+ (Apple Silicon); the interface ships in English and Simplified Chinese and follows the system language by default. macOS builds ship unsigned as a dmg: the first launch goes through System Settings → Privacy & Security → Open Anyway — see [docs/platforms.md](docs/platforms.md).
+Runs on Windows 10 and 11 and on macOS 14.4+ (Apple Silicon); the interface ships in English and Simplified Chinese and follows the system language by default. macOS builds ship as a dmg with an ad-hoc signed app: drag the app to Applications, then pass the first launch through System Settings → Privacy & Security → Open Anyway. See [docs/platforms.md](docs/platforms.md).
 
 ## Quick start
 
@@ -68,7 +68,7 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 - **Appearance** — follow the system, light, or dark.
 - **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the tray panel or the audio page. A live change restarts the stream with a spinner.
 - **A tray that shows the state** — the smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
-- **Updates in the app (Windows)** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The tray panel's update chip and the tray tooltip point to it. The macOS build ships as a dmg and keeps its updater off until a signed mac feed exists.
+- **Updates in the app** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The tray panel's update chip and the tray tooltip point to it. Each platform updates from its own signed manifest in the release. The macOS build is ad-hoc signed until a Developer ID exists, so an update can ask again for system-audio capture and Keychain access.
 - **English and Simplified Chinese** — the interface follows the system language by default, with a language setting and a localized update page and notes dialog.
 - **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are protected by the OS secret store (DPAPI on Windows, the Keychain on macOS).
 - **Stays out of the way** — suspends the stream after 5 s of digital silence and resumes cleanly, auto-reconnects with backoff, follows volume changes made on the receiver, and stops with a Reconnect action when another device takes the receiver over.

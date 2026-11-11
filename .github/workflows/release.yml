@@ -33,6 +33,8 @@ jobs:
         run: go tool mygo i18n check cmd/saundo
       - name: Vet
         run: go vet ./...
+      - name: Vet the update harness
+        run: go vet -tags updateharness ./cmd/saundo
       - name: UI vet
         run: go tool mygo vet .
       - name: Tests
@@ -131,6 +133,8 @@ jobs:
         run: bash scripts/check-verify-map.sh
 
   build-macos:
+    # After the Windows build, because both upload SHA256SUMS and mygo merges
+    # the existing lines when it publishes.
     needs: [check, check-macos, draft, build]
     runs-on: macos-latest
     permissions:
@@ -150,24 +154,15 @@ jobs:
           echo "MYGO_LDFLAGS=-X saundo/internal/app.Version=$version" >> "$GITHUB_ENV"
       - name: Adapter
         run: bash scripts/build-adapter.sh
-      - name: Build
+      - name: Build and upload
         working-directory: cmd/saundo
         env:
+          GH_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
           MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
         run: |
           sign="${MACOS_SIGN_IDENTITY:--}"
-          go tool mygo build -platform darwin/arm64 -skip-build-command -sign "$sign"
-      # The dmg ships as a manual download: the mac build disables the
-      # updater until a signed, notarized mac feed exists. The Windows build
-      # wrote SHA256SUMS first, so this job adds the dmg line to it.
-      - name: Upload the dmg and update SHA256SUMS
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          dmg="$(ls cmd/saundo/build/darwin-arm64/saundo-*.dmg)"
-          gh release upload "$GITHUB_REF_NAME" "$dmg" --repo "$GITHUB_REPOSITORY" --clobber
-          gh release download "$GITHUB_REF_NAME" -p SHA256SUMS -O SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
-          grep -v '\.dmg$' SHA256SUMS > SHA256SUMS.new || true
-          printf '%s  %s\n' "$(shasum -a 256 "$dmg" | awk '{print $1}')" "$(basename "$dmg")" >> SHA256SUMS.new
-          mv SHA256SUMS.new SHA256SUMS
-          gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+          go tool mygo build -platform darwin/arm64 -skip-build-command -sign "$sign" -upload
+      # The app updates in place from the signed darwin manifest. Without a
+      # Developer ID the build stays ad-hoc signed, so each update changes
+      # the app's cdhash and macOS can ask again for TCC and Keychain access.

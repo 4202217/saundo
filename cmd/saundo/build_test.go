@@ -41,6 +41,47 @@ func TestBuildTargetProducesDarwinApp(t *testing.T) {
 	}
 }
 
+// TestReleaseWorkflowPublishesTheMacFeed guards macOS auto-update. The mac
+// app updates from update-darwin-arm64.json in the release, so the mac build
+// must pass -upload for its archive and manifest, after the Windows build so
+// mygo merges SHA256SUMS instead of the second job overwriting it.
+func TestReleaseWorkflowPublishesTheMacFeed(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var build, needs string
+	inMacJob := false
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "  build-macos:") {
+			inMacJob = true
+			continue
+		}
+		if inMacJob && strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "    ") && strings.HasSuffix(trimmed, ":") {
+			inMacJob = false
+		}
+		if inMacJob && strings.HasPrefix(trimmed, "needs:") {
+			needs = trimmed
+		}
+		if strings.Contains(line, "go tool mygo build -platform darwin/arm64") {
+			build = line
+		}
+	}
+	if build == "" {
+		t.Fatal("release.yml has no macOS build step")
+	}
+	if !strings.Contains(build, "-upload") {
+		t.Fatal("the macOS build must pass -upload so the darwin manifest reaches the release")
+	}
+	if !strings.Contains(needs, "build") {
+		t.Fatal("the macOS job must run after build so mygo merges SHA256SUMS")
+	}
+}
+
 // TestMyGoConfigHasNoPlatformBlindResources guards the Windows build on a
 // clean checkout. A resource outside a platform directory is required by
 // every platform's mygo build, but the MediaRemote adapter exists only after

@@ -1,6 +1,6 @@
 # Releasing saundo
 
-The release workflow builds a signed update archive and a Windows installer, uploads them to a draft GitHub release, and leaves the release unpublished until the draft checks pass and publishing is approved. Installed apps update from the published release.
+The release workflow builds a signed update archive for each platform, a Windows installer, and a macOS dmg. It uploads them to a draft GitHub release and leaves the release unpublished until the draft checks pass and publishing is approved. Installed apps update from the published release.
 
 Two human inputs remain. The maintainer's pre-release test of the build on their own PC is the smoke test. The publish approval can come up front in the release request, otherwise it is asked once after the draft checks pass.
 
@@ -14,6 +14,7 @@ The agent runbook is [.claude/skills/release/SKILL.md](../.claude/skills/release
 - The update signing key. `mygo keygen` wrote it to `%APPDATA%\mygo\update-keys\mygo-update.key`; the public half is in `cmd/saundo/mygo.json` under `updates.publicKey`.
 - The repository secret `MYGO_UPDATER_PRIVATE_KEY`. Anyone who has the key can ship code to installed apps. Losing it strands them.
 - A Windows code signing certificate only if the release uses signing. The current workflow builds unsigned installers.
+- A macOS Developer ID only for Gatekeeper. The current workflow signs ad-hoc; the update channel is signed with `MYGO_UPDATER_PRIVATE_KEY`.
 
 ```bash
 gh secret set MYGO_UPDATER_PRIVATE_KEY < "C:\Users\<you>\AppData\Roaming\mygo\update-keys\mygo-update.key"
@@ -119,17 +120,17 @@ The script checks the clean tree, the release commit subject, the version, the t
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`. The tag points to the release commit.
 
-1. `check` runs the format gate, catalogs, vet, UI vet, tests, the verification map, and the cross-platform gate.
+1. `check` runs the format gate, catalogs, vet, the update-harness vet, UI vet, tests, the verification map, and the cross-platform gate.
 2. `draft` checks the tag against `mygo.json` and that the tag commit is on main, then creates a draft release.
-3. `build` stamps the app version, builds the installer and signed update files, and uploads them to the draft.
-4. `build-macos` builds the dmg, uploads it, and folds its checksum into `SHA256SUMS`.
+3. `build` stamps the app version, builds the Windows installer and signed update files, and uploads them to the draft.
+4. `build-macos` builds the dmg and the darwin update files, then uploads them after `build` so the merged `SHA256SUMS` carries both platforms.
 
 Check the draft without installing it:
 
-- The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, `SHA256SUMS`, and the macOS dmg.
+- The assets are present: the Windows installer, both update archives, both signed manifests, `install.ps1`, `install.sh`, the dmg, and `SHA256SUMS`.
 - `sha256sum -c SHA256SUMS` passes once every asset is downloaded; with only a subset, use `sha256sum -c --ignore-missing SHA256SUMS`.
-- The manifest carries the expected version, the English changelog notes, and a signature.
-- The installer is unsigned unless signing is configured. SmartScreen warns.
+- Each manifest carries the expected version, the English changelog notes, and a signature.
+- The installer is unsigned unless signing is configured. SmartScreen warns. The dmg is ad-hoc signed unless `MACOS_SIGN_IDENTITY` names an identity the runner has; an un-notarized first launch needs Open Anyway.
 
 The maintainer's pre-release test covers install and run behavior. A clean Windows install is optional and runs only when the maintainer asks for it.
 
@@ -156,13 +157,14 @@ After publishing, verify the public feed:
 
 ```bash
 curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json"
+curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-darwin-arm64.json"
 ```
 
-The manifest must be the new version and carry a signature. The installer download must return 200. A live update from the previous release needs an installed build; record it in `docs/verification.md` when the maintainer next runs one, and do not block on it. Installed apps see the release only after it is published. The update manifests are uploaded last, so an app never sees a manifest whose files are missing.
+Each manifest must be the new version and carry a signature. The installer and dmg downloads must return 200. A live update from the previous release needs an installed build; record it in `docs/verification.md` when the maintainer next runs one, and do not block on it. The first macOS live update runs from the first release with a darwin manifest to the next release. Installed apps see the release only after it is published. The update manifests are uploaded last, so an app never sees a manifest whose files are missing.
 
 ## First release
 
-The first updater-enabled release is the baseline. A build from before the updater cannot update. The 0.3.0 build predates the updater; the first update path runs from 0.4.0 to a later published version.
+The first updater-enabled release is the baseline. A build from before the updater cannot update. The 0.3.0 build predates the updater; the first update path runs from 0.4.0 to a later published version. On macOS the first release with a darwin manifest is the baseline. Earlier mac builds have the updater disabled by a runtime constant and need one manual dmg install before they can update in place.
 
 ## Beta releases
 
@@ -180,6 +182,8 @@ Windows code signing is optional. The current release is unsigned, and SmartScre
 ```
 
 Or use `windows.signCommand` for Azure Trusted Signing or a hardware token. The password comes from `MYGO_WINDOWS_CERTIFICATE_PASSWORD`. In CI, write the decoded certificate to the configured path before the build and set the password secret. Signing covers the executable, the installer, and the uninstaller.
+
+macOS code signing is ad-hoc until a Developer ID exists. Each release still ships a signed darwin update feed, so installed apps update in place. An ad-hoc update changes the app's cdhash, so macOS can ask again for system-audio capture and Keychain access. A Developer ID and notarization remove that prompt pattern. The workflow passes `-sign -` unless `MACOS_SIGN_IDENTITY` names an identity the runner has.
 
 ## Rollback
 
