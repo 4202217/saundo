@@ -1654,11 +1654,11 @@ func (msgs Messages) ReceiverAddTitle() string {
 	return Catalog.Format(msgs.locale, "receiverAddTitle", nil)
 }
 
-// ReceiverAddSub says "Fill in an IP address or hostname for receivers mDNS cannot find."
+// ReceiverAddSub says "Fill in an IP address or hostname for receivers mDNS cannot find"
 // in the language the app shows.
 func ReceiverAddSub() string { return In(i18n.Locale()).ReceiverAddSub() }
 
-// ReceiverAddSub says "Fill in an IP address or hostname for receivers mDNS cannot find."
+// ReceiverAddSub says "Fill in an IP address or hostname for receivers mDNS cannot find"
 // in the language of msgs.
 func (msgs Messages) ReceiverAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverAddSub", nil)

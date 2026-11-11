@@ -258,7 +258,7 @@
   "receiverGroupEnabled": "Enabled",
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
-  "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find.",
+  "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find",
   "receiverEmptyHiddenHint": "Enable it again in the hidden group below.",
   "receiverEmptyAllHiddenTitle": "All receivers are hidden",
   "receiverDiscoveryHint": "AirPlay receivers on your network appear here automatically.",
