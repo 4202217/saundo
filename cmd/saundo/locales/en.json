@@ -100,6 +100,69 @@
   "credentialResetHint": "If it still refuses, reset AirPlay on the receiver.",
   "credentialResetDismiss": "Don't show again",
   "credentialResetPair": "Pair again",
+  "errorDeviceMissing": "Device not found. Refresh and try again.",
+  "errorLatencyDeviceMissing": "Latency saved, but the device was not found, so the session did not restart.",
+  "errorLatencyOffline": "Latency saved, but the device is offline, so the session did not restart.",
+  "errorSavePassword": "Could not save the receiver password: {error}",
+  "@errorSavePassword": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSaveReceiver": "Could not save the receiver settings: {error}",
+  "@errorSaveReceiver": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorLocalReceiver": "Saundo is running on this computer, so it cannot be a receiver.",
+  "errorStereoMembersOffline": "Both stereo members must be online.",
+  "errorFairPlay": "{device} uses an audio format this app does not support.",
+  "@errorFairPlay": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "errorEndpointMoved": "{device}'s address changed since pairing, so the connection was refused.",
+  "@errorEndpointMoved": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSessionOpen": "Could not open the session: {error}",
+  "@errorSessionOpen": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorReconnectStopped": "Stopped after {count} reconnect attempts.",
+  "@errorReconnectStopped": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "errorReceiverMissing": "The receiver no longer exists. Refresh and try again.",
+  "errorDeletePassword": "Could not delete the receiver password: {error}",
+  "@errorDeletePassword": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "updateInstallFailed": "The update could not be installed. Try again.",
   "flyoutSearching": "Searching for AirPlay receivers nearby…",
   "flyoutSearchHint": "Make sure the receiver is on the same network and AirPlay is on.",
   "flyoutSearchAgain": "Search again",

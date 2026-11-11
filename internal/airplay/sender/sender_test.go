@@ -478,8 +478,8 @@ func TestRefusesASessionToThisHost(t *testing.T) {
 	if len(r.launched) != 1 || r.launched[0].ok {
 		t.Fatalf("launched = %+v, want one failure", r.launched)
 	}
-	if !strings.Contains(r.launched[0].err, "本机") {
-		t.Fatalf("error = %q, want the local receiver message", r.launched[0].err)
+	if !strings.Contains(r.launched[0].err, "local receiver") {
+		t.Fatalf("error = %q, want the local receiver refusal", r.launched[0].err)
 	}
 	if r.sender.State() != StateIdle {
 		t.Fatalf("state = %s, want idle", r.sender.State())

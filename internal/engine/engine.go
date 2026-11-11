@@ -33,6 +33,8 @@ type Snapshot struct {
 	State         sender.State
 	ConnectedName string
 	Error         string
+	ErrorKey      UserErrorKey
+	ErrorArgs     []string
 	// CredentialReset is true when the saved credentials could not be read
 	// and were moved aside this run. The flyout explains the re-pair.
 	CredentialReset  bool
@@ -377,6 +379,8 @@ type Engine struct {
 	activeMembers    []device.Device
 	connectedName    string
 	lastError        string
+	lastErrorKey     UserErrorKey
+	lastErrorArgs    []string
 	credentialReset  bool
 	takenOver        bool
 	pinRequired      bool
@@ -1093,7 +1097,7 @@ func (e *Engine) handleCommand(cmd command) {
 			e.connectAuto = false
 			e.connect(t.Device)
 		} else {
-			e.lastError = "未找到设备，请刷新后重试"
+			e.fail(ErrDeviceMissing)
 			e.publish()
 		}
 	case cmdDisconnect:
@@ -1102,7 +1106,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.reconnectCount = 0
 		// A cancel or a disconnect ends the attempt, so its failure is stale.
 		// Clear it before reconnectPendingOff publishes the idle snapshot.
-		e.lastError = ""
+		e.clearError()
 		e.takenOver = false
 		e.reconnectWanted = false
 		e.reconnectPendingOff()
@@ -1179,10 +1183,10 @@ func (e *Engine) handleCommand(cmd command) {
 			if e.tr.WaitingForPin() {
 				e.logf("latency apply: %s is waiting for a PIN; session left alone", e.selectedID)
 			} else if d, ok := e.find(e.selectedID); !ok {
-				e.lastError = "延迟已保存，但未找到设备，会话未重启"
+				e.fail(ErrLatencyDeviceMissing)
 				e.logf("latency apply: device %s not found; session left running", e.selectedID)
 			} else if !d.Online {
-				e.lastError = "延迟已保存，但设备当前不在线，会话未重启"
+				e.fail(ErrLatencyOffline)
 				e.logf("latency apply: %s is offline; session left running", e.selectedID)
 			} else {
 				e.userDisconnect = false
@@ -1199,7 +1203,7 @@ func (e *Engine) handleCommand(cmd command) {
 		e.publish()
 	case cmdPassword:
 		if err := e.savePassword(cmd.deviceID, cmd.name); err != nil {
-			e.lastError = "无法保存接收器密码：" + err.Error()
+			e.fail(ErrSavePassword, err.Error())
 		}
 		e.publish()
 	case cmdRefresh:
@@ -1290,7 +1294,7 @@ func (e *Engine) connect(d device.Device) {
 	// anyway. Discovery and merge mark the classified device; the sender's
 	// socket check covers a manual row whose host is this machine.
 	if d.Local {
-		e.lastError = "本机正在运行声渡，不能作为接收器。"
+		e.fail(ErrLocalReceiver)
 		e.logf("refusing the local receiver %s", d.Name)
 		e.publish()
 		return
@@ -1301,15 +1305,15 @@ func (e *Engine) connect(d device.Device) {
 	e.pinDevice = ""
 	// A new attempt starts clean. The previous receiver's failure must not
 	// keep the flyout in its error phase while this attempt runs.
-	e.lastError = ""
+	e.clearError()
 	e.takenOver = false
 	if d.IsStereoGroup() && (!d.Online || len(d.Members) != 2) {
-		e.lastError = "立体声组需要两台成员都在线"
+		e.fail(ErrStereoMembersOffline)
 		e.publish()
 		return
 	}
 	if d.Auth == device.AuthLegacyPin {
-		e.lastError = d.Name + " 使用 Apple FairPlay 音频，当前应用不支持。"
+		e.fail(ErrFairPlay, d.Name)
 		e.logf("FairPlay receiver %s is not supported", d.Name)
 		e.publish()
 		return
@@ -1321,7 +1325,7 @@ func (e *Engine) connect(d device.Device) {
 	// handed to the sender.
 	if entry, ok := e.reg.Get(d.ID); ok && entry.PairedHost != "" && entry.PairedPort != 0 &&
 		(d.Host != entry.PairedHost || d.Port != entry.PairedPort) {
-		e.lastError = d.Name + " 的地址与配对时不一致，已拒绝连接。"
+		e.fail(ErrEndpointMoved, d.Name)
 		e.logf("refusing %s: advertised %s:%d, paired %s:%d", d.Name, d.Host, d.Port, entry.PairedHost, entry.PairedPort)
 		e.publish()
 		return
@@ -1341,7 +1345,7 @@ func (e *Engine) connect(d device.Device) {
 			e.passwordDevice = d.Name
 			e.passwordDeviceID = d.ID
 			e.passwordTargetID = d.ID
-			e.lastError = ""
+			e.clearError()
 			e.logf("AirPlay password required for %s", d.Name)
 			e.publish()
 			return
@@ -1361,7 +1365,7 @@ func (e *Engine) connect(d device.Device) {
 			e.passwordDevice = m.Name
 			e.passwordDeviceID = m.ID
 			e.passwordTargetID = d.ID
-			e.lastError = ""
+			e.clearError()
 			e.logf("AirPlay password required for %s (stereo member)", m.Name)
 			e.publish()
 			return
@@ -1378,7 +1382,7 @@ func (e *Engine) connect(d device.Device) {
 	e.activeMembers = d.Members
 	tr, stop, err := e.newSession(d)
 	if err != nil {
-		e.lastError = "无法建立会话：" + err.Error()
+		e.fail(ErrSessionOpen, err.Error())
 		e.logf("session open failed: %v", err)
 		e.publish()
 		return
@@ -1424,7 +1428,7 @@ func (e *Engine) connect(d device.Device) {
 func (e *Engine) planReconnect() {
 	if e.reconnectNum >= maxReconnectAttempts {
 		e.reconnectWanted = false
-		e.lastError = fmt.Sprintf("自动重连 %d 次后停止", e.reconnectNum)
+		e.fail(ErrReconnectStopped, fmt.Sprint(e.reconnectNum))
 		e.logf("giving up after %d reconnect attempts", e.reconnectNum)
 		e.publish()
 		return
@@ -1581,7 +1585,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 			e.setsValue.LastDeviceID = e.selectedID
 			e.markSettingsDirty()
 		}
-		e.lastError = ""
+		e.clearError()
 		e.takenOver = false
 		e.reconnectWanted = true
 		e.reconnectNum = 0
@@ -1621,7 +1625,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.receiverLatency = 0
 		e.sessionStartedAt = time.Time{}
 		e.endDropSession()
-		e.lastError = err
+		e.failText(err)
 		e.logf("session failed: %s", err)
 		if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
 			e.planReconnect()
@@ -1660,7 +1664,7 @@ func (e *Engine) onPreempted(reason string) {
 	// The receiver belongs to another sender now; nothing of this session can
 	// stay on, and the closed control channel cannot light the display.
 	e.resetIdle()
-	e.lastError = ""
+	e.clearError()
 	e.restoreLocalMute()
 	e.logf("session taken over: %s", reason)
 	e.publish()
@@ -2529,6 +2533,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 		State:              state,
 		ConnectedName:      e.connectedName,
 		Error:              e.lastError,
+		ErrorKey:           e.lastErrorKey,
+		ErrorArgs:          e.lastErrorArgs,
 		CredentialReset:    e.credentialReset,
 		TakenOver:          e.takenOver,
 		PinRequired:        e.pinRequired,

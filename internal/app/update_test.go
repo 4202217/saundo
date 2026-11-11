@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"runtime"
+	"saundo/cmd/saundo/locales"
 	"testing"
 	"time"
 
@@ -133,8 +134,8 @@ func TestInstallFailure(t *testing.T) {
 	a := updateApp(f)
 	a.checkForUpdates(true)
 	a.installUpdate()
-	if a.upd.phase != updateFailed || a.upd.err != "signature mismatch" {
-		t.Fatalf("phase = %d err = %q", a.upd.phase, a.upd.err)
+	if a.upd.phase != updateFailed || a.upd.err != locales.UpdateInstallFailed() {
+		t.Fatalf("phase = %d err = %q, want the catalog message", a.upd.phase, a.upd.err)
 	}
 	if !a.updateCardVisible() {
 		t.Fatal("a failed download should keep the settings card")

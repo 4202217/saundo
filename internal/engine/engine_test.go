@@ -242,8 +242,8 @@ func TestConnectRefusesTheLocalReceiver(t *testing.T) {
 	if h.sessions != 0 || h.fake != nil {
 		t.Fatalf("a local receiver started a session (sessions=%d)", h.sessions)
 	}
-	if err := h.e.Snapshot().Error; !strings.Contains(err, "本机") {
-		t.Fatalf("error = %q, want the local receiver message", err)
+	if snap := h.e.Snapshot(); snap.ErrorKey != ErrLocalReceiver {
+		t.Fatalf("error key = %q, want localReceiver", snap.ErrorKey)
 	}
 }
 
@@ -538,8 +538,8 @@ func TestReconnectBackoffEscalatesAndGivesUp(t *testing.T) {
 	if h.e.reconnectWanted {
 		t.Fatal("reconnect did not give up after five attempts")
 	}
-	if !strings.Contains(h.e.lastError, "自动重连") {
-		t.Fatalf("error = %q", h.e.lastError)
+	if h.e.lastErrorKey != ErrReconnectStopped || len(h.e.lastErrorArgs) != 1 {
+		t.Fatalf("error key = %q args = %q, want reconnectStopped with a count", h.e.lastErrorKey, h.e.lastErrorArgs)
 	}
 	if h.sessions != 6 {
 		t.Fatalf("sessions = %d, want 6", h.sessions)
@@ -705,8 +705,8 @@ func TestFairPlayReceiverFailsFast(t *testing.T) {
 	if h.sessions != 0 {
 		t.Fatal("a FairPlay receiver started a session")
 	}
-	if snap := h.e.Snapshot(); !strings.Contains(snap.Error, "FairPlay") {
-		t.Fatalf("error = %q, want a FairPlay message", snap.Error)
+	if snap := h.e.Snapshot(); snap.ErrorKey != ErrFairPlay || len(snap.ErrorArgs) != 1 || snap.ErrorArgs[0] != "REDMI 显示器" {
+		t.Fatalf("error = %q args = %q, want fairPlay with the device name", snap.ErrorKey, snap.ErrorArgs)
 	}
 }
 
@@ -948,8 +948,8 @@ func TestOfflineStereoGroupDoesNotStart(t *testing.T) {
 	if h.sessions != 0 {
 		t.Fatalf("offline stereo group started %d sessions", h.sessions)
 	}
-	if !strings.Contains(h.e.lastError, "两台") {
-		t.Fatalf("error = %q, want an incomplete-group message", h.e.lastError)
+	if h.e.lastErrorKey != ErrStereoMembersOffline {
+		t.Fatalf("error key = %q, want stereoMembersOffline", h.e.lastErrorKey)
 	}
 }
 

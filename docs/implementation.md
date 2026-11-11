@@ -106,7 +106,11 @@ The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
-app-only latency mode fields in the engine settings copy. `SetLamp(off, cover,
+app-only latency mode fields in the engine settings copy. User-facing
+failures carry a `UserErrorKey` plus arguments in
+`Snapshot.ErrorKey`/`ErrorArgs`; `internal/app/user_error.go` resolves them
+against the catalog, so the engine never builds a localized sentence.
+`Snapshot.Error` stays the technical fallback for a failure with no key. `SetLamp(off, cover,
 preset)` saves the global `lamp.off`/`lamp.cover`/`lamp.preset` choice, applies
 it to a live session, and is reapplied when a session starts streaming. The
 snapshot carries both lists: `Devices` (the flyout, with hidden receivers

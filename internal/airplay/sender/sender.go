@@ -869,7 +869,7 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		// interface read). Refuse before pairing; the receiver rejects the
 		// session SETUP anyway, and a stream to its own host would loop.
 		if s.localIP != "" && s.localIP == s.hostIP {
-			s.fail("本机正在运行声渡，不能作为接收器。")
+			s.fail("the local receiver cannot be a target")
 			return
 		}
 		s.beginAuthChain()

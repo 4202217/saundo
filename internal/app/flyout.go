@@ -125,7 +125,7 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 	a.deviceCard(c, p, devices)
 	if a.errorBarShown() {
 		ui.Row(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).Background(p.redSoft).Children(func() {
-			ui.Text(c, locales.FlyoutConnectFailed(a.snap.Error)).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
+			ui.Text(c, locales.FlyoutConnectFailed(a.errorText())).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
 		})
 	}
 	if a.snap.CredentialReset {
@@ -136,7 +136,7 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 // errorBarShown reports whether the device section carries the connection
 // error bar.
 func (a *App) errorBarShown() bool {
-	return phaseOf(a.snap) == phaseError && a.snap.Error != ""
+	return phaseOf(a.snap) == phaseError && (a.snap.Error != "" || a.snap.ErrorKey != "")
 }
 
 func (a *App) deviceCard(c *ui.Context, p palette, devices []device.Device) {
