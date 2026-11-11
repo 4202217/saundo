@@ -101,6 +101,8 @@ grep -q 'Docs audit' docs/releasing.md || fail "docs/releasing.md lacks a docs a
 grep -q '## UI mockup templates' docs/releasing.md || fail "docs/releasing.md lacks the UI mockup template refresh"
 grep -qi 'mockup templates' .claude/skills/release/SKILL.md || fail "the release skill lacks the UI mockup template step"
 grep -q 'ui-mockup/assets' docs/ui.md || fail "docs/ui.md does not point at the mockup templates"
+grep -qi 'sf symbols' NOTICE || fail "NOTICE does not disclose the SF Symbols-traced receiver glyphs"
+grep -q 'icon-style setting' internal/app/icons_sf_gen.go && fail "icons_sf_gen.go still points at the removed icon-style setting"
 grep -q 'Latency modes' docs/verification.md || fail "docs/verification.md lacks latency modes"
 grep -q 'Tray animation' docs/verification.md || fail "docs/verification.md lacks tray animation"
 grep -q '更新 page' docs/verification.md || fail "docs/verification.md lacks the update page"

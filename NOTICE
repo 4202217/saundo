@@ -34,4 +34,12 @@ wire profile, PTP follower state machine, and sender-side PTP master in
 internal/airplay/ptp are ported from AirFlash
 (native/airflash-engine/src/clock.rs).
 
-Runtime dependencies and their licenses are listed in docs/architecture.md.
+Receiver glyphs
+
+The system-style receiver silhouettes in internal/app/icons_sf_gen.go are
+traced from Apple's SF Symbols. SF Symbols is governed by Apple's license,
+not by the GPLv3. The project ships these shapes on every platform by owner
+decision.
+
+Runtime dependencies, assets, and their licenses are listed in
+docs/architecture.md.

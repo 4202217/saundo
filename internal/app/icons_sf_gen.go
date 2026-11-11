@@ -1,7 +1,6 @@
-// The system-style glyph set: potrace-traced receiver silhouettes. Licensing
-// note: these shapes trace Apple's SF Symbols, so they are not GPL-clean. The
-// project ships them on every platform by owner decision; remove this file and
-// the icon-style setting together if that risk becomes a problem.
+// The system-style glyph set: potrace-traced receiver silhouettes.
+// Licensing: these shapes trace Apple's SF Symbols, so they are not GPL-clean;
+// the project ships them on every platform by owner decision. See NOTICE.
 package app
 
 import (
