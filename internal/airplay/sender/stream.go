@@ -2,6 +2,7 @@ package sender
 
 import (
 	"encoding/binary"
+	"time"
 
 	"saundo/internal/airplay/alac"
 	"saundo/internal/airplay/crypto"
@@ -249,7 +250,11 @@ func (s *Sender) sendSyncPacket(first bool) {
 }
 
 // onControlDatagram answers type 0x55 retransmit requests from the backlog,
-// replying to the source address with the original packet.
+// replying to the source address with the original packet. Only the receiver
+// that owns this session may ask: the reply goes to the datagram's UDP source,
+// so an unvalidated request turns the sender into a reflector. The port is not
+// checked because a receiver's retransmit source port can differ from its
+// control port; its address cannot.
 func (s *Sender) onControlDatagram(dg []byte, from raopio.Endpoint) {
 	if len(dg) < 8 {
 		return
@@ -257,13 +262,23 @@ func (s *Sender) onControlDatagram(dg []byte, from raopio.Endpoint) {
 	if dg[1]&0x7F != 0x55 {
 		return
 	}
+	if s.hostIP == "" || from.IP != s.hostIP {
+		return
+	}
 	lostSeq := binary.BigEndian.Uint16(dg[4:6])
 	lostCount := int(binary.BigEndian.Uint16(dg[6:8]))
+	if lostCount > maxRetransmitBurst {
+		lostCount = maxRetransmitBurst
+	}
+	now := s.now()
 	for i := 0; i < lostCount; i++ {
 		seq := lostSeq + uint16(i)
 		slot := int(seq) & (backlogSize - 1)
 		if s.backlogSeq[slot] != int32(seq) || len(s.backlog[slot]) == 0 {
 			continue
+		}
+		if !s.allowRetransmit(now) {
+			return
 		}
 		resp := make([]byte, 4, 4+len(s.backlog[slot]))
 		resp[0], resp[1] = 0x80, 0xD6
@@ -273,6 +288,20 @@ func (s *Sender) onControlDatagram(dg []byte, from raopio.Endpoint) {
 			s.retransmits++
 		}
 	}
+}
+
+// allowRetransmit consumes one packet from the session's per-window budget.
+// The receiver is the only accepted source, so one budget covers the peer.
+func (s *Sender) allowRetransmit(now time.Time) bool {
+	if s.retransmitWindowStart.IsZero() || now.Sub(s.retransmitWindowStart) >= retransmitWindowPeriod {
+		s.retransmitWindowStart = now
+		s.retransmitBudget = retransmitWindowBudget
+	}
+	if s.retransmitBudget <= 0 {
+		return false
+	}
+	s.retransmitBudget--
+	return true
 }
 
 // onTimingDatagram answers the receiver's NTP request with its send time

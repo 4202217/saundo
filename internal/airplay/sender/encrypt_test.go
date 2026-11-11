@@ -7,8 +7,9 @@ import (
 )
 
 type audioRecordIO struct {
-	audio  [][]byte
-	events [][]byte
+	audio   [][]byte
+	events  [][]byte
+	control [][]byte
 }
 
 func (a *audioRecordIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
@@ -23,8 +24,11 @@ func (a *audioRecordIO) UDPBind(ch raopio.UDPChannel) (uint16, error) { return 5
 func (a *audioRecordIO) UDPClose(raopio.UDPChannel)                   {}
 
 func (a *audioRecordIO) UDPSend(ch raopio.UDPChannel, _ raopio.Endpoint, data []byte) error {
-	if ch == raopio.UDPAudio {
+	switch ch {
+	case raopio.UDPAudio:
 		a.audio = append(a.audio, append([]byte(nil), data...))
+	case raopio.UDPControl:
+		a.control = append(a.control, append([]byte(nil), data...))
 	}
 	return nil
 }
