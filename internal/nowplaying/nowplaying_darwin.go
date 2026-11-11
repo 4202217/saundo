@@ -179,6 +179,18 @@ func (a *adapter) functional() error {
 	return err
 }
 
+// adapterTestArgs builds the perl loader command for the self-test. The
+// loader reads TEST_CLIENT_PATH only when the argument after the framework
+// contains a slash, so the staged client goes before the "test" function.
+func adapterTestArgs(dir, framework string) []string {
+	args := []string{filepath.Join(dir, "mediaremote-adapter.pl"), framework}
+	client := filepath.Join(dir, "MediaRemoteAdapterTestClient")
+	if _, err := os.Stat(client); err == nil {
+		args = append(args, client)
+	}
+	return append(args, "test")
+}
+
 // probeAdapter runs the vendored adapter's entitlement self-test.
 func (a *adapter) probeAdapter() error {
 	dir, framework, err := adapterPaths()
@@ -187,7 +199,7 @@ func (a *adapter) probeAdapter() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), functionalProbeTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, "test")
+	cmd := exec.CommandContext(ctx, "/usr/bin/perl", adapterTestArgs(dir, framework)...)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("nowplaying: MediaRemote adapter is not functional here: %w", err)
 	}

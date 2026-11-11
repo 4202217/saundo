@@ -12,6 +12,27 @@ import (
 	"time"
 )
 
+// TestAdapterTestArgsIncludeStagedClient pins the loader contract: the
+// self-test client path must sit between the framework and "test", or the
+// adapter exits 1 with "Test client path is missing".
+func TestAdapterTestArgsIncludeStagedClient(t *testing.T) {
+	dir := t.TempDir()
+	framework := filepath.Join(dir, "MediaRemoteAdapter.framework")
+	args := adapterTestArgs(dir, framework)
+	if len(args) != 3 || args[2] != "test" {
+		t.Fatalf("args without a client = %v, want script, framework, test", args)
+	}
+
+	client := filepath.Join(dir, "MediaRemoteAdapterTestClient")
+	if err := os.WriteFile(client, []byte("#!/bin/sh\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	args = adapterTestArgs(dir, framework)
+	if len(args) != 4 || args[2] != client || args[3] != "test" {
+		t.Fatalf("args with a client = %v, want the client before test", args)
+	}
+}
+
 // TestFunctionalRetriesAfterTransientFailure pins the retry gate: a failed
 // probe is returned for the backoff window, then retried, and success is
 // cached. The old sync.Once returned the first error for the whole process.

@@ -25,3 +25,13 @@ rm -rf "$out"
 mkdir -p "$out/bin"
 cp "$root/native/mediaremote-adapter/bin/mediaremote-adapter.pl" "$out/bin/"
 cp -R "$build/MediaRemoteAdapter.framework" "$out/"
+
+# The entitlement self-test needs its helper client. Ship it beside the
+# loader; without it test.m exits 1 with "Test client path is missing".
+client="$(find "$build" -type f -name MediaRemoteAdapterTestClient | head -n 1)"
+if [ -z "$client" ]; then
+	echo "build-adapter: MediaRemoteAdapterTestClient was not built" >&2
+	exit 1
+fi
+cp "$client" "$out/bin/MediaRemoteAdapterTestClient"
+chmod +x "$out/bin/MediaRemoteAdapterTestClient"
