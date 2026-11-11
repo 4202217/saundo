@@ -36,8 +36,8 @@ the seams and the rules for extending them. The code map:
 | Mute local | `capture.EndpointMuted`, `capture.SetEndpointMuted` | `mute_windows.go`: `IAudioEndpointVolume` | `mute_darwin.go`: `kAudioDevicePropertyMute` on the output device | `mute_other.go`: fail-closed |
 | Now playing | `nowplaying.Read` and the control/snapshot set (`nowplaying.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
 | Neighbor table | `discovery.neighborHosts` | `neighbors_windows.go`: `GetIpNetTable` | fail-closed empty (remembered endpoints cover offline connect) | `neighbors_other.go`: fail-closed |
-| Engine wiring | injected function fields (`engine.go:290` `captureStartFn`, `engine.go:395-398` the endpoint/mute set, `engine.go:374` `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
-| App wiring | `app.go:113-114` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `update.go` disables updates | stubs |
+| Engine wiring | injected function fields (`engine.go` `captureStartFn`, `defaultEndpoint`, `setEndpointMuted`, `endpoints`, `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
+| App wiring | `app.go` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `update.go` disables updates | stubs |
 
 ## Adding a feature
 
