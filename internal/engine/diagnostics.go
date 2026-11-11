@@ -39,6 +39,9 @@ type Diagnostics struct {
 	Underruns   uint64
 	SentBlocks  uint64
 	SendErrors  uint64
+	// DroppedEvents is how many host notifications the session's event queue
+	// discarded, summed across stereo members.
+	DroppedEvents uint64
 	// Overflow is the session's dropped sample count, already the worst
 	// member's when the target is a stereo pair.
 	Overflow     uint64

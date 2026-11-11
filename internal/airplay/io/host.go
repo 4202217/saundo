@@ -18,6 +18,7 @@ var ErrSlotClosed = errors.New("raopio: socket is closed")
 // channel and drives the sender from one goroutine.
 type Host struct {
 	events  chan Event
+	done    chan struct{}
 	dropped atomic.Uint64
 
 	mu      sync.Mutex
@@ -29,7 +30,7 @@ type Host struct {
 
 // NewHost returns a host whose event channel buffers 256 notifications.
 func NewHost() *Host {
-	return &Host{events: make(chan Event, 256)}
+	return &Host{events: make(chan Event, 256), done: make(chan struct{})}
 }
 
 // Events is the stream of host notifications.
@@ -43,6 +44,7 @@ func (h *Host) Close() {
 		return
 	}
 	h.closed = true
+	close(h.done)
 	tcp := h.tcp
 	udp := h.udp
 	h.tcp = [3]*tcpSlot{}
@@ -61,9 +63,30 @@ func (h *Host) Close() {
 	}
 }
 
+// terminalEvent reports whether losing this notification would leave the
+// engine driving a socket that is already gone.
+func terminalEvent(kind EventKind) bool {
+	switch kind {
+	case EventTCPConnected, EventTCPConnectFailed, EventTCPClosed:
+		return true
+	}
+	return false
+}
+
 func (h *Host) emit(ev Event) {
 	if ev.Data != nil {
 		ev.Data = append([]byte(nil), ev.Data...)
+	}
+	if terminalEvent(ev.Kind) {
+		// A dropped connect or close can hide a dead socket. Wait for the
+		// engine to drain it; Close releases the producer if the session ends
+		// first. The cost is backpressure on one socket goroutine, not a
+		// deadlock, because the engine always drains while the session lives.
+		select {
+		case h.events <- ev:
+		case <-h.done:
+		}
+		return
 	}
 	select {
 	case h.events <- ev:

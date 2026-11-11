@@ -185,6 +185,63 @@ func TestEmitCountsDropsWhenFull(t *testing.T) {
 	}
 }
 
+// TestTerminalEventsAreNotDropped pins the lifecycle path: a burst of UDP
+// datagrams may fill the queue, but a connection close behind it must still
+// reach the engine instead of being discarded.
+func TestTerminalEventsAreNotDropped(t *testing.T) {
+	h := NewHost()
+	defer h.Close()
+	for i := 0; i < 256; i++ {
+		h.emit(Event{Kind: EventUDPDatagram})
+	}
+	emitted := make(chan struct{})
+	go func() {
+		h.emit(Event{Kind: EventTCPClosed, TCP: TCPControl})
+		close(emitted)
+	}()
+	select {
+	case <-emitted:
+		t.Fatal("a lifecycle event was dropped on a full channel")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case ev := <-h.events:
+			if ev.Kind == EventTCPClosed {
+				if got := h.Dropped(); got != 0 {
+					t.Fatalf("dropped = %d, want 0 (only the queue was full)", got)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatal("the lifecycle event never arrived")
+		}
+	}
+}
+
+// TestCloseUnblocksTerminalEmit pins teardown: a terminal event waiting for a
+// full queue must not hold its producer after the host is closed.
+func TestCloseUnblocksTerminalEmit(t *testing.T) {
+	h := NewHost()
+	for i := 0; i < 256; i++ {
+		h.emit(Event{Kind: EventUDPDatagram})
+	}
+	done := make(chan struct{})
+	go func() {
+		h.emit(Event{Kind: EventTCPClosed, TCP: TCPControl})
+		close(done)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	h.Close()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Close did not release a blocked lifecycle emit")
+	}
+}
+
 func TestUDPBindSendReceive(t *testing.T) {
 	peer, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
 	if err != nil {

@@ -186,6 +186,9 @@ type transport interface {
 	// Stats returns one sender.Stats per member session. A single receiver
 	// returns one; a stereo pair returns both, in member order.
 	Stats() []sender.Stats
+	// DroppedEvents is how many host notifications the event queue discarded
+	// for this session.
+	DroppedEvents() uint64
 }
 
 // session is the production transport.
@@ -250,6 +253,7 @@ func (s *session) PTP() (active, ready bool, offsetMS float64) {
 	return true, st.Ready, st.OffsetNS / 1e6
 }
 func (s *session) Stats() []sender.Stats { return []sender.Stats{s.sender.Stats()} }
+func (s *session) DroppedEvents() uint64 { return s.host.Dropped() }
 
 // ptpFeatureBit is the receiver feature that advertises PTP support.
 const ptpFeatureBit = 1 << 41
@@ -2570,7 +2574,11 @@ func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 		// the max because stability is a session state, not a total.
 		overflow = e.memberDropped
 	}
-	return aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, overflow, now)
+	d := aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, overflow, now)
+	if e.tr != nil {
+		d.DroppedEvents = e.tr.DroppedEvents()
+	}
+	return d
 }
 
 func clamp(v, lo, hi float64) float64 {
