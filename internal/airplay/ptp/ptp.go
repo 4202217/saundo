@@ -688,7 +688,11 @@ func readTimestamp(data []byte) (uint64, bool) {
 	if ns >= 1_000_000_000 {
 		return 0, false
 	}
-	return binary.BigEndian.Uint64(secs[:])*1_000_000_000 + uint64(ns), true
+	seconds := binary.BigEndian.Uint64(secs[:])
+	if seconds > (math.MaxUint64-uint64(ns))/1_000_000_000 {
+		return 0, false
+	}
+	return seconds*1_000_000_000 + uint64(ns), true
 }
 
 func correction(data []byte) float64 {
