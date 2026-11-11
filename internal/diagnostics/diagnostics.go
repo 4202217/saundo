@@ -24,27 +24,33 @@ type Log struct {
 }
 
 // New opens the log at path, creating its directory. A file that cannot open
-// still yields a usable in-memory log.
+// still yields a usable in-memory log, and the reason is recorded in it.
 func New(path string) *Log {
 	l := &Log{maxBytes: 5 << 20}
 	if path == "" {
 		path = DefaultPath()
 	}
 	l.path = path
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err == nil {
-		l.file, _ = os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		l.Printf("diagnostics: cannot create %s: %v", filepath.Dir(path), err)
+		return l
 	}
-	if l.file != nil {
-		// One size sample at open keeps the rotation decision off the hot
-		// path; the counter tracks everything this process appends.
-		if info, err := l.file.Stat(); err == nil {
-			l.written = info.Size()
-		}
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		l.Printf("diagnostics: cannot open %s: %v", path, err)
+		return l
+	}
+	l.file = file
+	// One size sample at open keeps the rotation decision off the hot path;
+	// the counter tracks everything this process appends.
+	if info, err := l.file.Stat(); err == nil {
+		l.written = info.Size()
 	}
 	return l
 }
 
-// DefaultPath is %APPDATA%\saundo\saundo.log.
+// DefaultPath is saundo.log in the OS config directory: %APPDATA%\saundo on
+// Windows and ~/Library/Application Support/saundo on macOS.
 func DefaultPath() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {

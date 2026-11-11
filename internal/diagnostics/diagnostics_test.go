@@ -37,6 +37,32 @@ func TestRotation(t *testing.T) {
 	}
 }
 
+// TestUnopenableLogIsReported pins the fallback's visibility: when the file
+// cannot be created, the in-memory log says why instead of staying empty.
+func TestUnopenableLogIsReported(t *testing.T) {
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l := New(filepath.Join(blocker, "saundo.log"))
+	lines := l.Lines()
+	if len(lines) == 0 {
+		t.Fatal("the in-memory log did not report the open failure")
+	}
+	found := false
+	for _, line := range lines {
+		if strings.Contains(line, "diagnostics: cannot create") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("lines = %v, want a diagnostics: cannot create line", lines)
+	}
+	l.Close()
+}
+
 // TestPrintfAfterCloseIsNoOp pins the shutdown guard: a late logger must not
 // write a closed file or panic.
 func TestPrintfAfterCloseIsNoOp(t *testing.T) {
