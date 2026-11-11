@@ -890,6 +890,12 @@ and the verification map is corrected.
   `SHA256SUMS`; `sha256sum -c` passed for every checksummed file. Both
   manifests name 0.6.2, are signed, and carry the ASCII English notes. The
   tag stays on `b71e96d`; publishing is the remaining gate.
+- **Publish (2026-11-12).** `gh release edit v0.6.2 --draft=false` published
+  the stable release. The public feed serves the signed 0.6.2 Windows and
+  darwin manifests, and the installer, the dmg, and both update archives
+  return 200. A live update from an installed 0.6.1 build and the first
+  macOS live update across the ad-hoc cdhash are still owed; the pending
+  list keeps both.
 
 ## Graduated
 
