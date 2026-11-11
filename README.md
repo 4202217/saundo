@@ -69,8 +69,8 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 - **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the tray panel or the audio page. A live change restarts the stream with a spinner.
 - **A tray that shows the state** — the smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
 - **Updates in the app** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The tray panel's update chip and the tray tooltip point to it. Each platform updates from its own signed manifest in the release. The macOS build is ad-hoc signed until a Developer ID exists, so an update can ask again for system-audio capture and Keychain access.
-- **English and Simplified Chinese** — the interface follows the system language by default, with a language setting and a localized update page and notes dialog.
-- **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are protected by the OS secret store (DPAPI on Windows, the Keychain on macOS).
+- **English and Simplified Chinese** — the interface follows the system language by default, with a language setting and a localized update page, notes dialog, and every engine error message.
+- **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are protected by the OS secret store (DPAPI on Windows, the Keychain on macOS). If the saved pairing data cannot be read, the app moves it aside and a tray-panel notice explains the reset and offers to pair again.
 - **Stays out of the way** — suspends the stream after 5 s of digital silence and resumes cleanly, auto-reconnects with backoff, follows volume changes made on the receiver, and stops with a Reconnect action when another device takes the receiver over.
 
 ## Receiver support

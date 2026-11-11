@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-11 -->
+<!-- reviewed-through: 2026-11-12 -->
 
 # Implementation overview
 
@@ -12,8 +12,9 @@ as it is; update it in the same change that makes it wrong.
 
 ## Runtime model
 
-One process, four goroutine roles, no shared mutable state — data moves
-through bounded channels:
+One process, four primary goroutine roles, no shared mutable state — data
+moves through bounded channels. The engine also runs a mute worker and a
+level-analysis worker, both behind bounded queues:
 
 - **The mygo main thread** owns the tray flyout, the settings window, the
   tray icon, and all UI state. Engine snapshots arrive as `win.Update`
