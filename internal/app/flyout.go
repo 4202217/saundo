@@ -747,8 +747,11 @@ func (a *App) currentDevice() (device.Device, bool) {
 }
 
 func formatRate(rate int) string {
-	if rate%1000 == 0 {
+	switch {
+	case rate%1000 == 0:
 		return fmt.Sprintf("%d kHz", rate/1000)
+	case rate%100 == 0:
+		return fmt.Sprintf("%.1f kHz", float64(rate)/1000)
 	}
 	return fmt.Sprintf("%d Hz", rate)
 }
