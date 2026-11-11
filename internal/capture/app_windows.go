@@ -517,47 +517,98 @@ func collectAudioSessionPIDs(into map[uint32]struct{}) (map[uint32]struct{}, err
 	return active, nil
 }
 
-func collectWindowPIDs(into map[uint32]struct{}) {
-	cb := syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
-		visible, _, _ := procIsWindowVisible.Call(hwnd)
-		if visible == 0 {
-			return 1
-		}
-		length, _, _ := procGetWindowTextLengthW.Call(hwnd)
-		if length == 0 {
-			return 1
-		}
-		var pid uint32
-		procGetWindowThreadPID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
-		if pid != 0 {
-			into[pid] = struct{}{}
-		}
-		return 1
+type windowScanMode uint8
+
+const (
+	scanPIDs windowScanMode = iota
+	scanTitles
+)
+
+// windowScan is the state an EnumWindows callback reads. It is kept in a
+// registry keyed by a token, so no Go pointer crosses the Windows callback.
+type windowScan struct {
+	mode   windowScanMode
+	pids   map[uint32]struct{}
+	titles map[uint32]string
+}
+
+var (
+	windowScanMu  sync.Mutex
+	windowScans   = map[uintptr]*windowScan{}
+	windowScanSeq uintptr
+
+	// newWindowsCallback is a test seam. The callback itself is registered
+	// once: Go never releases a syscall callback, and the runtime table holds
+	// only 2000.
+	newWindowsCallback  = syscall.NewCallback
+	enumWindowsCallback = sync.OnceValue(func() uintptr {
+		return newWindowsCallback(enumWindowsProc)
 	})
-	procEnumWindows.Call(cb, 0)
+)
+
+func beginWindowScan(scan *windowScan) uintptr {
+	windowScanMu.Lock()
+	windowScanSeq++
+	id := windowScanSeq
+	windowScans[id] = scan
+	windowScanMu.Unlock()
+	return id
+}
+
+func endWindowScan(id uintptr) {
+	windowScanMu.Lock()
+	delete(windowScans, id)
+	windowScanMu.Unlock()
+}
+
+func windowScanFor(id uintptr) *windowScan {
+	windowScanMu.Lock()
+	defer windowScanMu.Unlock()
+	return windowScans[id]
+}
+
+func enumWindowsProc(hwnd, lparam uintptr) uintptr {
+	scan := windowScanFor(lparam)
+	if scan == nil {
+		return 1
+	}
+	visible, _, _ := procIsWindowVisible.Call(hwnd)
+	if visible == 0 {
+		return 1
+	}
+	length, _, _ := procGetWindowTextLengthW.Call(hwnd)
+	if length == 0 {
+		return 1
+	}
+	var pid uint32
+	procGetWindowThreadPID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+	if pid == 0 {
+		return 1
+	}
+	switch scan.mode {
+	case scanPIDs:
+		scan.pids[pid] = struct{}{}
+	case scanTitles:
+		if scan.titles[pid] == "" {
+			buf := make([]uint16, length+1)
+			procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(length+1))
+			scan.titles[pid] = syscall.UTF16ToString(buf)
+		}
+	}
+	return 1
+}
+
+func collectWindowPIDs(into map[uint32]struct{}) {
+	id := beginWindowScan(&windowScan{mode: scanPIDs, pids: into})
+	defer endWindowScan(id)
+	procEnumWindows.Call(enumWindowsCallback(), id)
 }
 
 func windowTitles() map[uint32]string {
 	out := make(map[uint32]string)
-	cb := syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
-		visible, _, _ := procIsWindowVisible.Call(hwnd)
-		if visible == 0 {
-			return 1
-		}
-		length, _, _ := procGetWindowTextLengthW.Call(hwnd)
-		if length == 0 {
-			return 1
-		}
-		buf := make([]uint16, length+1)
-		procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(length+1))
-		var pid uint32
-		procGetWindowThreadPID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
-		if pid != 0 && out[pid] == "" {
-			out[pid] = syscall.UTF16ToString(buf)
-		}
-		return 1
-	})
-	procEnumWindows.Call(cb, 0)
+	id := beginWindowScan(&windowScan{mode: scanTitles, titles: out})
+	defer endWindowScan(id)
+	procEnumWindows.Call(enumWindowsCallback(), id)
 	return out
 }
 
