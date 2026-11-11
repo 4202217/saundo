@@ -2,6 +2,7 @@ package ptp
 
 import (
 	"encoding/binary"
+	"math"
 	"net"
 	"strings"
 	"testing"
@@ -107,6 +108,34 @@ func TestFollowerOnPacketCanReenter(t *testing.T) {
 	case <-entered:
 	default:
 		t.Fatal("OnPacket did not run")
+	}
+}
+
+// TestReadTimestampRejectsOverflow pins the 48-bit field against the 64-bit
+// nanosecond return: a large seconds value must be rejected, not wrapped onto
+// a plausible past time.
+func TestReadTimestampRejectsOverflow(t *testing.T) {
+	encode := func(secs uint64, ns uint32) []byte {
+		buf := make([]byte, 10)
+		for i := 0; i < 6; i++ {
+			buf[i] = byte(secs >> (8 * (5 - i)))
+		}
+		binary.BigEndian.PutUint32(buf[6:10], ns)
+		return buf
+	}
+	if _, ok := readTimestamp(encode(20_000_000_000, 0)); ok {
+		t.Fatal("a 20e9-second timestamp was accepted")
+	}
+	maxSecs := uint64(math.MaxUint64 / 1_000_000_000)
+	maxNs := uint32(math.MaxUint64 % 1_000_000_000)
+	if got, ok := readTimestamp(encode(maxSecs, maxNs)); !ok || got != math.MaxUint64 {
+		t.Fatalf("MaxUint64 timestamp = %d ok=%v", got, ok)
+	}
+	if _, ok := readTimestamp(encode(maxSecs, maxNs+1)); ok {
+		t.Fatal("the first overflowing nanosecond was accepted")
+	}
+	if _, ok := readTimestamp(encode(maxSecs+1, 0)); ok {
+		t.Fatal("the first overflowing second was accepted")
 	}
 }
 
