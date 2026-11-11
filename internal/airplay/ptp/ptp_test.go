@@ -7,6 +7,61 @@ import (
 	"time"
 )
 
+// newTestFollower avoids the fixed PTP ports, which the running app holds.
+func newTestFollower(t *testing.T) *Follower {
+	t.Helper()
+	event, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	general, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		_ = event.Close()
+		t.Fatal(err)
+	}
+	return &Follower{
+		event: event, general: general,
+		stop: make(chan struct{}), done: make(chan struct{}),
+	}
+}
+
+// TestFollowerStopWithoutStart pins the lifecycle contract: Stop on a follower
+// that never started must return instead of waiting for a loop that will never
+// close done.
+func TestFollowerStopWithoutStart(t *testing.T) {
+	f := newTestFollower(t)
+	stopped := make(chan struct{})
+	go func() {
+		f.Stop()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("Follower.Stop blocked after New-without-Start")
+	}
+}
+
+// TestFollowerSecondStartIsIgnored pins the other half: a repeated Start must
+// not launch two loops that both close done.
+func TestFollowerSecondStartIsIgnored(t *testing.T) {
+	f := newTestFollower(t)
+	f.Start()
+	f.Start()
+	stopped := make(chan struct{})
+	go func() {
+		f.Stop()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("Follower.Stop blocked after a repeated Start")
+	}
+	// Let a second run's deferred close surface as a panic if one was spawned.
+	time.Sleep(100 * time.Millisecond)
+}
+
 func TestTimestampRoundTrip(t *testing.T) {
 	buf := make([]byte, 10)
 	for _, ns := range []uint64{0, 1, 999_999_999, 1_573_985_916_250, 1_793_383_335_000_000_000} {

@@ -127,8 +127,10 @@ type Follower struct {
 	// diagnostics. It runs on the follower goroutine.
 	OnPacket func(kind uint8, seq uint16, data []byte)
 
-	mu sync.Mutex
-	st state
+	mu      sync.Mutex
+	started bool
+	stopped bool
+	st      state
 }
 
 // New binds the PTP event and general ports and prepares a follower for the
@@ -163,8 +165,15 @@ func New(peerIP string) (*Follower, error) {
 // ClockID is this sender's PTP clock identity, advertised in session SETUP.
 func (f *Follower) ClockID() uint64 { return f.clockID }
 
-// Start begins the background exchange loop.
+// Start begins the background exchange loop. Repeated calls, and a call after
+// Stop, are ignored.
 func (f *Follower) Start() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.started || f.stopped {
+		return
+	}
+	f.started = true
 	go f.run()
 }
 
@@ -177,13 +186,20 @@ func (f *Follower) Activate() {
 	f.mu.Unlock()
 }
 
-// Stop ends the loop and closes the sockets.
+// Stop ends the loop and closes the sockets. It waits for the loop only when
+// Start ran, so a Follower that was never started does not hang.
 func (f *Follower) Stop() {
+	f.mu.Lock()
+	f.stopped = true
+	started := f.started
+	f.mu.Unlock()
 	f.stopOnce.Do(func() {
 		close(f.stop)
 		_ = f.event.Close()
 		_ = f.general.Close()
-		<-f.done
+		if started {
+			<-f.done
+		}
 	})
 }
 
