@@ -138,10 +138,12 @@ func (s *Sender) onRTSPData(data []byte) {
 		if contentLen < 0 {
 			contentLen = 0
 		}
-		total := headEnd + 4 + contentLen
-		if len(s.rxBuf) < total {
+		// Compare against the remaining bytes before adding: a length near
+		// MaxInt would overflow the frame end and slice with a negative index.
+		if contentLen > len(s.rxBuf)-(headEnd+4) {
 			return
 		}
+		total := headEnd + 4 + contentLen
 		statusLine := trimASCII("")
 		if len(lines) > 0 {
 			statusLine = trimASCII(lines[0])
@@ -426,16 +428,21 @@ func (s *Sender) onEventData(data []byte) {
 			switch trimASCII(lowerASCII(line[:colon])) {
 			case "content-length":
 				contentLen = toInt(line[colon+1:])
+				if contentLen < 0 {
+					contentLen = 0
+				}
 			case "cseq":
 				cseq = trimASCII(line[colon+1:])
 			case "content-type":
 				contentType = trimASCII(line[colon+1:])
 			}
 		}
-		total := headEnd + 4 + contentLen
-		if len(s.eventPlain) < total {
+		// Compare against the remaining bytes before adding: a length near
+		// MaxInt would overflow the frame end and slice with a negative index.
+		if contentLen > len(s.eventPlain)-(headEnd+4) {
 			return
 		}
+		total := headEnd + 4 + contentLen
 		firstLine := strings.SplitN(string(s.eventPlain[:headEnd]), "\r\n", 2)[0]
 		if firstLine != "" {
 			s.info("event request %q", firstLine)
@@ -489,7 +496,13 @@ func (s *Sender) handleVolumeReply(body []byte) {
 	if !ok {
 		return
 	}
-	db := float64(plistInt(m, "initialVolume"))
+	raw, ok := plistIntOK(m, "initialVolume")
+	if !ok {
+		// An absent or unreadable field means the receiver's volume is
+		// unknown, not zero: keep the last value instead of overwriting it.
+		return
+	}
+	db := float64(raw)
 	pct := float64(volPercentFromDB(db))
 	if s.receiverVol >= 0 && pct == float64(s.receiverVol) {
 		return
@@ -501,9 +514,13 @@ func (s *Sender) handleVolumeReply(body []byte) {
 }
 
 // volPercentFromDB converts AirPlay dBFS to a 0..100 percent like pyatv's
-// pct_to_dbfs inverse: anything at or below -30 dB is mute.
+// pct_to_dbfs inverse: 0 dB is full volume and anything at or below -30 dB is
+// mute.
 func volPercentFromDB(db float64) int {
-	if db >= 0 || db <= -30 {
+	if db >= 0 {
+		return 100
+	}
+	if db <= -30 {
 		return 0
 	}
 	pct := int((db + 30) / 0.3)

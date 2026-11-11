@@ -505,11 +505,11 @@ func (s *Sender) SetInputFormat(rate int) {
 // SetLatency sets the presentation latency in milliseconds; it takes effect
 // on the next session's stream SETUP.
 func (s *Sender) SetLatency(ms int) {
-	if ms < 20 {
-		ms = 20
+	if ms < device.MinLatencyMS {
+		ms = device.MinLatencyMS
 	}
-	if ms > 2000 {
-		ms = 2000
+	if ms > device.MaxLatencyMS {
+		ms = device.MaxLatencyMS
 	}
 	s.latencyMS = ms
 }

@@ -110,19 +110,29 @@ func (s *Sender) sendAP2SetupSession() {
 }
 
 func (s *Sender) handleAP2SetupSession(body []byte) {
-	eventPort := uint16(0)
-	if root, err := crypto.Decode(body); err == nil {
-		if m, ok := root.(map[string]any); ok {
-			eventPort = uint16(plistInt(m, "eventPort"))
-		}
+	root, err := crypto.Decode(body)
+	if err != nil {
+		s.fail("Session SETUP response was malformed")
+		return
 	}
+	m, ok := root.(map[string]any)
+	if !ok {
+		s.fail("Session SETUP response was malformed")
+		return
+	}
+	port, ok := plistIntOK(m, "eventPort")
+	if !ok || port <= 0 || port > 65535 {
+		// A session without an event channel tears itself down after roughly
+		// 25-30 s. Fail at the SETUP instead of streaming into that timeout.
+		s.fail("Session SETUP response was missing eventPort")
+		return
+	}
+	eventPort := uint16(port)
 	s.ap2.eventPort = eventPort
 	s.info("session SETUP ok, eventPort=%d", eventPort)
-	if eventPort != 0 {
-		s.io.TCPClose(raopio.TCPEvent, false)
-		_ = s.io.TCPConnect(raopio.TCPEvent, s.hostIP, eventPort)
-		s.info("opening event channel to %s:%d", s.host, eventPort)
-	}
+	s.io.TCPClose(raopio.TCPEvent, false)
+	_ = s.io.TCPConnect(raopio.TCPEvent, s.hostIP, eventPort)
+	s.info("opening event channel to %s:%d", s.host, eventPort)
 	s.sendAP2Record()
 }
 

@@ -160,11 +160,19 @@ func (s *Sender) onPairingResponse(code int, headers map[string]string, body str
 		return
 	}
 	if s.authMethod == device.AuthSetup && s.ap2 == nil && s.pairStage == pairAuthSetup {
+		if code < 200 || code >= 300 {
+			s.fail(fmtError("%s refused auth-setup (HTTP %d)", s.name, code))
+			return
+		}
 		s.pairStage = pairDone
 		s.afterAuthOK()
 		return
 	}
 	if s.pairStage == pairAP2Record {
+		if code < 200 || code >= 300 {
+			s.fail(fmtError("%s refused RECORD (HTTP %d)", s.name, code))
+			return
+		}
 		s.info("AP2 RECORD reply (%d), proceeding to stream SETUP", code)
 		if s.ptpClock != nil {
 			// SETPEERS is a no-op on a PTP session, and the receiver can take
@@ -440,12 +448,16 @@ func (s *Sender) handlePairVerifyM2(body []byte) {
 		return
 	}
 	if code, ok := tlvError(items); ok {
-		if !s.triedRepairOnVerifyAuthError && s.credsJSON != "" {
+		if !s.triedRepairOnVerifyAuthError && s.credsJSON != "" && s.digestPassword == "" {
 			// The receiver no longer knows this pairing — it was reset or
 			// unpaired on its side. Drop the stored credentials and pair
 			// afresh on the same connection, mirroring the 470/403
 			// cross-fallbacks. Retrying the stored pairing would fail
 			// identically until the user hand-deleted credentials.dat.
+			// A receiver that gates the session with a password is the exception:
+			// a fresh pairing would hand that password to whoever answered,
+			// and an RFC 2069 Digest header is offline-crackable. Fail closed
+			// instead and let the user re-establish the pair deliberately.
 			s.info("%q rejected the stored pairing (pair-verify error %d), pairing afresh", s.name, code)
 			s.triedRepairOnVerifyAuthError = true
 			s.credsJSON = ""
@@ -496,7 +508,11 @@ func (s *Sender) handlePairVerifyM2(body []byte) {
 		verified = crypto.Ed25519Verify(s.ap2.accessoryLTPK, info, atvSig)
 	}
 	if !verified {
-		if s.strictAuth {
+		// A stored pairing means the next message carries key material: the
+		// client's signature, and later a receiver password. Never
+		// offer either to a receiver that did not prove it holds the stored
+		// long-term key, whatever the permissive default says.
+		if s.strictAuth || s.credsJSON != "" {
 			s.fail("The device's pair-verify signature did not verify (receiver not authenticated)")
 			return
 		}
