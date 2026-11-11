@@ -73,6 +73,43 @@ func TestFollowerRejectsIPv6Peer(t *testing.T) {
 	}
 }
 
+// TestFollowerOnPacketCanReenter pins the delivery boundary: the diagnostics
+// hook runs outside f.mu, so it may call Ready, Stats, Timeline, or Activate.
+func TestFollowerOnPacketCanReenter(t *testing.T) {
+	f := &Follower{clockID: 0x1111}
+	entered := make(chan struct{}, 1)
+	f.OnPacket = func(kind uint8, seq uint16, data []byte) {
+		_ = f.Ready()
+		_ = f.Stats()
+		_, _, _ = f.Timeline(uint64(time.Now().UnixNano()))
+		f.Activate()
+		entered <- struct{}{}
+	}
+	announce := header(11, 64, 0x3333, 7, 0x0408, 0)
+	binary.BigEndian.PutUint64(announce[53:61], 0x2222)
+
+	done := make(chan struct{})
+	go func() {
+		f.mu.Lock()
+		notice, ok := f.handle(announce, uint64(time.Now().UnixNano()), time.Now(), nil)
+		f.mu.Unlock()
+		if ok {
+			f.deliver(notice)
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("OnPacket re-entry deadlocked on the follower mutex")
+	}
+	select {
+	case <-entered:
+	default:
+		t.Fatal("OnPacket did not run")
+	}
+}
+
 func TestTimestampRoundTrip(t *testing.T) {
 	buf := make([]byte, 10)
 	for _, ns := range []uint64{0, 1, 999_999_999, 1_573_985_916_250, 1_793_383_335_000_000_000} {
