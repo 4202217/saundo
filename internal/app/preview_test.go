@@ -371,7 +371,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-connection-640-dark", connection640.settingsView, 640, 420, true)
 
 	// The general page at the 640 minimum, scrolled to its last rows, where
-	// the icon-style subtitle has the least width.
+	// the subtitle rows have the least width.
 	general640 := fixture()
 	general640.page = pageGeneral
 	saveScrolled("settings-general-640-bottom-light", general640.settingsView, 640, 420, false, 400)
