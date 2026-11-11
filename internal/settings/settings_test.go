@@ -66,6 +66,31 @@ func TestMissingVersionReadsAsCurrent(t *testing.T) {
 	}
 }
 
+// TestNewProfilesDefaultToStrictReceiverAuth pins the shipped default: a new
+// profile verifies the receiver's proof on the first pairing.
+func TestNewProfilesDefaultToStrictReceiverAuth(t *testing.T) {
+	if !Default().StrictReceiverAuth {
+		t.Fatal("Default().StrictReceiverAuth = false, want true")
+	}
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if !NewStoreAt(path).Load().StrictReceiverAuth {
+		t.Fatal("a missing settings file did not inherit strict receiver auth")
+	}
+}
+
+// TestExistingPermissiveProfileStaysPermissive pins the new-only rollout:
+// files written by an older build carry an explicit false and are not
+// migrated.
+func TestExistingPermissiveProfileStaysPermissive(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"version":1,"strictReceiverAuth":false}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if NewStoreAt(path).Load().StrictReceiverAuth {
+		t.Fatal("an explicit strictReceiverAuth=false was overridden")
+	}
+}
+
 // TestCorruptSettingsFileIsNotOverwritten pins the data-loss guard: a parse
 // failure must surface, and no later save may replace the user's file.
 func TestCorruptSettingsFileIsNotOverwritten(t *testing.T) {
