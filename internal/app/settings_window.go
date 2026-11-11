@@ -851,7 +851,7 @@ const captureSelectWidth = 220
 func (a *App) capturePage(c *ui.Context, p palette) {
 	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsSystemOutput(), locales.SettingsSystemOutputDesc(), func() {
-			if fieldSelect(c, p, &a.captureChoice, a.captureNames, locales.SettingsSystemOutput()).Width(captureSelectWidth).Changed() {
+			if fieldSelect(c, p, &a.captureChoice, a.captureLabels, locales.SettingsSystemOutput()).Width(captureSelectWidth).Changed() {
 				a.applyCaptureEndpoint()
 			}
 		})
@@ -1004,12 +1004,11 @@ func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color) {
 
 // applyCaptureEndpoint switches capture to the chosen output endpoint.
 func (a *App) applyCaptureEndpoint() {
-	for i, name := range a.captureNames {
-		if name == a.captureChoice && i < len(a.captureIDs) {
-			a.eng.SetCaptureEndpoint(a.captureIDs[i], a.captureChoice)
-			return
-		}
+	id, name, ok := a.captureEndpointFor(a.captureChoice)
+	if !ok || a.eng == nil {
+		return
 	}
+	a.eng.SetCaptureEndpoint(id, name)
 }
 
 // captureAppPID parses an application option's PID. A malformed id is
