@@ -74,9 +74,13 @@ type adapter struct {
 	functionalNext time.Time
 	functionalBack time.Duration
 	functionalOK   bool
-	// probe and now are injectable for the darwin tests.
-	probe func() error
-	now   func() time.Time
+	// probe, now, paths, start, and maxAge are injectable for the darwin
+	// tests.
+	probe  func() error
+	now    func() time.Time
+	paths  func() (dir, framework string, err error)
+	start  func(ctx context.Context, dir, framework string) (*exec.Cmd, io.ReadCloser, error)
+	maxAge time.Duration
 }
 
 const (
@@ -85,6 +89,11 @@ const (
 	// The adapter's own test can spend 3 s waiting for its helper plus two
 	// 2 s gets; 5 s cut a healthy slow probe short.
 	functionalProbeTimeout = 10 * time.Second
+	// The stream child is event-driven and has no heartbeat, so silence is
+	// not a failure signal. A bounded lifetime restarts a child wedged in a
+	// MediaRemote callback without ever killing a healthy idle one.
+	streamMaxAge       = 30 * time.Minute
+	streamCrashBackoff = 5 * time.Second
 )
 
 var shared = &adapter{}
@@ -206,37 +215,74 @@ func (a *adapter) probeAdapter() error {
 	return nil
 }
 
-// ensure starts the stream child if none is running and a respawn is due.
-func (a *adapter) ensure() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.cmd != nil {
-		return
+// resolvePaths uses the test override when set.
+func (a *adapter) resolvePaths() (string, string, error) {
+	if a.paths != nil {
+		return a.paths()
 	}
-	if !a.exited.IsZero() && time.Since(a.exited) < 5*time.Second {
-		return // a child that just died gets a short backoff
-	}
-	dir, framework, err := adapterPaths()
-	if err != nil {
-		return
-	}
-	cmd := exec.Command("/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework,
+	return adapterPaths()
+}
+
+// startAdapterStream starts the perl loader for one stream child.
+func startAdapterStream(ctx context.Context, dir, framework string) (*exec.Cmd, io.ReadCloser, error) {
+	cmd := exec.CommandContext(ctx, "/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework,
 		"stream", "--no-diff", "--micros", "--debounce=200")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 	if err := cmd.Start(); err != nil {
-		return
+		return nil, nil, err
+	}
+	return cmd, stdout, nil
+}
+
+// ensure starts the stream child if none is running and a respawn is due. A
+// child that exceeded its max age is restarted immediately; a crash keeps the
+// short backoff.
+func (a *adapter) ensure() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cmd != nil {
+		return nil
+	}
+	now := time.Now()
+	if a.now != nil {
+		now = a.now()
+	}
+	if !a.exited.IsZero() && now.Sub(a.exited) < streamCrashBackoff {
+		return nil // a child that just died gets a short backoff
+	}
+	dir, framework, err := a.resolvePaths()
+	if err != nil {
+		return err
+	}
+	maxAge := a.maxAge
+	if maxAge <= 0 {
+		maxAge = streamMaxAge
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), maxAge)
+	start := a.start
+	if start == nil {
+		start = startAdapterStream
+	}
+	cmd, stdout, err := start(ctx, dir, framework)
+	if err != nil {
+		cancel()
+		a.exited = now
+		return fmt.Errorf("nowplaying: adapter stream failed to start: %w", err)
 	}
 	a.cmd = cmd
-	go a.read(cmd, stdout)
+	a.exited = time.Time{}
+	go a.read(ctx, cancel, cmd, stdout)
+	return nil
 }
 
 // read drains the child's stdout. A data line replaces the payload; a
 // non-data line leaves the current session alone. A malformed line is
-// dropped and the stream goes on.
-func (a *adapter) read(cmd *exec.Cmd, stdout io.ReadCloser) {
+// dropped and the stream goes on. When the max age kills the child, the next
+// ensure respawns it without the crash backoff.
+func (a *adapter) read(ctx context.Context, cancel context.CancelFunc, cmd *exec.Cmd, stdout io.ReadCloser) {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 0, 4<<20), 32<<20) // artwork payloads get large
 	for scanner.Scan() {
@@ -249,10 +295,18 @@ func (a *adapter) read(cmd *exec.Cmd, stdout io.ReadCloser) {
 		a.mu.Unlock()
 	}
 	_ = cmd.Wait()
+	maxAgeKill := ctx.Err() == context.DeadlineExceeded
 	a.mu.Lock()
 	a.cmd = nil
-	a.exited = time.Now()
+	if !maxAgeKill {
+		now := time.Now()
+		if a.now != nil {
+			now = a.now()
+		}
+		a.exited = now
+	}
 	a.mu.Unlock()
+	cancel()
 }
 
 // parseStreamLine decodes one adapter stdout line. isData reports whether
@@ -276,12 +330,15 @@ func parseStreamLine(line []byte) (p *streamPayload, isData bool, err error) {
 	return &payload, true, nil
 }
 
-// latest returns the newest payload, or nil when nothing is playing.
-func (a *adapter) latest() *streamPayload {
-	a.ensure()
+// latest returns the newest payload, or nil when nothing is playing. A stream
+// start failure is returned, not hidden behind stale metadata.
+func (a *adapter) latest() (*streamPayload, error) {
+	if err := a.ensure(); err != nil {
+		return nil, err
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.payload
+	return a.payload, nil
 }
 
 func artworkMIME(data []byte) string {
@@ -335,7 +392,10 @@ func Read() (Snapshot, error) {
 	if err := shared.functional(); err != nil {
 		return Snapshot{}, err
 	}
-	p := shared.latest()
+	p, err := shared.latest()
+	if err != nil {
+		return Snapshot{}, err
+	}
 	if p == nil {
 		return Snapshot{ReadAt: time.Now()}, nil
 	}
