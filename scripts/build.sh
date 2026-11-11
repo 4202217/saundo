@@ -44,22 +44,47 @@ Darwin)
 	)
 	set +e
 
-	# Ask the running app to quit so HomePod keeps its advertisement; force
-	# only if it will not go.
-	osascript -e 'tell application "saundo" to quit' >/dev/null 2>&1
-	sleep 1
-	pkill -x saundo >/dev/null 2>&1
-
 	src="cmd/saundo/build/darwin-arm64/saundo.app"
 	if [ ! -d "$src" ]; then
 		echo "build: $src is missing; mygo build produced no app bundle" >&2
 		exit 1
 	fi
 	mkdir -p bin
-	rm -rf bin/saundo.app
-	cp -R "$src" bin/saundo.app
+	# Stage the new bundle before touching the running install, so a failed
+	# copy leaves the previous app in place.
+	rm -rf bin/.saundo.app.new
+	if ! cp -R "$src" bin/.saundo.app.new; then
+		echo "build: could not stage the new app bundle in bin/" >&2
+		exit 1
+	fi
 
-	open bin/saundo.app
+	# Ask the running app to quit so HomePod keeps its advertisement; force
+	# only if it will not go.
+	osascript -e 'tell application "saundo" to quit' >/dev/null 2>&1
+	sleep 1
+	pkill -x saundo >/dev/null 2>&1
+
+	rm -rf bin/.saundo.app.old
+	if [ -d bin/saundo.app ] && ! mv bin/saundo.app bin/.saundo.app.old; then
+		echo "build: could not move the old app bundle aside" >&2
+		exit 1
+	fi
+	if ! mv bin/.saundo.app.new bin/saundo.app; then
+		echo "build: could not install the new app bundle" >&2
+		if [ -d bin/.saundo.app.old ]; then mv bin/.saundo.app.old bin/saundo.app; fi
+		exit 1
+	fi
+
+	if ! open bin/saundo.app; then
+		echo "build: the new app bundle did not open; restoring the previous one" >&2
+		rm -rf bin/saundo.app
+		if [ -d bin/.saundo.app.old ]; then
+			mv bin/.saundo.app.old bin/saundo.app
+			open bin/saundo.app >/dev/null 2>&1
+		fi
+		exit 1
+	fi
+	rm -rf bin/.saundo.app.old
 	;;
 *)
 	set -e
@@ -90,7 +115,10 @@ Darwin)
 	fi
 
 	if [ "$fast" -ne 1 ]; then
-		cp cmd/saundo/build/windows-amd64/saundo-setup-*.exe bin/ 2>/dev/null
+		if ! cp cmd/saundo/build/windows-amd64/saundo-setup-*.exe bin/; then
+			echo "build: could not copy the installer to bin/" >&2
+			exit 1
+		fi
 	fi
 
 	cd bin
