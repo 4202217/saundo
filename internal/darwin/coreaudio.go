@@ -106,7 +106,7 @@ const (
 	AudioObjectSystemObject  uint32 = 1
 	ElementMain              uint32 = 0
 	ScopeGlobal              uint32 = 0x676c6f62 // 'glob'
-	ScopeOutput              uint32 = 0x6f757420 // 'out '
+	ScopeOutput              uint32 = 0x6f757470 // 'outp'
 	PropDefaultOutputDevice  uint32 = 0x644f7574 // 'dOut'
 	PropDevices              uint32 = 0x64657623 // 'dev#'
 	PropObjectName           uint32 = 0x6c6e616d // 'lnam'
