@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"saundo/internal/airplay/creds"
+	"saundo/internal/airplay/crypto"
 	"saundo/internal/airplay/device"
 	raopio "saundo/internal/airplay/io"
 	"saundo/internal/audio/ring"
@@ -300,6 +301,54 @@ func TestAP2VerifyRejectionRepairsWithFreshPairing(t *testing.T) {
 	}
 	if len(r2.creds) != 1 {
 		t.Fatalf("credentials after repair = %d, want fresh ones", len(r2.creds))
+	}
+}
+
+// TestLatencyAboveTwoSecondsReachesStreamSetup pins the shared window: the
+// value the interface reports must be the value the receiver sees on the wire.
+func TestLatencyAboveTwoSecondsReachesStreamSetup(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.sender.SetLatency(2300)
+	r.start()
+	// 2300 ms at 44.1 kHz is 101430 samples.
+	if r.rx.setupLatencyMin != 101430 || r.rx.setupLatencyMax != 101430 {
+		t.Fatalf("stream SETUP latency = %d..%d, want 101430",
+			r.rx.setupLatencyMin, r.rx.setupLatencyMax)
+	}
+}
+
+// TestStoredPairingRequiresTheReceiverProof pins the redirect defense at the
+// sender boundary: with stored credentials in hand, a receiver that cannot
+// prove it holds the stored long-term key must never receive the client's
+// signature, and the session must fail.
+func TestStoredPairingRequiresTheReceiverProof(t *testing.T) {
+	r := newRig(t, modePIN, device.AuthHAPPIN, true, nil)
+	r.start()
+	r.sender.SubmitPin("1234")
+	r.step()
+	r.sender.Tick()
+	requireLaunched(t, r)
+	if len(r.creds) != 1 {
+		t.Fatalf("credentials obtained = %d", len(r.creds))
+	}
+	stored := &storedPairing{
+		clientID:      r.rx.clientID,
+		clientLTPK:    r.rx.clientLTPK,
+		accessoryID:   r.rx.accessoryID,
+		accessoryLTPK: r.rx.accessoryLTPK,
+		accessorySeed: r.rx.accessorySeed,
+	}
+
+	r2 := newRig(t, modeVerify, device.AuthHAPPIN, true, stored)
+	r2.sender.SetAuth(device.AuthHAPPIN, true, "AA:BB:CC:DD:EE:FF", r.creds[0], "")
+	r2.rx.verifySignSeed = crypto.RandomBytes(32)
+	r2.start()
+	r2.step()
+	if r2.rx.pairVerifyM3Seen {
+		t.Fatal("the sender offered its stored-key signature to an unproven receiver")
+	}
+	if len(r2.launched) == 0 || r2.launched[0].ok {
+		t.Fatalf("launch results = %+v, want a failed session", r2.launched)
 	}
 }
 

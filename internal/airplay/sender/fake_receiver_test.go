@@ -280,6 +280,12 @@ type fakeReceiver struct {
 	// error code — a receiver that forgot the pairing. One-shot: after the
 	// sender re-pairs, the receiver accepts it.
 	rejectVerifyWithTLV byte
+	// verifySignSeed overrides the key that signs PV-Msg02, so a test can
+	// present a receiver that does not hold the stored long-term key.
+	verifySignSeed []byte
+	// pairVerifyM3Seen records whether the client offered its signature after
+	// the receiver proof. It must stay false against an unproven receiver.
+	pairVerifyM3Seen bool
 
 	eventReadKey  []byte
 	eventWriteKey []byte
@@ -298,22 +304,36 @@ type fakeReceiver struct {
 	audioMarker []byte
 	audioPkts   [][]byte
 	ap2Audio    bool
+	// setupLatencyMin and setupLatencyMax are the stream SETUP's latency
+	// range in samples, as the receiver sees them on the wire.
+	setupLatencyMin int64
+	setupLatencyMax int64
 
-	syncPackets       [][]byte
-	timingResponses   [][]byte
-	retransmitResps   [][]byte
-	feedbacks         int
-	receiverVolume    int64
-	arrivalRenderMS   int64
-	requests          map[string]int
-	seen              []request
-	setParams         []string
-	commands          []string
-	sessionSetup      map[string]any
-	streamSetup       map[string]any
-	setPeersBody      []byte
-	encryptAfterReply bool
-	failAll           bool
+	syncPackets     [][]byte
+	timingResponses [][]byte
+	retransmitResps [][]byte
+	feedbacks       int
+	receiverVolume  int64
+	arrivalRenderMS int64
+	// recordStatus overrides the RECORD reply; zero means 200.
+	recordStatus int
+	// omitEventPort and garbageSessionSetup exercise the fail-closed session
+	// SETUP paths.
+	omitEventPort       bool
+	garbageSessionSetup bool
+	// omitInitialVolume and initialVolumeString exercise the unknown-volume
+	// path in the streaming poll.
+	omitInitialVolume   bool
+	initialVolumeString bool
+	requests            map[string]int
+	seen                []request
+	setParams           []string
+	commands            []string
+	sessionSetup        map[string]any
+	streamSetup         map[string]any
+	setPeersBody        []byte
+	encryptAfterReply   bool
+	failAll             bool
 
 	digestChallenge  bool
 	digestNonce      string
@@ -413,7 +433,15 @@ func (f *fakeReceiver) dispatch(req request) {
 	case req.method == "POST" && req.uri == "/pair-verify":
 		f.pairVerify(req)
 	case req.method == "GET" && req.uri == "/info":
-		body, _ := crypto.Encode(map[string]any{"initialVolume": f.receiverVolume})
+		reply := map[string]any{}
+		if !f.omitInitialVolume {
+			if f.initialVolumeString {
+				reply["initialVolume"] = "loud"
+			} else {
+				reply["initialVolume"] = f.receiverVolume
+			}
+		}
+		body, _ := crypto.Encode(reply)
 		f.reply(req, 200, "application/x-apple-binary-plist", body)
 	case req.method == "SETUP":
 		if len(req.body) == 0 {
@@ -433,6 +461,8 @@ func (f *fakeReceiver) dispatch(req request) {
 			stream := streams[0].(map[string]any)
 			f.audioKey = append([]byte(nil), stream["shk"].([]byte)...)
 			f.ap2Audio = true
+			f.setupLatencyMin, _ = stream["latencyMin"].(int64)
+			f.setupLatencyMax, _ = stream["latencyMax"].(int64)
 			reply := map[string]any{
 				"dataPort": int64(6000), "controlPort": int64(6001), "type": int64(96),
 			}
@@ -450,10 +480,22 @@ func (f *fakeReceiver) dispatch(req request) {
 			return
 		}
 		f.sessionSetup = m
-		body, _ := crypto.Encode(map[string]any{"eventPort": int64(7000)})
+		if f.garbageSessionSetup {
+			f.reply(req, 200, "application/x-apple-binary-plist", []byte("not a plist"))
+			return
+		}
+		reply := map[string]any{}
+		if !f.omitEventPort {
+			reply["eventPort"] = int64(7000)
+		}
+		body, _ := crypto.Encode(reply)
 		f.reply(req, 200, "application/x-apple-binary-plist", body)
 	case req.method == "RECORD":
-		f.reply(req, 200, "", nil)
+		status := f.recordStatus
+		if status == 0 {
+			status = 200
+		}
+		f.reply(req, status, "", nil)
 	case req.method == "SETPEERS":
 		f.setPeersBody = append([]byte(nil), req.body...)
 		f.reply(req, 200, "", nil)
@@ -625,7 +667,11 @@ func (f *fakeReceiver) pairVerify(req request) {
 		f.deriveKeys()
 		f.verifyKey = crypto.HKDF("Pair-Verify-Encrypt-Salt", "Pair-Verify-Encrypt-Info", shared, 32)
 		sigInfo := append(append(append([]byte{}, f.verifyPub...), f.accessoryID...), clientPub...)
-		sig := crypto.Ed25519Sign(f.accessorySeed, sigInfo)
+		seed := f.accessorySeed
+		if len(f.verifySignSeed) > 0 {
+			seed = f.verifySignSeed
+		}
+		sig := crypto.Ed25519Sign(seed, sigInfo)
 		enc, err := crypto.ChaCha20Poly1305Encrypt(f.verifyKey, []byte("PV-Msg02"), crypto.EncodeTLV([]crypto.TLV{
 			{Type: crypto.TLVIdentifier, Value: f.accessoryID},
 			{Type: crypto.TLVSignature, Value: sig},
@@ -639,6 +685,7 @@ func (f *fakeReceiver) pairVerify(req request) {
 			{Type: crypto.TLVEncryptedData, Value: enc},
 		}))
 	case len(state) == 1 && state[0] == 3:
+		f.pairVerifyM3Seen = true
 		enc, _ := crypto.GetTLV(items, crypto.TLVEncryptedData)
 		plain, err := crypto.ChaCha20Poly1305Decrypt(f.verifyKey, []byte("PV-Msg03"), enc, nil)
 		if err != nil {
