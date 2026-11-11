@@ -71,8 +71,21 @@ type adapter struct {
 	cmd            *exec.Cmd
 	exited         time.Time
 	functionalTest error
-	functionalOnce sync.Once
+	functionalNext time.Time
+	functionalBack time.Duration
+	functionalOK   bool
+	// probe and now are injectable for the darwin tests.
+	probe func() error
+	now   func() time.Time
 }
+
+const (
+	functionalRetryMin = 30 * time.Second
+	functionalRetryMax = 5 * time.Minute
+	// The adapter's own test can spend 3 s waiting for its helper plus two
+	// 2 s gets; 5 s cut a healthy slow probe short.
+	functionalProbeTimeout = 10 * time.Second
+)
 
 var shared = &adapter{}
 
@@ -124,24 +137,61 @@ func adapterPaths() (dir, framework string, err error) {
 	return "", "", errors.New("nowplaying: the MediaRemote adapter is not installed")
 }
 
-// functional checks the adapter's entitlement self-test once per process.
-// A non-zero exit means MediaRemote rejects even the platform-binary trick
-// on this system, and every read reports unsupported.
+// functional checks the adapter's entitlement self-test. A failed probe is
+// retried on a 30 s to 5 min backoff rather than cached for the process: a
+// launch-time failure, a slow first probe, or a transient MediaRemote state
+// must not disable Now Playing until restart.
 func (a *adapter) functional() error {
-	a.functionalOnce.Do(func() {
-		dir, framework, err := adapterPaths()
-		if err != nil {
-			a.functionalTest = err
-			return
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	now := time.Now()
+	if a.now != nil {
+		now = a.now()
+	}
+	if a.functionalOK {
+		return nil
+	}
+	if !a.functionalNext.IsZero() && now.Before(a.functionalNext) {
+		return a.functionalTest
+	}
+	probe := a.probe
+	if probe == nil {
+		probe = a.probeAdapter
+	}
+	err := probe()
+	if err == nil {
+		a.functionalOK = true
+		a.functionalTest = nil
+		a.functionalNext = time.Time{}
+		a.functionalBack = 0
+		return nil
+	}
+	a.functionalTest = err
+	if a.functionalBack < functionalRetryMin {
+		a.functionalBack = functionalRetryMin
+	} else {
+		a.functionalBack *= 2
+		if a.functionalBack > functionalRetryMax {
+			a.functionalBack = functionalRetryMax
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		cmd := exec.CommandContext(ctx, "/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, "test")
-		if err := cmd.Run(); err != nil {
-			a.functionalTest = fmt.Errorf("nowplaying: MediaRemote adapter is not functional here: %w", err)
-		}
-	})
-	return a.functionalTest
+	}
+	a.functionalNext = now.Add(a.functionalBack)
+	return err
+}
+
+// probeAdapter runs the vendored adapter's entitlement self-test.
+func (a *adapter) probeAdapter() error {
+	dir, framework, err := adapterPaths()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), functionalProbeTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "/usr/bin/perl", filepath.Join(dir, "mediaremote-adapter.pl"), framework, "test")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("nowplaying: MediaRemote adapter is not functional here: %w", err)
+	}
+	return nil
 }
 
 // ensure starts the stream child if none is running and a respawn is due.

@@ -3,12 +3,66 @@
 package nowplaying
 
 import (
+	"context"
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+// TestFunctionalRetriesAfterTransientFailure pins the retry gate: a failed
+// probe is returned for the backoff window, then retried, and success is
+// cached. The old sync.Once returned the first error for the whole process.
+func TestFunctionalRetriesAfterTransientFailure(t *testing.T) {
+	cases := []struct {
+		name string
+		fail error
+	}{
+		{"deadline", context.DeadlineExceeded},
+		{"exit 1", errors.New("exit status 1")},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := &adapter{}
+			now := time.Unix(0, 0)
+			a.now = func() time.Time { return now }
+			calls := 0
+			a.probe = func() error {
+				calls++
+				if calls == 1 {
+					return c.fail
+				}
+				return nil
+			}
+
+			if err := a.functional(); !errors.Is(err, c.fail) {
+				t.Fatalf("first error = %v, want %v", err, c.fail)
+			}
+			if err := a.functional(); err == nil {
+				t.Fatal("the cached error was not returned inside the backoff")
+			}
+			if calls != 1 {
+				t.Fatalf("probes inside the backoff = %d, want 1", calls)
+			}
+
+			now = now.Add(functionalRetryMin + time.Second)
+			if err := a.functional(); err != nil {
+				t.Fatalf("retry error = %v, want success", err)
+			}
+			if calls != 2 {
+				t.Fatalf("probes = %d, want 2", calls)
+			}
+			if err := a.functional(); err != nil {
+				t.Fatalf("cached success error = %v", err)
+			}
+			if calls != 2 {
+				t.Fatalf("probes after success = %d, want 2", calls)
+			}
+		})
+	}
+}
 
 // The fixture carries one real adapter stream line (metadata from a Music
 // session) plus the empty-session line the adapter emits between sessions.
