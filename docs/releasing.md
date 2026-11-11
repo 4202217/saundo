@@ -119,14 +119,15 @@ The script checks the clean tree, the release commit subject, the version, the t
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`. The tag points to the release commit.
 
-1. `check` runs the catalogs, vet, and tests.
-2. `draft` checks the tag against `mygo.json` and creates a draft release.
+1. `check` runs the format gate, catalogs, vet, UI vet, tests, the verification map, and the cross-platform gate.
+2. `draft` checks the tag against `mygo.json` and that the tag commit is on main, then creates a draft release.
 3. `build` stamps the app version, builds the installer and signed update files, and uploads them to the draft.
+4. `build-macos` builds the dmg, uploads it, and folds its checksum into `SHA256SUMS`.
 
 Check the draft without installing it:
 
-- The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS`.
-- `sha256sum -c SHA256SUMS` passes.
+- The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, `SHA256SUMS`, and the macOS dmg.
+- `sha256sum -c SHA256SUMS` passes once every asset is downloaded; with only a subset, use `sha256sum -c --ignore-missing SHA256SUMS`.
 - The manifest carries the expected version, the English changelog notes, and a signature.
 - The installer is unsigned unless signing is configured. SmartScreen warns.
 

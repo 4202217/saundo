@@ -119,6 +119,17 @@ grep -q '"publicKey"[[:space:]]*:' cmd/saundo/mygo.json || fail "mygo.json has n
 grep -q '"changelog"[[:space:]]*:[[:space:]]*"../../CHANGELOG.md"' cmd/saundo/mygo.json || fail "mygo.json does not use the English CHANGELOG.md"
 grep -Fq 'tags: ["v*"]' .github/workflows/release.yml || fail "release.yml is not tag-triggered"
 grep -q 'MYGO_UPDATER_PRIVATE_KEY' .github/workflows/release.yml || fail "release.yml does not read MYGO_UPDATER_PRIVATE_KEY"
+grep -q 'check-verify-map' .github/workflows/release.yml || fail "release.yml lacks the verification-map gate"
+grep -q 'gofmt' .github/workflows/release.yml || fail "release.yml lacks the format gate"
+grep -q 'merge-base --is-ancestor' .github/workflows/release.yml || fail "release.yml does not verify the tag is on main"
+grep -q 'SHA256SUMS' .github/workflows/release.yml || fail "release.yml does not fold the dmg into SHA256SUMS"
+if ! awk 'BEGIN{p=0} /^permissions:/{p=1;next} p&&/^[^ ]/{exit} p{print}' .github/workflows/release.yml | grep -q 'contents: read'; then
+  fail "release.yml must default to contents: read"
+fi
+write_jobs="$(grep -c 'contents: write' .github/workflows/release.yml || true)"
+if [ "$write_jobs" -lt 3 ]; then
+  fail "release.yml is missing the job-level contents: write grants"
+fi
 
 if command -v gh >/dev/null 2>&1; then
   visibility="$(gh repo view "$REPO" --json visibility --jq .visibility 2>/dev/null || true)"

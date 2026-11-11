@@ -121,7 +121,7 @@ gh run list --workflow release.yml --limit 1 --json databaseId,status
 gh run watch <id> --exit-status
 ```
 
-The workflow runs `check`, `draft`, and `build`. The build uploads the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS` to the draft. Stop if any job fails. Read the failed log before changing anything.
+The workflow runs `check`, `draft`, `build`, and `build-macos`. The build uploads the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS` to the draft; the macOS job uploads the dmg and folds its checksum into `SHA256SUMS`. Stop if any job fails. Read the failed log before changing anything.
 
 ## 9. Verify the draft
 
@@ -132,7 +132,7 @@ gh release download "v$VERSION" --dir ".audit/draft-$VERSION"
 (cd ".audit/draft-$VERSION" && sha256sum -c SHA256SUMS)
 ```
 
-Check the draft without installing it. The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS`. The checksums pass. The manifest carries the version, the English notes, and a signature. The installer is unsigned unless signing is configured. The maintainer's pre-release test covers install and run behavior; install the draft on a clean machine only when the user asks.
+Check the draft without installing it. The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, `SHA256SUMS`, and the macOS dmg. The checksums pass; if you downloaded only a subset, use `sha256sum -c --ignore-missing SHA256SUMS`. The manifest carries the version, the English notes, and a signature. The installer is unsigned unless signing is configured. The maintainer's pre-release test covers install and run behavior; install the draft on a clean machine only when the user asks.
 
 The draft is invisible to the updater. The previous release updates to this one after publish. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
 
