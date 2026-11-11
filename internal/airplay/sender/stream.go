@@ -132,7 +132,17 @@ func (s *Sender) sendAudioPacket() {
 			binary.BigEndian.PutUint16(payload[i*2:], uint16(sample))
 		}
 	}
-	wire := s.encryptAudioPayload(header[:], payload)
+	wire, err := s.encryptAudioPayload(header[:], payload)
+	if err != nil {
+		s.encryptErrors++
+		if s.encryptErrors == 1 {
+			s.warn("audio encrypt failed, dropping packet: %v", err)
+		}
+		s.firstAudio = false
+		s.seq++
+		s.framesSent += framesPerPacket
+		return
+	}
 
 	pkt := make([]byte, 0, len(header)+len(wire))
 	pkt = append(pkt, header[:]...)
@@ -173,19 +183,20 @@ func (s *Sender) fillFrames(dst []int16) int {
 }
 
 // encryptAudioPayload applies the AP2 audio cipher. AAD is RTP header bytes 4
-// through 11; the 8-byte nonce is appended after ciphertext and tag.
-func (s *Sender) encryptAudioPayload(header, payload []byte) []byte {
+// through 11; the 8-byte nonce is appended after ciphertext and tag. A cipher
+// error returns no payload, so the caller drops the packet instead of sending
+// plaintext. The nonce stays unadvanced because the receiver never saw it.
+func (s *Sender) encryptAudioPayload(header, payload []byte) ([]byte, error) {
 	if s.ap2 == nil || !s.ap2.encryptAudio {
-		return payload
+		return payload, nil
 	}
 	nonce := crypto.CounterNonce8(s.ap2.audioNonce)
 	ct, err := crypto.ChaCha20Poly1305Encrypt(s.ap2.audioKey, nonce, payload, header[4:12])
 	if err != nil {
-		s.warn("audio encrypt failed: %v", err)
-		return payload
+		return nil, err
 	}
 	s.ap2.audioNonce++
-	return append(ct, nonce...)
+	return append(ct, nonce...), nil
 }
 
 func (s *Sender) sendSyncPacket(first bool) {

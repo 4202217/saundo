@@ -19,6 +19,9 @@ type Stats struct {
 	// primary send whose duplicate still went out.
 	SentBlocks uint64
 	SendErrors uint64
+	// EncryptErrors counts audio packets dropped because the AP2 cipher
+	// refused the payload. A packet that cannot be encrypted is never sent.
+	EncryptErrors uint64
 	// LastSync is when the last timing packet was sent. Zero means the
 	// session has not sent one.
 	LastSync time.Time
@@ -33,13 +36,14 @@ type Stats struct {
 // Stats returns the session's diagnostic counters.
 func (s *Sender) Stats() Stats {
 	stats := Stats{
-		Retransmits: s.retransmits,
-		LateTicks:   s.lateTicks,
-		Underruns:   s.underruns,
-		SentBlocks:  s.sentBlocks,
-		SendErrors:  s.sendErrors,
-		LastSync:    s.lastSync,
-		WiFi:        s.wifi,
+		Retransmits:   s.retransmits,
+		LateTicks:     s.lateTicks,
+		Underruns:     s.underruns,
+		SentBlocks:    s.sentBlocks,
+		SendErrors:    s.sendErrors,
+		EncryptErrors: s.encryptErrors,
+		LastSync:      s.lastSync,
+		WiFi:          s.wifi,
 	}
 	if s.ring != nil && s.inputRate > 0 {
 		frames := float64(s.ring.Available()) / channels
