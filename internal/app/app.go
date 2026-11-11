@@ -52,6 +52,9 @@ type App struct {
 	menuIcons           map[string]*mygo.MenuIcon
 	quitting            bool
 	flyoutH             int
+	// resizeWindow replaces the flyout window resize in tests; production
+	// uses win.SetSize.
+	resizeWindow func(width, height int)
 
 	updates       updateEngine
 	upd           updateState
@@ -776,7 +779,7 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 // anchored to the tray icon by its bottom edge, so a resize grows or shrinks
 // it upward. Main thread only.
 func (a *App) fitFlyout() {
-	if a.tray == nil || a.win == nil {
+	if a.win == nil && a.resizeWindow == nil {
 		return
 	}
 	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
@@ -784,6 +787,10 @@ func (a *App) fitFlyout() {
 		return
 	}
 	a.flyoutH = h
+	if a.resizeWindow != nil {
+		a.resizeWindow(flyoutWidth, h)
+		return
+	}
 	a.win.SetSize(flyoutWidth, h)
 }
 

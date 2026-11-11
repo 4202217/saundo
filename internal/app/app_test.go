@@ -1885,3 +1885,21 @@ func TestLatencyScaleUsesTheFormatter(t *testing.T) {
 		}
 	}
 }
+
+// TestFitFlyoutResizesWithoutATray pins the fallback window: without a tray,
+// the flyout window still tracks the content height instead of freezing at
+// its startup size.
+func TestFitFlyoutResizesWithoutATray(t *testing.T) {
+	a := previewApp()
+	a.tray = nil
+	a.win = nil
+	var width, height int
+	a.resizeWindow = func(w, h int) {
+		width, height = w, h
+	}
+	a.fitFlyout()
+	want := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
+	if width != flyoutWidth || height != want {
+		t.Fatalf("fitFlyout resized to %dx%d, want %dx%d", width, height, flyoutWidth, want)
+	}
+}
