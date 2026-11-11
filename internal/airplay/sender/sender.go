@@ -248,6 +248,7 @@ type Sender struct {
 	lateTicks   uint64
 	underruns   uint64
 	sentBlocks  uint64
+	sendErrors  uint64
 	// duplicates is the number of extra copies of each audio packet. Zero is
 	// the production default; the lossy-network probe drives it.
 	duplicates int
@@ -614,7 +615,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
-	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks = 0, 0, 0, 0
+	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
 	s.lastSync = time.Time{}
 	s.wifi = WiFiMetrics{}
 	if s.resampler == nil {

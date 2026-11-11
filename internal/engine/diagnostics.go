@@ -38,6 +38,7 @@ type Diagnostics struct {
 	LateTicks   uint64
 	Underruns   uint64
 	SentBlocks  uint64
+	SendErrors  uint64
 	// Overflow is the session's dropped sample count, already the worst
 	// member's when the target is a stereo pair.
 	Overflow     uint64
@@ -84,6 +85,7 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 		d.Retransmits += m.Retransmits
 		d.Underruns += m.Underruns
 		d.SentBlocks += m.SentBlocks
+		d.SendErrors += m.SendErrors
 		if m.LateTicks > d.LateTicks {
 			d.LateTicks = m.LateTicks
 		}
@@ -115,7 +117,7 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 			d.SyncAge = 0
 		}
 	}
-	if d.Underruns > 0 {
+	if d.Underruns > 0 || d.SendErrors > 0 {
 		d.Degraded = true
 	}
 	return d
