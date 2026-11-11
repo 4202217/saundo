@@ -33,19 +33,25 @@ import (
 )
 
 const (
-	framesPerPacket    = 352
-	raopRate           = 44100
-	channels           = 2
-	payloadBytes       = framesPerPacket * channels * 2
-	backlogSize        = 1024
-	pacerInterval      = 8 * time.Millisecond
-	maxPacketsPerTick  = 16
-	pacerLagWarnStreak = 5
-	handshakeTimeout   = 10 * time.Second
-	pinWaitTimeout     = 180 * time.Second
-	feedbackInterval   = 25 * time.Second
-	ap2Feedback        = 2 * time.Second
-	volumePollInterval = time.Second
+	framesPerPacket = 352
+	raopRate        = 44100
+	channels        = 2
+	payloadBytes    = framesPerPacket * channels * 2
+	backlogSize     = 1024
+	// A receiver asks for a handful of packets after a loss. The burst cap and
+	// the per-second budget keep a forged 0x55 request from reflecting a large
+	// audio burst to an arbitrary address.
+	maxRetransmitBurst     = 32
+	retransmitWindowPeriod = time.Second
+	retransmitWindowBudget = 200
+	pacerInterval          = 8 * time.Millisecond
+	maxPacketsPerTick      = 16
+	pacerLagWarnStreak     = 5
+	handshakeTimeout       = 10 * time.Second
+	pinWaitTimeout         = 180 * time.Second
+	feedbackInterval       = 25 * time.Second
+	ap2Feedback            = 2 * time.Second
+	volumePollInterval     = time.Second
 	// startWaitTimeout bounds how long a ready pair member waits for its peer.
 	// It outlasts the 30 s PTP re-synchronization window.
 	startWaitTimeout = 40 * time.Second
@@ -371,6 +377,10 @@ type Sender struct {
 
 	backlog    [][]byte
 	backlogSeq []int32
+	// retransmitWindowStart and retransmitBudget bound the backlog responses
+	// to one accepted peer per window.
+	retransmitWindowStart time.Time
+	retransmitBudget      int
 
 	npTitle, npArtist, npAlbum string
 	// mediaCover is the cover the receiver track-info push supplies. lampCover
@@ -642,6 +652,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.firstAudio = true
 	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
 	s.encryptErrors = 0
+	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
 	s.lastSync = time.Time{}
 	s.wifi = WiFiMetrics{}
 	if s.resampler == nil {
