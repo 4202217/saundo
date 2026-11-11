@@ -15,12 +15,14 @@ users' data.
 
 Security-sensitive parts of saundo:
 
-- AirPlay pairing and session credentials, stored with Windows DPAPI;
+- AirPlay pairing and session credentials, stored with the OS secret store:
+  Windows DPAPI, and the macOS login-Keychain master key with AES-256-GCM;
 - the encrypted RTSP control and event channels;
 - the update signing key, the update manifest, and the installer signature;
+- the vendored MediaRemote adapter used by Now Playing on macOS;
 - the GitHub release workflow and its secrets.
 
 ## Supported versions
 
 Only the latest published release receives fixes. Update from the app's
-update window or from the releases page.
+update page or from the releases page.
