@@ -1,7 +1,7 @@
 package app
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -1012,15 +1012,31 @@ func (a *App) applyCaptureEndpoint() {
 	}
 }
 
+// captureAppPID parses an application option's PID. A malformed id is
+// unknown, not zero, so the caller leaves capture unchanged.
+func captureAppPID(id string) (uint32, bool) {
+	pid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return 0, false
+	}
+	return uint32(pid), true
+}
+
 // applyCaptureProcess narrows capture to one application.
 func (a *App) applyCaptureProcess() {
 	for i, name := range a.appNames {
-		if name == a.appChoice && i < len(a.appIDs) {
-			var pid uint32
-			fmt.Sscanf(a.appIDs[i], "%d", &pid)
-			a.eng.SetCaptureProcess(pid, name)
+		if name != a.appChoice || i >= len(a.appIDs) {
+			continue
+		}
+		pid, ok := captureAppPID(a.appIDs[i])
+		if !ok {
+			if a.log != nil {
+				a.log.Printf("capture: malformed application id %q", a.appIDs[i])
+			}
 			return
 		}
+		a.eng.SetCaptureProcess(pid, name)
+		return
 	}
 }
 
