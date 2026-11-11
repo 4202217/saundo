@@ -6,11 +6,63 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+// TestStreamChildLifetimeRespawns pins the bounded lifetime: a child that
+// outlives its max age is killed and the next ensure starts a new one without
+// the crash backoff.
+func TestStreamChildLifetimeRespawns(t *testing.T) {
+	a := &adapter{maxAge: 100 * time.Millisecond}
+	a.paths = func() (string, string, error) {
+		return t.TempDir(), "/tmp/framework", nil
+	}
+	starts := 0
+	a.start = func(ctx context.Context, dir, framework string) (*exec.Cmd, io.ReadCloser, error) {
+		starts++
+		cmd := exec.CommandContext(ctx, "/bin/sh", "-c", `printf '{"type":"data","payload":{}}\n'; exec sleep 3600`)
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := cmd.Start(); err != nil {
+			return nil, nil, err
+		}
+		return cmd, stdout, nil
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for starts < 2 && time.Now().Before(deadline) {
+		if err := a.ensure(); err != nil {
+			t.Fatalf("ensure: %v", err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if starts < 2 {
+		t.Fatalf("stream starts = %d, want a respawn after the max age", starts)
+	}
+	time.Sleep(200 * time.Millisecond) // let the second max-age kill reap the child
+}
+
+// TestStreamStartErrorIsReported pins the error path: a failed stream start is
+// returned to Read instead of serving stale metadata.
+func TestStreamStartErrorIsReported(t *testing.T) {
+	a := &adapter{}
+	a.paths = func() (string, string, error) {
+		return t.TempDir(), "/tmp/framework", nil
+	}
+	a.start = func(context.Context, string, string) (*exec.Cmd, io.ReadCloser, error) {
+		return nil, nil, errors.New("boom")
+	}
+	if _, err := a.latest(); err == nil {
+		t.Fatal("latest swallowed the stream start error")
+	}
+}
 
 // TestAdapterTestArgsIncludeStagedClient pins the loader contract: the
 // self-test client path must sit between the framework and "test", or the
