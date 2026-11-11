@@ -436,29 +436,29 @@ func (a *App) refreshNowPlaying() {
 	if a.nowPlayingStreaming != nil {
 		streaming = a.nowPlayingStreaming()
 	}
-	if streaming && !a.lastStreaming {
-		a.nowSent = ""
-	}
-	a.lastStreaming = streaming
-	if !ok {
-		a.nowSent = ""
-	}
 	a.updateUI(func() {
 		a.setNowSnapshot(snap, errText)
+		if streaming && !a.lastStreaming {
+			a.nowSent = ""
+		}
+		a.lastStreaming = streaming
+		if !ok {
+			a.nowSent = ""
+		}
+		if !ok || !streaming || a.pushNowPlaying == nil {
+			return
+		}
+		s := snap.Sessions[snapIndex(snap)]
+		key := nowPlayingPushKey(track, s)
+		if key == a.nowSent {
+			return
+		}
+		a.nowSent = key
+		a.pushNowPlaying(track.Title, track.Artist, track.Album, s.Artwork, s.ArtworkMIME)
+		if a.log != nil {
+			a.log.Printf("now playing: %s - %s", track.Title, track.Artist)
+		}
 	})
-	if !ok || !streaming || a.pushNowPlaying == nil {
-		return
-	}
-	s := snap.Sessions[snapIndex(snap)]
-	key := nowPlayingPushKey(track, s)
-	if key == a.nowSent {
-		return
-	}
-	a.nowSent = key
-	a.pushNowPlaying(track.Title, track.Artist, track.Album, s.Artwork, s.ArtworkMIME)
-	if a.log != nil {
-		a.log.Printf("now playing: %s - %s", track.Title, track.Artist)
-	}
 }
 
 func snapIndex(snap nowplaying.Snapshot) int {
