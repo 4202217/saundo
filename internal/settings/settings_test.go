@@ -1,11 +1,97 @@
 package settings
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 )
+
+// TestNewerSettingsSchemaIsNotRewritten pins the downgrade guard: a document
+// from a newer build loads its known fields read-only and is never replaced.
+func TestNewerSettingsSchemaIsNotRewritten(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	seed := []byte(`{"version":999,"name":"x","futureKey":"keep-me"}`)
+	if err := os.WriteFile(path, seed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := NewStoreAt(path)
+	if _, err := s.LoadChecked(); err == nil {
+		t.Fatal("a settings file stamped version 999 loaded without error")
+	}
+	if got := s.Load(); got.Name != "x" {
+		t.Fatalf("read-only load name = %q, want the stored name", got.Name)
+	}
+	if err := s.Save(Default()); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("Save after a newer-schema load = %v, want ErrCorrupt", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, seed) {
+		t.Fatalf("newer settings file was rewritten: %q", got)
+	}
+	if !bytes.Contains(got, []byte("futureKey")) {
+		t.Fatal("the newer build's field was stripped")
+	}
+}
+
+// TestMissingVersionReadsAsCurrent keeps the upgrade path open: a file written
+// before the version field existed loads clean and is stamped on save.
+func TestMissingVersionReadsAsCurrent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"name":"x"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := NewStoreAt(path)
+	cfg, err := s.LoadChecked()
+	if err != nil {
+		t.Fatalf("versionless settings file rejected: %v", err)
+	}
+	if cfg.Version != SchemaVersion {
+		t.Fatalf("version = %d, want %d", cfg.Version, SchemaVersion)
+	}
+	if err := s.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(got, []byte(`"version": 1`)) {
+		t.Fatalf("saved file lacks the schema version: %s", got)
+	}
+}
+
+// TestCorruptSettingsFileIsNotOverwritten pins the data-loss guard: a parse
+// failure must surface, and no later save may replace the user's file.
+func TestCorruptSettingsFileIsNotOverwritten(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	corrupt := []byte(`{"name":"x",`)
+	if err := os.WriteFile(path, corrupt, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := NewStoreAt(path)
+	if _, err := s.LoadChecked(); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("LoadChecked error = %v, want ErrCorrupt", err)
+	}
+	if err := s.Save(Default()); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("Save after a corrupt load = %v, want ErrCorrupt", err)
+	}
+	if err := s.Update(func(*Settings) {}); !errors.Is(err, ErrCorrupt) {
+		t.Fatalf("Update after a corrupt load = %v, want ErrCorrupt", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, corrupt) {
+		t.Fatalf("settings.json was rewritten: %q", got)
+	}
+}
 
 func TestVolumeByDeviceAndFlagsRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")

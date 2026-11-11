@@ -46,6 +46,7 @@ var (
 	}
 
 	storeOwnedFields = []string{
+		"Version",
 		"NameMigrated",
 		"DeviceID",
 		"Passwords",
