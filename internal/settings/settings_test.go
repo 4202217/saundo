@@ -436,3 +436,17 @@ func TestStandbyOffSurvivesLoad(t *testing.T) {
 		t.Fatalf("idle minutes = %d, want 5", got.Standby.IdleMinutes)
 	}
 }
+
+func TestStoreExists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	s := NewStoreAt(path)
+	if s.Exists() {
+		t.Fatal("a missing settings file reports as existing")
+	}
+	if err := os.WriteFile(path, []byte(`{"name":"x"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Exists() {
+		t.Fatal("an existing settings file reports as missing")
+	}
+}

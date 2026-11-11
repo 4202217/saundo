@@ -189,6 +189,15 @@ func NewStoreAt(path string) *Store { return &Store{path: path} }
 // files. A test store points it at the test's temporary directory.
 func (s *Store) Dir() string { return filepath.Dir(s.path) }
 
+// Exists reports whether settings.json is present. The app uses it to choose
+// a locale-appropriate sender name on the first launch.
+func (s *Store) Exists() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, err := os.Stat(s.path)
+	return err == nil
+}
+
 // Load returns the stored settings, filling defaults for missing fields. A
 // missing file yields the defaults; a corrupt one also yields the defaults,
 // and the store refuses to overwrite it until a load succeeds.

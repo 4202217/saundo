@@ -262,7 +262,7 @@ DPAPI. They are keyed by the receiver's `deviceid`.
 
 ### 7. Settings
 
-- 发送端名称 changes the name the receiver shows on its next connection.
+- 发送端名称 changes the name the receiver shows on its next connection. A new profile defaults to the app language's brand, `Saundo` in English and `声渡` in Chinese; a stored name is kept.
 - 严格验证接收器 makes a bad server proof or signature abort the session.
 - 启动时自动连接上次设备 reconnects the last device when discovery finds it.
 - 更新通道 keeps the chosen 稳定版 or 测试版 across a restart.
