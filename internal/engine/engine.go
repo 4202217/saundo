@@ -405,6 +405,8 @@ type Engine struct {
 	captureStarting      bool
 	captureQueued        bool
 	captureGen           int
+	captureRetryAt       time.Time
+	captureRetryNum      int
 	userDisconnect       bool
 	reconnectWanted      bool
 	reconnectAt          time.Time
@@ -845,6 +847,9 @@ func (e *Engine) nextWake() time.Time {
 	if e.reconnectWanted && !e.reconnectAt.IsZero() && (wake.IsZero() || e.reconnectAt.Before(wake)) {
 		wake = e.reconnectAt
 	}
+	if !e.captureRetryAt.IsZero() && (wake.IsZero() || e.captureRetryAt.Before(wake)) {
+		wake = e.captureRetryAt
+	}
 	if !e.settingsDirtyAt.IsZero() && (wake.IsZero() || e.settingsDirtyAt.Before(wake)) {
 		wake = e.settingsDirtyAt
 	}
@@ -856,6 +861,9 @@ func (e *Engine) onWake() {
 	if e.reconnectWanted && !e.reconnectAt.IsZero() && !now.Before(e.reconnectAt) {
 		e.attemptReconnect()
 		return
+	}
+	if !e.captureRetryAt.IsZero() && !now.Before(e.captureRetryAt) {
+		e.retryCapture()
 	}
 	if !e.settingsDirtyAt.IsZero() && !now.Before(e.settingsDirtyAt) {
 		e.saveSettingsNow()
@@ -2243,6 +2251,10 @@ func (e *Engine) startCapture() {
 // start trim absorb. Its late callbacks carry a stale generation and are
 // dropped.
 func (e *Engine) restartCapture() {
+	// A manual or settings-driven restart starts at once; a pending backoff
+	// belongs to the failed open it replaced.
+	e.captureRetryAt = time.Time{}
+	e.captureRetryNum = 0
 	if e.capture != nil {
 		old := e.capture
 		e.capture = nil
@@ -2253,6 +2265,32 @@ func (e *Engine) restartCapture() {
 		e.captureQueued = true
 		return
 	}
+	e.beginCaptureStart()
+}
+
+// scheduleCaptureRetry arms the next automatic open after a failed start. A
+// source that opened retries itself; this covers the launch case where the
+// first open finds no render endpoint, so the engine would otherwise stay
+// silent until the user changes the capture selection or restarts the app.
+// It shares the reconnect schedule and keeps retrying at the longest delay,
+// because a dock or a default device can return at any time.
+func (e *Engine) scheduleCaptureRetry() {
+	if e.stopping {
+		return
+	}
+	delay := reconnectBackoff[min(e.captureRetryNum, len(reconnectBackoff)-1)]
+	e.captureRetryNum++
+	e.captureRetryAt = e.now().Add(delay)
+	e.logf("capture retry in %s (attempt %d)", delay, e.captureRetryNum)
+}
+
+// retryCapture starts a new open when the backoff elapses.
+func (e *Engine) retryCapture() {
+	e.captureRetryAt = time.Time{}
+	if e.stopping || e.capture != nil || e.captureRunning || e.captureStarting {
+		return
+	}
+	e.logf("retrying capture")
 	e.beginCaptureStart()
 }
 
@@ -2314,15 +2352,17 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 		return
 	}
 	if res.err != nil {
-		e.captureError = res.err.Error()
 		e.captureRunning = false
-		e.logf("capture failed: %v", res.err)
+		e.logCaptureError(res.err)
+		e.scheduleCaptureRetry()
 		e.publish()
 		return
 	}
 	e.capture = res.src
 	e.captureRunning = true
 	e.captureError = ""
+	e.captureRetryAt = time.Time{}
+	e.captureRetryNum = 0
 	e.captureErrorLogged = ""
 	e.captureErrorLoggedAt = time.Time{}
 	stats := res.src.Stats()
@@ -2367,21 +2407,26 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 		e.captureName = info.name
 	}
 	if info.err != nil {
-		e.captureError = info.err.Error()
-		now := e.now()
-		// A missing device retries on the capture goroutine; log the first
-		// occurrence and then at most once a minute, not on every retry.
-		if e.captureErrorLogged != e.captureError || now.Sub(e.captureErrorLoggedAt) >= time.Minute {
-			e.logf("capture error: %v", info.err)
-			e.captureErrorLogged = e.captureError
-			e.captureErrorLoggedAt = now
-		}
+		e.logCaptureError(info.err)
 	} else {
 		e.captureError = ""
 		e.captureErrorLogged = ""
 		e.captureErrorLoggedAt = time.Time{}
 	}
 	e.publish()
+}
+
+// logCaptureError records the current error and logs it on the first
+// occurrence and then at most once a minute. A source that keeps retrying a
+// missing device must not write a line per attempt.
+func (e *Engine) logCaptureError(err error) {
+	e.captureError = err.Error()
+	now := e.now()
+	if e.captureErrorLogged != e.captureError || now.Sub(e.captureErrorLoggedAt) >= time.Minute {
+		e.logf("capture error: %v", err)
+		e.captureErrorLogged = e.captureError
+		e.captureErrorLoggedAt = now
+	}
 }
 
 // markSettingsDirty schedules a settings write. The run loop coalesces
