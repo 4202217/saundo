@@ -105,6 +105,9 @@ live state:
 - An ambient-light preview with two playing sessions, driven live; the card
   follows the pushed session and `TestLampPreviewFollowsThePushedSessionNotTheCard`
   pins the rule.
+- The macOS App Nap hold: `TestSessionActive` and
+  `TestPowerHoldTransitions` cover the state machine, but no live Mac run
+  has shown the process stays unsuppressed while the flyout is hidden.
 
 ## Automated checks
 
