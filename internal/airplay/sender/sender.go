@@ -225,6 +225,30 @@ type ap2State struct {
 	hasInitial  bool
 }
 
+// wipe clears the session keys in place. The big integers inside the SRP
+// client cannot be zeroed through their public API, so that part is
+// best-effort; the byte-slice keys are zeroed.
+func (a *ap2State) wipe() {
+	if a == nil {
+		return
+	}
+	for _, b := range [][]byte{
+		a.ltSeed, a.verifyPriv, a.sharedSecret,
+		a.controlOut, a.controlIn, a.eventOut, a.eventIn, a.audioKey,
+	} {
+		clear(b)
+	}
+	a.ltSeed, a.verifyPriv = nil, nil
+	a.sharedSecret = nil
+	a.controlOut, a.controlIn = nil, nil
+	a.eventOut, a.eventIn = nil, nil
+	a.audioKey = nil
+	if a.srp != nil {
+		a.srp.Wipe()
+		a.srp = nil
+	}
+}
+
 // Sender owns one AirPlay session's protocol state. All methods must be called
 // from the engine's single event-loop goroutine, except the exported setters
 // documented as safe before Start.
@@ -636,6 +660,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	}
 	s.pendingVolume = noVolume
 
+	s.wipeSecrets()
 	s.ap2 = nil
 	s.pairStage = pairNone
 	s.waitingForPin = false
@@ -704,7 +729,19 @@ func (s *Sender) Stop() {
 	for i := range s.backlogSeq {
 		s.backlogSeq[i] = -1
 	}
+	s.wipeSecrets()
 	s.info("session stopped")
+}
+
+// wipeSecrets clears key material when a session ends. Strings such as
+// credsJSON and digestPassword cannot be zeroed in place; they are dropped
+// with the sender.
+func (s *Sender) wipeSecrets() {
+	if s.ap2 != nil {
+		s.ap2.wipe()
+	}
+	clear(s.pairSetupSessionKey)
+	s.pairSetupSessionKey = nil
 }
 
 func (s *Sender) releaseSockets() {
@@ -738,6 +775,7 @@ func (s *Sender) fail(why string) {
 	s.io.TCPClose(raopio.TCPControl, false)
 	s.rtspConnected = false
 	s.releaseSockets()
+	s.wipeSecrets()
 	if wasStarting && s.events.Launched != nil {
 		s.events.Launched(false, why)
 	}
@@ -757,6 +795,7 @@ func (s *Sender) preempt(why string) {
 	s.io.TCPClose(raopio.TCPControl, false)
 	s.rtspConnected = false
 	s.releaseSockets()
+	s.wipeSecrets()
 	for i := range s.backlog {
 		s.backlog[i] = nil
 	}

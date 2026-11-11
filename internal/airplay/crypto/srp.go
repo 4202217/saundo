@@ -149,6 +149,25 @@ func (c *SRPClient) SessionKey() []byte {
 	return append([]byte(nil), c.K...)
 }
 
+// Wipe clears the session key and the SRP secrets. The big integers cannot be
+// zeroed through their public API, so that part is best-effort; the byte-slice
+// key material is zeroed in place.
+func (c *SRPClient) Wipe() {
+	if c == nil {
+		return
+	}
+	clear(c.K)
+	clear(c.M1)
+	c.K, c.M1 = nil, nil
+	c.password = ""
+	for _, v := range []*big.Int{c.a, c.x, c.S} {
+		if v != nil {
+			v.SetInt64(0)
+		}
+	}
+	c.a, c.x, c.S = nil, nil, nil
+}
+
 // VerifyServerProof checks the server's proof M2 = H(A | M1 | K).
 func (c *SRPClient) VerifyServerProof(serverM2 []byte) bool {
 	if !c.processed {
