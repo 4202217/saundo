@@ -20,6 +20,10 @@ func newHarnessWithStores(t *testing.T, sets *settings.Store, credsStore *creds.
 	t.Helper()
 	h := &harness{e: NewWithReceivers(sets, credsStore, reg, &diagnostics.Log{}, nil), now: time.Now()}
 	h.e.now = func() time.Time { return h.now }
+	// The mute worker owns the endpoint calls in production too; tests drive
+	// it in place of the event loop's select.
+	h.e.startMuteWorker()
+	t.Cleanup(h.e.stopMuteWorker)
 	// Unit tests must never touch the machine's real render endpoint. The
 	// mute default is on, so a connect-and-stream test would otherwise call
 	// WASAPI; mute_test.go overrides this with its recording fake.

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"testing"
+	"time"
 
 	"saundo/internal/capture"
 )
@@ -18,6 +19,7 @@ type fakeMuter struct {
 	muted        map[string]bool
 	setCalls     []muteCall
 	setErr       error
+	setHook      func(id string, muted bool) error
 	defaultID    string
 	defaultErr   error
 	endpoints    []capture.Endpoint
@@ -36,6 +38,11 @@ func (f *fakeMuter) setEndpointMuted(id string, muted bool) error {
 	f.setCalls = append(f.setCalls, muteCall{endpointID: id, muted: muted})
 	if f.setErr != nil {
 		return f.setErr
+	}
+	if f.setHook != nil {
+		if err := f.setHook(id, muted); err != nil {
+			return err
+		}
 	}
 	f.muted[id] = muted
 	return nil
@@ -58,6 +65,27 @@ func useMuter(h *harness, m *fakeMuter) {
 	h.e.endpoints = m.listEndpoints
 }
 
+// settleMute drains worker results until the loop-visible state matches want.
+// The worker is real; only the endpoint calls are faked.
+func (h *harness) settleMute(t *testing.T, want MuteLocalState) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		select {
+		case st := <-h.e.muteStatus:
+			h.e.applyMuteStatus(st)
+		default:
+			if got := h.e.Snapshot().MuteLocal; got == want {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("mute state = %v, want %v", h.e.Snapshot().MuteLocal, want)
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+}
+
 func TestMuteLocalFollowsTheSession(t *testing.T) {
 	h := newHarness(t)
 	m := newFakeMuter()
@@ -67,6 +95,7 @@ func TestMuteLocalFollowsTheSession(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalActive)
 
 	if got := h.e.Snapshot().MuteLocal; got != MuteLocalActive {
 		t.Fatalf("state after launch = %v, want active", got)
@@ -79,6 +108,7 @@ func TestMuteLocalFollowsTheSession(t *testing.T) {
 	}
 
 	h.e.handleCommand(command{kind: cmdDisconnect})
+	h.settleMute(t, MuteLocalWaiting)
 
 	if m.muted["default-ep"] {
 		t.Fatal("disconnect left the endpoint muted")
@@ -102,8 +132,10 @@ func TestMuteLocalOffRestoresAtOnce(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalActive)
 
 	h.e.handleCommand(command{kind: cmdMuteLocal, show: false})
+	h.settleMute(t, MuteLocalOff)
 
 	if m.muted["default-ep"] {
 		t.Fatal("turning the setting off left the endpoint muted")
@@ -120,8 +152,10 @@ func TestMuteLocalOnWhileStreaming(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalActive)
 
 	h.e.handleCommand(command{kind: cmdMuteLocal, show: true})
+	h.settleMute(t, MuteLocalActive)
 
 	if !m.muted["default-ep"] {
 		t.Fatal("turning the setting on while streaming did not mute")
@@ -140,6 +174,7 @@ func TestMuteLocalFailureIsVisible(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalFailed)
 
 	snap := h.e.Snapshot()
 	if snap.MuteLocal != MuteLocalFailed {
@@ -163,6 +198,7 @@ func TestMuteLocalTargetsSelectedEndpoint(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalActive)
 
 	if !m.muted["selected-ep"] {
 		t.Fatal("the selected capture endpoint was not muted")
@@ -185,6 +221,7 @@ func TestMuteLocalProcessCaptureUsesDefaultEndpoint(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalActive)
 
 	if !m.muted["default-ep"] {
 		t.Fatal("process capture did not mute the default endpoint")
@@ -203,8 +240,10 @@ func TestMuteLocalReleasesAPreMutedEndpoint(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
+	h.settleMute(t, MuteLocalActive)
 
 	h.e.handleCommand(command{kind: cmdDisconnect})
+	h.settleMute(t, MuteLocalWaiting)
 
 	if m.muted["default-ep"] {
 		t.Fatal("disconnect left the pre-session mute in place")
@@ -261,6 +300,58 @@ func TestMuteGuardCorruptIsLeftAlone(t *testing.T) {
 // TestMuteLocalCommandUpdatesStateOnly pins the ownership split: the app owns
 // the persisted preference, so the engine's save leaves the stored value
 // alone even after the command updates its runtime state.
+// TestMuteLocalDoesNotBlockTheEventLoop pins the offload: while the endpoint
+// call is stuck, the loop must still process commands and publish.
+func TestMuteLocalDoesNotBlockTheEventLoop(t *testing.T) {
+	h := newHarness(t)
+	m := newFakeMuter()
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	m.setHook = func(id string, muted bool) error {
+		if muted {
+			close(entered)
+			<-release
+		}
+		return nil
+	}
+	useMuter(h, m)
+	h.e.setsValue.MuteLocalOnConnect = false
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	go h.e.run()
+	defer func() {
+		close(h.e.quit)
+		<-h.e.done
+	}()
+
+	h.e.send(command{kind: cmdMuteLocal, show: true})
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the mute worker never reached setEndpointMuted")
+	}
+
+	h.e.send(command{kind: cmdTrayAnimation, value: 0})
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for h.e.Snapshot().TrayAnimation {
+		if time.Now().After(deadline) {
+			t.Fatal("the event loop stayed blocked inside the mute call")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	close(release)
+	deadline = time.Now().Add(2 * time.Second)
+	for h.e.Snapshot().MuteLocal != MuteLocalActive {
+		if time.Now().After(deadline) {
+			t.Fatalf("mute state = %v, want active after release", h.e.Snapshot().MuteLocal)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func TestMuteLocalCommandUpdatesStateOnly(t *testing.T) {
 	h := newHarness(t)
 	cfg := h.e.sets.Load()

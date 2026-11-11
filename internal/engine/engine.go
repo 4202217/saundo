@@ -329,6 +329,17 @@ type Engine struct {
 	captureInfo    chan captureInfo
 	captureResult  chan captureStart
 	mute           localMute
+	// The mute worker owns every endpoint and guard-file call. The loop posts
+	// the latest desired state and applies generation-checked results, so a
+	// wedged audio service cannot freeze ticks or commands.
+	muteReq      chan muteRequest
+	muteStatus   chan muteStatus
+	muteStop     chan struct{}
+	muteDone     chan struct{}
+	muteOnce     sync.Once
+	muteStopOnce sync.Once
+	muteRunning  atomic.Bool
+	muteGen      int
 
 	commands       chan command
 	quit           chan struct{}
@@ -454,6 +465,10 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		stopping:        false,
 		passwords:       map[string]bool{},
 		lampJPEG:        lamp.JPEG,
+		muteReq:         make(chan muteRequest, 1),
+		muteStatus:      make(chan muteStatus, 1),
+		muteStop:        make(chan struct{}),
+		muteDone:        make(chan struct{}),
 	}
 	// A registry that cannot be read leaves the engine with no remembered
 	// receivers but does not stop it; manual and discovered receivers still
@@ -479,7 +494,6 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.defaultEndpoint = capture.DefaultEndpoint
 	e.endpoints = capture.Endpoints
 	e.mute.state = e.idleMuteState()
-	e.recoverMuteGuard()
 	e.prepareLampImage()
 	e.rebuildTargets()
 	e.snap = e.buildSnapshot()
@@ -577,6 +591,7 @@ func (e *Engine) Start() {
 		e.discovery = discovery.New(3*time.Second, 1500*time.Millisecond)
 		e.discovery.SetSeedHosts(receiverHosts(e.reg))
 		e.discovery.Start()
+		e.startMuteWorker()
 		e.startCapture()
 		e.started.Store(true)
 		go e.run()
@@ -803,6 +818,9 @@ func (e *Engine) run() {
 		case res := <-e.captureResult:
 			timer.Stop()
 			e.applyCaptureStart(res)
+		case st := <-e.muteStatus:
+			timer.Stop()
+			e.applyMuteStatus(st)
 		}
 	}
 }
@@ -967,6 +985,11 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 func (e *Engine) shutdown() {
 	e.stopping = true
 	e.closeSession()
+	// Force the final unmute through the worker and wait for it, so quitting
+	// never leaves the endpoint muted. closeSession already asked when it
+	// believed a mute was active; this covers a dropped status.
+	e.requestMute(muteRequest{on: false})
+	e.stopMuteWorker()
 	e.saveSettingsNow()
 	if e.capture != nil {
 		e.capture.Stop()
@@ -2315,11 +2338,9 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	}
 	e.resetCaptureSink()
 	if e.mute.state == MuteLocalActive && e.captureProcess == 0 && e.captureEndpoint == "" {
-		// Capture follows the default device. If Windows moved the default,
-		// move the mute with it.
-		if ep, err := e.defaultEndpoint(); err == nil && ep.ID != e.mute.endpointID {
-			e.refreshLocalMute()
-		}
+		// Capture follows the default device. The worker re-resolves it and
+		// moves the mute if Windows changed the default.
+		e.applyLocalMute()
 	}
 	e.logf("capture open: %s (%d Hz)", e.captureName, stats.Rate)
 	e.publish()
