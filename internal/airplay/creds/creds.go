@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // Credentials are the long-term keys from a successful HAP pairing. LTSK is
@@ -61,8 +62,9 @@ func Parse(text string) (Credentials, bool) {
 
 // Store keeps one credentials blob per device, encrypted at rest.
 type Store struct {
-	mu   sync.Mutex
-	path string
+	mu            sync.Mutex
+	path          string
+	quarantinedTo string
 }
 
 // NewStore returns the per-user credentials store, creating no file yet.
@@ -77,9 +79,20 @@ func NewStore() *Store {
 // NewStoreAt is the testable form of NewStore.
 func NewStoreAt(path string) *Store { return &Store{path: path} }
 
-// ErrCorrupt reports a credentials file this process cannot read. Loads fail
-// closed to "", and writes refuse to replace the file, so one bad save cannot
-// destroy the HAP keys and receiver passwords it cannot decrypt.
+// TakeQuarantine returns the path an unreadable credentials file was moved to
+// since the last call, or "". The store is usable again; the caller should log
+// that a receiver may need to be paired again.
+func (s *Store) TakeQuarantine() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p := s.quarantinedTo
+	s.quarantinedTo = ""
+	return p
+}
+
+// ErrCorrupt reports a credentials file this process cannot read and cannot
+// move aside. Loads fail closed to "", and writes refuse to replace the file,
+// so one bad save cannot destroy the keys it cannot decrypt.
 var ErrCorrupt = errors.New("creds: unreadable credentials file")
 
 // Load returns the stored JSON for deviceID, or "".
@@ -184,12 +197,24 @@ func (s *Store) readAll() (map[string]string, error) {
 	}
 	plain, err := unprotect(blob)
 	if err != nil {
-		return all, fmt.Errorf("%w: %v", ErrCorrupt, err)
+		return all, s.quarantine(fmt.Errorf("%w: %v", ErrCorrupt, err))
 	}
 	if err := json.Unmarshal(plain, &all); err != nil {
-		return all, fmt.Errorf("%w: %v", ErrCorrupt, err)
+		return all, s.quarantine(fmt.Errorf("%w: %v", ErrCorrupt, err))
 	}
 	return all, nil
+}
+
+// quarantine moves an unreadable credentials file aside and reports nil, so
+// the caller can create a fresh file in its place. When the move fails the
+// original error comes back and writes keep failing closed.
+func (s *Store) quarantine(cause error) error {
+	dest := s.path + ".corrupt-" + time.Now().UTC().Format("20060102T150405.000000000Z")
+	if err := os.Rename(s.path, dest); err != nil {
+		return cause
+	}
+	s.quarantinedTo = dest
+	return nil
 }
 
 func (s *Store) writeAll(all map[string]string) error {

@@ -1383,6 +1383,9 @@ func (e *Engine) connect(d device.Device) {
 		tr.SetAuth(d.Auth, airplay2, d.ID, e.creds.Load(d.ID), password)
 		tr.SetFamily(d.Family)
 	}
+	if q := e.creds.TakeQuarantine(); q != "" {
+		e.logf("credentials file was unreadable; moved to %s; a receiver may need to be paired again", q)
+	}
 	if rings := tr.Rings(); len(rings) > 0 {
 		e.attachMemberRings(rings)
 	}

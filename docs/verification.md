@@ -465,7 +465,7 @@ development PC with a real HomePod stereo pair on the LAN.
 | Pairing 403 | Receiver access control. A password-protected Mac must pair as `AuthHAPPassword`; a 401 on the AP2 SETUP is its Digest challenge. On an Apple TV set Allow Access to Anyone on the Same Network; set up a HomePod in the Home app. |
 | Mac session SETUP OK, stream SETUP never answers | The Mac advertises PTP bit 41 and ignores an NTP-timed stream. Run the PTP follower. |
 | Pairing 470 | The receiver wants a PIN but did not show one. The app falls back from transient to on-screen PIN once. |
-| No audio after reconnect | Stored credentials are missing or corrupt; the app pairs afresh. Check the DPAPI file is readable by the same Windows user. |
+| No audio after reconnect | Stored credentials were missing or unreadable. An unreadable file is moved to `credentials.dat.corrupt-<UTC time>`, the app pairs afresh, and the next connect logs the quarantined path. The receiver may still hold the old pairing; pair it again or reset it. |
 | Timing requests unanswered | Windows Firewall blocks inbound UDP to the app. Allow the app on private networks. |
 | Discovery empty | mDNS blocked, wrong network profile, VPN, or AP/client isolation. A receiver that answers directed queries but not multicast is found from the ARP neighbor table; one absent from both stays undiscovered. |
 
