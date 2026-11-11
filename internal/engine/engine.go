@@ -325,6 +325,10 @@ type Engine struct {
 	ring          *ring.Buffer
 	captureSink   *ring.Fanout
 	level         *analyze.Meter
+	levelFeed     *ring.Buffer
+	levelStop     chan struct{}
+	levelDone     chan struct{}
+	levelRunning  atomic.Bool
 	silence       *silenceMeter
 	memberRings   []*ring.Buffer
 	memberDropped uint64
@@ -466,6 +470,9 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		// silence policy, so a pause never overflows it with silence and the
 		// drop counter keeps meaning real capture overflow.
 		ring:            ring.New(48000 * 2 * 8),
+		levelFeed:       ring.New(levelFeedSamples),
+		levelStop:       make(chan struct{}),
+		levelDone:       make(chan struct{}),
 		captureInfo:     make(chan captureInfo, 8),
 		captureResult:   make(chan captureStart, 4),
 		commands:        make(chan command, 32),
@@ -506,7 +513,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
 	e.level = analyze.New(0)
-	e.silence = newSilenceMeter(e.captureSink, e.level)
+	e.silence = newSilenceMeter(e.captureSink, e.levelFeed)
 	e.setEndpointMuted = capture.SetEndpointMuted
 	e.defaultEndpoint = capture.DefaultEndpoint
 	e.endpoints = capture.Endpoints
@@ -609,6 +616,7 @@ func (e *Engine) Start() {
 		e.discovery.SetSeedHosts(receiverHosts(e.reg))
 		e.discovery.Start()
 		e.startMuteWorker()
+		e.startLevelPump()
 		e.startCapture()
 		e.started.Store(true)
 		go e.run()
@@ -1023,6 +1031,7 @@ func (e *Engine) shutdown() {
 		e.capture.Stop()
 		e.capture = nil
 	}
+	e.stopLevelPump()
 	if e.discovery != nil {
 		e.discovery.Stop()
 	}
@@ -2337,6 +2346,9 @@ func (e *Engine) beginCaptureStart() {
 	e.captureStarting = true
 	e.captureGen++
 	gen := e.captureGen
+	if e.levelFeed != nil {
+		e.levelFeed.Reset()
+	}
 	cfg := capture.Config{
 		Ring:       e.silence,
 		EndpointID: e.captureEndpoint,

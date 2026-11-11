@@ -6,6 +6,7 @@ import (
 
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
+	"saundo/internal/audio/ring"
 )
 
 type recordingSink struct {
@@ -19,7 +20,8 @@ func (s *recordingSink) KeepNewest(int) int       { return 0 }
 
 func TestSilenceMeterFeedsTheLevelMeter(t *testing.T) {
 	level := analyze.New(48000)
-	m := newSilenceMeter(&recordingSink{}, level)
+	feed := ring.New(4096)
+	m := newSilenceMeter(&recordingSink{}, feed)
 	now := time.Unix(100, 0)
 	m.now = func() time.Time { return now }
 	block := make([]int16, 960)
@@ -31,9 +33,48 @@ func TestSilenceMeterFeedsTheLevelMeter(t *testing.T) {
 		}
 	}
 	m.Push(block)
+	out := make([]int16, len(block))
+	if n := feed.Pop(out); n != len(block) {
+		t.Fatalf("level feed pop = %d, want %d", n, len(block))
+	}
+	level.Push(out, now)
 	frame, ok := level.At(now, 0)
 	if !ok || frame.Level == 0 {
 		t.Fatalf("level frame = %+v ok=%v, want the capture block's level", frame, ok)
+	}
+}
+
+func TestLevelPumpFeedsTheMeter(t *testing.T) {
+	e := &Engine{
+		level:     analyze.New(48000),
+		levelFeed: ring.New(4096),
+		levelStop: make(chan struct{}),
+		levelDone: make(chan struct{}),
+	}
+	e.startLevelPump()
+	t.Cleanup(e.stopLevelPump)
+	block := make([]int16, 960)
+	for i := range block {
+		block[i] = 12000
+	}
+	e.levelFeed.Push(block)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if frame, ok := e.level.At(time.Now(), 0); ok && frame.Level > 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("level pump did not feed the meter")
+}
+
+func TestSilenceMeterPushDoesNotAllocate(t *testing.T) {
+	sink := ring.NewFanout(ring.New(4096))
+	m := newSilenceMeter(sink, ring.New(4096))
+	block := make([]int16, 960)
+	m.Push(block)
+	if got := testing.AllocsPerRun(1000, func() { m.Push(block) }); got != 0 {
+		t.Fatalf("silence meter push allocates %.1f times per run", got)
 	}
 }
 

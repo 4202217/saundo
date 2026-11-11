@@ -1,6 +1,9 @@
 package ring
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // Sink is the producer-facing side of an audio buffer. A stereo-pair session
 // feeds several member rings from one capture stream.
@@ -12,27 +15,37 @@ type Sink interface {
 }
 
 // Trimmer is the buffer-side capability a start gate needs. *Buffer trims one
-// stream; *Fanout trims every stream sharing one capture source atomically.
+// stream; *Fanout trims every stream sharing one capture source.
 type Trimmer interface {
 	KeepNewest(newest int) int
 }
 
-// Fanout writes every push to all registered sinks. Sinks can be added and
-// removed while capture is running; a push is never split across a change.
+// Fanout writes every push to all registered sinks. Add and Remove publish a
+// new immutable sink list; Push reads one snapshot, so it takes no lock and
+// allocates nothing, and a push is never split across a change.
 type Fanout struct {
 	mu    sync.Mutex
-	sinks []Sink
+	sinks atomic.Pointer[[]Sink]
 }
 
 // NewFanout returns a fanout over the given sinks.
 func NewFanout(sinks ...Sink) *Fanout {
 	f := &Fanout{}
+	list := make([]Sink, 0, len(sinks))
 	for _, s := range sinks {
 		if s != nil {
-			f.sinks = append(f.sinks, s)
+			list = append(list, s)
 		}
 	}
+	f.sinks.Store(&list)
 	return f
+}
+
+func (f *Fanout) snapshot() []Sink {
+	if p := f.sinks.Load(); p != nil {
+		return *p
+	}
+	return nil
 }
 
 // Add registers a sink. It reports false when the sink was already present.
@@ -42,12 +55,16 @@ func (f *Fanout) Add(s Sink) bool {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, existing := range f.sinks {
+	cur := f.snapshot()
+	for _, existing := range cur {
 		if existing == s {
 			return false
 		}
 	}
-	f.sinks = append(f.sinks, s)
+	next := make([]Sink, len(cur)+1)
+	copy(next, cur)
+	next[len(cur)] = s
+	f.sinks.Store(&next)
 	return true
 }
 
@@ -55,22 +72,21 @@ func (f *Fanout) Add(s Sink) bool {
 func (f *Fanout) Remove(s Sink) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	out := f.sinks[:0]
-	for _, existing := range f.sinks {
+	cur := f.snapshot()
+	next := make([]Sink, 0, len(cur))
+	for _, existing := range cur {
 		if existing != s {
-			out = append(out, existing)
+			next = append(next, existing)
 		}
 	}
-	f.sinks = out
+	f.sinks.Store(&next)
 }
 
 // Push writes samples to every registered sink and returns the largest drop
 // count any sink reported for this push.
 func (f *Fanout) Push(samples []int16) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
 	dropped := 0
-	for _, s := range f.sinks {
+	for _, s := range f.snapshot() {
 		if d := s.Push(samples); d > dropped {
 			dropped = d
 		}
@@ -78,14 +94,12 @@ func (f *Fanout) Push(samples []int16) int {
 	return dropped
 }
 
-// KeepNewest trims every registered sink under the same lock Push uses, so a
-// capture push can never land between two sinks' trims. It returns the largest
-// count discarded by any sink. The counts are not added to Dropped.
+// KeepNewest trims every sink in the current snapshot and returns the largest
+// count discarded by any sink. A push can land between two sinks' trims, so a
+// start trim is best-effort; the counts are not added to Dropped.
 func (f *Fanout) KeepNewest(newest int) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
 	dropped := 0
-	for _, s := range f.sinks {
+	for _, s := range f.snapshot() {
 		if d := s.KeepNewest(newest); d > dropped {
 			dropped = d
 		}
@@ -95,10 +109,8 @@ func (f *Fanout) KeepNewest(newest int) int {
 
 // Dropped reports the largest drop count across the registered sinks.
 func (f *Fanout) Dropped() uint64 {
-	f.mu.Lock()
-	defer f.mu.Unlock()
 	var dropped uint64
-	for _, s := range f.sinks {
+	for _, s := range f.snapshot() {
 		if d := s.Dropped(); d > dropped {
 			dropped = d
 		}
@@ -108,9 +120,7 @@ func (f *Fanout) Dropped() uint64 {
 
 // Reset clears every registered sink.
 func (f *Fanout) Reset() {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, s := range f.sinks {
+	for _, s := range f.snapshot() {
 		s.Reset()
 	}
 }

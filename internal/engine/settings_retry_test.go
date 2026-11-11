@@ -21,8 +21,7 @@ func TestSettingsSaveFailureRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	sets := settings.NewStoreAt(filepath.Join(blocked, "settings.json"))
-	h := newHarnessWithStores(t, sets, creds.NewStoreAt(filepath.Join(dir, "creds")), receivers.NewStoreAt(filepath.Join(dir, "receivers.json")))
-	h.e.log = diagnostics.New(filepath.Join(dir, "saundo.log"))
+	h := newHarnessWithLog(t, sets, creds.NewStoreAt(filepath.Join(dir, "creds")), receivers.NewStoreAt(filepath.Join(dir, "receivers.json")), diagnostics.New(filepath.Join(dir, "saundo.log")))
 	defer h.e.log.Close()
 
 	h.e.setsValue.Volume = 42

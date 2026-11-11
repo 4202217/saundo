@@ -7,6 +7,7 @@ package capture
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"saundo/internal/audio/ring"
@@ -70,7 +71,8 @@ type Source struct {
 	running bool
 	rate    int
 	device  string
-	frames  uint64
+	frames  atomic.Uint64
+	dropped atomic.Uint64
 	errors  uint64
 }
 
@@ -97,8 +99,8 @@ func (s *Source) Stats() Stats {
 		Running: s.running,
 		Rate:    s.rate,
 		Device:  s.device,
-		Frames:  s.frames,
-		Dropped: s.cfg.Ring.Dropped(),
+		Frames:  s.frames.Load(),
+		Dropped: s.cfg.Ring.Dropped() + s.dropped.Load(),
 		Errors:  s.errors,
 	}
 }
@@ -136,9 +138,13 @@ func (s *Source) reportError(err error) {
 }
 
 func (s *Source) addFrames(n uint32) {
-	s.mu.Lock()
-	s.frames += uint64(n)
-	s.mu.Unlock()
+	s.frames.Add(uint64(n))
+}
+
+// addDropped records samples captured but dropped before the ring, such as a
+// buffer larger than the stream's realtime scratch.
+func (s *Source) addDropped(n uint64) {
+	s.dropped.Add(n)
 }
 
 // wait sleeps d or until stopped, reporting whether capture should go on.

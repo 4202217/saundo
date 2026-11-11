@@ -72,3 +72,12 @@ func TestFanoutReportsLargestDrop(t *testing.T) {
 		t.Fatalf("dropped = %d, want 2 from the small sink", got)
 	}
 }
+
+func TestFanoutPushDoesNotAllocate(t *testing.T) {
+	f := NewFanout(New(4096), New(4096))
+	block := make([]int16, 512)
+	f.Push(block)
+	if got := testing.AllocsPerRun(1000, func() { f.Push(block) }); got != 0 {
+		t.Fatalf("Fanout.Push allocates %.1f times per run", got)
+	}
+}

@@ -115,6 +115,10 @@ Core Audio property codes stay inside the leaf packages.
   The new cdhash still changes the app's code identity, so macOS can ask
   again for system-audio capture and Keychain access after an update. The
   live check is in [verification.md](verification.md).
+- **Core Audio realtime path**: the IOProc takes no lock and allocates
+  nothing. It finds its stream through one atomic pointer, converts into a
+  scratch sized at open, and pushes into a lock-free SPSC ring; the level
+  analyzer runs on a pump goroutine fed by a 100 ms ring.
 - **Local signing**: set `SAUNDO_MAC_SIGN_IDENTITY` to an Apple Development
   or Developer ID identity for a stable local signature; without it the
   build signs ad hoc. No certificate is committed, so CI and other Macs
