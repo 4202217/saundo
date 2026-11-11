@@ -76,6 +76,12 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		patch.Name, patch.Type, patch.Host, patch.Port = nil, nil, nil, nil
 	}
 
+	if entry.IsManual() &&
+		((patch.Host != nil && *patch.Host != entry.Host) || (patch.Port != nil && *patch.Port != entry.Port)) {
+		// A user-typed address change is a deliberate re-pair, not an
+		// advertisement: accept the new endpoint.
+		entry.PairedHost, entry.PairedPort = "", 0
+	}
 	delayBefore := entry.DelayMS
 	if patch.AutoConnect != nil {
 		// The flag chooses the next launch's target; it never starts a

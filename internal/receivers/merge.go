@@ -51,6 +51,7 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		}
 		if d, ok := live[e.Key]; ok {
 			delete(live, d.ID)
+			d = pinnedDevice(e, d)
 			if d.Local {
 				e = localEntry(e)
 			}
@@ -124,19 +125,39 @@ func claimedDevice(manual, seen device.Device) device.Device {
 	return d
 }
 
-// offlineDevice keeps a remembered receiver manageable while it is gone.
+// pinnedDevice keeps a paired receiver at the endpoint it was paired with.
+// The rest of the advertisement still updates: name, model, feature bits.
+func pinnedDevice(e Entry, d device.Device) device.Device {
+	if e.PairedHost == "" || e.PairedPort == 0 {
+		return d
+	}
+	d.Host, d.Port = e.PairedHost, e.PairedPort
+	return d
+}
+
+// offlineDevice keeps a remembered receiver manageable while it is gone. The
+// cached endpoint, auth path, and feature bits travel with it: a connect that
+// lands on this row must not fall back to AP1 or NTP, and the row still shows
+// the address the next launch probes.
 func offlineDevice(e Entry) device.Device {
 	model := e.Model
 	if model == "" {
 		model = manualModel(TypeAirPlay2)
 	}
+	host, port := e.Endpoint()
 	return device.Device{
-		ID:       e.Key,
-		Name:     e.DisplayName(),
-		Model:    model,
-		Family:   device.FamilyFor(model, ""),
-		AirPlay2: e.AirPlay2,
-		Online:   false,
+		ID:              e.Key,
+		Name:            e.DisplayName(),
+		Host:            host,
+		Port:            port,
+		Model:           model,
+		Features:        e.Features,
+		FeaturesUnknown: e.FeaturesUnknown,
+		SF:              e.SF,
+		AirPlay2:        e.AirPlay2,
+		Auth:            e.Auth,
+		Family:          device.FamilyFor(model, ""),
+		Online:          false,
 	}
 }
 

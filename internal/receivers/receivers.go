@@ -41,9 +41,9 @@ const (
 const (
 	MaxDelayMS = 2000
 	// MinLatencyMS and MaxLatencyMS are the sender's latency window; the
-	// base-plus-delay sum clamps into it.
-	MinLatencyMS = 20
-	MaxLatencyMS = 4000
+	// base-plus-delay sum clamps into it. The sender uses the same constants.
+	MinLatencyMS = device.MinLatencyMS
+	MaxLatencyMS = device.MaxLatencyMS
 )
 
 const (
@@ -55,15 +55,20 @@ const (
 // addresses; keeping them lets the next launch connect the pair without
 // waiting for mDNS.
 type Member struct {
-	ID       string      `json:"id,omitempty"`
-	Name     string      `json:"name,omitempty"`
-	Host     string      `json:"host,omitempty"`
-	Port     uint16      `json:"port,omitempty"`
-	Model    string      `json:"model,omitempty"`
-	AirPlay2 bool        `json:"airPlay2,omitempty"`
-	Features uint64      `json:"features,omitempty"`
-	SF       uint64      `json:"sf,omitempty"`
-	Auth     device.Auth `json:"auth,omitempty"`
+	ID       string `json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Host     string `json:"host,omitempty"`
+	Port     uint16 `json:"port,omitempty"`
+	Model    string `json:"model,omitempty"`
+	AirPlay2 bool   `json:"airPlay2,omitempty"`
+	Features uint64 `json:"features,omitempty"`
+	// FeaturesUnknown marks a cached value whose advertisement did not parse.
+	FeaturesUnknown bool `json:"featuresUnknown,omitempty"`
+	// PairedHost and PairedPort pin the endpoint this member was paired with.
+	PairedHost string      `json:"pairedHost,omitempty"`
+	PairedPort uint16      `json:"pairedPort,omitempty"`
+	SF         uint64      `json:"sf,omitempty"`
+	Auth       device.Auth `json:"auth,omitempty"`
 }
 
 // Entry is one receiver's persisted configuration. Key is the identity the
@@ -81,9 +86,16 @@ type Entry struct {
 	AirPlay2 bool   `json:"airPlay2,omitempty"`
 	// Features and SF are the last advertised bitfields, cached so a launch
 	// can route a remembered receiver to PTP or NTP without discovery.
-	Features uint64      `json:"features,omitempty"`
-	SF       uint64      `json:"sf,omitempty"`
-	Auth     device.Auth `json:"auth,omitempty"`
+	Features uint64 `json:"features,omitempty"`
+	// FeaturesUnknown marks a cached features value that failed to parse.
+	FeaturesUnknown bool `json:"featuresUnknown,omitempty"`
+	// PairedHost and PairedPort pin the endpoint the receiver was paired
+	// with. Discovery cannot authenticate an advertisement, so a device id
+	// with stored credentials is never moved to a different address.
+	PairedHost string      `json:"pairedHost,omitempty"`
+	PairedPort uint16      `json:"pairedPort,omitempty"`
+	SF         uint64      `json:"sf,omitempty"`
+	Auth       device.Auth `json:"auth,omitempty"`
 	// Members caches a stereo pair's speaker addresses so the next launch can
 	// connect without waiting for discovery. Empty for a single receiver.
 	Members     []Member `json:"members,omitempty"`
@@ -199,11 +211,21 @@ func (e Entry) DisplayName() string {
 	return e.Key
 }
 
+// Endpoint is the address a session should use: the paired endpoint when one
+// is pinned, else the last advertised or typed one.
+func (e Entry) Endpoint() (string, uint16) {
+	if e.PairedHost != "" && e.PairedPort != 0 {
+		return e.PairedHost, e.PairedPort
+	}
+	return e.Host, e.Port
+}
+
 // CachedDevice builds the wire description of a remembered receiver from its
 // persisted fields, so a launch can connect before discovery answers. The
 // bool is false when the entry has no usable address.
 func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
-	if e.Host == "" || e.Port == 0 {
+	host, port := e.Endpoint()
+	if host == "" || port == 0 {
 		return device.Device{}, false
 	}
 	if e.IsGroup() && len(e.Members) == 0 {
@@ -225,17 +247,18 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 		}
 	}
 	d := device.Device{
-		ID:       e.Key,
-		Name:     e.DisplayName(),
-		Host:     e.Host,
-		Port:     e.Port,
-		Model:    model,
-		Features: e.Features,
-		SF:       e.SF,
-		AirPlay2: e.AirPlay2,
-		Auth:     auth,
-		Family:   device.FamilyFor(model, ""),
-		Online:   true,
+		ID:              e.Key,
+		Name:            e.DisplayName(),
+		Host:            host,
+		Port:            port,
+		Model:           model,
+		Features:        e.Features,
+		FeaturesUnknown: e.FeaturesUnknown,
+		SF:              e.SF,
+		AirPlay2:        e.AirPlay2,
+		Auth:            auth,
+		Family:          device.FamilyFor(model, ""),
+		Online:          true,
 	}
 	if e.IsGroup() && len(e.Members) > 0 {
 		d.StereoID = strings.TrimPrefix(e.Key, groupKeyPrefix)
@@ -250,17 +273,18 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 				ma = auth
 			}
 			d.Members = append(d.Members, device.Device{
-				ID:       m.ID,
-				Name:     m.Name,
-				Host:     m.Host,
-				Port:     m.Port,
-				Model:    mm,
-				Features: m.Features,
-				SF:       m.SF,
-				AirPlay2: m.AirPlay2,
-				Auth:     ma,
-				Family:   device.FamilyFor(mm, ""),
-				Online:   true,
+				ID:              m.ID,
+				Name:            m.Name,
+				Host:            m.Host,
+				Port:            m.Port,
+				Model:           mm,
+				Features:        m.Features,
+				FeaturesUnknown: m.FeaturesUnknown,
+				SF:              m.SF,
+				AirPlay2:        m.AirPlay2,
+				Auth:            ma,
+				Family:          device.FamilyFor(mm, ""),
+				Online:          true,
 			})
 		}
 	}

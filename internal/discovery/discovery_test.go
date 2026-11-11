@@ -41,6 +41,59 @@ func TestParseRAOPEntry(t *testing.T) {
 	if d.Features != 0x3C354B004A7FCA00 {
 		t.Fatalf("features = %#x", d.Features)
 	}
+	if d.FeaturesUnknown {
+		t.Fatal("a parsed features value was marked unknown")
+	}
+}
+
+// TestParseEntryUppercaseFeaturePrefixKeepsCapabilities pins the two-part
+// feature decoder against the uppercase prefix a receiver can advertise. A
+// failed parse reads as zero today, which routes a HomePod to AP1 and NTP.
+func TestParseEntryUppercaseFeaturePrefixKeepsCapabilities(t *testing.T) {
+	d, ok := parseEntry(&mdns.ServiceEntry{
+		Name:   "HomePod._airplay._tcp.local.",
+		AddrV4: net.IPv4(192, 168, 1, 20),
+		Port:   7000,
+		InfoFields: []string{
+			"deviceid=AA:BB:CC:DD:EE:FF",
+			"model=AudioAccessory5,1",
+			"features=0X4A7FCA00,0X3C354B00",
+		},
+	}, airplayService)
+	if !ok {
+		t.Fatal("entry rejected")
+	}
+	if d.Features != 0x3C354B004A7FCA00 {
+		t.Fatalf("features = %#x, want 0x3C354B004A7FCA00", d.Features)
+	}
+	if d.Auth != device.AuthHAPTransient {
+		t.Fatalf("auth = %v, want HAP transient", d.Auth)
+	}
+}
+
+// TestParseEntryMarksAnUnparseableFeatureWord pins the other trigger: an empty
+// high word must stay unknown rather than read as a zero value with the low
+// word's bits only.
+func TestParseEntryMarksAnUnparseableFeatureWord(t *testing.T) {
+	d, ok := parseEntry(&mdns.ServiceEntry{
+		Name:   "HomePod._airplay._tcp.local.",
+		AddrV4: net.IPv4(192, 168, 1, 20),
+		Port:   7000,
+		InfoFields: []string{
+			"deviceid=AA:BB:CC:DD:EE:FF",
+			"model=AudioAccessory5,1",
+			"features=0x4A7FCA00,",
+		},
+	}, airplayService)
+	if !ok {
+		t.Fatal("entry rejected")
+	}
+	if !d.FeaturesUnknown {
+		t.Fatalf("features = %#x, want unknown", d.Features)
+	}
+	if d.Auth != device.AuthHAPTransient {
+		t.Fatalf("auth = %v, want HAP transient", d.Auth)
+	}
 }
 
 func TestParseAppleTVEntryChoosesPin(t *testing.T) {
@@ -403,7 +456,7 @@ func TestOnlineStatusAndPrune(t *testing.T) {
 	if got := s.Snapshot(); len(got) != 1 || !got[0].Online {
 		t.Fatalf("fresh device should be online: %+v", got)
 	}
-	base = base.Add(11 * time.Second)
+	base = base.Add(s.staleAfter + time.Second)
 	if got := s.Snapshot(); len(got) != 1 || got[0].Online {
 		t.Fatalf("stale device should be offline but kept: %+v", got)
 	}
@@ -411,6 +464,43 @@ func TestOnlineStatusAndPrune(t *testing.T) {
 	s.prune()
 	if got := s.Snapshot(); len(got) != 0 {
 		t.Fatalf("long-stale device should be pruned: %+v", got)
+	}
+}
+
+// TestStaleWindowOutlastsDirectedPass pins the offline window against both
+// discovery cadences: the multicast browse and the slower directed pass.
+func TestStaleWindowOutlastsDirectedPass(t *testing.T) {
+	s := New(3*time.Second, 1500*time.Millisecond)
+	want := time.Duration(unicastEveryPasses)*s.queryInterval + s.queryTimeout
+	if s.staleAfter < want {
+		t.Fatalf("staleAfter = %s, want at least one directed-pass period plus timeout = %s", s.staleAfter, want)
+	}
+}
+
+// TestDirectedSightingStaysOnlineUntilNextPass reproduces the flap: a record
+// seen at t0 must still be online 12 s later, because the next directed pass
+// cannot answer before 15 s.
+func TestDirectedSightingStaysOnlineUntilNextPass(t *testing.T) {
+	s := New(3*time.Second, 1500*time.Millisecond)
+	base := time.Now()
+	s.now = func() time.Time { return base }
+	e, ok := parseEntry(&mdns.ServiceEntry{
+		Name:   "AABBCCDDEEFF@Kitchen",
+		AddrV4: net.IPv4(10, 0, 0, 2),
+		Port:   5000,
+		InfoFields: []string{
+			"deviceid=AA:BB:CC:DD:EE:FF",
+			"model=AudioAccessory5,1",
+			"features=0x4a7fca00,0x3c354b00",
+		},
+	}, raopService)
+	if !ok {
+		t.Fatal("entry rejected")
+	}
+	s.merge(e)
+	base = base.Add(12 * time.Second)
+	if got := s.Snapshot(); len(got) != 1 || !got[0].Online {
+		t.Fatalf("a directed-pass sighting flapped offline before the next pass: %+v", got)
 	}
 }
 
