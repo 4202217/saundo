@@ -119,7 +119,7 @@ Stream SETUP fields:
 | `supportsDynamicStreamID` | `false` |
 | `streamConnectionID` | Numeric session id |
 
-The latency modes resolve to a millisecond value before SETUP. Low is 200 ms, standard is 1500 ms, stable is 2000 ms, and custom is 20 to 2000 ms. A live change restarts the session so the new latency reaches the stream SETUP and the sender re-anchors the timeline.
+The latency modes resolve to a millisecond value before SETUP. Low is 200 ms, standard is 1500 ms, stable is 2000 ms, and custom is 20 to 4000 ms. The base plus a receiver's DSP/DAC delay clamps to the same window, and the sender sends that value unchanged. A live change restarts the session so the new latency reaches the stream SETUP and the sender re-anchors the timeline.
 
 A macOS receiver adds a 66150-sample scheduling latency (see [devices.md](devices.md)).
 

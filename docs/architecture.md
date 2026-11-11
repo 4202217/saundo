@@ -178,6 +178,8 @@ path for Apple TV.
 
 **OS secret stores for credentials.** Long-term keys never touch disk in plaintext: DPAPI on Windows, the login Keychain on macOS, where a 32-byte master key encrypts the credential JSON with AES-256-GCM. Logs never contain PINs, long-term keys, or session keys.
 
+**LAN threat model.** The local network is untrusted. mDNS and the directed discovery pass are unauthenticated: any host can advertise an existing `deviceid` at an address it controls, and saundo cannot tell that record from the receiver's own. Three rules contain the boundary. A remembered receiver with stored credentials is pinned to the endpoint it was paired with, and a different advertised address never redirects its session. The sender requires the receiver to prove possession of the stored long-term key before offering any stored key material; a failed proof fails the session even though the permissive `strictReceiverAuth` default continues for an unpaired receiver. A receiver password is not re-offered through an automatic repair when a password-gated receiver rejects the stored pairing, because an RFC 2069 Digest response is offline-crackable. A deliberate address edit on a manual receiver clears the pin; otherwise re-pairing is the only way to move it.
+
 **Minimal 200 OK.** Event-channel response headers are strictly minimal. This is a failure mode the C++ blueprint already hit.
 
 **Connect selects the device being connected.** The snapshot's selected ID, the connected name, the UI badge, the remembered volume, and the reconnect target all follow the device the user connected to, and `lastDeviceId` persists only after the session reaches streaming — a failed attempt never becomes the next auto-connect target.
@@ -220,6 +222,7 @@ ready PTP follower it streams. The app selects PTP automatically for
 | airplay2-sender-cpp | Apache-2.0 | 2026-09 | Primary reference; keep NOTICE when porting |
 | pyatv | MIT | 2026-06 | Secondary reference; keep copyright notices when porting |
 | AirFlash | GPLv3+ (or commercial) | 2026-10 | Code reference; ported under the GPLv3 option |
+| Apple SF Symbols | Apple license, not GPL | n/a | Receiver glyph silhouettes in `internal/app/icons_sf_gen.go`, traced and shipped by owner decision; disclosed in NOTICE |
 
 Do not introduce go-wca, zeroconf, or howett.net/plist. Implement or port the corresponding capability instead.
 
