@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-11 -->
+<!-- reviewed-through: 2026-11-12 -->
 
 # Verification
 
@@ -833,6 +833,21 @@ and the verification map is corrected.
 - **Live.** `go test -tags muteprobe ./internal/capture -run
   TestDarwinEndpointMute -v` passed; the rebuilt app launched, and the user
   confirmed a HomePod connection now mutes the local output.
+
+## 2026-11-12 — 0.6.2 UI mockup templates
+
+- **Templates.** Both assets under `.claude/skills/ui-mockup/assets/` describe
+  the 0.6.2 interface. The flyout template adds the credential-recovery state:
+  its copy, the warning and warning-soft tokens from `theme.go`, the 48 DIP
+  bar under the device card, and the +48 height rule. The settings template's
+  sample copy matches the shipped catalog: the 启动时 / At launch chip, the
+  add-receiver hint without a terminal period, and Saundo as the sender name.
+- **Renders.** 44 frames at `.audit/release-0.6.2/mockups/`: the settings
+  target, normal, and edge states and the flyout idle, streaming (with and
+  without the media card), empty, error, and credential states, plus the
+  ambient cover, template, and expanded states, in zh-CN and English, light
+  and dark. Every frame was inspected for clipping, overflow, and wrapped
+  copy; none was found.
 
 ## Graduated
 
