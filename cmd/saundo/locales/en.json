@@ -93,6 +93,13 @@
       }
     }
   },
+  "credentialResetBar": "Saved pairing was reset. Pair again.",
+  "credentialResetTitle": "Saved pairing was reset",
+  "credentialResetSub": "The app could not read the saved pairing data and moved it aside.",
+  "credentialResetBody": "Connect the receiver again to pair it.",
+  "credentialResetHint": "If it still refuses, reset AirPlay on the receiver.",
+  "credentialResetDismiss": "Don't show again",
+  "credentialResetPair": "Pair again",
   "flyoutSearching": "Searching for AirPlay receivers nearby…",
   "flyoutSearchHint": "Make sure the receiver is on the same network and AirPlay is on.",
   "flyoutSearchAgain": "Search again",

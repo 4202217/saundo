@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 // visibleFlyoutHeight is the height a tester should use for this App's
 // current devices, latency row, and media card.
 func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown())
+	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
 }
 
 func withLocale(t *testing.T, tag string) {

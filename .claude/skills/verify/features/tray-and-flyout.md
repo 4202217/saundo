@@ -33,6 +33,14 @@
 - Update chip: the footer's trailing 22-DIP chip opens the settings 更新
   page, and the tray tooltip appends the available or ready version while
   an update waits.
+- Credential recovery: when the engine reports
+  `Snapshot.CredentialReset`, a text-only 48-DIP bar with the connection
+  error bar's inset and height sits under the device card. Its chevron
+  opens a 380-DIP dialog with the reason, the re-pair step, the
+  receiver-reset fallback, and 不再提示 / 重新配对. A successful pairing or
+  the dismiss action clears the notice. Pinned by
+  `TestCredentialResetNoticeAndDialog` and
+  `TestCredentialResetNoticeAndRecovery`.
 - Faces: idle-open while disconnected, smile while connected but silent,
   stream while streaming, connect while connecting, error on failure; the
   flyout footer shares them (`faceOf`).

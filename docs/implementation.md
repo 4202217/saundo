@@ -99,7 +99,7 @@ flyout cannot move the preview away from the top display.
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetVolume`, `SubmitPIN`,
-`DismissPasswordPrompt`, `SetReceiverPassword`, `SetCaptureEndpoint`,
+`DismissPasswordPrompt`, `DismissCredentialReset`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
 `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, `SetTrayAnimation`, and the receiver-management commands

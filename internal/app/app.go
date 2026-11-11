@@ -80,6 +80,8 @@ type App struct {
 	passwordOpen   bool
 	passwordPrompt string
 
+	credentialOpen bool
+
 	volume float64
 
 	captureNames  []string
@@ -155,11 +157,12 @@ type App struct {
 	showLog             bool
 	page                settingsPage
 
-	flyoutEntered   bool
-	settingsEntered bool
-	pinEntered      bool
-	passwordEntered bool
-	logEntered      bool
+	flyoutEntered     bool
+	settingsEntered   bool
+	pinEntered        bool
+	passwordEntered   bool
+	credentialEntered bool
+	logEntered        bool
 }
 
 // Run starts the application and blocks until it quits.
@@ -779,7 +782,7 @@ func (a *App) fitFlyout() {
 	if a.tray == nil || a.win == nil {
 		return
 	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown())
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
 	if h == a.flyoutH {
 		return
 	}
