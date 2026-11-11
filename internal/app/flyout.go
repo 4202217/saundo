@@ -769,7 +769,7 @@ func (a *App) pinDialog(c *ui.Context, p palette) {
 	}
 	modal := ui.DialogBase(c, &a.pinOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
-		panel.Width(430).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
+		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.pinEntered)
 		dialogHead(c, p, iconKey, locales.PinTitle(),
@@ -797,7 +797,7 @@ func (a *App) passwordDialog(c *ui.Context, p palette) {
 	}
 	modal := ui.DialogBase(c, &a.passwordOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
-		panel.Width(430).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
+		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
 		dialogPose(c, panel, &a.passwordEntered)
 		dialogHead(c, p, iconKey, locales.PasswordTitle(),

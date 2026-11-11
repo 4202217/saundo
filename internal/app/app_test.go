@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/i18n"
@@ -187,6 +188,40 @@ func TestPasswordPromptRenders(t *testing.T) {
 		if !tt.HasText(want) {
 			t.Fatalf("password prompt is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	assertDialogMargins(t, tt, locales.PasswordTitle())
+}
+
+// assertDialogMargins pins the dialog panel inside the flyout. A panel wider
+// than the 420-DIP window loses its rounded side edges to the window clip.
+func assertDialogMargins(t *testing.T, tt *ui.Tester, title string) {
+	t.Helper()
+	tt.Advance(200 * time.Millisecond)
+	tt.Frame()
+	r, ok := tt.Find(title)
+	if !ok {
+		t.Fatalf("dialog title %q missing; texts: %q", title, tt.Texts())
+	}
+	img := tt.Image()
+	scale := float32(img.Bounds().Dx()) / float32(flyoutWidth)
+	y := int((r.Y + r.H/2) * scale)
+	pal := paletteFor(false)
+	left, right := -1, -1
+	for x := 0; x < img.Bounds().Dx(); x++ {
+		c := img.RGBAAt(x, y)
+		if c.R == pal.card.R && c.G == pal.card.G && c.B == pal.card.B {
+			if left < 0 {
+				left = x
+			}
+			right = x
+		}
+	}
+	if left < 0 || right < 0 {
+		t.Fatalf("dialog card not found at y=%d; image=%v", y, img.Bounds())
+	}
+	if float32(left)/scale <= 1 || float32(right)/scale >= flyoutWidth-1 {
+		t.Fatalf("dialog panel spans %.0f..%.0f DIP, want margins inside the %d-wide flyout",
+			float32(left)/scale, float32(right)/scale, flyoutWidth)
 	}
 }
 
@@ -987,6 +1022,7 @@ func TestPinDialogRenders(t *testing.T) {
 			t.Fatalf("PIN dialog is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
+	assertDialogMargins(t, tt, locales.PinTitle())
 }
 
 func TestPhaseOf(t *testing.T) {
