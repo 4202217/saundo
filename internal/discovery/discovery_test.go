@@ -96,6 +96,44 @@ func TestParseEntryMarksAnUnparseableFeatureWord(t *testing.T) {
 	}
 }
 
+// TestIPv6OnlyEntryIsNotListed pins the IPv4-only socket contract: an
+// AAAA-only advertisement must not become a zone-less IPv6 host that fails at
+// connect.
+func TestIPv6OnlyEntryIsNotListed(t *testing.T) {
+	d, ok := parseEntry(&mdns.ServiceEntry{
+		Name:         "HomePod._airplay._tcp.local.",
+		Addr:         net.ParseIP("fe80::1"),
+		AddrV6IPAddr: &net.IPAddr{IP: net.ParseIP("fe80::1"), Zone: "eth0"},
+		Port:         7000,
+		InfoFields: []string{
+			"deviceid=AA:BB:CC:DD:EE:FF",
+			"model=AudioAccessory5,1",
+			"features=0x4a7fca00,0x3c354b00",
+		},
+	}, airplayService)
+	if ok {
+		t.Fatalf("IPv6-only entry listed as %s", d.Host)
+	}
+}
+
+func TestMixedAAndAAAAEntryKeepsIPv4(t *testing.T) {
+	d, ok := parseEntry(&mdns.ServiceEntry{
+		Name:         "HomePod._airplay._tcp.local.",
+		AddrV4:       net.IPv4(192, 168, 1, 20),
+		Addr:         net.ParseIP("fe80::1"),
+		AddrV6IPAddr: &net.IPAddr{IP: net.ParseIP("fe80::1"), Zone: "eth0"},
+		Port:         7000,
+		InfoFields: []string{
+			"deviceid=AA:BB:CC:DD:EE:FF",
+			"model=AudioAccessory5,1",
+			"features=0x4a7fca00,0x3c354b00",
+		},
+	}, airplayService)
+	if !ok || d.Host != "192.168.1.20" {
+		t.Fatalf("mixed A/AAAA entry = %+v ok=%v, want the IPv4 host", d, ok)
+	}
+}
+
 func TestParseAppleTVEntryChoosesPin(t *testing.T) {
 	e := &mdns.ServiceEntry{
 		Name:   "Living Room",
