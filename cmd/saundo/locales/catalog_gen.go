@@ -488,6 +488,76 @@ func (msgs Messages) FlyoutConnectFailed(error string) string {
 	return Catalog.Format(msgs.locale, "flyoutConnectFailed", map[string]any{"error": error})
 }
 
+// CredentialResetBar says "Saved pairing was reset. Pair again."
+// in the language the app shows.
+func CredentialResetBar() string { return In(i18n.Locale()).CredentialResetBar() }
+
+// CredentialResetBar says "Saved pairing was reset. Pair again."
+// in the language of msgs.
+func (msgs Messages) CredentialResetBar() string {
+	return Catalog.Format(msgs.locale, "credentialResetBar", nil)
+}
+
+// CredentialResetTitle says "Saved pairing was reset"
+// in the language the app shows.
+func CredentialResetTitle() string { return In(i18n.Locale()).CredentialResetTitle() }
+
+// CredentialResetTitle says "Saved pairing was reset"
+// in the language of msgs.
+func (msgs Messages) CredentialResetTitle() string {
+	return Catalog.Format(msgs.locale, "credentialResetTitle", nil)
+}
+
+// CredentialResetSub says "The app could not read the saved pairing data and moved it aside."
+// in the language the app shows.
+func CredentialResetSub() string { return In(i18n.Locale()).CredentialResetSub() }
+
+// CredentialResetSub says "The app could not read the saved pairing data and moved it aside."
+// in the language of msgs.
+func (msgs Messages) CredentialResetSub() string {
+	return Catalog.Format(msgs.locale, "credentialResetSub", nil)
+}
+
+// CredentialResetBody says "Connect the receiver again to pair it."
+// in the language the app shows.
+func CredentialResetBody() string { return In(i18n.Locale()).CredentialResetBody() }
+
+// CredentialResetBody says "Connect the receiver again to pair it."
+// in the language of msgs.
+func (msgs Messages) CredentialResetBody() string {
+	return Catalog.Format(msgs.locale, "credentialResetBody", nil)
+}
+
+// CredentialResetHint says "If it still refuses, reset AirPlay on the receiver."
+// in the language the app shows.
+func CredentialResetHint() string { return In(i18n.Locale()).CredentialResetHint() }
+
+// CredentialResetHint says "If it still refuses, reset AirPlay on the receiver."
+// in the language of msgs.
+func (msgs Messages) CredentialResetHint() string {
+	return Catalog.Format(msgs.locale, "credentialResetHint", nil)
+}
+
+// CredentialResetDismiss says "Don't show again"
+// in the language the app shows.
+func CredentialResetDismiss() string { return In(i18n.Locale()).CredentialResetDismiss() }
+
+// CredentialResetDismiss says "Don't show again"
+// in the language of msgs.
+func (msgs Messages) CredentialResetDismiss() string {
+	return Catalog.Format(msgs.locale, "credentialResetDismiss", nil)
+}
+
+// CredentialResetPair says "Pair again"
+// in the language the app shows.
+func CredentialResetPair() string { return In(i18n.Locale()).CredentialResetPair() }
+
+// CredentialResetPair says "Pair again"
+// in the language of msgs.
+func (msgs Messages) CredentialResetPair() string {
+	return Catalog.Format(msgs.locale, "credentialResetPair", nil)
+}
+
 // FlyoutSearching says "Searching for AirPlay receivers nearby…"
 // in the language the app shows.
 func FlyoutSearching() string { return In(i18n.Locale()).FlyoutSearching() }

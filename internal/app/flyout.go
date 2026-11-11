@@ -72,9 +72,12 @@ func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool) int {
 // flyoutHeightForState adds the error bar and the template grid while they
 // are shown. The window is anchored by its bottom edge, so this grows it
 // upward.
-func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampCover, lampExpanded, errorBar bool) int {
+func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampCover, lampExpanded, errorBar, credentialBar bool) int {
 	h := flyoutHeightFor(n, showLatencySwitch, hasMedia)
 	if errorBar {
+		h += errorBarHeight
+	}
+	if credentialBar {
 		h += errorBarHeight
 	}
 	if !lampCover && lampExpanded {
@@ -100,6 +103,7 @@ func (a *App) view(c *ui.Context) {
 	})
 	a.pinDialog(c, p)
 	a.passwordDialog(c, p)
+	a.credentialDialog(c, p)
 }
 
 func (a *App) flyoutHeader(c *ui.Context, p palette) {
@@ -123,6 +127,9 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 		ui.Row(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).Background(p.redSoft).Children(func() {
 			ui.Text(c, locales.FlyoutConnectFailed(a.snap.Error)).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
 		})
+	}
+	if a.snap.CredentialReset {
+		a.credentialBar(c, p)
 	}
 }
 

@@ -27,12 +27,15 @@ import (
 
 // Snapshot is the complete state the UI draws.
 type Snapshot struct {
-	Devices          []device.Device
-	Receivers        []receivers.View
-	SelectedID       string
-	State            sender.State
-	ConnectedName    string
-	Error            string
+	Devices       []device.Device
+	Receivers     []receivers.View
+	SelectedID    string
+	State         sender.State
+	ConnectedName string
+	Error         string
+	// CredentialReset is true when the saved credentials could not be read
+	// and were moved aside this run. The flyout explains the re-pair.
+	CredentialReset  bool
 	TakenOver        bool
 	PinRequired      bool
 	PinDevice        string
@@ -90,6 +93,7 @@ const (
 	cmdVolume
 	cmdPin
 	cmdDismissPassword
+	cmdDismissCredentialReset
 	cmdCaptureEndpoint
 	cmdRefresh
 	cmdStrictAuth
@@ -373,6 +377,7 @@ type Engine struct {
 	activeMembers    []device.Device
 	connectedName    string
 	lastError        string
+	credentialReset  bool
 	takenOver        bool
 	pinRequired      bool
 	pinDevice        string
@@ -492,6 +497,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		}
 	}
 	e.pinExistingCredentials()
+	e.noteCredentialQuarantine()
 	e.newSession = e.openSession
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
@@ -658,6 +664,11 @@ func (e *Engine) SubmitPIN(code string) {
 // changing the session.
 func (e *Engine) DismissPasswordPrompt() {
 	e.send(command{kind: cmdDismissPassword})
+}
+
+// DismissCredentialReset clears the credential-recovery notice for this run.
+func (e *Engine) DismissCredentialReset() {
+	e.send(command{kind: cmdDismissCredentialReset})
 }
 
 // SetCaptureEndpoint selects an output endpoint; empty follows the default.
@@ -1126,6 +1137,9 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdDismissPassword:
 		e.clearPasswordPrompt()
 		e.publish()
+	case cmdDismissCredentialReset:
+		e.credentialReset = false
+		e.publish()
 	case cmdCaptureEndpoint:
 		e.captureEndpoint = cmd.deviceID
 		e.captureName = cmd.name
@@ -1383,9 +1397,7 @@ func (e *Engine) connect(d device.Device) {
 		tr.SetAuth(d.Auth, airplay2, d.ID, e.creds.Load(d.ID), password)
 		tr.SetFamily(d.Family)
 	}
-	if q := e.creds.TakeQuarantine(); q != "" {
-		e.logf("credentials file was unreadable; moved to %s; a receiver may need to be paired again", q)
-	}
+	e.noteCredentialQuarantine()
 	if rings := tr.Rings(); len(rings) > 0 {
 		e.attachMemberRings(rings)
 	}
@@ -1699,8 +1711,23 @@ func (e *Engine) onCredentials(deviceID, credsJSON string) {
 	} else {
 		e.logf("credentials saved for %s", deviceID)
 		e.pinPairedEndpoint(deviceID)
+		// A fresh pairing proves the rebuilt store is usable, so the recovery
+		// notice has done its job.
+		e.credentialReset = false
 	}
 	e.publish()
+}
+
+// noteCredentialQuarantine surfaces an unreadable credentials file that the
+// store moved aside. The next pairing writes a fresh file; the notice tells
+// the user why a receiver asks to pair again.
+func (e *Engine) noteCredentialQuarantine() {
+	q := e.creds.TakeQuarantine()
+	if q == "" {
+		return
+	}
+	e.credentialReset = true
+	e.logf("credentials file was unreadable; moved to %s; a receiver may need to be paired again", q)
 }
 
 // pinPairedEndpoint records the address a fresh pairing used, so a later
@@ -2502,6 +2529,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		State:              state,
 		ConnectedName:      e.connectedName,
 		Error:              e.lastError,
+		CredentialReset:    e.credentialReset,
 		TakenOver:          e.takenOver,
 		PinRequired:        e.pinRequired,
 		PinDevice:          e.pinDevice,

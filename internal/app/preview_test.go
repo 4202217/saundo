@@ -288,6 +288,17 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	failed.snap.ConnectedName = ""
 	save("flyout-error", failed.view, flyoutWidth, visibleFlyoutHeight(failed), false)
 
+	credential := fixture()
+	credential.snap.CredentialReset = true
+	save("flyout-credential-light", credential.view, flyoutWidth, visibleFlyoutHeight(credential), false)
+	save("flyout-credential-dark", credential.view, flyoutWidth, visibleFlyoutHeight(credential), true)
+
+	credentialDialog := fixture()
+	credentialDialog.snap.CredentialReset = true
+	credentialDialog.credentialOpen = true
+	save("dialog-credential", credentialDialog.view, flyoutWidth, visibleFlyoutHeight(credentialDialog), false)
+	save("dialog-credential-dark", credentialDialog.view, flyoutWidth, visibleFlyoutHeight(credentialDialog), true)
+
 	takenOver := fixture()
 	takenOver.snap.State = sender.StateIdle
 	takenOver.snap.TakenOver = true
