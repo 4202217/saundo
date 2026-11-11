@@ -4,6 +4,7 @@ package settings
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,11 @@ import (
 
 	"saundo/internal/lamp"
 )
+
+// ErrCorrupt reports a settings.json this build cannot parse. The store then
+// refuses to save, so the user's file is not replaced by the defaults a failed
+// parse returned; a later successful load clears the guard.
+var ErrCorrupt = errors.New("settings: corrupt settings file")
 
 // ThemeMode is the user's light or dark appearance choice. System follows
 // Windows.
@@ -87,7 +93,13 @@ const (
 	CoverMedia       CoverMode = "media"
 )
 
+// SchemaVersion stamps every save. A file with a higher number was written by
+// a newer build; this build reads its known fields but never rewrites it.
+// Bump this whenever a persisted field is added, renamed, or removed.
+const SchemaVersion = 1
+
 type Settings struct {
+	Version             int                `json:"version"`
 	Name                string             `json:"name"`
 	NameMigrated        bool               `json:"nameMigrated"`
 	DeviceID            string             `json:"deviceId"`
@@ -128,6 +140,7 @@ type Settings struct {
 // Default returns the first-run configuration.
 func Default() Settings {
 	return Settings{
+		Version:             SchemaVersion,
 		Name:                "声渡",
 		DeviceID:            newDeviceID(),
 		Volume:              80,
@@ -154,8 +167,9 @@ func Default() Settings {
 
 // Store reads and writes settings.json.
 type Store struct {
-	mu   sync.Mutex
-	path string
+	mu      sync.Mutex
+	path    string
+	corrupt bool
 }
 
 // NewStore returns the per-user settings store.
@@ -175,8 +189,16 @@ func NewStoreAt(path string) *Store { return &Store{path: path} }
 func (s *Store) Dir() string { return filepath.Dir(s.path) }
 
 // Load returns the stored settings, filling defaults for missing fields. A
-// missing or corrupt file yields the defaults.
+// missing file yields the defaults; a corrupt one also yields the defaults,
+// and the store refuses to overwrite it until a load succeeds.
 func (s *Store) Load() Settings {
+	v, _ := s.LoadChecked()
+	return v
+}
+
+// LoadChecked is Load with the read error, for the startup path that would
+// otherwise write the defaults over an unreadable file.
+func (s *Store) LoadChecked() (Settings, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.loadLocked()
@@ -189,23 +211,37 @@ func (s *Store) Load() Settings {
 func (s *Store) Update(fn func(*Settings)) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	v := s.loadLocked()
+	v, err := s.loadLocked()
+	if err != nil {
+		return err
+	}
 	fn(&v)
 	return s.saveLocked(v)
 }
 
-func (s *Store) loadLocked() Settings {
+func (s *Store) loadLocked() (Settings, error) {
 	out := Default()
 	data, err := os.ReadFile(s.path)
 	if err != nil {
-		return out
+		if os.IsNotExist(err) {
+			s.corrupt = false
+			return out, nil
+		}
+		s.corrupt = true
+		return out, fmt.Errorf("settings: read: %w", err)
 	}
 	// A missing latencyMode must stay distinguishable from the default, so a
 	// legacy file's latencyMs can choose the mode.
 	out.LatencyMode = ""
 	if err := json.Unmarshal(data, &out); err != nil {
-		return Default()
+		s.corrupt = true
+		return Default(), fmt.Errorf("%w: %v", ErrCorrupt, err)
 	}
+	newer := out.Version > SchemaVersion
+	if out.Version == 0 {
+		out.Version = SchemaVersion
+	}
+	s.corrupt = false
 	if out.Name == "" {
 		out.Name = "声渡"
 	}
@@ -268,7 +304,13 @@ func (s *Store) loadLocked() Settings {
 		}
 	}
 	out.Standby.IdleMinutes = NormalizeStandbyMinutes(out.Standby.IdleMinutes)
-	return out
+	if newer {
+		// Read-only downgrade: the known fields still load, so the app keeps
+		// the user's preferences, but no save may replace the newer document.
+		s.corrupt = true
+		return out, fmt.Errorf("settings: schema %d is newer than this build's %d", out.Version, SchemaVersion)
+	}
+	return out, nil
 }
 
 // NormalizeStandbyMinutes maps an idle threshold to one of the offered values.
@@ -339,6 +381,10 @@ func (s *Store) Save(v Settings) error {
 }
 
 func (s *Store) saveLocked(v Settings) error {
+	if s.corrupt {
+		return ErrCorrupt
+	}
+	v.Version = SchemaVersion
 	if v.DeviceID == "" {
 		v.DeviceID = newDeviceID()
 	}

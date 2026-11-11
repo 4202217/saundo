@@ -28,7 +28,12 @@ type MigrationResult struct {
 // still move); the legacy flag stays set so the next healthy start retries.
 func MigrateSettings(sets *settings.Store, secret PasswordStore, reg *Store) (MigrationResult, error) {
 	var res MigrationResult
-	cfg := sets.Load()
+	cfg, err := sets.LoadChecked()
+	if err != nil {
+		// Never migrate or rewrite a file this build could not parse: the
+		// defaults a failed load returns would replace the user's settings.
+		return res, err
+	}
 
 	// The legacy map keys are device IDs. Namespace them so the file's
 	// other entries (HAP keys) and these can never collide. A password
