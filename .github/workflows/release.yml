@@ -5,7 +5,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,6 +20,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Format
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
       - name: Catalogs
         run: go tool mygo i18n check cmd/saundo
       - name: Vet
@@ -28,16 +37,27 @@ jobs:
         run: go tool mygo vet .
       - name: Tests
         run: go test -short ./...
+      - name: Verify map
+        shell: bash
+        run: scripts/check-verify-map.sh
       - name: Platforms
         run: go run ./scripts/check-platforms
 
   draft:
     needs: check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check the version
         run: test "$GITHUB_REF_NAME" = "v$(jq -r .version cmd/saundo/mygo.json)"
+      - name: Check the tag is on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_REF_NAME" origin/main
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,6 +70,8 @@ jobs:
   build:
     needs: [check, draft]
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,6 +109,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Format
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
       - name: Catalogs
         run: go tool mygo i18n check cmd/saundo
       - name: Vet
@@ -97,10 +127,14 @@ jobs:
         env:
           SAUNDO_CREDS_MASTER_KEY: "6b65797320617265206e6f7420736563726574732e2074657374206f6e6c792e"
         run: go test -short ./...
+      - name: Verify map
+        run: bash scripts/check-verify-map.sh
 
   build-macos:
-    needs: [check, check-macos, draft]
+    needs: [check, check-macos, draft, build]
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,9 +158,16 @@ jobs:
           sign="${MACOS_SIGN_IDENTITY:--}"
           go tool mygo build -platform darwin/arm64 -skip-build-command -sign "$sign"
       # The dmg ships as a manual download: the mac build disables the
-      # updater until a signed, notarized mac feed exists.
-      - name: Upload the dmg to the draft release
+      # updater until a signed, notarized mac feed exists. The Windows build
+      # wrote SHA256SUMS first, so this job adds the dmg line to it.
+      - name: Upload the dmg and update SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$GITHUB_REF_NAME"             cmd/saundo/build/darwin-arm64/saundo-*.dmg             --repo "$GITHUB_REPOSITORY"
+          dmg="$(ls cmd/saundo/build/darwin-arm64/saundo-*.dmg)"
+          gh release upload "$GITHUB_REF_NAME" "$dmg" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release download "$GITHUB_REF_NAME" -p SHA256SUMS -O SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+          grep -v '\.dmg$' SHA256SUMS > SHA256SUMS.new || true
+          printf '%s  %s\n' "$(shasum -a 256 "$dmg" | awk '{print $1}')" "$(basename "$dmg")" >> SHA256SUMS.new
+          mv SHA256SUMS.new SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
