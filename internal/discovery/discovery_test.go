@@ -542,6 +542,33 @@ func TestDirectedSightingStaysOnlineUntilNextPass(t *testing.T) {
 	}
 }
 
+// TestDirectedPassDoesNotBlockPublish pins the snapshot deadline: a slow
+// neighbor lookup may finish after the publish, but not delay it.
+func TestDirectedPassDoesNotBlockPublish(t *testing.T) {
+	prev := mdnsQuery
+	mdnsQuery = func(*mdns.QueryParam) error { return nil }
+	defer func() { mdnsQuery = prev }()
+
+	s := New(0, 0)
+	s.neighbors = func() ([]string, error) { return []string{"10.0.0.1"}, nil }
+	s.unicastLookup = func(string, int, string, time.Duration) ([]*mdns.ServiceEntry, error) {
+		time.Sleep(600 * time.Millisecond)
+		return nil, nil
+	}
+
+	done := make(chan struct{})
+	go func() {
+		s.queryOnce()
+		close(done)
+	}()
+	select {
+	case <-s.Updates():
+	case <-time.After(300 * time.Millisecond):
+		t.Fatal("publish waited for the directed pass")
+	}
+	<-done
+}
+
 func TestGroupFieldsParsedAndMerged(t *testing.T) {
 	raop, ok := parseEntry(&mdns.ServiceEntry{
 		Name:   `AABBCCDDEEFF@Kitchen._raop._tcp.local.`,

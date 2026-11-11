@@ -266,12 +266,14 @@ func (s *Service) run() {
 func (s *Service) queryOnce() {
 	local := s.localAddresses()
 	var wg sync.WaitGroup
-	// The directed pass is parallel to the browse so a slow neighbor does not
-	// extend the cycle by its full timeout.
+	var pass sync.WaitGroup
+	// The directed pass is parallel to the browse and off the snapshot's
+	// critical path: a slow neighbor must not delay this publish. Its
+	// findings reach the next snapshot.
 	if s.unicastDue() {
-		wg.Add(1)
+		pass.Add(1)
 		go func() {
-			defer wg.Done()
+			defer pass.Done()
 			s.unicastOnce()
 		}()
 	}
@@ -305,6 +307,7 @@ func (s *Service) queryOnce() {
 	wg.Wait()
 	s.prune()
 	s.publish()
+	pass.Wait()
 }
 
 func (s *Service) merge(d device.Device) {
