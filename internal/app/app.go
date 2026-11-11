@@ -169,6 +169,16 @@ type App struct {
 	logEntered        bool
 }
 
+// senderNameForFirstRun gives a new profile the locale's app name and keeps
+// a stored name. An English install then advertises "Saundo" instead of the
+// Chinese brand.
+func senderNameForFirstRun(firstRun bool, stored string) string {
+	if firstRun {
+		return locales.AppName()
+	}
+	return stored
+}
+
 // Run starts the application and blocks until it quits.
 func Run() error {
 	// The updater compares against the build stamp, not the version resource,
@@ -197,11 +207,20 @@ func Run() error {
 	}
 	a.log.Printf("saundo %s", Version)
 
+	firstRun := !a.sets.Exists()
 	cfg := a.sets.Load()
+	if firstRun {
+		cfg.Name = senderNameForFirstRun(firstRun, cfg.Name)
+		if err := a.sets.Save(cfg); err != nil {
+			a.log.Printf("settings save failed: %v", err)
+		}
+	}
 	if cfg.Name == legacyName && !cfg.NameMigrated {
-		// The rename owns the sender name; receivers should show 声渡. Run it
-		// once so a later deliberate rename back to the legacy word sticks.
-		cfg.Name = "声渡"
+		// The rename owns the sender name; use the app's name in the current
+		// locale so an English install does not advertise the Chinese brand.
+		// Run it once so a later deliberate rename back to the legacy word
+		// sticks.
+		cfg.Name = locales.AppName()
 		cfg.NameMigrated = true
 		if err := a.sets.Save(cfg); err != nil {
 			a.log.Printf("settings save failed: %v", err)

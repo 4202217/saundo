@@ -1903,3 +1903,15 @@ func TestFitFlyoutResizesWithoutATray(t *testing.T) {
 		t.Fatalf("fitFlyout resized to %dx%d, want %dx%d", width, height, flyoutWidth, want)
 	}
 }
+
+// TestFirstRunSenderNameFollowsTheLocale pins the new-profile default: an
+// English install advertises Saundo, while a stored name wins.
+func TestFirstRunSenderNameFollowsTheLocale(t *testing.T) {
+	withLocale(t, "en")
+	if got := senderNameForFirstRun(true, "声渡"); got != "Saundo" {
+		t.Fatalf("first-run sender name = %q, want Saundo", got)
+	}
+	if got := senderNameForFirstRun(false, "声渡"); got != "声渡" {
+		t.Fatalf("stored sender name = %q, want the stored name", got)
+	}
+}
