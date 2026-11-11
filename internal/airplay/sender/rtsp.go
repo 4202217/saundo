@@ -53,8 +53,6 @@ func (s *Sender) sendRequest(method, uri, contentType, body string, extra []head
 	b.WriteString(body)
 
 	s.pending = append(s.pending, pendingReq{method: method})
-	s.pendingDigestVerb = method
-	s.pendingDigestURI = uri
 	s.writeRTSP([]byte(b.String()))
 	if s.state == StateHandshake || s.state == StatePairing {
 		s.timeout.arm(s.now())
