@@ -1,33 +1,35 @@
 package app
 
 import (
-	"embed"
 	"log"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
 )
 
-// The tray menu's glyphs are rendered from the interface's SVGs by
-// TestGenerateMenuIcons: black on transparent, which a native menu tints
-// with its text color.
-//
-//go:embed assets/menu-*.png
-var menuIconFS embed.FS
+// menuIconSources are the tray menu's glyphs: the interface's own SVGs,
+// drawn by the native menu as template images tinted with its text color.
+var menuIconSources = []struct {
+	name string
+	svg  *ui.SVG
+}{
+	{"open", iconMark},
+	{"settings", iconGear},
+	{"connect", iconLink},
+	{"disconnect", iconUnlink},
+	{"quit", iconPower},
+	{"update", iconRefresh},
+}
 
 func loadMenuIcons() map[string]*mygo.MenuIcon {
-	names := []string{"open", "settings", "connect", "disconnect", "quit", "update"}
-	icons := make(map[string]*mygo.MenuIcon, len(names))
-	for _, name := range names {
-		data, err := menuIconFS.ReadFile("assets/menu-" + name + ".png")
+	icons := make(map[string]*mygo.MenuIcon, len(menuIconSources))
+	for _, it := range menuIconSources {
+		icon, err := mygo.NewMenuIconSVG(it.svg, true)
 		if err != nil {
+			log.Printf("menu icon %s: %v", it.name, err)
 			continue
 		}
-		icon, err := mygo.NewMenuIcon(data, true)
-		if err != nil {
-			log.Printf("menu icon %s: %v", name, err)
-			continue
-		}
-		icons[name] = icon
+		icons[it.name] = icon
 	}
 	return icons
 }

@@ -25,6 +25,7 @@ const (
 // applying so the device row, footer, and tray keep their streaming face.
 // The latency row and ALAC line still update at once.
 func (a *App) apply(snap engine.Snapshot) {
+	a.power.observe(sessionActive(snap))
 	if a.latencyApplying && a.holdLatencyApply(snap) {
 		return
 	}

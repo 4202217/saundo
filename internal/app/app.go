@@ -51,6 +51,7 @@ type App struct {
 	menuKey             trayMenuKey
 	menuIcons           map[string]*mygo.MenuIcon
 	quitting            bool
+	power               powerHold
 	flyoutH             int
 	// resizeWindow replaces the flyout window resize in tests; production
 	// uses win.SetSize.
@@ -204,6 +205,7 @@ func Run() error {
 		captureLabels:  []string{locales.CaptureFollowSystem()},
 		captureChoice:  locales.CaptureFollowSystem(),
 		volume:         80,
+		power:          powerHold{acquire: mygo.Power.KeepRunning},
 	}
 	a.log.Printf("saundo %s", Version)
 
@@ -295,6 +297,7 @@ func Run() error {
 		if a.receiverDelayTimer != nil {
 			a.receiverDelayTimer.Stop()
 		}
+		a.power.stop()
 		a.eng.Stop()
 	})
 	// Windows leaves a tray icon behind after its app until the pointer

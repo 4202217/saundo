@@ -17,7 +17,12 @@ through bounded channels:
 
 - **The mygo main thread** owns the tray flyout, the settings window, the
   tray icon, and all UI state. Engine snapshots arrive as `win.Update`
-  callbacks (`internal/app`).
+  callbacks (`internal/app`). While a session is connecting, pairing,
+  streaming, or reconnecting, the main thread also holds
+  `mygo.Power.KeepRunning` so macOS does not put the hidden tray app into
+  App Nap; the hold is released when the session returns to idle or the
+  receiver is taken over, and before `Engine.Stop` on quit. Other systems
+  no-op.
 - **The engine goroutine** (`internal/engine`, `Engine.run`) is the only
   caller of sender methods. It drains the command channel, runs the timers
   (reconnect backoff, silence suspend, capture restart), renders the

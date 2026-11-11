@@ -680,7 +680,7 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 	color := phaseColor(ph, p)
 	ui.Row(c).Height(34).Padding(4, 12, 6, 14).Gap(6).Children(func() {
 		ui.Icon(c, footerFace(a.snap)).Size(16, 16).TextColor(color)
-		ui.Text(c, a.phaseLabel()).FontSize(11.5).TextColor(color).Grow(1).SingleLine().Ellipsis("…")
+		ui.Text(c, a.phaseLabel()).FontSize(11.5).TextColor(color).Key("flyout-status").Role(ui.RoleStatus).Grow(1).SingleLine().Ellipsis("…")
 		if a.updateChipVisible() {
 			chip := ui.ButtonBase(c).Height(22).Radius(11).Padding(0, 9).Center().Shrink(0).
 				Cursor(ui.CursorPointer).Label(a.updateChipLabel())
