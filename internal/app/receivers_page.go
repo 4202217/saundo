@@ -444,9 +444,9 @@ func (a *App) receiverDelayRow(c *ui.Context, p palette, v receivers.View, hidde
 			sl.Opacity(0.55)
 		}
 		ui.Row(c).Margin(2, 0, 0, 0).Children(func() {
-			ui.Text(c, "0 ms").FontSize(10.5).TextColor(p.faint)
+			ui.Text(c, settings.LatencyText(0)).FontSize(10.5).TextColor(p.faint)
 			ui.Spacer(c)
-			ui.Text(c, "2 s").FontSize(10.5).TextColor(p.faint)
+			ui.Text(c, settings.LatencyText(2000)).FontSize(10.5).TextColor(p.faint)
 		})
 	})
 }

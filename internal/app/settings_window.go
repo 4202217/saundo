@@ -824,9 +824,9 @@ func (a *App) latencyCustomTile(c *ui.Context, p palette, mode *settings.Latency
 					a.setLatencyCustom(v)
 				}).Margin(4, 0, 0, 0)
 				ui.Row(c).Children(func() {
-					ui.Text(c, "20 ms").FontSize(10.5).TextColor(p.muted)
+					ui.Text(c, settings.LatencyText(20)).FontSize(10.5).TextColor(p.muted)
 					ui.Spacer(c)
-					ui.Text(c, "2 s").FontSize(10.5).TextColor(p.muted)
+					ui.Text(c, settings.LatencyText(2000)).FontSize(10.5).TextColor(p.muted)
 				})
 			})
 		}

@@ -1868,3 +1868,20 @@ func TestFormatRate(t *testing.T) {
 		}
 	}
 }
+
+// TestLatencyScaleUsesTheFormatter pins both slider scales to
+// settings.LatencyText. The literal labels agree with the formatter today,
+// so only a source scan catches a later drift.
+func TestLatencyScaleUsesTheFormatter(t *testing.T) {
+	for _, file := range []string{"receivers_page.go", "settings_window.go"} {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, lit := range []string{`"0 ms"`, `"2 s"`, `"20 ms"`} {
+			if bytes.Contains(data, []byte(lit)) {
+				t.Errorf("%s still writes the literal %s; use settings.LatencyText", file, lit)
+			}
+		}
+	}
+}
