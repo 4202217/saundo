@@ -265,6 +265,9 @@ func Run() error {
 		if a.latencyHoldTimer != nil {
 			a.latencyHoldTimer.Stop()
 		}
+		if a.receiverDelayTimer != nil {
+			a.receiverDelayTimer.Stop()
+		}
 		a.eng.Stop()
 	})
 	// Windows leaves a tray icon behind after its app until the pointer
