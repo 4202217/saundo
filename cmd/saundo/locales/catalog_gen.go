@@ -558,6 +558,148 @@ func (msgs Messages) CredentialResetPair() string {
 	return Catalog.Format(msgs.locale, "credentialResetPair", nil)
 }
 
+// ErrorDeviceMissing says "Device not found. Refresh and try again."
+// in the language the app shows.
+func ErrorDeviceMissing() string { return In(i18n.Locale()).ErrorDeviceMissing() }
+
+// ErrorDeviceMissing says "Device not found. Refresh and try again."
+// in the language of msgs.
+func (msgs Messages) ErrorDeviceMissing() string {
+	return Catalog.Format(msgs.locale, "errorDeviceMissing", nil)
+}
+
+// ErrorLatencyDeviceMissing says "Latency saved, but the device was not found, so the session did not restart."
+// in the language the app shows.
+func ErrorLatencyDeviceMissing() string { return In(i18n.Locale()).ErrorLatencyDeviceMissing() }
+
+// ErrorLatencyDeviceMissing says "Latency saved, but the device was not found, so the session did not restart."
+// in the language of msgs.
+func (msgs Messages) ErrorLatencyDeviceMissing() string {
+	return Catalog.Format(msgs.locale, "errorLatencyDeviceMissing", nil)
+}
+
+// ErrorLatencyOffline says "Latency saved, but the device is offline, so the session did not restart."
+// in the language the app shows.
+func ErrorLatencyOffline() string { return In(i18n.Locale()).ErrorLatencyOffline() }
+
+// ErrorLatencyOffline says "Latency saved, but the device is offline, so the session did not restart."
+// in the language of msgs.
+func (msgs Messages) ErrorLatencyOffline() string {
+	return Catalog.Format(msgs.locale, "errorLatencyOffline", nil)
+}
+
+// ErrorSavePassword says "Could not save the receiver password: {error}"
+// in the language the app shows.
+func ErrorSavePassword(error string) string { return In(i18n.Locale()).ErrorSavePassword(error) }
+
+// ErrorSavePassword says "Could not save the receiver password: {error}"
+// in the language of msgs.
+func (msgs Messages) ErrorSavePassword(error string) string {
+	return Catalog.Format(msgs.locale, "errorSavePassword", map[string]any{"error": error})
+}
+
+// ErrorSaveReceiver says "Could not save the receiver settings: {error}"
+// in the language the app shows.
+func ErrorSaveReceiver(error string) string { return In(i18n.Locale()).ErrorSaveReceiver(error) }
+
+// ErrorSaveReceiver says "Could not save the receiver settings: {error}"
+// in the language of msgs.
+func (msgs Messages) ErrorSaveReceiver(error string) string {
+	return Catalog.Format(msgs.locale, "errorSaveReceiver", map[string]any{"error": error})
+}
+
+// ErrorLocalReceiver says "Saundo is running on this computer, so it cannot be a receiver."
+// in the language the app shows.
+func ErrorLocalReceiver() string { return In(i18n.Locale()).ErrorLocalReceiver() }
+
+// ErrorLocalReceiver says "Saundo is running on this computer, so it cannot be a receiver."
+// in the language of msgs.
+func (msgs Messages) ErrorLocalReceiver() string {
+	return Catalog.Format(msgs.locale, "errorLocalReceiver", nil)
+}
+
+// ErrorStereoMembersOffline says "Both stereo members must be online."
+// in the language the app shows.
+func ErrorStereoMembersOffline() string { return In(i18n.Locale()).ErrorStereoMembersOffline() }
+
+// ErrorStereoMembersOffline says "Both stereo members must be online."
+// in the language of msgs.
+func (msgs Messages) ErrorStereoMembersOffline() string {
+	return Catalog.Format(msgs.locale, "errorStereoMembersOffline", nil)
+}
+
+// ErrorFairPlay says "{device} uses an audio format this app does not support."
+// in the language the app shows.
+func ErrorFairPlay(device string) string { return In(i18n.Locale()).ErrorFairPlay(device) }
+
+// ErrorFairPlay says "{device} uses an audio format this app does not support."
+// in the language of msgs.
+func (msgs Messages) ErrorFairPlay(device string) string {
+	return Catalog.Format(msgs.locale, "errorFairPlay", map[string]any{"device": device})
+}
+
+// ErrorEndpointMoved says "{device}'s address changed since pairing, so the connection was refused."
+// in the language the app shows.
+func ErrorEndpointMoved(device string) string { return In(i18n.Locale()).ErrorEndpointMoved(device) }
+
+// ErrorEndpointMoved says "{device}'s address changed since pairing, so the connection was refused."
+// in the language of msgs.
+func (msgs Messages) ErrorEndpointMoved(device string) string {
+	return Catalog.Format(msgs.locale, "errorEndpointMoved", map[string]any{"device": device})
+}
+
+// ErrorSessionOpen says "Could not open the session: {error}"
+// in the language the app shows.
+func ErrorSessionOpen(error string) string { return In(i18n.Locale()).ErrorSessionOpen(error) }
+
+// ErrorSessionOpen says "Could not open the session: {error}"
+// in the language of msgs.
+func (msgs Messages) ErrorSessionOpen(error string) string {
+	return Catalog.Format(msgs.locale, "errorSessionOpen", map[string]any{"error": error})
+}
+
+// ErrorReconnectStopped says "Stopped after {count} reconnect attempts."
+// in the language the app shows.
+func ErrorReconnectStopped(count string) string {
+	return In(i18n.Locale()).ErrorReconnectStopped(count)
+}
+
+// ErrorReconnectStopped says "Stopped after {count} reconnect attempts."
+// in the language of msgs.
+func (msgs Messages) ErrorReconnectStopped(count string) string {
+	return Catalog.Format(msgs.locale, "errorReconnectStopped", map[string]any{"count": count})
+}
+
+// ErrorReceiverMissing says "The receiver no longer exists. Refresh and try again."
+// in the language the app shows.
+func ErrorReceiverMissing() string { return In(i18n.Locale()).ErrorReceiverMissing() }
+
+// ErrorReceiverMissing says "The receiver no longer exists. Refresh and try again."
+// in the language of msgs.
+func (msgs Messages) ErrorReceiverMissing() string {
+	return Catalog.Format(msgs.locale, "errorReceiverMissing", nil)
+}
+
+// ErrorDeletePassword says "Could not delete the receiver password: {error}"
+// in the language the app shows.
+func ErrorDeletePassword(error string) string { return In(i18n.Locale()).ErrorDeletePassword(error) }
+
+// ErrorDeletePassword says "Could not delete the receiver password: {error}"
+// in the language of msgs.
+func (msgs Messages) ErrorDeletePassword(error string) string {
+	return Catalog.Format(msgs.locale, "errorDeletePassword", map[string]any{"error": error})
+}
+
+// UpdateInstallFailed says "The update could not be installed. Try again."
+// in the language the app shows.
+func UpdateInstallFailed() string { return In(i18n.Locale()).UpdateInstallFailed() }
+
+// UpdateInstallFailed says "The update could not be installed. Try again."
+// in the language of msgs.
+func (msgs Messages) UpdateInstallFailed() string {
+	return Catalog.Format(msgs.locale, "updateInstallFailed", nil)
+}
+
 // FlyoutSearching says "Searching for AirPlay receivers nearby…"
 // in the language the app shows.
 func FlyoutSearching() string { return In(i18n.Locale()).FlyoutSearching() }

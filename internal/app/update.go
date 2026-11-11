@@ -224,7 +224,7 @@ func (a *App) installUpdate() {
 					a.log.Printf("update: download cancelled")
 				} else {
 					a.upd.phase = updateFailed
-					a.upd.err = err.Error()
+					a.upd.err = locales.UpdateInstallFailed()
 					a.log.Printf("update: install failed: %v", err)
 				}
 			} else {

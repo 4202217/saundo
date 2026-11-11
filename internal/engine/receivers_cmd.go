@@ -9,22 +9,22 @@ import (
 // moves to the DPAPI store and never reaches receivers.json.
 func (e *Engine) handleAddReceiver(spec receivers.Spec) {
 	if err := spec.Validate(); err != nil {
-		e.lastError = err.Error()
+		e.failText(err.Error())
 		e.publish()
 		return
 	}
 	spec = spec.Resolved()
 	key := receivers.NewManualKey()
 	e.reg.Put(spec.Entry(key))
-	e.lastError = ""
+	e.clearError()
 	if spec.Password != "" {
 		if err := e.savePassword(key, spec.Password); err != nil {
-			e.lastError = "无法保存接收器密码：" + err.Error()
+			e.fail(ErrSavePassword, err.Error())
 		}
 	}
 	if err := e.recvStore.Save(e.reg); err != nil {
 		e.logf("receivers save: %v", err)
-		e.lastError = "无法保存接收器配置：" + err.Error()
+		e.fail(ErrSaveReceiver, err.Error())
 	}
 	e.rebuildTargets()
 	e.publish()
@@ -38,7 +38,7 @@ func (e *Engine) handleAddReceiver(spec receivers.Spec) {
 func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 	entry, ok := e.reg.Get(key)
 	if !ok {
-		e.lastError = "接收器不存在，请刷新后重试"
+		e.fail(ErrReceiverMissing)
 		e.publish()
 		return
 	}
@@ -61,7 +61,7 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		if patch.Name != nil || patch.Type != nil || patch.Host != nil || patch.Port != nil {
 			manual = manual.Resolved()
 			if err := manual.Validate(); err != nil {
-				e.lastError = err.Error()
+				e.failText(err.Error())
 				e.publish()
 				return
 			}
@@ -90,15 +90,15 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		e.reg.SingleAutoConnect(key, *patch.AutoConnect)
 	}
 	e.reg.Put(patch.Apply(entry))
-	e.lastError = ""
+	e.clearError()
 	if patch.Password != nil {
 		if err := e.savePassword(key, *patch.Password); err != nil {
-			e.lastError = "无法保存接收器密码：" + err.Error()
+			e.fail(ErrSavePassword, err.Error())
 		}
 	}
 	if err := e.recvStore.Save(e.reg); err != nil {
 		e.logf("receivers save: %v", err)
-		e.lastError = "无法保存接收器配置：" + err.Error()
+		e.fail(ErrSaveReceiver, err.Error())
 	}
 	e.rebuildTargets()
 	e.publish()
@@ -130,7 +130,7 @@ func (e *Engine) handleRemoveReceiver(key string) {
 	e.reg.Delete(key)
 	if err := e.creds.DeletePassword(key); err != nil {
 		e.logf("password delete: %v", err)
-		e.lastError = "无法删除接收器密码：" + err.Error()
+		e.fail(ErrDeletePassword, err.Error())
 	}
 	if err := e.creds.Delete(key); err != nil {
 		e.logf("credentials delete: %v", err)
@@ -156,7 +156,7 @@ func (e *Engine) handleRemoveReceiver(key string) {
 	}
 	if err := e.recvStore.Save(e.reg); err != nil {
 		e.logf("receivers save: %v", err)
-		e.lastError = "无法保存接收器配置：" + err.Error()
+		e.fail(ErrSaveReceiver, err.Error())
 	}
 	e.rebuildTargets()
 	e.publish()
