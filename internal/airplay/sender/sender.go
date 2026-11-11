@@ -914,12 +914,18 @@ func ntpAt(t time.Time) uint64 {
 }
 
 // elapsedFrames is the number of 44.1 kHz frames since the shared start epoch,
-// and zero before it.
+// and zero before it. The split keeps the multiply inside uint64: whole
+// seconds times 44100 overflows only after millions of years, where the
+// un-split nanosecond product wrapped after 4.84 days. The result matches the
+// old floor(ns * 44100 / 1e9) exactly for durations that did not overflow.
 func (s *Sender) elapsedFrames(t time.Time) uint64 {
 	if s.clockStart.IsZero() || t.Before(s.clockStart) {
 		return 0
 	}
-	return uint64(t.Sub(s.clockStart).Nanoseconds()) * raopRate / 1_000_000_000
+	d := t.Sub(s.clockStart)
+	whole := uint64(d / time.Second)
+	frac := uint64(d % time.Second)
+	return whole*raopRate + frac*raopRate/1_000_000_000
 }
 
 // mediaRTP maps a local instant to the RTP timestamp that plays then, anchored
