@@ -38,6 +38,7 @@ The two latency values measure different stages. Never draw them as one bar, nev
 |---|---|---|
 | Connecting | 正在连接… / Connecting… | 连接中 / Connecting |
 | Reconnecting | 正在重连… / Reconnecting… | 重连中 / Reconnecting |
+| Pairing | 正在配对… / Pairing… | 配对中 / Pairing |
 | Streaming | 正在通过 {name} 播放 / Streaming to {name} | 正在播放 / Streaming |
 | Standby | 已待机 · 播放声音即唤醒 / Standby · wakes when sound plays | 待机 / Standby |
 | Connected | 已连接 / Connected | 已连接 / Connected |
