@@ -73,12 +73,23 @@ func (mygoUpdates) Relaunch() { mygo.App.Relaunch() }
 func (mygoUpdates) SetPrereleases(on bool) { mygo.Updater.SetPrereleases(on) }
 
 // saveSettings writes the app-owned preferences over the stored file; a test
-// without a store keeps them in memory only.
+// without a store keeps them in memory only. A failure is logged once so a
+// full disk or a read-only config directory leaves a trace without repeating
+// the line on every toggle.
 func (a *App) saveSettings() {
-	if a.sets != nil {
-		_ = a.sets.Update(func(stored *settings.Settings) {
-			settings.MergeApp(stored, &a.cfg)
-		})
+	if a.sets == nil {
+		return
+	}
+	err := a.sets.Update(func(stored *settings.Settings) {
+		settings.MergeApp(stored, &a.cfg)
+	})
+	if err == nil {
+		a.settingsErrorLogged = ""
+		return
+	}
+	if a.settingsErrorLogged != err.Error() {
+		a.log.Printf("settings save failed: %v", err)
+		a.settingsErrorLogged = err.Error()
 	}
 }
 

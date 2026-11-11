@@ -417,6 +417,7 @@ type Engine struct {
 	reconnectNum         int
 	lastMissingLogAt     time.Time
 	settingsDirtyAt      time.Time
+	settingsErrorLogged  string
 	idle                 idlePhase
 	standbyHoldAt        time.Time
 	darkBaseline         time.Time
@@ -2444,11 +2445,24 @@ func (e *Engine) markSettingsDirty() {
 
 func (e *Engine) saveSettingsNow() {
 	e.settingsDirtyAt = time.Time{}
-	if e.sets != nil {
-		_ = e.sets.Update(func(stored *settings.Settings) {
-			settings.MergeEngine(stored, &e.setsValue)
-		})
+	if e.sets == nil {
+		return
 	}
+	err := e.sets.Update(func(stored *settings.Settings) {
+		settings.MergeEngine(stored, &e.setsValue)
+	})
+	if err == nil {
+		e.settingsErrorLogged = ""
+		return
+	}
+	// A full disk or a read-only config directory must not lose the change
+	// silently. Keep the write pending so the next debounce retries, and log
+	// the failure once instead of on every preference edit.
+	if e.settingsErrorLogged != err.Error() {
+		e.logf("settings save failed: %v", err)
+		e.settingsErrorLogged = err.Error()
+	}
+	e.settingsDirtyAt = e.now().Add(settingsSaveDebounce)
 }
 
 func (e *Engine) buildSnapshot() Snapshot {
