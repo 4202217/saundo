@@ -124,7 +124,9 @@ type Follower struct {
 	stopOnce sync.Once
 
 	// OnPacket, when set before Start, receives validated packets for
-	// diagnostics. It runs on the follower goroutine.
+	// diagnostics. It runs on the follower goroutine, outside f.mu, so Ready,
+	// Stats, Timeline, and Activate are safe to call; Stop must not be called
+	// synchronously from it.
 	OnPacket func(kind uint8, seq uint16, data []byte)
 
 	mu      sync.Mutex
@@ -292,8 +294,25 @@ func (f *Follower) readOne(conn *net.UDPConn, buf []byte) {
 	}
 	local := uint64(time.Now().UnixNano())
 	f.mu.Lock()
-	f.handle(buf[:n], local, time.Now(), addr)
+	notice, ok := f.handle(buf[:n], local, time.Now(), addr)
 	f.mu.Unlock()
+	if ok {
+		f.deliver(notice)
+	}
+}
+
+type packetNotice struct {
+	kind uint8
+	seq  uint16
+	data []byte
+}
+
+// deliver runs the diagnostics hook outside f.mu: the hook may call Ready,
+// Stats, Timeline, or Activate, which take the same lock.
+func (f *Follower) deliver(n packetNotice) {
+	if f.OnPacket != nil {
+		f.OnPacket(n.kind, n.seq, n.data)
+	}
 }
 
 func (f *Follower) sendRound(now time.Time, seq uint16) {
@@ -337,10 +356,10 @@ func (f *Follower) sendRound(now time.Time, seq uint16) {
 	}
 }
 
-func (f *Follower) handle(data []byte, localNs uint64, now time.Time, from *net.UDPAddr) {
+func (f *Follower) handle(data []byte, localNs uint64, now time.Time, from *net.UDPAddr) (packetNotice, bool) {
 	if rejection := packetRejection(data); rejection != "" {
 		f.st.rejected++
-		return
+		return packetNotice{}, false
 	}
 	kind := data[0] & 0x0f
 	seq := binary.BigEndian.Uint16(data[30:32])
@@ -363,12 +382,10 @@ func (f *Follower) handle(data []byte, localNs uint64, now time.Time, from *net.
 	}
 	if f.st.sourceID == 0 || f.st.sourceID != source || f.st.sourcePort != sourcePort {
 		f.st.rejected++
-		return
+		return packetNotice{}, false
 	}
 	f.st.received++
-	if f.OnPacket != nil {
-		f.OnPacket(kind, seq, append([]byte(nil), data...))
-	}
+	notice := packetNotice{kind: kind, seq: seq, data: append([]byte(nil), data...)}
 
 	switch kind {
 	case 0, 8:
@@ -386,6 +403,7 @@ func (f *Follower) handle(data []byte, localNs uint64, now time.Time, from *net.
 	case 2:
 		f.respondPdelay(data, localNs, now, from)
 	}
+	return notice, true
 }
 
 func (f *Follower) rememberSync(data []byte, localNs uint64, now time.Time) {
