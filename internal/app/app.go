@@ -86,6 +86,7 @@ type App struct {
 
 	captureNames  []string
 	captureIDs    []string
+	captureLabels []string
 	captureChoice string
 
 	appNames  []string
@@ -187,6 +188,7 @@ func Run() error {
 		quit:           make(chan struct{}),
 		captureNames:   []string{locales.CaptureFollowSystem()},
 		captureIDs:     []string{""},
+		captureLabels:  []string{locales.CaptureFollowSystem()},
 		captureChoice:  locales.CaptureFollowSystem(),
 		volume:         80,
 	}
@@ -380,6 +382,7 @@ func (a *App) ready() {
 		}
 		a.updateUI(func() {
 			a.captureNames, a.captureIDs = names, ids
+			a.rebuildCaptureLabels()
 			a.appNames, a.appIDs = appNames, appIDs
 			a.syncCaptureChoice()
 			a.syncAppChoice()
@@ -744,13 +747,7 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 		a.nameDraft = snap.Name
 	}
 	a.volume = snap.Volume
-	if snap.CaptureEndpoint == "" {
-		if a.captureChoice == "" {
-			a.captureChoice = locales.CaptureFollowSystem()
-		}
-	} else {
-		a.syncCaptureChoice()
-	}
+	a.syncCaptureChoice()
 	if snap.PinRequired && !a.pinOpen {
 		a.pinOpen = true
 		a.pinEntered = false
@@ -799,16 +796,54 @@ func (a *App) hasNowMedia() bool {
 	return ok
 }
 
+// rebuildCaptureLabels gives each capture option a unique display label. The
+// select binds to the label, while the endpoint ID stays the identity the
+// engine reports; a duplicate name, or one equal to the follow-system
+// sentinel, gets a numbered suffix.
+func (a *App) rebuildCaptureLabels() {
+	if len(a.captureNames) == 0 {
+		a.captureLabels = nil
+		return
+	}
+	labels := make([]string, len(a.captureNames))
+	used := make(map[string]bool, len(a.captureNames))
+	for i, name := range a.captureNames {
+		label := name
+		if i > 0 {
+			for n := 1; used[label]; n++ {
+				label = fmt.Sprintf("%s (%d)", name, n)
+			}
+		}
+		labels[i] = label
+		used[label] = true
+	}
+	a.captureLabels = labels
+}
+
+// captureEndpointFor resolves a display label to the endpoint's ID and real
+// name. Matching by label is safe because the labels are unique.
+func (a *App) captureEndpointFor(label string) (id, name string, ok bool) {
+	for i, l := range a.captureLabels {
+		if l == label && i < len(a.captureIDs) && i < len(a.captureNames) {
+			return a.captureIDs[i], a.captureNames[i], true
+		}
+	}
+	return "", "", false
+}
+
 func (a *App) syncCaptureChoice() {
 	if a.snap.CaptureEndpoint == "" {
 		a.captureChoice = locales.CaptureFollowSystem()
 		return
 	}
 	for i, id := range a.captureIDs {
-		if id == a.snap.CaptureEndpoint {
-			a.captureChoice = a.captureNames[i]
-			return
+		if id != a.snap.CaptureEndpoint {
+			continue
 		}
+		if i < len(a.captureLabels) {
+			a.captureChoice = a.captureLabels[i]
+		}
+		return
 	}
 	if a.snap.CaptureName != "" {
 		a.captureChoice = a.snap.CaptureName
@@ -1051,6 +1086,7 @@ func (a *App) onLocaleChanged() {
 	if len(a.captureNames) > 0 {
 		a.captureNames[0] = locales.CaptureFollowSystem()
 	}
+	a.rebuildCaptureLabels()
 	if len(a.appNames) > 0 {
 		a.appNames[0] = locales.CaptureAllSystem()
 	}

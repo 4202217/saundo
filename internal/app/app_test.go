@@ -54,6 +54,7 @@ func previewApp() *App {
 		volume:            65,
 		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureIDs:        []string{"", "{endpoint}"},
+		captureLabels:     []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureChoice:     locales.CaptureFollowSystem(),
 		appNames:          []string{locales.CaptureAllSystem(), "Spotify"},
 		appIDs:            []string{"0", "1234"},
@@ -160,6 +161,9 @@ func TestLocaleChangeRelabelsSentinels(t *testing.T) {
 	a.onLocaleChanged()
 	if got := a.captureNames[0]; got != "Follow system default" {
 		t.Fatalf("capture sentinel = %q", got)
+	}
+	if got := a.captureLabels[0]; got != "Follow system default" {
+		t.Fatalf("capture label sentinel = %q", got)
 	}
 	if got := a.appNames[0]; got != "Entire system" {
 		t.Fatalf("app sentinel = %q", got)
