@@ -17,7 +17,6 @@
 package sender
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -413,11 +412,9 @@ type Sender struct {
 	pairSetupSessionKey          []byte
 	ap2                          *ap2State
 
-	digestRealm       string
-	digestNonce       string
-	pendingDigestURI  string
-	pendingDigestVerb string
-	digestRetried     bool
+	digestRealm   string
+	digestNonce   string
+	digestRetried bool
 }
 
 // New returns a sender that sends through io and reports through events.
@@ -674,7 +671,6 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.srpServerB = s.srpServerB[:0]
 	s.pairSetupSessionKey = nil
 	s.digestRealm, s.digestNonce = "", ""
-	s.pendingDigestURI, s.pendingDigestVerb = "", ""
 	s.digestRetried = false
 
 	timingPort, timingErr := s.io.UDPBind(raopio.UDPTiming)
@@ -1130,23 +1126,11 @@ func (s *Sender) SubmitPin(code string) {
 // the common case.
 type Credentials = creds.Credentials
 
-func rand32() uint32 {
-	var b [4]byte
-	_, _ = rand.Read(b[:])
-	return binary.LittleEndian.Uint32(b[:])
-}
+func rand32() uint32 { return binary.LittleEndian.Uint32(crypto.RandomBytes(4)) }
 
-func rand64() uint64 {
-	var b [8]byte
-	_, _ = rand.Read(b[:])
-	return binary.LittleEndian.Uint64(b[:])
-}
+func rand64() uint64 { return binary.LittleEndian.Uint64(crypto.RandomBytes(8)) }
 
-func rand16() uint16 {
-	var b [2]byte
-	_, _ = rand.Read(b[:])
-	return binary.LittleEndian.Uint16(b[:])
-}
+func rand16() uint16 { return binary.LittleEndian.Uint16(crypto.RandomBytes(2)) }
 
 func uuidV4Lower() string {
 	b := crypto.RandomBytes(16)
