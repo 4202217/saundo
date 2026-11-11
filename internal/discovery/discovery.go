@@ -472,11 +472,17 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 	}
 	id = normalizeDeviceID(id)
 	host := ""
-	if e.AddrV4 != nil {
+	switch {
+	case e.AddrV4 != nil:
 		host = e.AddrV4.String()
-	} else if e.Addr != nil {
+	case e.Addr != nil && e.Addr.To4() != nil:
 		host = e.Addr.String()
-	} else {
+	case e.Addr != nil || e.AddrV6IPAddr != nil:
+		// The sender's sockets are IPv4-only. An AAAA-only advertisement
+		// would hand over a zone-less IPv6 literal and fail at connect, so
+		// fail closed here instead.
+		return device.Device{}, false
+	default:
 		host = e.Host
 	}
 	if host == "" || e.Port <= 0 {
