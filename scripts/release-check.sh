@@ -123,7 +123,6 @@ grep -q 'MYGO_UPDATER_PRIVATE_KEY' .github/workflows/release.yml || fail "releas
 grep -q 'check-verify-map' .github/workflows/release.yml || fail "release.yml lacks the verification-map gate"
 grep -q 'gofmt' .github/workflows/release.yml || fail "release.yml lacks the format gate"
 grep -q 'merge-base --is-ancestor' .github/workflows/release.yml || fail "release.yml does not verify the tag is on main"
-grep -q 'SHA256SUMS' .github/workflows/release.yml || fail "release.yml does not fold the dmg into SHA256SUMS"
 if ! awk 'BEGIN{p=0} /^permissions:/{p=1;next} p&&/^[^ ]/{exit} p{print}' .github/workflows/release.yml | grep -q 'contents: read'; then
   fail "release.yml must default to contents: read"
 fi
@@ -131,6 +130,7 @@ write_jobs="$(grep -c 'contents: write' .github/workflows/release.yml || true)"
 if [ "$write_jobs" -lt 3 ]; then
   fail "release.yml is missing the job-level contents: write grants"
 fi
+grep -Eq 'mygo build -platform darwin/arm64.*-upload' .github/workflows/release.yml || fail "release.yml does not publish the darwin update feed"
 
 if command -v gh >/dev/null 2>&1; then
   visibility="$(gh repo view "$REPO" --json visibility --jq .visibility 2>/dev/null || true)"
@@ -153,6 +153,19 @@ if [ "$code" = "200" ]; then
   ok "current update feed returns 200"
 else
   fail "current update feed returns $code; the chain is broken before this release"
+fi
+
+darwin_manifest=""
+if command -v gh >/dev/null 2>&1; then
+  darwin_manifest="$(gh release view --repo "$REPO" --json assets --jq '.assets[].name' 2>/dev/null | grep -x 'update-darwin-arm64.json' || true)"
+fi
+code="$(curl -sSL -o /dev/null -w '%{http_code}' "https://github.com/$REPO/releases/latest/download/update-darwin-arm64.json" || true)"
+if [ "$code" = "200" ]; then
+  ok "current darwin update feed returns 200"
+elif [ -n "$darwin_manifest" ]; then
+  fail "current darwin update feed returns $code while the latest release carries the manifest"
+else
+  warn "current darwin update feed returns $code; the first macOS feed starts with this release"
 fi
 
 echo

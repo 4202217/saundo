@@ -14,7 +14,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
 
-.PHONY: build build-fast test race vet uivet i18n fmt check platforms
+.PHONY: build build-fast test race vet uivet i18n fmt check platforms test-mac-update
 
 build:
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh
@@ -25,6 +25,11 @@ build-fast:
 
 test:
 	$(GO) test ./...
+
+# The local macOS update harness: builds two versions with a throwaway key,
+# then drives check, install, quit, and the bundle swap. macOS only.
+test-mac-update:
+	bash ./scripts/test-mac-update.sh
 
 # The race detector needs cgo and a C toolchain (gcc) on Windows.
 race:
@@ -54,4 +59,4 @@ check:
 	@command -v "$(GOFMT)" >/dev/null 2>&1 || { echo "gofmt not found; set GOFMT=... or put Go on PATH"; exit 1; }
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms

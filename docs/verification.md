@@ -44,8 +44,13 @@ live state:
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
-- The macOS port: per-app capture (the `Config.ProcessID` seam is ready) and
-  signed/notarized mac updates (the mac updater is disabled).
+- The macOS port: per-app capture (the `Config.ProcessID` seam is ready).
+- A live macOS in-app update: the mac updater now follows the ad-hoc darwin
+  manifest. The first release with that manifest is the baseline, and the
+  first live update from it measures whether TCC audio capture and Keychain
+  access survive the new cdhash. The local harness (`make test-mac-update`)
+  covers the download, stage, swap, signature, and quarantine checks; the
+  published feed and the permission prompts remain owed.
 - The Windows tray focus after the focus seam split (2026-11-09): the
   flyout shadow and the locale-driven titles were confirmed by a live run;
   the focus call itself was not exercised.
@@ -762,6 +767,30 @@ and the verification map is corrected.
   the stable release. The public feed serves the signed 0.6.1 manifest with
   the English notes, and the installer and update archive URLs return 200. A
   live update from an installed 0.6.0 build is still owed.
+
+## 2026-11-11 — macOS in-app updates enabled
+
+- **Build and gate.** `make check` passed (gofmt, catalogs, vet, UI vet,
+  tests, verify map, and the windows/amd64 plus darwin/arm64 platform
+  gate). `make build` produced a 0.6.1 bundle signed with the local Apple
+  Development identity and relaunched it. The CI release signs ad-hoc
+  unless the runner has the `MACOS_SIGN_IDENTITY` identity.
+- **Update check.** The running app's log records `update: check failed:
+  ... update-darwin-arm64.json: 404 Not Found` after launch, so the mac
+  build now enters the updater path and requests its own manifest. The 404
+  is expected until the first release whose mac job uploads the darwin
+  feed.
+- **Local harness.** `make test-mac-update` (`scripts/test-mac-update.sh`)
+  passed. In a temporary tree it built 0.6.1 with the `updateharness`
+  source and 0.6.2 with a throwaway key, then drove 0.6.1 through
+  available, install, quit, and the bundle swap. The swapped bundle is
+  0.6.2, `codesign --verify --deep --strict` passes, its only extended
+  attribute is `com.apple.provenance`, and the helper left no work
+  directory. The harness uses its own bundle identifier and HOME, so it
+  does not measure TCC or Keychain prompts.
+- **Not verified.** A live install from the published GitHub feed, the
+  in-app 立即重启 button, and whether TCC audio capture and Keychain access
+  survive the new ad-hoc cdhash. The pending list keeps the live update.
 
 ## Graduated
 

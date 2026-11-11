@@ -196,7 +196,7 @@ path for Apple TV.
 
 **WASAPI capture.** A pure-Go COM binding needs careful lifetime handling and default-device switching. Reference AirFlash's `wasapi.rs` and mygo's WASAPI output.
 
-**Core Audio capture and macOS privacy.** The process tap needs TCC audio-capture consent keyed to the app bundle, and macOS 15+ drops mDNS, RTSP, and PTP until Local Network is allowed. A tap-only aggregate device refuses to start; the output device must be a sub-device and the clock master. The distribution is ad-hoc signed until a Developer ID exists, so a quarantined download needs the user's Open Anyway approval once per cdhash. See [platforms.md](platforms.md).
+**Core Audio capture and macOS privacy.** The process tap needs TCC audio-capture consent keyed to the app bundle, and macOS 15+ drops mDNS, RTSP, and PTP until Local Network is allowed. A tap-only aggregate device refuses to start; the output device must be a sub-device and the clock master. The distribution is ad-hoc signed until a Developer ID exists, so a quarantined download needs the user's Open Anyway approval once per cdhash. The in-app updater installs the signed darwin manifest, and an update on an ad-hoc build can ask again for TCC and Keychain access. See [platforms.md](platforms.md).
 
 **mDNS and firewall.** Windows Firewall, multiple NICs, and VPNs all affect discovery. The multicast browse is primary; when a receiver's multicast does not reach the PC, a directed query on UDP 5353 to addresses in the ARP neighbor table and the remembered receiver list still resolves it.
 

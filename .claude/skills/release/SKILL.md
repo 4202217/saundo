@@ -121,7 +121,7 @@ gh run list --workflow release.yml --limit 1 --json databaseId,status
 gh run watch <id> --exit-status
 ```
 
-The workflow runs `check`, `draft`, `build`, and `build-macos`. The build uploads the installer, the update archive, the signed manifest, `install.ps1`, and `SHA256SUMS` to the draft; the macOS job uploads the dmg and folds its checksum into `SHA256SUMS`. Stop if any job fails. Read the failed log before changing anything.
+The workflow runs `check`, `check-macos`, `draft`, `build`, and `build-macos`. The build uploads the Windows installer, the Windows update archive, its signed manifest, and `install.ps1`. The mac build runs after it and uploads the dmg, the darwin update archive, its signed manifest, and `install.sh`. Both merge `SHA256SUMS`. Stop if any job fails. Read the failed log before changing anything.
 
 ## 9. Verify the draft
 
@@ -132,7 +132,7 @@ gh release download "v$VERSION" --dir ".audit/draft-$VERSION"
 (cd ".audit/draft-$VERSION" && sha256sum -c SHA256SUMS)
 ```
 
-Check the draft without installing it. The assets are present: the installer, the update archive, the signed manifest, `install.ps1`, `SHA256SUMS`, and the macOS dmg. The checksums pass; if you downloaded only a subset, use `sha256sum -c --ignore-missing SHA256SUMS`. The manifest carries the version, the English notes, and a signature. The installer is unsigned unless signing is configured. The maintainer's pre-release test covers install and run behavior; install the draft on a clean machine only when the user asks.
+Check the draft without installing it. The assets are present: the Windows installer, both update archives, both signed manifests, `install.ps1`, `install.sh`, the dmg, and `SHA256SUMS`. The checksums pass; if you downloaded only a subset, use `sha256sum -c --ignore-missing SHA256SUMS`. Each manifest carries the version, the English notes, and a signature. The installer is unsigned unless signing is configured, and the dmg is ad-hoc signed unless `MACOS_SIGN_IDENTITY` names an identity the runner has. The maintainer's pre-release test covers install and run behavior; install the draft on a clean machine only when the user asks.
 
 The draft is invisible to the updater. The previous release updates to this one after publish. Record the draft verification in `docs/verification.md` in a commit on main after the tag. Never move the tag to that commit.
 
@@ -159,9 +159,10 @@ gh release edit "v$VERSION" --draft=false
 
 ```bash
 curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-windows-amd64.json"
+curl -fsSL "https://github.com/4202217/saundo/releases/latest/download/update-darwin-arm64.json"
 ```
 
-The manifest must be the new version and carry a signature. The installer download must return 200. A live update from the previous release needs an installed build; record it in `docs/verification.md` when the maintainer next runs one, and do not block on it.
+Each manifest must be the new version and carry a signature. The installer and dmg downloads must return 200. A live update from the previous release needs an installed build; record it in `docs/verification.md` when the maintainer next runs one, and do not block on it. The first macOS live update runs from the first release with a darwin manifest to the next release.
 
 The repository must stay public. A private repository returns 404 for the feed even after publish. If the repository is private, stop and use a public `updates.url` host instead.
 

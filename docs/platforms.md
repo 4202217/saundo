@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-10 -->
+<!-- reviewed-through: 2026-11-11 -->
 
 # Multi-platform development
 
@@ -37,7 +37,7 @@ the seams and the rules for extending them. The code map:
 | Now playing | `nowplaying.Read` and the control/snapshot set (`nowplaying.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
 | Neighbor table | `discovery.neighborHosts` | `neighbors_windows.go`: `GetIpNetTable` | fail-closed empty (remembered endpoints cover offline connect) | `neighbors_other.go`: fail-closed |
 | Engine wiring | injected function fields (`engine.go` `captureStartFn`, `defaultEndpoint`, `setEndpointMuted`, `endpoints`, `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
-| App wiring | `app.go` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `update.go` disables updates | stubs |
+| App wiring | `app.go` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `mygo.Updater` through the darwin manifest | stubs |
 
 ## Adding a feature
 
@@ -81,7 +81,7 @@ Core Audio property codes stay inside the leaf packages.
 | Now Playing card | SMTC | MediaRemote adapter; the card follows the one system session (no switcher) |
 | Credentials at rest | DPAPI (per user) | login-Keychain master key + AES-256-GCM (per user) |
 | Receiver discovery | mDNS + the ARP neighbor table | mDNS; the neighbor table returns empty |
-| Auto-update | signed feed through `mygo.Updater` | disabled: the build is ad-hoc signed and the feed carries Windows assets; re-enable with a signed, notarized mac feed |
+| Auto-update | signed feed through `mygo.Updater` | signed darwin feed through `mygo.Updater`; ad-hoc builds update in place and can re-request TCC and Keychain access |
 | Packaging | `saundo.exe` + NSIS installer | `saundo.app` + dmg, Info.plist from `mygo.json` `macos.infoPlist`, ad-hoc signed unless `SAUNDO_MAC_SIGN_IDENTITY` names one |
 | Flyout style | system-rounded flyout with its window shadow | rounded flyout with its window shadow |
 | Receiver glyphs | filled system-style set by receiver family, Mac form, and stereo pair (`icons_sf_gen.go`) | same |
@@ -98,16 +98,23 @@ Core Audio property codes stay inside the leaf packages.
 - **Distribution without notarization** (measured on macOS 27.3,
   November 2026): a downloaded copy carries the quarantine attribute, so
   the first launch is blocked; the recovery is System Settings → Privacy &
-  Security → Open Anyway and one authentication — the Sequoia-era flow,
-  since the old right-click "Open" bypass is gone. `spctl -a` keeps
-  printing `rejected` even after the user allows it; the allow is a user
-  decision, not a signature change. Every rebuilt or re-downloaded
-  version has a new cdhash, so each release repeats the flow once per
-  machine. Locally built copies carry build provenance and the running
-  app itself never sees any of this. Mitigations that skip Gatekeeper:
+  Security → Open Anyway and one authentication. The Sequoia-era flow has
+  no old right-click "Open" bypass. `spctl -a` keeps printing `rejected`
+  even after the user allows it; the allow is a user decision, not a
+  signature change. Every rebuilt or re-downloaded version has a new
+  cdhash, so each manual release repeats the flow once per machine.
+  Locally built copies carry build provenance and the running app itself
+  never sees any of this. Mitigations that skip Gatekeeper:
   `brew install --cask` (brew does not quarantine by default), a terminal
-  `curl` download, or `xattr -dr com.apple.quarantine`. The updater stays
-  off until a signed, notarized feed exists.
+  `curl` download, or `xattr -dr com.apple.quarantine`.
+- **In-app updates on an ad-hoc build**: the app must live in
+  `/Applications` or `~/Applications` and be writable by the user. A copy
+  opened from the dmg is read-only and keeps the updater disabled. The
+  updater downloads through its own HTTP client, so the bundle it installs
+  carries no quarantine attribute and starts without the Open Anyway flow.
+  The new cdhash still changes the app's code identity, so macOS can ask
+  again for system-audio capture and Keychain access after an update. The
+  live check is in [verification.md](verification.md).
 - **Local signing**: set `SAUNDO_MAC_SIGN_IDENTITY` to an Apple Development
   or Developer ID identity for a stable local signature; without it the
   build signs ad hoc. No certificate is committed, so CI and other Macs
