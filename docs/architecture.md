@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-11 -->
+<!-- reviewed-through: 2026-11-12 -->
 
 # saundo Architecture and Technology Selection
 
@@ -134,12 +134,14 @@ Cross-cutting: Settings (JSON), Receiver registry (JSON), Credentials (OS secret
 
 The diagram shows the Windows leaves. macOS replaces WASAPI with the Core Audio process tap, DPAPI with the Keychain, and the NSIS installer with a dmg; the sender, engine, and UI above the seams are the same.
 
-There are four concurrency roles:
+There are four primary concurrency roles:
 
 - The mygo UI main thread.
 - The engine goroutine, which owns session lifecycle, timers, the settings merge, and snapshot publishing.
 - The sender event-loop goroutine, which owns all protocol sockets and timers.
 - The capture goroutine, which owns WASAPI capture and ring-buffer writes.
+
+The engine also runs a mute worker and a level-analysis worker, both fed by bounded queues so the audio thread never blocks on them.
 
 They interact through bounded queues and command channels. No mutable state is shared.
 
@@ -216,7 +218,7 @@ ready PTP follower it streams. The app selects PTP automatically for
 |---|---|---|---|
 | Go standard library | BSD-3-Clause | With Go | Foundation |
 | golang.org/x/crypto | BSD-3-Clause | Active | ChaCha20-Poly1305, HKDF, Ed25519, X25519 |
-| github.com/egoist/mygo | MIT | 2026-10 | UI, tray, packaging |
+| github.com/egoist/mygo | MIT | 2026-11 | UI, tray, packaging |
 | github.com/hashicorp/mdns | MIT | 2026-10 | mDNS discovery |
 | github.com/miekg/dns | BSD-3-Clause | Active | Directed DNS-SD queries |
 | airplay2-sender-cpp | Apache-2.0 | 2026-09 | Primary reference; keep NOTICE when porting |
