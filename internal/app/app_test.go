@@ -1815,3 +1815,20 @@ func TestLampPreviewFollowsThePushedSessionNotTheCard(t *testing.T) {
 		t.Fatal("the lamp preview followed the card switch away from the pushed session")
 	}
 }
+
+// TestFormatRate pins the unit rule: 44100 prints as 44.1 kHz, not 44100 Hz.
+func TestFormatRate(t *testing.T) {
+	cases := map[int]string{
+		44100: "44.1 kHz",
+		48000: "48 kHz",
+		88200: "88.2 kHz",
+		96000: "96 kHz",
+		22050: "22050 Hz",
+		8000:  "8 kHz",
+	}
+	for rate, want := range cases {
+		if got := formatRate(rate); got != want {
+			t.Errorf("formatRate(%d) = %q, want %q", rate, got, want)
+		}
+	}
+}
