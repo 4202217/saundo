@@ -124,6 +124,7 @@
   "pageAudioDesc": "在延迟与稳定性之间权衡；播放中切换会自动重连。",
   "pageCaptureDesc": "系统声音或单个应用。",
   "pageNowPlayingDesc": "托盘面板中的媒体卡片、封面配色与音频电平。",
+  "settingsNowPlayingSampleApp": "Apple Music",
   "settingsNowPlayingSampleTitle": "夜航",
   "settingsNowPlayingSampleArtist": "白鲸电台",
   "settingsSenderName": "发送端名称",

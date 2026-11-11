@@ -455,7 +455,7 @@ func previewSession() (nowplaying.Session, *ui.Bitmap, *image.RGBA, *image.RGBA,
 		}
 	}
 	s := nowplaying.Session{
-		AUMID: "settings.preview", AppName: "Apple Music",
+		AUMID: "settings.preview", AppName: locales.SettingsNowPlayingSampleApp(),
 		Title:  locales.SettingsNowPlayingSampleTitle(),
 		Artist: locales.SettingsNowPlayingSampleArtist(),
 		Status: nowplaying.StatusPlaying, Playing: true,

@@ -197,6 +197,7 @@
   "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio or a single app.",
   "pageNowPlayingDesc": "The tray panel's media card, cover colors, and audio level.",
+  "settingsNowPlayingSampleApp": "Apple Music",
   "settingsNowPlayingSampleTitle": "Night Ferry",
   "settingsNowPlayingSampleArtist": "Signal Coast",
   "settingsSenderName": "Sender name",
