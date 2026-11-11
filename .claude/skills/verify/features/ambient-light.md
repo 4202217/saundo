@@ -83,7 +83,8 @@ per receiver.
   since the last push the engine sends playback state 2. The first audible
   sample sends state 1 and resumes; pressing 开灯 while the display is dark
   relights it immediately and holds it on until the next sound
-  (`lamp.go:226-236`; `engine.go:1152-1155`). The flyout chip reads 待机,
+  (`lamp.go:226-236`; `engine.go:1253-1259`; the gate at `:929`, cleared on
+  sound at `:958-960`). The flyout chip reads 待机,
   the power action 开灯, and the footer 已待机 · 播放声音即唤醒.
 
 ## How to get to it (user POV)

@@ -29,10 +29,14 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
   manually added row with 启动时自动连接 (per receiver), hidden, and a
-  0–2000 ms delay slider (500 ms debounced restart); per-receiver password
-  row (masked, saved/cleared through the OS secret store: DPAPI on Windows,
+  0–2000 ms delay slider (500 ms debounced restart); a password row only
+  when the receiver can use one (a Mac, a manual row, or a saved password),
+  masked, saved/cleared through the OS secret store (DPAPI on Windows,
   Keychain-backed AES on macOS); add/edit/password/
-  remove dialogs (`receivers_dialogs.go`). The flyout and this list show
+  remove dialogs (`receivers_dialogs.go`). A receiver on this host is the
+  exception: it is forced into the hidden group with a 本机 chip, no switch,
+  no expander, and no delay or password settings. The flyout and this list
+  show
   manual receivers and online discovered receivers; an offline discovered
   receiver is hidden and returns with its saved settings. The active
   session's row stays reachable even when it just went offline. The 已启用
