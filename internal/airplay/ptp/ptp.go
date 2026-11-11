@@ -140,9 +140,11 @@ func New(peerIP string) (*Follower, error) {
 	if ip == nil {
 		return nil, fmt.Errorf("ptp: bad peer address %q", peerIP)
 	}
-	if v4 := ip.To4(); v4 != nil {
-		ip = v4
+	v4 := ip.To4()
+	if v4 == nil {
+		return nil, fmt.Errorf("ptp: peer %q is not IPv4", peerIP)
 	}
+	ip = v4
 	event, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: eventPort})
 	if err != nil {
 		return nil, fmt.Errorf("ptp: bind event port %d: %w", eventPort, err)
