@@ -818,6 +818,22 @@ and the verification map is corrected.
   set once; this is unrelated to the IOProc path and stays for a separate
   fix.
 
+## 2026-11-11 — macOS output mute scope
+
+- **Finding.** The macOS local output mute failed on every connect with
+  `capture: set mute: coreaudio: AudioObjectSetPropertyData failed (OSStatus
+  2003332927 'who?')`. The same line is in the log from 2026-11-09, before
+  the in-app updater and the IOProc work, so it is a port bug, not a
+  regression. `ScopeOutput` was `'out '` (0x6f757420) instead of `'outp'`
+  (0x6f757470), so the mute property address was unknown.
+- **Fix.** The scope is `'outp'`; `DeviceHasOutput` now sees output streams
+  too. `TestCoreAudioOutputScope` fails on the old value.
+  `TestDarwinEndpointMute` (build tag `muteprobe`) mutes, reads, and
+  restores the default output on real hardware.
+- **Live.** `go test -tags muteprobe ./internal/capture -run
+  TestDarwinEndpointMute -v` passed; the rebuilt app launched, and the user
+  confirmed a HomePod connection now mutes the local output.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
