@@ -70,6 +70,9 @@ func TestProcessRootLogic(t *testing.T) {
 // nothing is playing, it plays a tone through the default device via
 // PowerShell and captures the tone from that process.
 func TestAudioApplicationsLive(t *testing.T) {
+	if !AppCaptureSupported() {
+		t.Skip("per-app capture is not offered on Windows")
+	}
 	apps, err := AudioApplications()
 	if err != nil {
 		t.Fatalf("enumerate applications: %v", err)
@@ -171,4 +174,12 @@ func TestAudioApplicationsLive(t *testing.T) {
 		t.Skip("capture opened but the desktop stayed silent")
 	}
 	t.Logf("per-app capture delivered real audio: frames=%d rate=%d", st.Frames, st.Rate)
+}
+
+// TestAppCaptureNotOffered pins the Windows product decision: process
+// loopback cannot isolate the selected app's local output.
+func TestAppCaptureNotOffered(t *testing.T) {
+	if AppCaptureSupported() {
+		t.Fatal("per-app capture is offered on Windows")
+	}
 }

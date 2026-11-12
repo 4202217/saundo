@@ -1013,6 +1013,28 @@ and the verification map is corrected.
   rebuilt for another reason. A process selected as `pid:<n>` has no stable
   identity across restarts.
 
+## 2026-11-12 — Windows per-app capture withdrawn
+
+- **Decision.** Windows offers system capture only. The settings capture page
+  hides the per-app picker, a saved app or process selection is dropped at
+  load (`dropUnsupportedAppSelection`), and the capture leaf refuses a
+  process-loopback start. macOS is unchanged.
+- **Finding.** The acceptance standard is "the selected app goes to the
+  receiver and every other app stays on the local output". Windows process
+  loopback copies the app's audio but does not stop it playing locally; it
+  has no per-app mute. Muting the app's audio session also silences the
+  capture (measured RMS 0.1735 before the session mute, 0.0000 after), and
+  the render-endpoint mute silences every app. The split is therefore not
+  achievable without a virtual audio driver, which is outside a pure-Go,
+  no-driver app. macOS's per-app tap mutes only the captured app, so it
+  keeps the feature.
+- **Pins.** `TestAppCaptureNotOffered` (Windows),
+  `TestUnsupportedPlatformDropsAppSelection`, and
+  `TestCapturePageHidesPerAppWhenUnsupported`. `TestAudioApplicationsLive`
+  skips on Windows.
+- **Known gap.** The Windows process-loopback leaf and its development
+  probes remain in the tree for a future capture path; they are not exposed.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

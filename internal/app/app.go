@@ -98,7 +98,6 @@ type App struct {
 	appIDs        []string
 	appIcons      map[uint32]*ui.Bitmap
 	appNameByID   map[string]string
-	appChoicePID  uint32
 	appSelection  map[string]bool
 	appMenuOpen   bool
 	appApplyTimer *time.Timer
@@ -906,43 +905,19 @@ func (a *App) syncCaptureChoice() {
 }
 
 func (a *App) syncAppChoice() {
-	if capture.MultiAppSupported() {
-		if a.appMenuOpen {
-			return
-		}
-		a.appSelection = make(map[string]bool, len(a.snap.CaptureAppIDs))
-		for _, id := range a.snap.CaptureAppIDs {
-			if id != "" {
-				a.appSelection[id] = true
-			}
-		}
+	if a.appMenuOpen {
 		return
 	}
-	a.appChoicePID = a.snap.CaptureProcessPID
-}
-
-// appLabel names the app a single-select picker pid stands for. A saved pid
-// the current list does not hold keeps the name the engine remembers.
-func (a *App) appLabel(pid uint32) string {
-	if pid == 0 {
-		return locales.CaptureAllSystem()
-	}
-	for i, id := range a.appPIDs {
-		if id == pid && i < len(a.appNames) {
-			return a.appNames[i]
+	a.appSelection = make(map[string]bool, len(a.snap.CaptureAppIDs))
+	for _, id := range a.snap.CaptureAppIDs {
+		if id != "" {
+			a.appSelection[id] = true
 		}
 	}
-	if pid == a.snap.CaptureProcessPID && a.snap.CaptureProcessName != "" {
-		return a.snap.CaptureProcessName
-	}
-	return fmt.Sprintf("PID %d", pid)
 }
 
 // appSelectionLabel names the multi-select choice for the field.
 func (a *App) appSelectionLabel() string {
-	if !capture.MultiAppSupported() {
-		return a.appLabel(a.appChoicePID)
-	}
 	switch len(a.appSelection) {
 	case 0:
 		// A legacy saved PID whose app was not running at launch still owns

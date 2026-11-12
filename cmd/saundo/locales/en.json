@@ -259,6 +259,7 @@
   "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver delay compensation.",
   "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio or a single app.",
+  "pageCaptureSystemDesc": "System audio.",
   "pageNowPlayingDesc": "The tray panel's media card, cover colors, and audio level.",
   "settingsNowPlayingSampleApp": "Apple Music",
   "settingsNowPlayingSampleTitle": "Night Ferry",

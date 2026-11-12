@@ -137,6 +137,7 @@
   "pageReceiversDesc": "管理接收器、自动连接、显示与每台接收器的延迟补偿。",
   "pageAudioDesc": "在延迟与稳定性之间权衡；播放中切换会自动重连。",
   "pageCaptureDesc": "系统声音或单个应用。",
+  "pageCaptureSystemDesc": "系统声音。",
   "pageNowPlayingDesc": "托盘面板中的媒体卡片、封面配色与音频电平。",
   "settingsNowPlayingSampleApp": "Apple Music",
   "settingsNowPlayingSampleTitle": "夜航",

@@ -31,7 +31,7 @@ the seams and the rules for extending them. The code map:
 
 | Seam | Shared contract | Windows | macOS | Other platforms |
 |---|---|---|---|---|
-| System capture | `capture.Start`, `capture.Config`, `capture.Source` (`capture.go`) | `capture_windows.go`: WASAPI shared-mode loopback; per-app via the process-loopback device for one app | `capture_darwin.go`: Core Audio process tap aggregated with the output device; per-app via a stereo mixdown tap of the selected apps' process objects, resolved from bundle IDs | `capture_other.go`: fail-closed |
+| System capture | `capture.Start`, `capture.Config`, `capture.Source` (`capture.go`) | `capture_windows.go`: WASAPI shared-mode loopback; per-app capture is not offered (process loopback cannot isolate the selected app's local output) | `capture_darwin.go`: Core Audio process tap aggregated with the output device; per-app via a stereo mixdown tap of the selected apps' process objects, resolved from bundle IDs | `capture_other.go`: fail-closed |
 | Credentials at rest | `creds.Store`, `protect`/`unprotect` | `dpapi_windows.go`: CryptProtectData | `dpapi_darwin.go`: AES-256-GCM, master key in the login Keychain | `dpapi_other.go`: fail-closed |
 | Mute local | `capture.EndpointMuted`, `capture.SetEndpointMuted`; per-app `capture.ProcessMuteSupported`, `capture.SetProcessMuted` | `mute_windows.go`: `IAudioEndpointVolume`; per-app falls back to the default endpoint | `mute_darwin.go`: `kAudioDevicePropertyMute` on the output device; a per-app tap mutes only the captured app (`CATapMuted`) | `mute_other.go`: fail-closed |
 | Now playing | `nowplaying.Read` and the control/snapshot set (`nowplaying.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
@@ -76,9 +76,9 @@ Core Audio property codes stay inside the leaf packages.
 | Feature | Windows | macOS |
 |---|---|---|
 | System audio capture | WASAPI shared-mode loopback | Core Audio process tap + private aggregate device (macOS 14.4+) |
-| Per-application capture | process-loopback device (Windows 10 2004+), one app | process-object stereo mixdown tap (macOS 14.4+), several apps in one tap; helpers follow the app's bundle-ID prefix; selections persist as bundle IDs |
-| Per-app capture icons | not implemented; the shared picker shows text only | the app's icon in the picker field and menu rows |
-| Mute local on connect | render-endpoint mute; per-app mutes all local output | output-device mute for system capture; a per-app tap mutes only the selected app and leaves other apps playing |
+| Per-application capture | not offered: process loopback copies the app's audio but cannot mute it locally without silencing the capture, so the selected app would play twice or every app would go silent; system capture only | process-object stereo mixdown tap (macOS 14.4+), several apps in one tap; helpers follow the app's bundle-ID prefix; selections persist as bundle IDs |
+| Per-app capture icons | not applicable (per-app capture is not offered) | the app's icon in the picker field and menu rows |
+| Mute local on connect | render-endpoint mute for system capture | output-device mute for system capture; a per-app tap mutes only the selected app and leaves other apps playing |
 | Now Playing card | SMTC | MediaRemote adapter; the card follows the one system session (no switcher) |
 | Credentials at rest | DPAPI (per user) | login-Keychain master key + AES-256-GCM (per user) |
 | Receiver discovery | mDNS + the ARP neighbor table | mDNS; the neighbor table returns empty |

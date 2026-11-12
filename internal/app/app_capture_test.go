@@ -12,47 +12,6 @@ import (
 	"saundo/internal/engine"
 )
 
-func TestAppLabelUsesTheListOrTheSavedName(t *testing.T) {
-	a := previewApp()
-	a.appPIDs = []uint32{0, 1234}
-	a.appNames = []string{locales.CaptureAllSystem(), "Spotify"}
-	if got := a.appLabel(0); got != locales.CaptureAllSystem() {
-		t.Fatalf("appLabel(0) = %q", got)
-	}
-	if got := a.appLabel(1234); got != "Spotify" {
-		t.Fatalf("appLabel(1234) = %q", got)
-	}
-	a.snap.CaptureProcessPID = 4321
-	a.snap.CaptureProcessName = "Music"
-	if got := a.appLabel(4321); got != "Music" {
-		t.Fatalf("saved name fallback = %q", got)
-	}
-	if got := a.appLabel(9999); got != "PID 9999" {
-		t.Fatalf("unknown pid label = %q", got)
-	}
-}
-
-// TestAppCapturePickerChoosesAnApp covers the single-process picker used
-// where multi-select is unsupported.
-func TestAppCapturePickerChoosesAnApp(t *testing.T) {
-	if capture.MultiAppSupported() {
-		t.Skip("the multi-select picker is covered by TestAppCapturePickerChoosesMultipleApps")
-	}
-	a := previewApp()
-	a.page = pageCapture
-	a.appIcons = map[uint32]*ui.Bitmap{1234: ui.NewBitmap(testIcon())}
-	tt := ui.NewTester(a.settingsView, 720, 500)
-	if err := tt.Click(a.appLabel(0)); err != nil {
-		t.Fatalf("open picker: %v", err)
-	}
-	if err := tt.Click("Spotify"); err != nil {
-		t.Fatalf("choose app: %v", err)
-	}
-	if a.appChoicePID != 1234 {
-		t.Fatalf("appChoicePID = %d, want 1234", a.appChoicePID)
-	}
-}
-
 // TestAppCapturePickerChoosesMultipleApps drives the checked menu: two apps
 // on, one off, all applied live without a Done step.
 func TestAppCapturePickerChoosesMultipleApps(t *testing.T) {
@@ -143,4 +102,20 @@ func testIcon() image.Image {
 		}
 	}
 	return img
+}
+
+// TestCapturePageHidesPerAppWhenUnsupported pins the product decision: a
+// platform without per-app capture shows only the system source and status.
+func TestCapturePageHidesPerAppWhenUnsupported(t *testing.T) {
+	if capture.AppCaptureSupported() {
+		t.Skip("per-app capture is offered on this platform")
+	}
+	a := previewApp()
+	a.page = pageCapture
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, copy := range []string{locales.SettingsAppCapture(), locales.SettingsAppCaptureDesc()} {
+		if tt.HasText(copy) {
+			t.Fatalf("the capture page still shows %q", copy)
+		}
+	}
 }

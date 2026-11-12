@@ -57,7 +57,7 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 
 ## What it does
 
-- **System audio capture** — WASAPI loopback on Windows or a Core Audio process tap on macOS: the default output, a fixed endpoint, or one or more applications (one on Windows).
+- **System audio capture** — WASAPI loopback on Windows or a Core Audio process tap on macOS: the default output, a fixed endpoint, or, on macOS, one or more applications.
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock (the sender is the PTP master for stereo pairs), encrypted control and event channels, retransmit on request.
 - **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
 - **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own OS-secured password (DPAPI on Windows, the Keychain on macOS). A directed unicast pass finds receivers that miss multicast; the receiver list is cached, so auto-connect starts at launch without waiting for discovery; and both surfaces list only the receivers you can use right now. A receiver that runs on the same computer is never a target: it stays in the hidden group with a Local chip.

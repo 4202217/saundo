@@ -101,10 +101,15 @@ func SetProcessMuted(bool) error {
 	return errors.New("capture: process mute is unsupported on this platform")
 }
 
-// AppCaptureSupported reports whether this Windows build can activate
-// process-loopback capture.
+// AppCaptureSupported reports whether this Windows build offers per-app
+// capture. It does not: process loopback copies the app's audio but cannot
+// stop it playing locally. Muting the app's audio session also silences the
+// capture (measured), and the endpoint mute silences every app, so the
+// expected split (the selected app on the receiver, the others local) cannot
+// be met. The enumeration and activation code stays for a future capture
+// path; the product offers system capture only.
 func AppCaptureSupported() bool {
-	return appCaptureSupported()
+	return false
 }
 
 // appCaptureSupported reports whether this Windows build can activate
