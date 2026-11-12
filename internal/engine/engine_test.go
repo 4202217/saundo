@@ -1249,3 +1249,32 @@ func TestCaptureErrorLogsOncePerMinute(t *testing.T) {
 		t.Fatalf("stale capture error after recovery: %q", got)
 	}
 }
+
+// TestUnsupportedPlatformDropsAppSelection pins the fail-closed load: a
+// saved app selection from a build that offered it cannot strand system
+// capture where the feature is no longer offered.
+func TestUnsupportedPlatformDropsAppSelection(t *testing.T) {
+	if capture.AppCaptureSupported() {
+		t.Skip("per-app capture is offered on this platform")
+	}
+	h := newHarness(t)
+	h.e.captureProcess = 1234
+	h.e.captureApps = []string{"path:music"}
+	h.e.captureAppNames = []string{"music.exe"}
+	h.e.setsValue.CaptureProcessPID = 1234
+	h.e.setsValue.CaptureProcessName = "music.exe"
+	h.e.setsValue.CaptureAppIDs = []string{"path:music"}
+	h.e.setsValue.CaptureAppNames = []string{"music.exe"}
+	if !h.e.dropUnsupportedAppSelection() {
+		t.Fatal("the stale app selection was not dropped")
+	}
+	if h.e.captureProcess != 0 || len(h.e.captureApps) != 0 || len(h.e.captureAppNames) != 0 {
+		t.Fatalf("engine still holds the app selection")
+	}
+	if h.e.setsValue.CaptureProcessPID != 0 || len(h.e.setsValue.CaptureAppIDs) != 0 || len(h.e.setsValue.CaptureAppNames) != 0 {
+		t.Fatalf("settings still hold the app selection")
+	}
+	if h.e.dropUnsupportedAppSelection() {
+		t.Fatal("a second call reported a change")
+	}
+}

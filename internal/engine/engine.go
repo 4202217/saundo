@@ -515,6 +515,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	if len(e.captureApps) > 0 {
 		e.captureName = strings.Join(e.captureAppNames, " + ")
 	}
+	e.dropUnsupportedAppSelection()
 	// A registry that cannot be read leaves the engine with no remembered
 	// receivers but does not stop it; manual and discovered receivers still
 	// work. The corrupt-file guard keeps a later save from destroying the
@@ -724,6 +725,29 @@ func (e *Engine) SetStrictAuth(strict bool) {
 // SetName changes the sender name receivers display.
 func (e *Engine) SetName(name string) {
 	e.send(command{kind: cmdName, text: name})
+}
+
+// dropUnsupportedAppSelection clears a saved app or process selection on a
+// platform that does not offer per-app capture, so the stale setting cannot
+// strand system capture. It reports whether it changed anything.
+func (e *Engine) dropUnsupportedAppSelection() bool {
+	if capture.AppCaptureSupported() {
+		return false
+	}
+	if e.captureProcess == 0 && len(e.captureApps) == 0 {
+		return false
+	}
+	e.captureProcess = 0
+	e.captureApps = nil
+	e.captureAppNames = nil
+	e.captureName = e.setsValue.CaptureEndpointName
+	e.setsValue.CaptureProcessPID = 0
+	e.setsValue.CaptureProcessName = ""
+	e.setsValue.CaptureAppIDs = nil
+	e.setsValue.CaptureAppNames = nil
+	e.markSettingsDirty()
+	e.logf("capture: dropped the app selection; per-app capture is not offered on this platform")
+	return true
 }
 
 // SetCaptureProcess selects application capture; pid 0 returns to endpoint

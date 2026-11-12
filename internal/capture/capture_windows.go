@@ -144,6 +144,9 @@ func Start(cfg Config) (*Source, error) {
 	if len(cfg.AppIDs) > 0 {
 		return nil, errors.New("capture: app-ID capture is unsupported on this platform")
 	}
+	if cfg.ProcessID != 0 && !AppCaptureSupported() {
+		return nil, errors.New("capture: per-app capture is not offered on Windows")
+	}
 	s := &Source{cfg: cfg, stop: make(chan struct{}), done: make(chan struct{})}
 	ready := make(chan error, 1)
 	go s.run(ready)

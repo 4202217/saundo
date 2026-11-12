@@ -279,6 +279,9 @@ func pageCopy(page settingsPage) (title, desc string) {
 	case pageLamp:
 		return pageTitle(page), locales.PageLampDesc()
 	case pageCapture:
+		if !capture.AppCaptureSupported() {
+			return pageTitle(page), locales.PageCaptureSystemDesc()
+		}
 		return pageTitle(page), locales.PageCaptureDesc()
 	case pageNowPlaying:
 		return pageTitle(page), locales.PageNowPlayingDesc()
@@ -879,10 +882,12 @@ func (a *App) capturePage(c *ui.Context, p palette) {
 				a.applyCaptureEndpoint()
 			}
 		})
-		rowLine(c, p)
-		settingRow(c, p, locales.SettingsAppCapture(), locales.SettingsAppCaptureDesc(), func() {
-			a.appSelect(c, p)
-		})
+		if capture.AppCaptureSupported() {
+			rowLine(c, p)
+			settingRow(c, p, locales.SettingsAppCapture(), locales.SettingsAppCaptureDesc(), func() {
+				a.appMultiSelect(c, p)
+			})
+		}
 		rowLine(c, p)
 		// The status names the capture device, so its length follows the
 		// device. It keeps the row's right-hand column, capped so the title
@@ -1040,23 +1045,6 @@ func (a *App) applyCaptureEndpoint() {
 	a.eng.SetCaptureEndpoint(id, name)
 }
 
-// applyCaptureProcess narrows capture to one application.
-func (a *App) applyCaptureProcess() {
-	if a.eng == nil {
-		return
-	}
-	a.eng.SetCaptureProcess(a.appChoicePID, a.appLabel(a.appChoicePID))
-}
-
-// appSelect is the per-app picker: multi-select where the platform supports
-// it, and the legacy single-process picker elsewhere.
-func (a *App) appSelect(c *ui.Context, p palette) ui.Element {
-	if capture.MultiAppSupported() {
-		return a.appMultiSelect(c, p)
-	}
-	return a.appSingleSelect(c, p)
-}
-
 // appMultiSelect is the macOS picker: a field showing the selection, and a
 // menu whose checked rows apply live after a short pause.
 func (a *App) appMultiSelect(c *ui.Context, p palette) ui.Element {
@@ -1164,75 +1152,6 @@ func (a *App) appMultiRow(c *ui.Context, p palette, m ui.MenuParts, label, id st
 			a.scheduleAppSelection()
 		}
 	}
-}
-
-// appSingleSelect is the one-process picker used where multi-select is
-// unsupported.
-func (a *App) appSingleSelect(c *ui.Context, p palette) ui.Element {
-	m := ui.MenuBase(c, &a.appMenuOpen)
-	bg := p.pill
-	if m.Trigger.Hovered() {
-		bg = p.pillHover
-	}
-	if m.Trigger.Pressed() {
-		bg = p.line
-	}
-	trigger := m.Trigger.Width(captureSelectWidth).Height(28).Radius(7).Padding(0, 9).
-		Background(bg).Border(1, p.line).Label(locales.SettingsAppCapture())
-	trigger.Children(func() {
-		ui.Row(c).Grow(1).Gap(6).AlignItems(ui.Center).Children(func() {
-			a.appIcon(c, a.appChoicePID, p.muted)
-			ui.Text(c, a.appLabel(a.appChoicePID)).FontSize(12.5).TextColor(p.fg).Grow(1).SingleLine().Ellipsis("…")
-			ui.Icon(c, iconChevron).Size(10, 10).TextColor(p.muted).Shrink(0)
-		})
-	})
-	m.Popup(func(panel ui.Element) {
-		panel.MinWidth(captureSelectWidth).Padding(4).Radius(9).Background(p.card).Border(1, p.line)
-		for i, pid := range a.appPIDs {
-			if i >= len(a.appNames) {
-				break
-			}
-			item := m.Item().Padding(5, 8).Radius(5)
-			highlighted := item.Highlighted()
-			switch {
-			case highlighted:
-				item.Background(p.accent)
-			case pid == a.appChoicePID:
-				item.Background(p.pill)
-			}
-			color := p.fg
-			if highlighted {
-				color = p.accentFg
-			}
-			item.Children(func() {
-				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					a.appIcon(c, pid, color)
-					ui.Text(c, a.appNames[i]).FontSize(12.5).TextColor(color).SingleLine().Ellipsis("…")
-				})
-			})
-			if item.Clicked() {
-				a.appChoicePID = pid
-				a.applyCaptureProcess()
-			}
-		}
-	})
-	return trigger
-}
-
-// appIcon draws the picker icon for pid, or a same-size gap so names without
-// an icon keep the text column aligned. The whole-system choice has no app
-// bundle, so it borrows the capture page's display glyph, tinted like the
-// text beside it.
-func (a *App) appIcon(c *ui.Context, pid uint32, tint ui.Color) {
-	if pid == 0 {
-		ui.Icon(c, iconScreen).Size(16, 16).TextColor(tint).Shrink(0)
-		return
-	}
-	if icon := a.appIcons[pid]; icon != nil {
-		ui.Image(c, icon).Size(16, 16).Shrink(0)
-		return
-	}
-	ui.Box(c).Size(16, 16).Shrink(0)
 }
 
 // captureStatusParts returns the status value, its rate suffix, and the

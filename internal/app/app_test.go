@@ -20,6 +20,7 @@ import (
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
+	"saundo/internal/capture"
 	"saundo/internal/engine"
 	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
@@ -237,7 +238,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
-		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers", "· 48 kHz"}},
+		{pageCapture, capturePageCopy()},
 		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无", "默认", "媒体", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接、许可证与诊断日志。", "声渡 · Saundo", "开发版", "项目主页", "版本发布", "问题反馈", "诊断日志", "查看并复制最近的运行日志", "许可证", "第三方声明", "AirPlay 2 与开源组件"}},
@@ -1989,4 +1990,14 @@ func TestFirstRunSenderNameFollowsTheLocale(t *testing.T) {
 	if got := senderNameForFirstRun(false, "声渡"); got != "声渡" {
 		t.Fatalf("stored sender name = %q, want the stored name", got)
 	}
+}
+
+// capturePageCopy lists the capture page's copy for the platform's offered
+// sources: Windows ships system capture only.
+func capturePageCopy() []string {
+	copy := []string{"采集", "系统声音", "采集状态", "Speakers", "· 48 kHz"}
+	if capture.AppCaptureSupported() {
+		copy = []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers", "· 48 kHz"}
+	}
+	return copy
 }

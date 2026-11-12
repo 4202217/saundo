@@ -1242,6 +1242,16 @@ func (msgs Messages) PageCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "pageCaptureDesc", nil)
 }
 
+// PageCaptureSystemDesc says "System audio."
+// in the language the app shows.
+func PageCaptureSystemDesc() string { return In(i18n.Locale()).PageCaptureSystemDesc() }
+
+// PageCaptureSystemDesc says "System audio."
+// in the language of msgs.
+func (msgs Messages) PageCaptureSystemDesc() string {
+	return Catalog.Format(msgs.locale, "pageCaptureSystemDesc", nil)
+}
+
 // PageNowPlayingDesc says "The tray panel's media card, cover colors, and audio level."
 // in the language the app shows.
 func PageNowPlayingDesc() string { return In(i18n.Locale()).PageNowPlayingDesc() }
