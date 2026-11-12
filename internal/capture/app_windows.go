@@ -26,6 +26,10 @@ type AppInfo struct {
 	Name  string
 	Path  string
 	Title string
+	// ID is unset on Windows: the picker selects by PID there.
+	ID string
+	// Icon is unset on Windows: the shared picker shows text only there.
+	Icon []byte
 	// Active reports whether the app (its process tree) currently renders
 	// audio; process-loopback capture only initializes for active apps.
 	Active bool
@@ -83,6 +87,19 @@ var (
 	ntdll                           = syscall.NewLazyDLL("ntdll.dll")
 	procRtlGetVersion               = ntdll.NewProc("RtlGetVersion")
 )
+
+// MultiAppSupported reports whether one capture stream can mix several
+// selected apps. Windows process loopback captures one process tree.
+func MultiAppSupported() bool { return false }
+
+// ProcessMuteSupported reports whether a per-app stream can mute just the
+// captured app. Windows process loopback cannot.
+func ProcessMuteSupported() bool { return false }
+
+// SetProcessMuted is unsupported on Windows.
+func SetProcessMuted(bool) error {
+	return errors.New("capture: process mute is unsupported on this platform")
+}
 
 // AppCaptureSupported reports whether this Windows build can activate
 // process-loopback capture.

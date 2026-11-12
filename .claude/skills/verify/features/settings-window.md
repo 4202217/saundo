@@ -57,7 +57,11 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   the flyout's ambient card read the same global choice; see
   [ambient-light.md](ambient-light.md).
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and per-app
-  capture (application list built from window titles + audio sessions). Both
+  capture (Windows: application list built from window titles + audio
+  sessions, text only; macOS: Core Audio process families with app icons,
+  helpers folded into their app, checked multi-select applied live after a
+  250 ms pause and persisted as bundle IDs). The status row counts a multi-app selection and
+  keeps the rate visible, with the full names in its tooltip. Both
   pickers are 220 DIP wide, for device and app names. The status keeps the
   row's right-hand column, capped at 55% and ellipsized so a long device name
   cannot squeeze the title; the full name is in its tooltip.

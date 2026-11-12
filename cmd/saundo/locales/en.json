@@ -419,13 +419,38 @@
   "settingsMuteLocalDescWaiting": "Applies when a receiver connects; not connected now",
   "settingsMuteLocalDescFailed": "Could not mute local output; check the audio device",
   "settingsMuteLocalNote": "With “Mute local output while connected” on, some audio devices mute capture too. Turn that switch off if the receiver goes silent.",
+  "settingsMuteLocalApp": "Mute the selected app while connected",
+  "settingsMuteLocalDescAppOn": "Only the selected app is muted; other apps keep playing",
+  "settingsMuteLocalAppNote": "Per-app capture mutes just the selected app locally. Other apps keep playing from this Mac.",
+  "settingsMuteLocalWindowsAppNote": "Windows can mute only the whole output for per-app capture, so other apps are silenced too.",
   "settingsSystemOutput": "System audio",
   "settingsSystemOutputDesc": "Capture the default output device",
   "settingsAppCapture": "Per-app capture",
   "settingsAppCaptureDesc": "Play only the selected app's audio",
+  "settingsAppCaptureCount": "{count} apps",
+  "@settingsAppCaptureCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAppCapturePartial": "{active}/{selected} apps",
+  "@settingsAppCapturePartial": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "selected": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAppCaptureMissing": "not captured",
   "settingsCaptureStatus": "Capture status",
   "settingsCaptureStatusDesc": "Current capture source",
   "settingsCaptureError": "Capture error",
+  "settingsCaptureWaitingApp": "Waiting for the selected app",
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
   "summaryStereoGroup": "Stereo pair · {n, number}/2",

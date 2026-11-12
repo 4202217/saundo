@@ -38,6 +38,8 @@ var (
 		"CaptureEndpointName",
 		"CaptureProcessPID",
 		"CaptureProcessName",
+		"CaptureAppIDs",
+		"CaptureAppNames",
 		"LastDeviceID",
 		"StrictReceiverAuth",
 		"Reconnect",

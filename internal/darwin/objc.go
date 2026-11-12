@@ -150,6 +150,11 @@ func NumberBool(b bool) ID {
 	return Send(MustClass("NSNumber"), "numberWithBool:", v)
 }
 
+// NumberUint boxes a Go uint32 as an NSNumber.
+func NumberUint(v uint32) ID {
+	return Send(MustClass("NSNumber"), "numberWithUnsignedInt:", uintptr(v))
+}
+
 // Send sends a message whose arguments are integers or pointers. Go pointers
 // converted in the call are moved to the heap and kept alive until it
 // returns (go:uintptrescapes).

@@ -141,6 +141,9 @@ func Start(cfg Config) (*Source, error) {
 	if cfg.Ring == nil {
 		return nil, errors.New("capture: Ring is required")
 	}
+	if len(cfg.AppIDs) > 0 {
+		return nil, errors.New("capture: app-ID capture is unsupported on this platform")
+	}
 	s := &Source{cfg: cfg, stop: make(chan struct{}), done: make(chan struct{})}
 	ready := make(chan error, 1)
 	go s.run(ready)
@@ -191,7 +194,7 @@ func (s *Source) run(ready chan<- error) {
 		wasFirst := first
 		first = false
 		backoff = retryDelayFirst
-		s.streamOpened(st.rate, st.name)
+		s.streamOpened(st.rate, st.name, nil)
 		if wasFirst {
 			ready <- nil
 		}

@@ -2618,6 +2618,48 @@ func (msgs Messages) SettingsMuteLocalNote() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalNote", nil)
 }
 
+// SettingsMuteLocalApp says "Mute the selected app while connected"
+// in the language the app shows.
+func SettingsMuteLocalApp() string { return In(i18n.Locale()).SettingsMuteLocalApp() }
+
+// SettingsMuteLocalApp says "Mute the selected app while connected"
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalApp() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalApp", nil)
+}
+
+// SettingsMuteLocalDescAppOn says "Only the selected app is muted; other apps keep playing"
+// in the language the app shows.
+func SettingsMuteLocalDescAppOn() string { return In(i18n.Locale()).SettingsMuteLocalDescAppOn() }
+
+// SettingsMuteLocalDescAppOn says "Only the selected app is muted; other apps keep playing"
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalDescAppOn() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalDescAppOn", nil)
+}
+
+// SettingsMuteLocalAppNote says "Per-app capture mutes just the selected app locally. Other apps keep playing from this Mac."
+// in the language the app shows.
+func SettingsMuteLocalAppNote() string { return In(i18n.Locale()).SettingsMuteLocalAppNote() }
+
+// SettingsMuteLocalAppNote says "Per-app capture mutes just the selected app locally. Other apps keep playing from this Mac."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalAppNote() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalAppNote", nil)
+}
+
+// SettingsMuteLocalWindowsAppNote says "Windows can mute only the whole output for per-app capture, so other apps are silenced too."
+// in the language the app shows.
+func SettingsMuteLocalWindowsAppNote() string {
+	return In(i18n.Locale()).SettingsMuteLocalWindowsAppNote()
+}
+
+// SettingsMuteLocalWindowsAppNote says "Windows can mute only the whole output for per-app capture, so other apps are silenced too."
+// in the language of msgs.
+func (msgs Messages) SettingsMuteLocalWindowsAppNote() string {
+	return Catalog.Format(msgs.locale, "settingsMuteLocalWindowsAppNote", nil)
+}
+
 // SettingsSystemOutput says "System audio"
 // in the language the app shows.
 func SettingsSystemOutput() string { return In(i18n.Locale()).SettingsSystemOutput() }
@@ -2658,6 +2700,40 @@ func (msgs Messages) SettingsAppCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAppCaptureDesc", nil)
 }
 
+// SettingsAppCaptureCount says "{count} apps"
+// in the language the app shows.
+func SettingsAppCaptureCount(count int) string {
+	return In(i18n.Locale()).SettingsAppCaptureCount(count)
+}
+
+// SettingsAppCaptureCount says "{count} apps"
+// in the language of msgs.
+func (msgs Messages) SettingsAppCaptureCount(count int) string {
+	return Catalog.Format(msgs.locale, "settingsAppCaptureCount", map[string]any{"count": count})
+}
+
+// SettingsAppCapturePartial says "{active}/{selected} apps"
+// in the language the app shows.
+func SettingsAppCapturePartial(active int, selected int) string {
+	return In(i18n.Locale()).SettingsAppCapturePartial(active, selected)
+}
+
+// SettingsAppCapturePartial says "{active}/{selected} apps"
+// in the language of msgs.
+func (msgs Messages) SettingsAppCapturePartial(active int, selected int) string {
+	return Catalog.Format(msgs.locale, "settingsAppCapturePartial", map[string]any{"active": active, "selected": selected})
+}
+
+// SettingsAppCaptureMissing says "not captured"
+// in the language the app shows.
+func SettingsAppCaptureMissing() string { return In(i18n.Locale()).SettingsAppCaptureMissing() }
+
+// SettingsAppCaptureMissing says "not captured"
+// in the language of msgs.
+func (msgs Messages) SettingsAppCaptureMissing() string {
+	return Catalog.Format(msgs.locale, "settingsAppCaptureMissing", nil)
+}
+
 // SettingsCaptureStatus says "Capture status"
 // in the language the app shows.
 func SettingsCaptureStatus() string { return In(i18n.Locale()).SettingsCaptureStatus() }
@@ -2686,6 +2762,16 @@ func SettingsCaptureError() string { return In(i18n.Locale()).SettingsCaptureErr
 // in the language of msgs.
 func (msgs Messages) SettingsCaptureError() string {
 	return Catalog.Format(msgs.locale, "settingsCaptureError", nil)
+}
+
+// SettingsCaptureWaitingApp says "Waiting for the selected app"
+// in the language the app shows.
+func SettingsCaptureWaitingApp() string { return In(i18n.Locale()).SettingsCaptureWaitingApp() }
+
+// SettingsCaptureWaitingApp says "Waiting for the selected app"
+// in the language of msgs.
+func (msgs Messages) SettingsCaptureWaitingApp() string {
+	return Catalog.Format(msgs.locale, "settingsCaptureWaitingApp", nil)
 }
 
 // SettingsCaptureNotRunning says "Not running"

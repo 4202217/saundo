@@ -2,7 +2,62 @@
 
 package darwin
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
+
+// RunningApp is one entry of NSWorkspace's running applications. Policy is
+// NSApplicationActivationPolicy: 0 regular, 1 accessory, 2 prohibited.
+type RunningApp struct {
+	PID      uint32
+	Name     string
+	BundleID string
+	Path     string
+	Policy   int
+}
+
+// RunningApplications lists the apps LaunchServices knows are running,
+// including background helpers. The capture picker groups them into app
+// families; callers on other threads still get a snapshot.
+func RunningApplications() ([]RunningApp, error) {
+	if err := load(); err != nil {
+		return nil, err
+	}
+	var out []RunningApp
+	var listErr error
+	WithPool(func() {
+		ws := Send(mustClass("NSWorkspace"), "sharedWorkspace")
+		if ws == 0 {
+			listErr = errors.New("darwin: NSWorkspace is unavailable")
+			return
+		}
+		arr := Send(ws, "runningApplications")
+		if arr == 0 {
+			listErr = errors.New("darwin: runningApplications is unavailable")
+			return
+		}
+		n := SendInt(arr, "count")
+		out = make([]RunningApp, 0, n)
+		for i := 0; i < n; i++ {
+			app := Send(arr, "objectAtIndex:", uintptr(i))
+			if app == 0 {
+				continue
+			}
+			a := RunningApp{
+				PID:      uint32(SendInt(app, "processIdentifier")),
+				Name:     GoString(Send(app, "localizedName")),
+				BundleID: GoString(Send(app, "bundleIdentifier")),
+				Policy:   SendInt(app, "activationPolicy"),
+			}
+			if u := Send(app, "bundleURL"); u != 0 {
+				a.Path = GoString(Send(u, "path"))
+			}
+			out = append(out, a)
+		}
+	})
+	return out, listErr
+}
 
 // App name resolution for media sessions: LaunchServices maps a bundle
 // identifier to the app, whose bundle carries the localized display name.
@@ -57,28 +112,50 @@ func AppIconForBundleID(bundleID string) []byte {
 		return nil
 	}
 	iconMu.Lock()
-	defer iconMu.Unlock()
-	if png, ok := iconCache[bundleID]; ok {
+	png, ok := iconCache[bundleID]
+	iconMu.Unlock()
+	if ok {
 		return png
 	}
-	var png []byte
+	var path string
 	WithPool(func() {
 		ws := Send(mustClass("NSWorkspace"), "sharedWorkspace")
 		url := Send(ws, "URLForApplicationWithBundleIdentifier:", uintptr(NSString(bundleID)))
 		if url == 0 {
 			return
 		}
-		path := Send(url, "path")
-		if path == 0 {
-			return
+		if p := Send(url, "path"); p != 0 {
+			path = GoString(p)
 		}
-		icon := Send(ws, "iconForFile:", uintptr(Send(url, "path")))
+	})
+	png = AppIconForPath(path)
+	iconMu.Lock()
+	iconCache[bundleID] = png
+	iconMu.Unlock()
+	return png
+}
+
+// AppIconForPath renders a file or app bundle's icon as a 128 px PNG. It
+// returns nil when the path has no icon.
+func AppIconForPath(path string) []byte {
+	if path == "" {
+		return nil
+	}
+	iconMu.Lock()
+	defer iconMu.Unlock()
+	if png, ok := iconCache[path]; ok {
+		return png
+	}
+	var png []byte
+	WithPool(func() {
+		ws := Send(mustClass("NSWorkspace"), "sharedWorkspace")
+		icon := Send(ws, "iconForFile:", uintptr(NSString(path)))
 		if icon == 0 {
 			return
 		}
 		png = pngThumbnail(GoBytes(Send(icon, "TIFFRepresentation")))
 	})
-	iconCache[bundleID] = png
+	iconCache[path] = png
 	return png
 }
 

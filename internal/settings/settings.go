@@ -114,6 +114,8 @@ type Settings struct {
 	CaptureEndpointName string             `json:"captureEndpointName"`
 	CaptureProcessPID   uint32             `json:"captureProcessPid"`
 	CaptureProcessName  string             `json:"captureProcessName"`
+	CaptureAppIDs       []string           `json:"captureAppIds"`
+	CaptureAppNames     []string           `json:"captureAppNames"`
 	LastDeviceID        string             `json:"lastDeviceId"`
 	StrictReceiverAuth  bool               `json:"strictReceiverAuth"`
 	AutoConnect         bool               `json:"autoConnect"`

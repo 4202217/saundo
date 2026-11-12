@@ -27,6 +27,10 @@ const (
 var (
 	errStopped              = errors.New("capture: stopped")
 	errDefaultDeviceChanged = errors.New("capture: the default render device changed")
+	// ErrNoAppProcess reports that none of the selected apps has a Core
+	// Audio process to tap yet. The engine shows a waiting state and keeps
+	// retrying, not a capture failure.
+	ErrNoAppProcess = errors.New("capture: no Core Audio process for the selection yet")
 )
 
 // Endpoint identifies one active render device.
@@ -44,9 +48,18 @@ type Config struct {
 	// ProcessID selects application-level capture (process-loopback) instead
 	// of an endpoint. Nonzero ignores EndpointID.
 	ProcessID uint32
-	OnFormat  func(rate int)
-	OnError   func(error)
-	OnDevice  func(name string)
+	// AppIDs selects apps by stable identifier: bundle IDs on macOS, and
+	// pid:<n> for processes that have none. Non-empty takes precedence over
+	// ProcessID on a platform that supports it.
+	AppIDs []string
+	// MuteProcess starts a per-app tap muted: the captured app's audio goes
+	// only to the tap while other apps keep playing locally. Platforms
+	// without process mute ignore it; the engine falls back to the endpoint
+	// mute there.
+	MuteProcess bool
+	OnFormat    func(rate int)
+	OnError     func(error)
+	OnDevice    func(name string)
 }
 
 // Stats is a snapshot of a capture source.
@@ -54,6 +67,9 @@ type Stats struct {
 	Running bool
 	Rate    int
 	Device  string
+	// Apps lists the selected stable IDs the current tap actually includes.
+	// It is empty for endpoint capture and for platforms without app IDs.
+	Apps    []string
 	Frames  uint64
 	Dropped uint64
 	Errors  uint64
@@ -71,9 +87,13 @@ type Source struct {
 	running bool
 	rate    int
 	device  string
+	apps    []string
 	frames  atomic.Uint64
 	dropped atomic.Uint64
 	errors  uint64
+	// muteReq is the per-app tap's desired local-output state. Only the
+	// darwin leaf reads it; other platforms leave it false.
+	muteReq atomic.Bool
 }
 
 // Stop ends capture. It is idempotent and waits for the capture goroutine.
@@ -99,6 +119,7 @@ func (s *Source) Stats() Stats {
 		Running: s.running,
 		Rate:    s.rate,
 		Device:  s.device,
+		Apps:    append([]string(nil), s.apps...),
 		Frames:  s.frames.Load(),
 		Dropped: s.cfg.Ring.Dropped() + s.dropped.Load(),
 		Errors:  s.errors,
@@ -106,11 +127,12 @@ func (s *Source) Stats() Stats {
 }
 
 // streamOpened records a successful open and fires the open callbacks.
-func (s *Source) streamOpened(rate int, device string) {
+func (s *Source) streamOpened(rate int, device string, apps []string) {
 	s.mu.Lock()
 	s.running = true
 	s.rate = rate
 	s.device = device
+	s.apps = append([]string(nil), apps...)
 	s.mu.Unlock()
 	if s.cfg.OnFormat != nil {
 		s.cfg.OnFormat(rate)

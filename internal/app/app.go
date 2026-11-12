@@ -93,9 +93,15 @@ type App struct {
 	captureLabels []string
 	captureChoice string
 
-	appNames  []string
-	appIDs    []string
-	appChoice string
+	appNames      []string
+	appPIDs       []uint32
+	appIDs        []string
+	appIcons      map[uint32]*ui.Bitmap
+	appNameByID   map[string]string
+	appChoicePID  uint32
+	appSelection  map[string]bool
+	appMenuOpen   bool
+	appApplyTimer *time.Timer
 
 	latency            float64
 	latencyMode        settings.LatencyMode
@@ -264,8 +270,7 @@ func Run() error {
 	a.standbyEnabled = cfg.Standby.Enabled
 	a.standbyMinutes = settings.NormalizeStandbyMinutes(cfg.Standby.IdleMinutes)
 	a.appNames = []string{locales.CaptureAllSystem()}
-	a.appIDs = []string{"0"}
-	a.appChoice = locales.CaptureAllSystem()
+	a.appPIDs = []uint32{0}
 
 	// Move the legacy per-receiver state before the engine reads either
 	// store: plaintext passwords into DPAPI, and one auto-connect entry
@@ -396,21 +401,42 @@ func (a *App) ready() {
 			}
 		}
 		appNames := []string{locales.CaptureAllSystem()}
-		appIDs := []string{"0"}
+		appPIDs := []uint32{0}
+		appIDs := []string{""}
+		appNameByID := map[string]string{}
+		appIcons := make(map[uint32]image.Image)
 		for _, ap := range apps {
 			label := ap.Name
 			if ap.Title != "" && ap.Title != ap.Name {
 				label = fmt.Sprintf("%s · %s", ap.Name, ap.Title)
 			}
 			appNames = append(appNames, label)
-			appIDs = append(appIDs, fmt.Sprint(ap.PID))
+			appPIDs = append(appPIDs, ap.PID)
+			appIDs = append(appIDs, ap.ID)
+			if ap.ID != "" {
+				appNameByID[ap.ID] = label
+			}
+			if len(ap.Icon) > 0 {
+				img, _, err := image.Decode(bytes.NewReader(ap.Icon))
+				if err != nil {
+					a.log.Printf("capture: app icon for %s: %v", ap.Name, err)
+					continue
+				}
+				appIcons[ap.PID] = img
+			}
 		}
 		a.updateUI(func() {
 			a.captureNames, a.captureIDs = names, ids
 			a.rebuildCaptureLabels()
-			a.appNames, a.appIDs = appNames, appIDs
+			a.appNames, a.appPIDs, a.appIDs = appNames, appPIDs, appIDs
+			a.appNameByID = appNameByID
+			a.appIcons = make(map[uint32]*ui.Bitmap, len(appIcons))
+			for pid, img := range appIcons {
+				a.appIcons[pid] = ui.NewBitmap(img)
+			}
 			a.syncCaptureChoice()
 			a.syncAppChoice()
+			a.migrateLegacyAppSelection()
 		})
 	}()
 
@@ -880,18 +906,159 @@ func (a *App) syncCaptureChoice() {
 }
 
 func (a *App) syncAppChoice() {
-	if a.snap.CaptureProcessPID == 0 {
-		a.appChoice = locales.CaptureAllSystem()
+	if capture.MultiAppSupported() {
+		if a.appMenuOpen {
+			return
+		}
+		a.appSelection = make(map[string]bool, len(a.snap.CaptureAppIDs))
+		for _, id := range a.snap.CaptureAppIDs {
+			if id != "" {
+				a.appSelection[id] = true
+			}
+		}
+		return
+	}
+	a.appChoicePID = a.snap.CaptureProcessPID
+}
+
+// appLabel names the app a single-select picker pid stands for. A saved pid
+// the current list does not hold keeps the name the engine remembers.
+func (a *App) appLabel(pid uint32) string {
+	if pid == 0 {
+		return locales.CaptureAllSystem()
+	}
+	for i, id := range a.appPIDs {
+		if id == pid && i < len(a.appNames) {
+			return a.appNames[i]
+		}
+	}
+	if pid == a.snap.CaptureProcessPID && a.snap.CaptureProcessName != "" {
+		return a.snap.CaptureProcessName
+	}
+	return fmt.Sprintf("PID %d", pid)
+}
+
+// appSelectionLabel names the multi-select choice for the field.
+func (a *App) appSelectionLabel() string {
+	if !capture.MultiAppSupported() {
+		return a.appLabel(a.appChoicePID)
+	}
+	switch len(a.appSelection) {
+	case 0:
+		// A legacy saved PID whose app was not running at launch still owns
+		// capture until the user picks again.
+		if a.snap.CaptureProcessPID != 0 && a.snap.CaptureProcessName != "" {
+			return a.snap.CaptureProcessName
+		}
+		return locales.CaptureAllSystem()
+	case 1:
+		for id := range a.appSelection {
+			return a.appNameForID(id)
+		}
+	}
+	return locales.SettingsAppCaptureCount(len(a.appSelection))
+}
+
+func (a *App) appNameForID(id string) string {
+	if name, ok := a.appNameByID[id]; ok && name != "" {
+		return name
+	}
+	for i, sid := range a.snap.CaptureAppIDs {
+		if sid == id && i < len(a.snap.CaptureAppNames) && a.snap.CaptureAppNames[i] != "" {
+			return a.snap.CaptureAppNames[i]
+		}
+	}
+	return id
+}
+
+func (a *App) appBitmapForID(id string) *ui.Bitmap {
+	for i, sid := range a.appIDs {
+		if sid == id && i < len(a.appPIDs) {
+			return a.appIcons[a.appPIDs[i]]
+		}
+	}
+	return nil
+}
+
+// selectionBitmap is the icon of the first selected app in list order, so the
+// field stays stable when several are selected.
+func (a *App) selectionBitmap() *ui.Bitmap {
+	for i, id := range a.appIDs {
+		if id != "" && a.appSelection[id] && i < len(a.appPIDs) {
+			return a.appIcons[a.appPIDs[i]]
+		}
+	}
+	return nil
+}
+
+func (a *App) perAppSelected() bool {
+	return a.snap.CaptureProcessPID != 0 || len(a.snap.CaptureAppIDs) > 0
+}
+
+// selectedAppIDs returns the chosen IDs in list order, then saved IDs whose
+// apps are no longer running.
+func (a *App) selectedAppIDs() (ids, names []string) {
+	seen := make(map[string]bool, len(a.appSelection))
+	for i, id := range a.appIDs {
+		if id == "" || !a.appSelection[id] || seen[id] || i >= len(a.appNames) {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+		names = append(names, a.appNames[i])
+	}
+	for i, id := range a.snap.CaptureAppIDs {
+		if id == "" || !a.appSelection[id] || seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+		name := id
+		if i < len(a.snap.CaptureAppNames) && a.snap.CaptureAppNames[i] != "" {
+			name = a.snap.CaptureAppNames[i]
+		}
+		names = append(names, name)
+	}
+	return ids, names
+}
+
+// scheduleAppSelection applies the live selection after a short pause, so a
+// burst of checks restarts capture once instead of per click.
+func (a *App) scheduleAppSelection() {
+	ids, names := a.selectedAppIDs()
+	label := ""
+	switch len(ids) {
+	case 0:
+	case 1:
+		label = names[0]
+	default:
+		label = locales.SettingsAppCaptureCount(len(ids))
+	}
+	if a.appApplyTimer != nil {
+		a.appApplyTimer.Stop()
+	}
+	a.appApplyTimer = time.AfterFunc(250*time.Millisecond, func() {
+		if a.eng != nil {
+			a.eng.SetCaptureApps(ids, names, label)
+		}
+	})
+}
+
+// migrateLegacyAppSelection turns the old single PID saved before bundle-ID
+// persistence into the same app's stable ID once the list is loaded.
+func (a *App) migrateLegacyAppSelection() {
+	if !capture.MultiAppSupported() || len(a.snap.CaptureAppIDs) > 0 || a.snap.CaptureProcessPID == 0 {
 		return
 	}
 	for i, id := range a.appIDs {
-		if id == fmt.Sprint(a.snap.CaptureProcessPID) {
-			a.appChoice = a.appNames[i]
-			return
+		if id == "" || i >= len(a.appPIDs) || i >= len(a.appNames) || a.appPIDs[i] != a.snap.CaptureProcessPID {
+			continue
 		}
-	}
-	if a.snap.CaptureProcessName != "" {
-		a.appChoice = a.snap.CaptureProcessName
+		a.appSelection = map[string]bool{id: true}
+		if a.eng != nil {
+			a.eng.SetCaptureApps([]string{id}, []string{a.appNames[i]}, a.appNames[i])
+		}
+		return
 	}
 }
 
