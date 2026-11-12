@@ -15,16 +15,17 @@
   internal/app/flyout.go: base 459 for three device rows, 62 less because the
   media card replaces the old Now Playing row, 90 for the permanent ambient
   section, +150 while a media session exists, +44 for the latency row, +48 for
-  the connection error bar, and +53 for the expanded ambient grid
-  (flyoutHeightForState). The device card and the playback card touch through
-  the body's 8 DIP gap; there is no flexible spacer.
+  the connection error bar, +48 for the credential-recovery notice, and +53
+  for the expanded ambient grid (flyoutHeightForState). The device card and
+  the playback card touch through the body's 8 DIP gap; there is no flexible
+  spacer.
 
   Render:
     chrome --headless=new --hide-scrollbars --window-size=1400,900 \
       --screenshot=.audit/previews/<topic>.png file:///.../flyout.html
 
   Headless shots can select a state from the URL:
-    ?state=idle|streaming|empty|error&lang=zh|en&dark=0|1
+    ?state=idle|streaming|standby|empty|error|credential&lang=zh|en&dark=0|1
     &latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5
 -->
 <style>
@@ -37,6 +38,7 @@
     --accent: #4f46e5; --accent-soft: #eeedfd; --accent-fg: #ffffff;
     --sel: #ecebfb; --green: #189a58; --green-soft: #e4f6ec;
     --red: #d64545; --red-soft: #fbe9e9;
+    --warning: #b76a12; --warning-soft: #fbf0e0;
     --raised-shadow: 0 1px 2px rgba(0, 0, 0, .14);
     --flyout-shadow: 0 22px 60px rgba(20, 22, 30, .30);
     --ease: cubic-bezier(.16, 1, .3, 1);
@@ -55,6 +57,7 @@
     --accent: #a5b4fc; --accent-soft: #2b2c47; --accent-fg: #14142a;
     --sel: #33345a; --green: #6fd99b; --green-soft: #1e3a2b;
     --red: #f28b82; --red-soft: #45272a;
+    --warning: #e5a95c; --warning-soft: #382b1b;
     --raised-shadow: 0 1px 2px rgba(0, 0, 0, .48);
     --flyout-shadow: 0 30px 90px rgba(0, 0, 0, .66);
     color-scheme: dark;
@@ -215,6 +218,14 @@
     background: var(--red-soft); color: var(--red);
     font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .credential-bar {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+    background: var(--warning-soft); color: var(--warning);
+    font-size: 11.5px; white-space: nowrap; overflow: hidden;
+  }
+  .credential-bar .label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .credential-bar .icon { width: 12px; height: 12px; }
 
   .playback-card { flex: none; }
   .volume { padding: 10px 12px 10px 12px; }
@@ -428,6 +439,7 @@ const COPY = {
     standby: '待机',
     statusIdle: '未连接', statusStreaming: '正在通过 客厅 HomePod 播放', statusStandby: '已待机 · 播放声音即唤醒', statusError: '连接失败',
     errorBar: '连接失败：请求超时',
+    credentialBar: '保存的配对已重置，需要重新配对。',
     latencyModes: ['低延迟', '标准', '稳定', '自定义']
   },
   en: {
@@ -444,6 +456,7 @@ const COPY = {
     standby: 'Standby',
     statusIdle: 'Not connected', statusStreaming: 'Streaming to Living Room HomePod', statusStandby: 'Standby · wakes when sound plays', statusError: 'Connection failed',
     errorBar: 'Connection failed: request timed out',
+    credentialBar: 'Saved pairing was reset. Pair again.',
     latencyModes: ['Low', 'Standard', 'Stable', 'Custom']
   }
 };
@@ -453,7 +466,8 @@ const STATES = [
   { id: 'streaming', zh: '播放', en: 'Streaming' },
   { id: 'standby', zh: '待机', en: 'Standby' },
   { id: 'empty', zh: '空态', en: 'Empty' },
-  { id: 'error', zh: '失败', en: 'Error' }
+  { id: 'error', zh: '失败', en: 'Error' },
+  { id: 'credential', zh: '配对重置', en: 'Pairing reset' }
 ];
 
 /* One entry per row; the height follows the count. Edit these for the
@@ -479,6 +493,11 @@ const DEVICES = {
     { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'retry' },
     { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
     { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+  ],
+  credential: [
+    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
+    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
   ]
 };
 
@@ -492,9 +511,10 @@ function notesHTML() {
       '<li><b>待机</b> The stream is idle; the lamp row carries a 待机 chip, the power action reads 开灯, and the footer names the standby.</li>' +
       '<li><b>空态</b> No devices; the 141 high search card.</li>' +
       '<li><b>失败</b> The 48 high error bar sits under the device card; the row action is Retry.</li>' +
+      '<li><b>配对重置</b> The saved pairing could not be read; the 48 high credential notice sits under the device card, below the error bar when both show, and opens a 380 wide dialog.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
-      '<li>459 base for three rows, -29 for the empty card, -56 per missing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +53 for the expanded grid.</li>' +
+      '<li>459 base for three rows, -29 for the empty card, -56 per missing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the credential notice, +53 for the expanded grid.</li>' +
       '<li>No flexible spacer: the playback and ambient cards hold the same 8 DIP gap as the device and playback cards.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
@@ -525,7 +545,8 @@ function t(key) { return COPY[state.lang][key]; }
 
 /* Height rule, mirroring flyoutHeightFor and flyoutHeightForState:
    459 base, 62 less for the old Now Playing row, 90 ambient, +150 media,
-   +44 latency, +48 error, +53 for the expanded six-template grid. */
+   +44 latency, +48 error, +48 credential notice, +53 for the expanded
+   six-template grid. */
 const FLYOUT_BASE = 459, DEVICE_ROWS = 3, DEVICE_ROW_H = 56, DEVICE_EMPTY = 141;
 const NOW_ROW_H = 62, MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 48;
 function deviceCardHeight(n) { return n <= 0 ? DEVICE_EMPTY : Math.min(n, DEVICE_ROWS) * DEVICE_ROW_H + 2; }
@@ -533,12 +554,13 @@ function lampGridHeight(count) {
   const rows = Math.min(Math.max(Math.ceil(count / 10), 1), 4);
   return rows * 30 + (rows - 1) * 8 + 22 + 1;
 }
-function flyoutHeight(n, latency, media, expanded, error) {
+function flyoutHeight(n, latency, media, expanded, error, credential) {
   let h = FLYOUT_BASE - (deviceCardHeight(DEVICE_ROWS) - deviceCardHeight(n)) - NOW_ROW_H;
   if (media) h += MEDIA_H;
   if (latency) h += LATENCY_H;
   h += LAMP_H;
   if (error) h += ERROR_H;
+  if (credential) h += ERROR_H;
   if (expanded) h += lampGridHeight(6);
   return h;
 }
@@ -605,6 +627,10 @@ function deviceSectionHTML(devices) {
   if (state.view === 'error') {
     body += '<div class="error-bar">' + esc(t('errorBar')) + '</div>';
   }
+  if (state.view === 'credential') {
+    body += '<div class="credential-bar"><span class="label">' + esc(t('credentialBar')) + '</span>' +
+      icon('chevronRight') + '</div>';
+  }
   return head + body;
 }
 function deviceCount(n) {
@@ -614,7 +640,7 @@ function deviceCount(n) {
 }
 function playbackNote() {
   let note = t('format');
-  if (state.view === 'streaming') note += ' · ' + t('syncPTP');
+  if (state.view === 'streaming' || state.view === 'credential') note += ' · ' + t('syncPTP');
   return note + ' · ' + t('latencyNote');
 }
 function mediaCardHTML() {
@@ -700,7 +726,8 @@ function footerHTML() {
     streaming: { face: 'faceStream', status: 'statusStreaming', cls: 'green' },
     standby: { face: 'faceStream', status: 'statusStandby', cls: 'green' },
     empty: { face: 'faceSearch', status: 'statusIdle', cls: 'muted' },
-    error: { face: 'faceError', status: 'statusError', cls: 'red' }
+    error: { face: 'faceError', status: 'statusError', cls: 'red' },
+    credential: { face: 'faceStream', status: 'statusStreaming', cls: 'green' }
   };
   const f = map[state.view] || map.idle;
   return '<footer class="flyout-foot">' +
@@ -728,7 +755,8 @@ function flyoutHTML(devices, height) {
 function render() {
   const devices = DEVICES[state.view] || DEVICES.idle;
   const expanded = state.lamp === 'expanded';
-  const height = flyoutHeight(devices.length, state.latency, state.media, expanded, state.view === 'error');
+  const height = flyoutHeight(devices.length, state.latency, state.media, expanded,
+    state.view === 'error', state.view === 'credential');
   document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
   document.body.classList.toggle('dark', state.dark);
   document.getElementById('brandMark').innerHTML = ICON.mark;

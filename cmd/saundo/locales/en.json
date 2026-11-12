@@ -100,9 +100,9 @@
   "credentialResetHint": "If it still refuses, reset AirPlay on the receiver.",
   "credentialResetDismiss": "Don't show again",
   "credentialResetPair": "Pair again",
-  "errorDeviceMissing": "Device not found. Refresh and try again.",
-  "errorLatencyDeviceMissing": "Latency saved, but the device was not found, so the session did not restart.",
-  "errorLatencyOffline": "Latency saved, but the device is offline, so the session did not restart.",
+  "errorDeviceMissing": "Receiver not found. Refresh and try again.",
+  "errorLatencyDeviceMissing": "Latency saved, but the receiver was not found, so the session did not restart.",
+  "errorLatencyOffline": "Latency saved, but the receiver is offline, so the session did not restart.",
   "errorSavePassword": "Could not save the receiver password: {error}",
   "@errorSavePassword": {
     "placeholders": {
@@ -323,7 +323,7 @@
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
   "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find",
-  "receiverEmptyHiddenHint": "Enable it again in the hidden group below.",
+  "receiverEmptyHiddenHint": "Enable them again in the hidden group below.",
   "receiverEmptyAllHiddenTitle": "All receivers are hidden",
   "receiverDiscoveryHint": "AirPlay receivers on your network appear here automatically.",
   "receiverChipLocal": "Local",

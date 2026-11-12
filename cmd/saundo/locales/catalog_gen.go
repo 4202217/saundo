@@ -558,31 +558,31 @@ func (msgs Messages) CredentialResetPair() string {
 	return Catalog.Format(msgs.locale, "credentialResetPair", nil)
 }
 
-// ErrorDeviceMissing says "Device not found. Refresh and try again."
+// ErrorDeviceMissing says "Receiver not found. Refresh and try again."
 // in the language the app shows.
 func ErrorDeviceMissing() string { return In(i18n.Locale()).ErrorDeviceMissing() }
 
-// ErrorDeviceMissing says "Device not found. Refresh and try again."
+// ErrorDeviceMissing says "Receiver not found. Refresh and try again."
 // in the language of msgs.
 func (msgs Messages) ErrorDeviceMissing() string {
 	return Catalog.Format(msgs.locale, "errorDeviceMissing", nil)
 }
 
-// ErrorLatencyDeviceMissing says "Latency saved, but the device was not found, so the session did not restart."
+// ErrorLatencyDeviceMissing says "Latency saved, but the receiver was not found, so the session did not restart."
 // in the language the app shows.
 func ErrorLatencyDeviceMissing() string { return In(i18n.Locale()).ErrorLatencyDeviceMissing() }
 
-// ErrorLatencyDeviceMissing says "Latency saved, but the device was not found, so the session did not restart."
+// ErrorLatencyDeviceMissing says "Latency saved, but the receiver was not found, so the session did not restart."
 // in the language of msgs.
 func (msgs Messages) ErrorLatencyDeviceMissing() string {
 	return Catalog.Format(msgs.locale, "errorLatencyDeviceMissing", nil)
 }
 
-// ErrorLatencyOffline says "Latency saved, but the device is offline, so the session did not restart."
+// ErrorLatencyOffline says "Latency saved, but the receiver is offline, so the session did not restart."
 // in the language the app shows.
 func ErrorLatencyOffline() string { return In(i18n.Locale()).ErrorLatencyOffline() }
 
-// ErrorLatencyOffline says "Latency saved, but the device is offline, so the session did not restart."
+// ErrorLatencyOffline says "Latency saved, but the receiver is offline, so the session did not restart."
 // in the language of msgs.
 func (msgs Messages) ErrorLatencyOffline() string {
 	return Catalog.Format(msgs.locale, "errorLatencyOffline", nil)
@@ -1816,11 +1816,11 @@ func (msgs Messages) ReceiverAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverAddSub", nil)
 }
 
-// ReceiverEmptyHiddenHint says "Enable it again in the hidden group below."
+// ReceiverEmptyHiddenHint says "Enable them again in the hidden group below."
 // in the language the app shows.
 func ReceiverEmptyHiddenHint() string { return In(i18n.Locale()).ReceiverEmptyHiddenHint() }
 
-// ReceiverEmptyHiddenHint says "Enable it again in the hidden group below."
+// ReceiverEmptyHiddenHint says "Enable them again in the hidden group below."
 // in the language of msgs.
 func (msgs Messages) ReceiverEmptyHiddenHint() string {
 	return Catalog.Format(msgs.locale, "receiverEmptyHiddenHint", nil)
