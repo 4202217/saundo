@@ -21,7 +21,7 @@
   section, so three device rows with no media measure 487. There is no
   flexible spacer; the playback card follows the device card. The resize
   grows the flyout upward from the tray anchor (`fitFlyout`,
-  `app.go:772-782`), pinned by `TestFlyoutHeightForDeviceRows`,
+  `app.go:803-817`), pinned by `TestFlyoutHeightForDeviceRows`,
   `TestFlyoutKeepsPlaybackGap`, and `TestFlyoutTargetHeightFitsPlayback`.
 - Ambient light card: a permanent 44-DIP row under the playback card, with
   a 32-DIP preview, the source name (or the preset name), a 待机 chip while
@@ -31,8 +31,8 @@
   has no on/off switch; the power action turns the light on and off. See
   [ambient-light.md](ambient-light.md).
 - Update chip: the footer's trailing 22-DIP chip opens the settings 更新
-  page, and the tray tooltip appends the available or ready version while
-  an update waits.
+  page. The tray tooltip appends the available version while an update
+  waits, and `Update ready` with no version once it is downloaded.
 - Credential recovery: when the engine reports
   `Snapshot.CredentialReset`, a text-only 48-DIP bar with the connection
   error bar's inset and height sits under the device card. Its chevron
@@ -71,8 +71,9 @@ zh-CN, `Saundo ...` under en), so match the class and a name prefix, not an
 exact `saundo`. Invoke it and watch the main window handle appear/vanish
 (`MyGoFlyoutShadow`). A second launch must exit 0 and leave
 one process —
-checking `$?` after launching `bin/saundo.exe` documents the handover. Animation frames
-are pinned headless by `TestTrayAnimationFaces`; the app toggle by
+checking `$?` after launching `bin/saundo.exe` documents the handover. Which
+faces animate is pinned headless by `TestTrayAnimationFaces` (it does not pin
+the 12 frames or their assets); the app toggle by
 `TestTrayAnimationSettingPersists`, the engine command by
 `TestTrayAnimationCommandUpdatesSnapshotOnly`, and the store default by
 `TestTrayAnimationDefaultsOnAndRoundTrips`.
@@ -98,7 +99,7 @@ outside click and a UIA invoke, not an Escape press.
   (1050 px at 250%), not a cropped DIP-sized bitmap. 480 was an old design
   value. On macOS the
   rounded flyout is a nonactivating panel, so an open settings window does
-  not come forward (`flyout_window.go`).
+  not come forward (`focus_darwin.go:5-8`).
 - On Windows `showWindow` calls `mygo.App.Focus()` through `focus_other.go`;
   on macOS it is a no-op (`focus_darwin.go`). The Windows tray focus was not
   exercised live, so the proven end state does not cover it.

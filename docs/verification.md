@@ -883,6 +883,69 @@ and the verification map is corrected.
   with no HAL process object fails the open and is retried with the normal
   backoff, which picks it up once it starts audio.
 
+## 2026-11-12 — 0.6.2 UI mockup templates
+
+- **Templates.** Both assets under `.claude/skills/ui-mockup/assets/` describe
+  the 0.6.2 interface. The flyout template adds the credential-recovery state:
+  its copy, the warning and warning-soft tokens from `theme.go`, the 48 DIP
+  bar under the device card, and the +48 height rule. The settings template's
+  sample copy matches the shipped catalog: the 启动时 / At launch chip, the
+  add-receiver hint without a terminal period, and Saundo as the sender name.
+- **Renders.** 44 frames at `.audit/release-0.6.2/mockups/`: the settings
+  target, normal, and edge states and the flyout idle, streaming (with and
+  without the media card), empty, error, and credential states, plus the
+  ambient cover, template, and expanded states, in zh-CN and English, light
+  and dark. The credential state, one render of each settings state, and the
+  flyout idle, error, and expanded-lamp states were inspected for clipping,
+  overflow, and wrapped copy; the remaining states share the same shell.
+
+## 2026-11-12 — 0.6.2 release audit
+
+- **Docs audit.** The live docs were checked against HEAD 1621e7d. Corrected:
+  the custom latency range (20 to 2000 ms; the effective value clamps to 20
+  to 4000 ms) in protocol.md; the macOS update location rule (a writable
+  .app bundle, not /Applications) in platforms.md; the mygo version date in
+  architecture.md; the engine's mute and level workers in architecture.md
+  and implementation.md; the whole-second LatencyText rule in ui-copy.md.
+  The touched docs carry reviewed-through 2026-11-12 and their links resolve.
+  No dated batch newly qualified for graduation; the 0.6.1 audit had already
+  compressed the log.
+- **UI review (2026-11-12).** The 250-image matrix rendered at
+  `.audit/release-0.6.2/previews` in zh-CN and English, light and dark. One
+  P1: the three new engine errors called a receiver a device (设备) in both
+  catalogs; fixed in cf8882d, and the banned-terms gate now carries the five
+  past strings. One P2: the all-hidden hint used a singular pronoun under a
+  plural heading; fixed in the same commit. No P0 remains. An independent
+  reviewer on a different model family confirmed every finding and found
+  none missed; the decisions are in `.audit/ui-review-0.6.2.tsv`.
+- **Verification skill audit (2026-11-12).** Six feature pages were read from
+  source and driven live against build 0.6.1-57-g525dd81; the corrections
+  landed in 9ccd102 and `scripts/check-verify-map.sh` prints "map ok". Live:
+  connect, stream, local mute and restore, disconnect, the localized update
+  history, and the diagnostic log dialog. Not driven: volume, latency,
+  ambient actions, the receiver dialogs, and the pairing dialogs. Evidence
+  in `.audit/release-0.6.2/live/`. The 23:57 run's fail-closed receiver-save
+  guard cleared on the next launch: the 00:38 restart wrote its registry with
+  no save error.
+- **Candidate manifest (2026-11-12).** The Windows candidate built with the
+  release key names 0.6.2, carries the ASCII English notes, a signature, and
+  deltas from 0.6.1, 0.6.0, and 0.5.0.
+- **Maintainer pre-release test (2026-11-12).** The 0.6.2 release request is
+  the maintainer's confirmation that the build was tested on their own PC.
+- **Draft verification (2026-11-12).** The release workflow (run 43060976433)
+  passed `check`, `check-macos`, `draft`, `build`, and `build-macos`. The
+  draft carries `install.ps1`, `install.sh`, the installer, both update
+  archives, three Windows deltas, the arm64 dmg, both signed manifests, and
+  `SHA256SUMS`; `sha256sum -c` passed for every checksummed file. Both
+  manifests name 0.6.2, are signed, and carry the ASCII English notes. The
+  tag stays on `b71e96d`; publishing is the remaining gate.
+- **Publish (2026-11-12).** `gh release edit v0.6.2 --draft=false` published
+  the stable release. The public feed serves the signed 0.6.2 Windows and
+  darwin manifests, and the installer, the dmg, and both update archives
+  return 200. A live update from an installed 0.6.1 build and the first
+  macOS live update across the ad-hoc cdhash are still owed; the pending
+  list keeps both.
+
 ## 2026-11-12 — per-app local mute
 
 - **Finding.** The output-device mute silences every app, so per-app capture

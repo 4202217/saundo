@@ -5,6 +5,58 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.6.2 - 2026-11-12
+
+### Added
+
+- The Mac build updates in place from the signed release feed, the same path
+  Windows uses. Until a Developer ID signs the build, an update can ask again
+  for system-audio capture and Keychain access.
+- A saved-pairing notice. When the app cannot read the pairing data, the tray
+  panel shows a notice under the receiver card; its dialog explains the reset
+  and offers to pair again or stop showing it. The unreadable file is moved
+  aside and the credential store is rebuilt, so the next pairing can save its
+  key.
+
+### Changed
+
+- Every engine error follows the app language. An English install no longer
+  shows Chinese text for a failed connect, receiver command, or update.
+- A new install advertises its sender name in the app language.
+- Every capture endpoint stays selectable. Duplicate names get a number
+  suffix, and a follow-system snapshot no longer leaves a stale device label.
+- The tray menu icons are drawn from the interface's vector set.
+- The Mac build holds off App Nap while connecting, pairing, streaming, or
+  reconnecting.
+- The pairing dialogs fit inside the 420-wide tray panel, fractional sample
+  rates print as 44.1 kHz, and the add-receiver hint no longer ends with a
+  period.
+
+### Fixed
+
+- The Mac build mutes the local output while connected. The mute had failed
+  on every connection, so the local speakers kept playing alongside the
+  receiver.
+- The Mac capture path does not lock or allocate on the audio thread, and the
+  level analysis runs off it, which keeps capture smooth under load.
+- A retransmit request is answered only to the session's receiver and is
+  bounded, so a forged request cannot reflect audio to another address.
+- Session keys are cleared when a session ends, and an audio packet that
+  cannot be encrypted is dropped instead of sent in clear.
+- A bad event frame no longer discards the frames that follow it.
+- The frame clock keeps running past 4.84 days.
+- A failed initial capture open retries, a failed settings write stays
+  pending, and a full queue no longer drops a lifecycle event.
+- Corrupt or newer receiver and settings files are never overwritten.
+- Discovery keeps the local endpoint, rejects IPv6-only advertisements, and
+  runs its directed pass off the publish path.
+- PTP rejects an overflowing timestamp and an IPv6 peer, and the follower
+  delivers packets outside its lock.
+- The no-tray fallback window resizes with its content, and the receiver
+  delay timer stops on quit.
+- The Now Playing adapter's child process is bounded and its self-test
+  retries; Now Playing bookkeeping stays on the main thread.
+
 ## 0.6.1 - 2026-11-11
 
 ### Added

@@ -129,9 +129,9 @@ Core Audio property codes stay inside the leaf packages.
   never sees any of this. Mitigations that skip Gatekeeper:
   `brew install --cask` (brew does not quarantine by default), a terminal
   `curl` download, or `xattr -dr com.apple.quarantine`.
-- **In-app updates on an ad-hoc build**: the app must live in
-  `/Applications` or `~/Applications` and be writable by the user. A copy
-  opened from the dmg is read-only and keeps the updater disabled. The
+- **In-app updates on an ad-hoc build**: the `.app` bundle must be writable
+  by the user; its location is not checked. A copy opened from the dmg is
+  read-only and keeps the updater disabled. The
   updater downloads through its own HTTP client, so the bundle it installs
   carries no quarantine attribute and starts without the Open Anyway flow.
   The new cdhash still changes the app's code identity, so macOS can ask

@@ -83,12 +83,14 @@ func TestCatalogBannedTerms(t *testing.T) {
 			"立即检查", "这台设备", "打开下方", "顶屏灯光",
 			"浮窗", "显示面板", "和面板", "签名", "按 1、2、5",
 			"调度缓冲", "接收器输出", "丢样本", "当前接收器", "熄灯",
+			"未找到设备", "设备当前不在线",
 		},
 		"en": {
 			"auth-setup", "Backoff", "Reference buffering", "update window",
 			"Refresh devices", "No devices", "Device list", "this device",
 			"Top display light", "Show panel", "tray flyout", "Flyout as popover",
 			"the panel", "signature", "Retries at", "Current receiver",
+			"Device not found", "device was not found", "device is offline",
 		},
 	}
 	for loc, terms := range banned {

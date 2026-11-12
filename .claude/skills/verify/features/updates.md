@@ -12,9 +12,9 @@ fresh launch shows the chip again.
 
 - Update check against the public feed
   (the platform's manifest on the releases URL, fetched without
-  credentials, 10 s after launch then every 24 h — `update.go:356-380`,
-  timer at `:362`, ticker at `:370`); every non-manual check returns early
-  when the automatic-check preference is off (`update.go:112-115`). States:
+  credentials, 10 s after launch then every 24 h — `update.go:367-392`,
+  timer at `:373`, ticker at `:381`); every non-manual check returns early
+  when the automatic-check preference is off (`update.go:124-126`). States:
   checking, up to date, available, downloading (with progress), ready,
   failed.
 - 更新 page in the settings window: channel (stable/beta), automatic check
@@ -27,8 +27,9 @@ fresh launch shows the chip again.
   in English and `CHANGELOG.zh-CN.md` when the app language starts with
   `zh` (`update_history.go`, pinned by `TestChangelogURLLocale`). The
   fetched entry replaces the signed manifest's English notes for the offered
-  version (`TestNotesEntriesUseTheLocalizedChangelog`), and a language
-  switch refetches the history (`TestLanguageSwitchRefetchesHistory`). The
+  version (`TestNotesEntriesUseTheLocalizedChangelog`). The
+  history is cached per language (`TestLanguageSwitchRefetchesHistory` pins
+  the cache key); a dialog already open keeps the language it loaded. The
   head's range select switches between the history since this build and the
   latest version only, and the older entries render as folded rows with a
   history link (`update_dialog.go:36-45,115-132`). The fetch starts when the
@@ -41,11 +42,11 @@ fresh launch shows the chip again.
   installer process runs). On macOS it stages the new bundle and a helper
   swaps it after the app quits, so the Dock keeps one tile. A separate
   立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:671-693`, chip at
-  `:677-691`) shares state with the settings page; clicking it opens the
+- Update chip in the flyout **footer** (`flyout.go:678-700`, chip at
+  `:684-698`) shares state with the settings page; clicking it opens the
   更新 page. A waiting update also draws a dot on the 更新 sidebar item, and
   the tray tooltip and menu carry the check action and the available version
-  (`settings_window.go:203-206`; `app.go:883,902-908`; docs/ui.md).
+  (`settings_window.go:203-206`; `app.go:956,971-985`; docs/ui.md).
 
 ## How to get to it (user POV)
 
@@ -72,7 +73,7 @@ curl -sL -o /dev/null -w '%{http_code}' \
 
 Open the 更新 page, click the check, and capture the state transition; the
 page and the log agree on available/downloading/ready/failed. The disabled
-path writes no log line (`update.go:116-125` returns before `finishCheck`).
+path writes no log line (`update.go:130-137` returns before `finishCheck`).
 
 macOS: a published darwin manifest finds an update and installs it in place.
 The running app keeps its version until it quits; the helper then swaps the
