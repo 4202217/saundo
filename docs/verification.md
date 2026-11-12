@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-11 -->
+<!-- reviewed-through: 2026-11-12 -->
 
 # Verification
 
@@ -44,7 +44,6 @@ live state:
 - A real default-device switch during playback.
 - Multi-room groups larger than two, a member dropping or reconnecting
   mid-pair, and software stereo groups built from independent receivers.
-- The macOS port: per-app capture (the `Config.ProcessID` seam is ready).
 - A live macOS in-app update: the mac updater now follows the ad-hoc darwin
   manifest. The first release with that manifest is the baseline, and the
   first live update from it measures whether TCC audio capture and Keychain
@@ -833,6 +832,123 @@ and the verification map is corrected.
 - **Live.** `go test -tags muteprobe ./internal/capture -run
   TestDarwinEndpointMute -v` passed; the rebuilt app launched, and the user
   confirmed a HomePod connection now mutes the local output.
+
+## 2026-11-11 — macOS per-app capture
+
+- **Finding.** A Core Audio process tap can name the processes it mixes, so
+  macOS per-app capture is the same aggregate-device flow as the global tap
+  with `initStereoMixdownOfProcesses:` in place of
+  `initStereoGlobalTapButExcludeProcesses:`. The HAL lists client processes
+  through `kAudioHardwarePropertyProcessObjectList`, and each object carries
+  its PID (`ppid`) and bundle (`pbid`).
+- **Selection.** The picker offers every regular app plus any process
+  currently rendering output. Audio helpers fold into the app whose bundle
+  ID prefixes theirs (`com.google.Chrome.helper` belongs to
+  `com.google.Chrome`); a process with no regular owner, such as WebKit's
+  Graphics and Media helper, keeps its own entry and captures only itself.
+  Two live processes of one app, as a browser relaunch leaves behind, are
+  one row keyed by bundle ID. The tap uses the default output as the clock
+  master and ignores `EndpointID`; the engine mutes the default output for
+  per-app sessions.
+- **Pins.** `TestBuildAppListGroupsHelpers`, `TestBuildAppListSkipsSelf`,
+  `TestBuildAppListNamesUnattributedProcess`,
+  `TestAppFamilyFollowsBundlePrefix`,
+  `TestAppFamilyUnknownRootFallsBackToPID`, `TestOwnerApp`,
+  `TestBuildAppListMergesDuplicateBundle`,
+  `TestAudioApplicationsReadsLiveLists`, and
+  `TestMixdownTapDescriptionBuilds`. The zero-root fallback was a real bug
+  the live test caught: a CLI process LaunchServices does not list matched
+  PID 0.
+- **Live.** The rebuilt app opened `capture open: 音乐 (48000 Hz)` with the
+  saved pid, and the gated
+  `SAUNDO_LIVE_APP_TAP=1 go test -run TestPerAppCaptureLive ./internal/capture`
+  played a local tone through `afplay` and delivered 32,256 frames at
+  48 kHz from that process alone. The user then chose Google Chrome from
+  the new icon picker in the settings window; the log records
+  `capture open: Google Chrome (48000 Hz)`, which exercises the picker and
+  the helper family in one run, and switching back to Music reopened its
+  tap. Audible HomePod output for the per-app tap was not confirmed by the
+  operator in this pass.
+- **Icons.** The picker field and its menu rows carry the app's icon, from
+  NSWorkspace through the same cache the Now Playing card uses.
+  `TestAppIconLive` renders Finder's icon through the bundle and path entry
+  points; `TestAppCapturePickerChoosesAnApp` opens the menu and chooses
+  Spotify in the headless settings render. A headless render with the live
+  app list showed the real icons, the selected field, and the scrolled menu,
+  and the user chose Chrome through the same picker in the live app. Windows
+  keeps the text-only picker; the parity table records it.
+- **Known gaps.** The app list is built once at launch, so an app launched
+  later needs a saundo restart to appear. A tap fixes its process list at
+  creation; a helper that joins the app family later is not followed. An app
+  with no HAL process object fails the open and is retried with the normal
+  backoff, which picks it up once it starts audio.
+
+## 2026-11-12 — per-app local mute
+
+- **Finding.** The output-device mute silences every app, so per-app capture
+  cannot use it: the selected app or apps reach the receiver and every other
+  app goes silent. Core Audio's tap mute behavior is the right control.
+- **Mechanism.** A per-app tap fixes its local-output behavior at creation.
+  The capture loop builds it with `CATapUnmuted`, rebuilds it with
+  `CATapMuted` when a session streams, and rebuilds it unmuted on disconnect,
+  when the setting turns off, or when the selection changes. The engine
+  routes that state through `capture.ProcessMuteSupported` and
+  `capture.SetProcessMuted` and leaves the endpoint mute to system capture.
+  Setting a live tap's description was tried first and returned
+  `kAudioDevicePermissionsError` (`'!hog'`), so the rebuild is the supported
+  path.
+- **Pins.** `TestMuteLocalProcessCaptureMutesTheSelectedApp`,
+  `TestMuteLocalProcessFailureIsVisible`, `TestMuteLocalProcessOffRestores`,
+  `TestMuteLocalProcessCaptureUsesDefaultEndpoint` (the Windows fallback),
+  `TestMixdownTapMuteBehavior`, and `TestPerAppCaptureLive`. The live test
+  captured an `afplay` tone with tap 122 muted and tap 127 unmuted and still
+  received frames from the muted tap.
+- **Live.** The rebuilt app opened the unmuted Music tap
+  (`capture open: 音乐 (48000 Hz)`). The operator then connected to the
+  HomePods with Music selected; the log records `captured app muted locally`
+  at 00:26:55 and `captured app restored locally` at 00:28:38, and the
+  operator confirmed the split: Music on the receiver, other apps still on
+  the Mac. With several apps selected, the same tap mute covers the whole
+  selection. Windows keeps the whole-output mute for per-app capture until
+  its rework; the UI note says so.
+
+## 2026-11-12 — multi-app capture and bundle-ID persistence
+
+- **Selection.** The macOS picker checks several apps and applies live after
+  a 250 ms pause, with a header showing the live count. The engine stores
+  `captureAppIds` and `captureAppNames`; the darwin leaf
+  resolves bundle IDs to process families, unions them into one mixdown tap,
+  and skips an app that is not running. `pid:<n>` covers a process without a
+  bundle.
+- **Migration.** A saved `captureProcessPid` becomes the app's bundle ID once
+  the running-app list loads. The live app did this on its first launch after
+  the change; the settings show `captureAppIds: ["com.apple.Music"]` and a
+  cleared `captureProcessPid`.
+- **Pins.** `TestAppsTapIDs`,
+  `TestCaptureAppsCommandPersistsAndStartsTheSelection`,
+  `TestAppCapturePickerChoosesMultipleApps`, `TestMigrateLegacyAppSelection`,
+  `TestMuteLocalAppSelectionMutesTheApps`, and the updated
+  `TestPerAppCaptureLive` (which starts capture by `pid:<n>`).
+- **Status.** A multi-app selection reads as “2 个应用” in the capture-status
+  row, with the app names in the tooltip, and the rate is a separate suffix
+  so a long name cannot ellipsize it. A selection the tap could only partly
+  include reads as “2/3 个应用” with a warning dot, and the tooltip marks the
+  missing app “未采集”. A selection with no capturable process at all reads
+  as “等待所选应用” with a warning dot, not a capture error, and keeps
+  retrying; a real capture failure stays red and keeps its detail in the
+  tooltip. `TestCaptureStatusCountsMultipleApps`,
+  `TestCaptureStatusShowsPartialSelection`, `TestCaptureStatusWaitsForTheApp`,
+  `TestCaptureNoAppProcessWaits`, and the updated
+  `TestCaptureStatusRowKeepsItsTitle` pin the row.
+- **Live.** The old Music PID migrated to `com.apple.Music`; a temporary
+  selection of Music and Chrome produced
+  `capture open: 音乐 + Google Chrome (48000 Hz)`. The demo selection was
+  restored to Music only after the check.
+- **Known gaps.** The app list is built once at launch, so an app launched
+  later is not offered until saundo restarts. A selected app that is not
+  running is skipped when the tap opens and is only added when the tap is
+  rebuilt for another reason. A process selected as `pid:<n>` has no stable
+  identity across restarts.
 
 ## Graduated
 

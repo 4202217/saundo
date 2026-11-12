@@ -116,6 +116,10 @@ const (
 	PropTapUID               uint32 = 0x74756964 // 'tuid'
 	PropTapFormat            uint32 = 0x74666d74 // 'tfmt'
 	PropStreams              uint32 = 0x73747223 // 'str#'
+	PropProcessObjectList    uint32 = 0x70727323 // 'prs#'
+	PropProcessPID           uint32 = 0x70706964 // 'ppid'
+	PropProcessBundleID      uint32 = 0x70626964 // 'pbid'
+	PropProcessRunningOutput uint32 = 0x7069726f // 'piro'
 )
 
 // EnsureCoreAudio loads the Core Audio framework and its symbols. Callers
@@ -329,6 +333,58 @@ func OutputDevices() ([]DeviceInfo, error) {
 			name = uid
 		}
 		out = append(out, DeviceInfo{ID: id, UID: uid, Name: name})
+	}
+	return out, nil
+}
+
+// ProcessObject is one Core Audio client process: the HAL object a process
+// tap names, the owning process, its bundle, and whether it renders output
+// right now.
+type ProcessObject struct {
+	ID            uint32
+	PID           uint32
+	BundleID      string
+	RunningOutput bool
+}
+
+// ProcessObjects lists the HAL's client processes. An object that disappears
+// mid-enumeration is skipped; the list is a live snapshot.
+func ProcessObjects() ([]ProcessObject, error) {
+	if err := EnsureCoreAudio(); err != nil {
+		return nil, err
+	}
+	addr := PropertyAddress(PropProcessObjectList, ScopeGlobal)
+	var size uint32
+	if err := GetPropertySize(AudioObjectSystemObject, addr, &size); err != nil {
+		return nil, err
+	}
+	ids := make([]uint32, int(size)/4)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	if err := GetProperty(AudioObjectSystemObject, addr, unsafe.Pointer(&ids[0]), &size); err != nil {
+		return nil, err
+	}
+	out := make([]ProcessObject, 0, len(ids))
+	for _, id := range ids {
+		var p ProcessObject
+		p.ID = id
+		sz := uint32(4)
+		if err := GetProperty(id, PropertyAddress(PropProcessPID, ScopeGlobal), unsafe.Pointer(&p.PID), &sz); err != nil {
+			continue
+		}
+		bundle, err := GetStringProperty(id, PropProcessBundleID, ScopeGlobal)
+		if err != nil {
+			continue
+		}
+		var running uint32
+		sz = 4
+		if err := GetProperty(id, PropertyAddress(PropProcessRunningOutput, ScopeGlobal), unsafe.Pointer(&running), &sz); err != nil {
+			continue
+		}
+		p.BundleID = bundle
+		p.RunningOutput = running != 0
+		out = append(out, p)
 	}
 	return out, nil
 }

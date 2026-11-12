@@ -234,11 +234,25 @@ func (e *Engine) applyMuteStatus(st muteStatus) {
 	e.publish()
 }
 
+// processMuteWanted reports whether a new per-app tap should start muted:
+// the platform can mute a process, an app is selected, the setting is on,
+// and a session is streaming. A tap opened outside a session stays unmuted,
+// so the app keeps playing locally until a receiver connects.
+func (e *Engine) processMuteWanted() bool {
+	return e.processMute && e.perAppCapture() && e.setsValue.MuteLocalOnConnect &&
+		e.tr != nil && e.tr.State() == sender.StateStreaming
+}
+
+// perAppCapture reports whether a process or app selection owns the capture.
+func (e *Engine) perAppCapture() bool {
+	return e.captureProcess != 0 || len(e.captureApps) > 0
+}
+
 // applyLocalMute asks the worker to mute the local render endpoint when the
-// setting is on and a session is streaming. The mute is temporary:
-// restoreLocalMute always ends it, even when the endpoint was muted before the
-// session began. It is idempotent: an already active mute is a no-op in the
-// worker.
+// setting is on and a session is streaming. With per-app capture on a
+// platform that can mute one process, it mutes the tap instead, leaving
+// every other app audible. The mute is temporary: restoreLocalMute always
+// ends it. It is idempotent.
 func (e *Engine) applyLocalMute() {
 	if !e.setsValue.MuteLocalOnConnect {
 		e.setMuteState(MuteLocalOff, "")
@@ -248,10 +262,27 @@ func (e *Engine) applyLocalMute() {
 		e.setMuteState(MuteLocalWaiting, "")
 		return
 	}
+	if e.processMute && e.perAppCapture() {
+		if e.mute.endpointID != "" {
+			// Release a previous endpoint mute before the per-app tap owns
+			// the local output.
+			e.requestMute(muteRequest{on: false})
+		}
+		if e.setProcessMuted == nil {
+			e.setProcessMuteState(MuteLocalFailed, "process mute is unavailable")
+			return
+		}
+		if err := e.setProcessMuted(true); err != nil {
+			e.setProcessMuteState(MuteLocalFailed, err.Error())
+			return
+		}
+		e.setProcessMuteState(MuteLocalActive, "")
+		return
+	}
 	endpoint := e.captureEndpoint
-	if e.captureProcess != 0 {
+	if e.perAppCapture() {
 		// Process loopback has no endpoint of its own; the local output is
-		// whatever Windows is playing to by default.
+		// whatever the system is playing to by default.
 		endpoint = ""
 	}
 	e.requestMute(muteRequest{on: true, endpoint: endpoint})
@@ -264,7 +295,41 @@ func (e *Engine) applyLocalMute() {
 // restore keeps the state active and the guard in place so a later close or
 // the next launch can retry.
 func (e *Engine) restoreLocalMute() {
+	if e.processMute && e.perAppCapture() {
+		if e.mute.endpointID != "" {
+			// A previous endpoint mute must be released even though the
+			// capture now owns the local output.
+			e.requestMute(muteRequest{on: false})
+		}
+		if e.setProcessMuted != nil {
+			if err := e.setProcessMuted(false); err != nil {
+				e.logf("process mute restore: %v", err)
+			}
+		}
+		e.setProcessMuteState(e.idleMuteState(), "")
+		return
+	}
 	e.requestMute(muteRequest{on: false})
+}
+
+// setProcessMuteState records the tap mute without the endpoint worker. The
+// generation bump makes an in-flight endpoint result stale, and the endpoint
+// id is cleared because this state does not mute an endpoint.
+func (e *Engine) setProcessMuteState(state MuteLocalState, errText string) {
+	prev := e.mute.state
+	e.muteGen++
+	e.mute.endpointID = ""
+	e.setMuteState(state, errText)
+	switch {
+	case state == prev:
+		return
+	case state == MuteLocalActive:
+		e.logf("captured app muted locally")
+	case state == MuteLocalFailed:
+		e.logf("captured app mute failed: %s", errText)
+	case prev == MuteLocalActive || prev == MuteLocalFailed:
+		e.logf("captured app restored locally")
+	}
 }
 
 // refreshLocalMute moves the mute when the capture endpoint changes.

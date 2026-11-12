@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -57,9 +58,10 @@ func previewApp() *App {
 		captureIDs:        []string{"", "{endpoint}"},
 		captureLabels:     []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureChoice:     locales.CaptureFollowSystem(),
-		appNames:          []string{locales.CaptureAllSystem(), "Spotify"},
-		appIDs:            []string{"0", "1234"},
-		appChoice:         locales.CaptureAllSystem(),
+		appNames:          []string{locales.CaptureAllSystem(), "Spotify", "Music"},
+		appPIDs:           []uint32{0, 1234, 5678},
+		appIDs:            []string{"", "com.spotify.client", "com.apple.Music"},
+		appNameByID:       map[string]string{"com.spotify.client": "Spotify", "com.apple.Music": "Music"},
 		nameDraft:         "声渡",
 		latency:           200,
 		latencyMode:       "low",
@@ -235,7 +237,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
-		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers · 48 kHz"}},
+		{pageCapture, []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers", "· 48 kHz"}},
 		{pageNowPlaying, []string{"正在播放", "托盘面板中的媒体卡片、封面配色与音频电平。", "媒体卡片", "托盘面板中显示", "封面", "无", "默认", "媒体", "播放控制", "封面配色", "音频电平", "Apple Music", "夜航"}},
 		{pageUpdate, []string{"更新", "版本、自动检查与安装。", "当前版本", "检查更新", "自动检查更新", "自动下载并安装", "更新通道", "稳定版", "测试版"}},
 		{pageAbout, []string{"关于", "版本、项目链接、许可证与诊断日志。", "声渡 · Saundo", "开发版", "项目主页", "版本发布", "问题反馈", "诊断日志", "查看并复制最近的运行日志", "许可证", "第三方声明", "AirPlay 2 与开源组件"}},
@@ -1584,9 +1586,13 @@ func TestCaptureStatusRowKeepsItsTitle(t *testing.T) {
 		if !ok {
 			t.Fatalf("at %d DIP the status title is missing: %q", tc.width, tt.Texts())
 		}
-		status, ok := tt.Find("Mi Monitor (NVIDIA High Definition Audio) · 48 kHz")
+		status, ok := tt.Find("Mi Monitor (NVIDIA High Definition Audio)")
 		if !ok {
 			t.Fatalf("at %d DIP the capture status is missing: %q", tc.width, tt.Texts())
+		}
+		rate, ok := tt.Find("· 48 kHz")
+		if !ok {
+			t.Fatalf("at %d DIP the capture rate is missing: %q", tc.width, tt.Texts())
 		}
 		if title.W < tc.minTitle {
 			t.Fatalf("at %d DIP the status title is only %.1f wide, want at least %.0f",
@@ -1596,6 +1602,75 @@ func TestCaptureStatusRowKeepsItsTitle(t *testing.T) {
 			t.Fatalf("at %d DIP the status starts at %.1f, not on the title's row at %.1f",
 				tc.width, status.Y, title.Y)
 		}
+		if rate.Y < title.Y-1 || rate.Y > title.Y+40 {
+			t.Fatalf("at %d DIP the rate starts at %.1f, not on the title's row at %.1f",
+				tc.width, rate.Y, title.Y)
+		}
+	}
+}
+
+// TestCaptureStatusCountsMultipleApps keeps a multi-app selection from
+// stretching the status row with every name; the names are in the tooltip.
+func TestCaptureStatusCountsMultipleApps(t *testing.T) {
+	a := previewApp()
+	a.page = pageCapture
+	a.snap.CaptureRunning = true
+	a.snap.CaptureAppIDs = []string{"com.apple.Music", "com.google.Chrome"}
+	a.snap.CaptureAppNames = []string{"音乐", "Google Chrome"}
+	a.snap.CaptureActiveAppIDs = []string{"com.apple.Music", "com.google.Chrome"}
+	a.snap.CaptureName = "音乐 + Google Chrome"
+	a.snap.CaptureRate = 48000
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{locales.SettingsAppCaptureCount(2), "· 48 kHz"} {
+		if !tt.HasText(want) {
+			t.Fatalf("capture status is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+}
+
+// TestCaptureStatusWaitsForTheApp replaces the red error with a waiting
+// state when no selected app has a process yet.
+func TestCaptureStatusWaitsForTheApp(t *testing.T) {
+	a := previewApp()
+	a.page = pageCapture
+	a.snap.CaptureError = "capture: no Core Audio process for the selection yet: com.apple.Music"
+	a.snap.CaptureWaitingApp = true
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	if !tt.HasText(locales.SettingsCaptureWaitingApp()) {
+		t.Fatalf("capture status is missing %q; texts: %q", locales.SettingsCaptureWaitingApp(), tt.Texts())
+	}
+	name, _, tip := a.captureStatusParts()
+	if name != locales.SettingsCaptureWaitingApp() {
+		t.Fatalf("status name = %q, want the waiting label", name)
+	}
+	if !strings.Contains(tip, "no Core Audio process") {
+		t.Fatalf("tooltip = %q, want the capture reason", tip)
+	}
+}
+
+// TestCaptureStatusShowsPartialSelection keeps one non-capturable app from
+// reading as a full selection or as a capture error.
+func TestCaptureStatusShowsPartialSelection(t *testing.T) {
+	a := previewApp()
+	a.page = pageCapture
+	a.snap.CaptureRunning = true
+	a.snap.CaptureRate = 48000
+	a.snap.CaptureAppIDs = []string{"com.apple.Music", "com.google.Chrome", "com.github.GitHubClient"}
+	a.snap.CaptureAppNames = []string{"音乐", "Google Chrome", "GitHub Desktop"}
+	a.snap.CaptureActiveAppIDs = []string{"com.apple.Music", "com.google.Chrome"}
+	a.snap.CaptureName = "音乐 + Google Chrome"
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{locales.SettingsAppCapturePartial(2, 3), "· 48 kHz"} {
+		if !tt.HasText(want) {
+			t.Fatalf("capture status is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+	name, _, tip := a.captureStatusParts()
+	if name != locales.SettingsAppCapturePartial(2, 3) {
+		t.Fatalf("status name = %q, want the partial count", name)
+	}
+	if !strings.Contains(tip, "GitHub Desktop") || !strings.Contains(tip, locales.SettingsAppCaptureMissing()) {
+		t.Fatalf("tooltip = %q, want the missing app marked", tip)
 	}
 }
 

@@ -297,13 +297,38 @@
   "settingsMuteLocalDescWaiting": "连接后自动静音；当前未连接",
   "settingsMuteLocalDescFailed": "无法静音本机输出；请检查音频设备",
   "settingsMuteLocalNote": "开启“连接后静音本机输出”后，部分音频设备会让采集到的声音也静音。接收器没有声音时，请关闭这个开关。",
+  "settingsMuteLocalApp": "连接后静音所选应用",
+  "settingsMuteLocalDescAppOn": "仅所选应用静音；其他应用照常播放",
+  "settingsMuteLocalAppNote": "按应用采集只静音所选应用，其他应用仍从本机播放。",
+  "settingsMuteLocalWindowsAppNote": "Windows 的按应用采集只能静音整机输出，其他应用也会一起静音。",
   "settingsSystemOutput": "系统声音",
   "settingsSystemOutputDesc": "采集系统默认输出设备的声音",
   "settingsAppCapture": "按应用采集",
   "settingsAppCaptureDesc": "只播放所选应用的声音",
+  "settingsAppCaptureCount": "{count} 个应用",
+  "@settingsAppCaptureCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAppCapturePartial": "{active}/{selected} 个应用",
+  "@settingsAppCapturePartial": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "selected": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAppCaptureMissing": "未采集",
   "settingsCaptureStatus": "采集状态",
   "settingsCaptureStatusDesc": "当前采集源",
   "settingsCaptureError": "采集错误",
+  "settingsCaptureWaitingApp": "等待所选应用",
   "settingsCaptureNotRunning": "未运行",
   "captureSystemDefault": "系统默认输出",
   "summaryStereoGroup": "立体声组 · {n, number}/2",

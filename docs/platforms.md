@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-11 -->
+<!-- reviewed-through: 2026-11-12 -->
 
 # Multi-platform development
 
@@ -31,12 +31,12 @@ the seams and the rules for extending them. The code map:
 
 | Seam | Shared contract | Windows | macOS | Other platforms |
 |---|---|---|---|---|
-| System capture | `capture.Start`, `capture.Config`, `capture.Source` (`capture.go`) | `capture_windows.go`: WASAPI shared-mode loopback; per-app via the process-loopback device | `capture_darwin.go`: Core Audio process tap aggregated with the output device | `capture_other.go`: fail-closed |
+| System capture | `capture.Start`, `capture.Config`, `capture.Source` (`capture.go`) | `capture_windows.go`: WASAPI shared-mode loopback; per-app via the process-loopback device for one app | `capture_darwin.go`: Core Audio process tap aggregated with the output device; per-app via a stereo mixdown tap of the selected apps' process objects, resolved from bundle IDs | `capture_other.go`: fail-closed |
 | Credentials at rest | `creds.Store`, `protect`/`unprotect` | `dpapi_windows.go`: CryptProtectData | `dpapi_darwin.go`: AES-256-GCM, master key in the login Keychain | `dpapi_other.go`: fail-closed |
-| Mute local | `capture.EndpointMuted`, `capture.SetEndpointMuted` | `mute_windows.go`: `IAudioEndpointVolume` | `mute_darwin.go`: `kAudioDevicePropertyMute` on the output device | `mute_other.go`: fail-closed |
+| Mute local | `capture.EndpointMuted`, `capture.SetEndpointMuted`; per-app `capture.ProcessMuteSupported`, `capture.SetProcessMuted` | `mute_windows.go`: `IAudioEndpointVolume`; per-app falls back to the default endpoint | `mute_darwin.go`: `kAudioDevicePropertyMute` on the output device; a per-app tap mutes only the captured app (`CATapMuted`) | `mute_other.go`: fail-closed |
 | Now playing | `nowplaying.Read` and the control/snapshot set (`nowplaying.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
 | Neighbor table | `discovery.neighborHosts` | `neighbors_windows.go`: `GetIpNetTable` | fail-closed empty (remembered endpoints cover offline connect) | `neighbors_other.go`: fail-closed |
-| Engine wiring | injected function fields (`engine.go` `captureStartFn`, `defaultEndpoint`, `setEndpointMuted`, `endpoints`, `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
+| Engine wiring | injected function fields (`engine.go` `captureStartFn`, `defaultEndpoint`, `setEndpointMuted`, `processMute`, `setProcessMuted`, `endpoints`, `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
 | App wiring | `app.go` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `mygo.Updater` through the darwin manifest | stubs |
 
 ## Adding a feature
@@ -76,8 +76,9 @@ Core Audio property codes stay inside the leaf packages.
 | Feature | Windows | macOS |
 |---|---|---|
 | System audio capture | WASAPI shared-mode loopback | Core Audio process tap + private aggregate device (macOS 14.4+) |
-| Per-application capture | process-loopback device (Windows 10 2004+) | not implemented; the seam is ready (`capture.Config.ProcessID`, `AppCaptureSupported`) |
-| Mute local on connect | render-endpoint mute; loopback interaction is driver-dependent | output-device mute; capture is unaffected either way |
+| Per-application capture | process-loopback device (Windows 10 2004+), one app | process-object stereo mixdown tap (macOS 14.4+), several apps in one tap; helpers follow the app's bundle-ID prefix; selections persist as bundle IDs |
+| Per-app capture icons | not implemented; the shared picker shows text only | the app's icon in the picker field and menu rows |
+| Mute local on connect | render-endpoint mute; per-app mutes all local output | output-device mute for system capture; a per-app tap mutes only the selected app and leaves other apps playing |
 | Now Playing card | SMTC | MediaRemote adapter; the card follows the one system session (no switcher) |
 | Credentials at rest | DPAPI (per user) | login-Keychain master key + AES-256-GCM (per user) |
 | Receiver discovery | mDNS + the ARP neighbor table | mDNS; the neighbor table returns empty |
@@ -92,6 +93,27 @@ Core Audio property codes stay inside the leaf packages.
   prompt appears because `mygo.json` sets
   `NSAudioCaptureUsageDescription`. A bare binary outside a bundle gets no
   reliable prompt.
+- **Per-app capture names HAL process objects.** An app must have connected
+  to Core Audio at least once, so the picker offers every regular app but a
+  tap on one that never played reports no process and retries. Audio helpers
+  fold into the app whose bundle ID prefixes theirs
+  (`com.google.Chrome.helper` belongs to `com.google.Chrome`). A process that
+  belongs to no regular app, such as WebKit's Graphics and Media helper,
+  keeps its own picker entry and captures only itself. The picker checks
+  several apps into one mixdown tap; the selection persists as bundle IDs
+  (or `pid:<n>` for a process without one). A selected app that is not
+  running is skipped until the tap is rebuilt; the capture status then reads
+  as the captured/selected count and marks the missing app in its tooltip.
+  When none of the selected apps has a process, the status reads as waiting
+  for the selected app and the capture keeps retrying; a real capture failure
+  stays a red error.
+- **Per-app local mute replaces the output mute.** A per-app tap fixes its
+  local-output behavior at creation, so the capture loop rebuilds it with
+  `CATapMuted` when a session starts and with `CATapUnmuted` when the session
+  ends, the setting turns off, or the app selection changes. The rebuild
+  leaves a sub-second capture gap at those boundaries. Other apps keep
+  playing locally throughout; when several apps are selected, the tap mutes
+  that whole selection.
 - **Local Network privacy** (macOS 15+): mDNS, RTSP and PTP are dropped
   until the user allows the app under Privacy & Security → Local Network.
   Discovering nothing is the symptom; the flyout should link the setting.

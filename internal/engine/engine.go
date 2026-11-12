@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -70,21 +71,25 @@ type Snapshot struct {
 	LatencyMS      int
 	// ReceiverLatencyMS is the receiver's own arrival-to-render latency from
 	// its stream SETUP response. 0 means the receiver did not report one.
-	ReceiverLatencyMS  int
-	CaptureEndpoint    string
-	CaptureName        string
-	CaptureRate        int
-	CaptureRunning     bool
-	CaptureError       string
-	CaptureProcessPID  uint32
-	CaptureProcessName string
-	DroppedSamples     uint64
-	Diagnostics        Diagnostics
-	StrictAuth         bool
-	PTPActive          bool
-	PTPReady           bool
-	PTPOffsetMS        float64
-	LogLines           []string
+	ReceiverLatencyMS   int
+	CaptureEndpoint     string
+	CaptureName         string
+	CaptureRate         int
+	CaptureRunning      bool
+	CaptureError        string
+	CaptureProcessPID   uint32
+	CaptureProcessName  string
+	CaptureAppIDs       []string
+	CaptureAppNames     []string
+	CaptureActiveAppIDs []string
+	CaptureWaitingApp   bool
+	DroppedSamples      uint64
+	Diagnostics         Diagnostics
+	StrictAuth          bool
+	PTPActive           bool
+	PTPReady            bool
+	PTPOffsetMS         float64
+	LogLines            []string
 }
 
 type commandKind uint8
@@ -109,6 +114,7 @@ const (
 	cmdLatency
 	cmdLatencySettings
 	cmdCaptureProcess
+	cmdCaptureApps
 	cmdPassword
 	cmdQuit
 	cmdAddReceiver
@@ -129,6 +135,9 @@ type command struct {
 	show      bool
 	lampCover bool
 	minutes   int
+	ids       []string
+	names     []string
+	label     string
 	spec      receivers.Spec
 	patch     receivers.Patch
 }
@@ -370,6 +379,10 @@ type Engine struct {
 	setEndpointMuted func(string, bool) error
 	defaultEndpoint  func() (capture.Endpoint, error)
 	endpoints        func() ([]capture.Endpoint, error)
+	// Process mute is the per-app tap's own mute on macOS. Tests inject both
+	// the capability and the call so Windows's fallback stays covered.
+	processMute     bool
+	setProcessMuted func(bool) error
 
 	mu   sync.Mutex
 	snap Snapshot
@@ -414,6 +427,10 @@ type Engine struct {
 	captureEndpoint      string
 	captureName          string
 	captureProcess       uint32
+	captureApps          []string
+	captureAppNames      []string
+	captureActiveApps    []string
+	captureWaitingApp    bool
 	captureRate          int
 	captureRunning       bool
 	captureError         string
@@ -484,6 +501,8 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		captureEndpoint: cfg.CaptureEndpointID,
 		captureName:     cfg.CaptureEndpointName,
 		captureProcess:  cfg.CaptureProcessPID,
+		captureApps:     append([]string(nil), cfg.CaptureAppIDs...),
+		captureAppNames: append([]string(nil), cfg.CaptureAppNames...),
 		now:             time.Now,
 		stopping:        false,
 		passwords:       map[string]bool{},
@@ -492,6 +511,9 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		muteStatus:      make(chan muteStatus, 1),
 		muteStop:        make(chan struct{}),
 		muteDone:        make(chan struct{}),
+	}
+	if len(e.captureApps) > 0 {
+		e.captureName = strings.Join(e.captureAppNames, " + ")
 	}
 	// A registry that cannot be read leaves the engine with no remembered
 	// receivers but does not stop it; manual and discovered receivers still
@@ -517,6 +539,8 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	e.setEndpointMuted = capture.SetEndpointMuted
 	e.defaultEndpoint = capture.DefaultEndpoint
 	e.endpoints = capture.Endpoints
+	e.processMute = capture.ProcessMuteSupported()
+	e.setProcessMuted = capture.SetProcessMuted
 	e.mute.state = e.idleMuteState()
 	e.prepareLampImage()
 	e.rebuildTargets()
@@ -706,6 +730,13 @@ func (e *Engine) SetName(name string) {
 // capture.
 func (e *Engine) SetCaptureProcess(pid uint32, name string) {
 	e.send(command{kind: cmdCaptureProcess, value: float64(pid), name: name})
+}
+
+// SetCaptureApps selects apps by stable ID (bundle IDs on macOS; empty
+// returns to endpoint capture). names is parallel to ids, and label is the
+// status label the app built for the selection.
+func (e *Engine) SetCaptureApps(ids, names []string, label string) {
+	e.send(command{kind: cmdCaptureApps, ids: ids, names: names, label: label})
 }
 
 // SetLatency sets the presentation latency in milliseconds; it applies to the
@@ -1157,10 +1188,14 @@ func (e *Engine) handleCommand(cmd command) {
 		e.captureEndpoint = cmd.deviceID
 		e.captureName = cmd.name
 		e.captureProcess = 0
+		e.captureApps = nil
+		e.captureAppNames = nil
 		e.setsValue.CaptureEndpointID = cmd.deviceID
 		e.setsValue.CaptureEndpointName = cmd.name
 		e.setsValue.CaptureProcessPID = 0
 		e.setsValue.CaptureProcessName = ""
+		e.setsValue.CaptureAppIDs = nil
+		e.setsValue.CaptureAppNames = nil
 		e.markSettingsDirty()
 		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
 			e.refreshLocalMute()
@@ -1170,8 +1205,31 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdCaptureProcess:
 		e.captureProcess = uint32(cmd.value)
 		e.captureName = cmd.name
+		e.captureApps = nil
+		e.captureAppNames = nil
 		e.setsValue.CaptureProcessPID = e.captureProcess
 		e.setsValue.CaptureProcessName = cmd.name
+		e.setsValue.CaptureAppIDs = nil
+		e.setsValue.CaptureAppNames = nil
+		e.markSettingsDirty()
+		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
+			e.refreshLocalMute()
+		}
+		e.restartCapture()
+		e.publish()
+	case cmdCaptureApps:
+		e.captureApps = append([]string(nil), cmd.ids...)
+		e.captureAppNames = append([]string(nil), cmd.names...)
+		e.captureProcess = 0
+		label := cmd.label
+		if label == "" && len(e.captureAppNames) > 0 {
+			label = strings.Join(e.captureAppNames, " + ")
+		}
+		e.captureName = label
+		e.setsValue.CaptureAppIDs = append([]string(nil), e.captureApps...)
+		e.setsValue.CaptureAppNames = append([]string(nil), e.captureAppNames...)
+		e.setsValue.CaptureProcessPID = 0
+		e.setsValue.CaptureProcessName = ""
 		e.markSettingsDirty()
 		if e.setsValue.MuteLocalOnConnect || e.mute.state == MuteLocalActive {
 			e.refreshLocalMute()
@@ -2309,6 +2367,8 @@ func (e *Engine) restartCapture() {
 		go old.Stop()
 	}
 	e.captureRunning = false
+	e.captureActiveApps = nil
+	e.captureWaitingApp = false
 	if e.captureStarting {
 		e.captureQueued = true
 		return
@@ -2350,9 +2410,11 @@ func (e *Engine) beginCaptureStart() {
 		e.levelFeed.Reset()
 	}
 	cfg := capture.Config{
-		Ring:       e.silence,
-		EndpointID: e.captureEndpoint,
-		ProcessID:  e.captureProcess,
+		Ring:        e.silence,
+		EndpointID:  e.captureEndpoint,
+		ProcessID:   e.captureProcess,
+		AppIDs:      append([]string(nil), e.captureApps...),
+		MuteProcess: e.processMuteWanted(),
 		OnFormat: func(rate int) {
 			select {
 			case e.captureInfo <- captureInfo{gen: gen, rate: rate}:
@@ -2404,6 +2466,8 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	}
 	if res.err != nil {
 		e.captureRunning = false
+		e.captureActiveApps = nil
+		e.captureWaitingApp = errors.Is(res.err, capture.ErrNoAppProcess)
 		e.logCaptureError(res.err)
 		e.scheduleCaptureRetry()
 		e.publish()
@@ -2411,12 +2475,14 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 	}
 	e.capture = res.src
 	e.captureRunning = true
+	e.captureWaitingApp = false
 	e.captureError = ""
 	e.captureRetryAt = time.Time{}
 	e.captureRetryNum = 0
 	e.captureErrorLogged = ""
 	e.captureErrorLoggedAt = time.Time{}
 	stats := res.src.Stats()
+	e.captureActiveApps = append([]string(nil), stats.Apps...)
 	e.captureRate = stats.Rate
 	if e.level != nil {
 		e.level.SetRate(stats.Rate)
@@ -2428,9 +2494,9 @@ func (e *Engine) applyCaptureStart(res captureStart) {
 		e.tr.SetInputFormat(stats.Rate)
 	}
 	e.resetCaptureSink()
-	if e.mute.state == MuteLocalActive && e.captureProcess == 0 && e.captureEndpoint == "" {
-		// Capture follows the default device. The worker re-resolves it and
-		// moves the mute if Windows changed the default.
+	if e.setsValue.MuteLocalOnConnect && e.tr != nil && e.tr.State() == sender.StateStreaming {
+		// A tap opened or reopened during a session must take the mute the
+		// session asked for, including a per-app tap's own mute.
 		e.applyLocalMute()
 	}
 	e.logf("capture open: %s (%d Hz)", e.captureName, stats.Rate)
@@ -2458,11 +2524,16 @@ func (e *Engine) applyCaptureInfo(info captureInfo) {
 		e.captureName = info.name
 	}
 	if info.err != nil {
+		e.captureWaitingApp = errors.Is(info.err, capture.ErrNoAppProcess)
 		e.logCaptureError(info.err)
 	} else {
+		e.captureWaitingApp = false
 		e.captureError = ""
 		e.captureErrorLogged = ""
 		e.captureErrorLoggedAt = time.Time{}
+	}
+	if e.capture != nil {
+		e.captureActiveApps = append([]string(nil), e.capture.Stats().Apps...)
 	}
 	e.publish()
 }
@@ -2539,52 +2610,56 @@ func (e *Engine) buildSnapshot() Snapshot {
 	now := e.now()
 	diagnostics := e.buildDiagnostics(now, dropped)
 	return Snapshot{
-		Devices:            devs,
-		Receivers:          views,
-		SelectedID:         e.selectedID,
-		State:              state,
-		ConnectedName:      e.connectedName,
-		Error:              e.lastError,
-		ErrorKey:           e.lastErrorKey,
-		ErrorArgs:          e.lastErrorArgs,
-		CredentialReset:    e.credentialReset,
-		TakenOver:          e.takenOver,
-		PinRequired:        e.pinRequired,
-		PinDevice:          e.pinDevice,
-		PasswordRequired:   e.passwordRequired,
-		PasswordDevice:     e.passwordDevice,
-		PasswordDeviceID:   e.passwordDeviceID,
-		PasswordTargetID:   e.passwordTargetID,
-		Volume:             e.volume,
-		Name:               e.setsValue.Name,
-		Reconnect:          e.setsValue.Reconnect,
-		Reconnecting:       e.reconnectWanted && !e.reconnectAt.IsZero(),
-		AudioIdle:          e.idle != idleActive,
-		Standby:            e.idle == idleDark,
-		StandbyEnabled:     e.setsValue.Standby.Enabled,
-		StandbyMinutes:     settings.NormalizeStandbyMinutes(e.setsValue.Standby.IdleMinutes),
-		MuteLocal:          e.mute.state,
-		MuteLocalError:     e.mute.err,
-		LatencyMS:          e.setsValue.LatencyMS,
-		ReceiverLatencyMS:  e.receiverLatency,
-		CaptureProcessPID:  e.captureProcess,
-		CaptureProcessName: e.captureName,
-		LampOff:            e.setsValue.Lamp.Off,
-		LampCover:          e.setsValue.Lamp.Cover,
-		LampPreset:         lamp.Normalize(e.setsValue.Lamp.Preset),
-		TrayAnimation:      e.setsValue.TrayAnimation,
-		CaptureEndpoint:    e.captureEndpoint,
-		CaptureName:        e.captureName,
-		CaptureRate:        e.captureRate,
-		CaptureRunning:     e.captureRunning,
-		CaptureError:       e.captureError,
-		DroppedSamples:     dropped,
-		Diagnostics:        diagnostics,
-		StrictAuth:         e.setsValue.StrictReceiverAuth,
-		PTPActive:          ptpActive,
-		PTPReady:           ptpReady,
-		PTPOffsetMS:        ptpOffset,
-		LogLines:           lines,
+		Devices:             devs,
+		Receivers:           views,
+		SelectedID:          e.selectedID,
+		State:               state,
+		ConnectedName:       e.connectedName,
+		Error:               e.lastError,
+		ErrorKey:            e.lastErrorKey,
+		ErrorArgs:           e.lastErrorArgs,
+		CredentialReset:     e.credentialReset,
+		TakenOver:           e.takenOver,
+		PinRequired:         e.pinRequired,
+		PinDevice:           e.pinDevice,
+		PasswordRequired:    e.passwordRequired,
+		PasswordDevice:      e.passwordDevice,
+		PasswordDeviceID:    e.passwordDeviceID,
+		PasswordTargetID:    e.passwordTargetID,
+		Volume:              e.volume,
+		Name:                e.setsValue.Name,
+		Reconnect:           e.setsValue.Reconnect,
+		Reconnecting:        e.reconnectWanted && !e.reconnectAt.IsZero(),
+		AudioIdle:           e.idle != idleActive,
+		Standby:             e.idle == idleDark,
+		StandbyEnabled:      e.setsValue.Standby.Enabled,
+		StandbyMinutes:      settings.NormalizeStandbyMinutes(e.setsValue.Standby.IdleMinutes),
+		MuteLocal:           e.mute.state,
+		MuteLocalError:      e.mute.err,
+		LatencyMS:           e.setsValue.LatencyMS,
+		ReceiverLatencyMS:   e.receiverLatency,
+		CaptureProcessPID:   e.captureProcess,
+		CaptureProcessName:  e.captureName,
+		CaptureAppIDs:       append([]string(nil), e.captureApps...),
+		CaptureAppNames:     append([]string(nil), e.captureAppNames...),
+		CaptureActiveAppIDs: append([]string(nil), e.captureActiveApps...),
+		CaptureWaitingApp:   e.captureWaitingApp,
+		LampOff:             e.setsValue.Lamp.Off,
+		LampCover:           e.setsValue.Lamp.Cover,
+		LampPreset:          lamp.Normalize(e.setsValue.Lamp.Preset),
+		TrayAnimation:       e.setsValue.TrayAnimation,
+		CaptureEndpoint:     e.captureEndpoint,
+		CaptureName:         e.captureName,
+		CaptureRate:         e.captureRate,
+		CaptureRunning:      e.captureRunning,
+		CaptureError:        e.captureError,
+		DroppedSamples:      dropped,
+		Diagnostics:         diagnostics,
+		StrictAuth:          e.setsValue.StrictReceiverAuth,
+		PTPActive:           ptpActive,
+		PTPReady:            ptpReady,
+		PTPOffsetMS:         ptpOffset,
+		LogLines:            lines,
 	}
 }
 

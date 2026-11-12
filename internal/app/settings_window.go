@@ -1,7 +1,7 @@
 package app
 
 import (
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -9,6 +9,7 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
+	"saundo/internal/capture"
 	"saundo/internal/engine"
 	"saundo/internal/settings"
 )
@@ -76,6 +77,7 @@ func (a *App) showSettings() {
 	if a.settingsWin.IsMinimized() {
 		a.settingsWin.Restore()
 	}
+	a.appMenuOpen = false
 	a.settingsWin.Show()
 	a.settingsWin.Focus()
 	mygo.App.Focus()
@@ -606,15 +608,34 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
 		})
 		rowLine(c, p)
-		settingRow(c, p, locales.SettingsMuteLocal(), a.muteLocalSub(), func() {
-			toggle(c, p, &a.cfg.MuteLocalOnConnect, locales.SettingsMuteLocal(), a.setMuteLocal)
+		title := locales.SettingsMuteLocal()
+		if a.processMuteMode() {
+			title = locales.SettingsMuteLocalApp()
+		}
+		settingRow(c, p, title, a.muteLocalSub(), func() {
+			toggle(c, p, &a.cfg.MuteLocalOnConnect, title, a.setMuteLocal)
 		})
 	})
 	if a.cfg.MuteLocalOnConnect {
+		note := locales.SettingsMuteLocalNote()
+		switch {
+		case a.processMuteMode():
+			note = locales.SettingsMuteLocalAppNote()
+		case a.perAppSelected():
+			// Windows has no per-process mute; per-app capture silences
+			// every app with the output-device mute.
+			note = locales.SettingsMuteLocalWindowsAppNote()
+		}
 		ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
-			infoNote(c, p, locales.SettingsMuteLocalNote())
+			infoNote(c, p, note)
 		})
 	}
+}
+
+// processMuteMode reports whether the mute switch targets the captured app
+// rather than the whole output device.
+func (a *App) processMuteMode() bool {
+	return a.perAppSelected() && capture.ProcessMuteSupported()
 }
 
 // muteLocalSub follows the engine's effective state, not just the switch: on
@@ -623,6 +644,9 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 func (a *App) muteLocalSub() string {
 	switch a.snap.MuteLocal {
 	case engine.MuteLocalActive:
+		if a.processMuteMode() {
+			return locales.SettingsMuteLocalDescAppOn()
+		}
 		return locales.SettingsMuteLocalDescOn()
 	case engine.MuteLocalWaiting:
 		return locales.SettingsMuteLocalDescWaiting()
@@ -857,26 +881,31 @@ func (a *App) capturePage(c *ui.Context, p palette) {
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsAppCapture(), locales.SettingsAppCaptureDesc(), func() {
-			if fieldSelect(c, p, &a.appChoice, a.appNames, locales.SettingsAppCapture()).Width(captureSelectWidth).Changed() {
-				a.applyCaptureProcess()
-			}
+			a.appSelect(c, p)
 		})
 		rowLine(c, p)
 		// The status names the capture device, so its length follows the
 		// device. It keeps the row's right-hand column, capped so the title
 		// keeps its width; the full name is in the tooltip.
 		settingRow(c, p, locales.SettingsCaptureStatus(), locales.SettingsCaptureStatusDesc(), func() {
-			status := captureStatusText(a.snap)
+			name, rate, tip := a.captureStatusParts()
 			ui.Row(c).Gap(6).Shrink(0).MaxWidthPercent(55).AlignItems(ui.Center).Children(func() {
 				dot := p.faint
 				switch {
+				case a.snap.CaptureError != "" && a.snap.CaptureWaitingApp:
+					dot = p.warning
 				case a.snap.CaptureError != "":
 					dot = p.red
+				case a.capturePartial():
+					dot = p.warning
 				case a.snap.CaptureRunning:
 					dot = p.green
 				}
 				ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(dot)
-				ui.Text(c, status).FontSize(12.5).TextColor(p.muted).SingleLine().Ellipsis("…").Tooltip(status)
+				ui.Text(c, name).FontSize(12.5).TextColor(p.muted).SingleLine().Ellipsis("…").Tooltip(tip)
+				if rate != "" {
+					ui.Text(c, "· "+rate).FontSize(12.5).TextColor(p.faint).Shrink(0).SingleLine()
+				}
 			})
 		})
 	})
@@ -1011,47 +1040,270 @@ func (a *App) applyCaptureEndpoint() {
 	a.eng.SetCaptureEndpoint(id, name)
 }
 
-// captureAppPID parses an application option's PID. A malformed id is
-// unknown, not zero, so the caller leaves capture unchanged.
-func captureAppPID(id string) (uint32, bool) {
-	pid, err := strconv.ParseUint(id, 10, 32)
-	if err != nil {
-		return 0, false
-	}
-	return uint32(pid), true
-}
-
 // applyCaptureProcess narrows capture to one application.
 func (a *App) applyCaptureProcess() {
-	for i, name := range a.appNames {
-		if name != a.appChoice || i >= len(a.appIDs) {
-			continue
-		}
-		pid, ok := captureAppPID(a.appIDs[i])
-		if !ok {
-			if a.log != nil {
-				a.log.Printf("capture: malformed application id %q", a.appIDs[i])
-			}
-			return
-		}
-		a.eng.SetCaptureProcess(pid, name)
+	if a.eng == nil {
 		return
+	}
+	a.eng.SetCaptureProcess(a.appChoicePID, a.appLabel(a.appChoicePID))
+}
+
+// appSelect is the per-app picker: multi-select where the platform supports
+// it, and the legacy single-process picker elsewhere.
+func (a *App) appSelect(c *ui.Context, p palette) ui.Element {
+	if capture.MultiAppSupported() {
+		return a.appMultiSelect(c, p)
+	}
+	return a.appSingleSelect(c, p)
+}
+
+// appMultiSelect is the macOS picker: a field showing the selection, and a
+// menu whose checked rows apply live after a short pause.
+func (a *App) appMultiSelect(c *ui.Context, p palette) ui.Element {
+	m := ui.MenuBase(c, &a.appMenuOpen)
+	bg := p.pill
+	if m.Trigger.Hovered() {
+		bg = p.pillHover
+	}
+	if m.Trigger.Pressed() {
+		bg = p.line
+	}
+	trigger := m.Trigger.Width(captureSelectWidth).Height(28).Radius(7).Padding(0, 9).
+		Background(bg).Border(1, p.line).Label(locales.SettingsAppCapture())
+	trigger.Children(func() {
+		ui.Row(c).Grow(1).Gap(6).AlignItems(ui.Center).Children(func() {
+			if icon := a.selectionBitmap(); icon != nil {
+				ui.Image(c, icon).Size(16, 16).Shrink(0)
+			} else {
+				ui.Icon(c, iconScreen).Size(16, 16).TextColor(p.muted).Shrink(0)
+			}
+			ui.Text(c, a.appSelectionLabel()).FontSize(12.5).TextColor(p.fg).Grow(1).SingleLine().Ellipsis("…")
+			ui.Icon(c, iconChevron).Size(10, 10).TextColor(p.muted).Shrink(0)
+		})
+	})
+	m.Popup(func(panel ui.Element) {
+		panel.MinWidth(captureSelectWidth).Padding(4).Radius(9).Background(p.card).Border(1, p.line)
+		ui.Text(c, a.appSelectionLabel()).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…").Margin(2, 8, 4, 8)
+		a.appMultiRow(c, p, m, locales.CaptureAllSystem(), "")
+		ui.Box(c).Height(1).Margin(4, 0, 4, 0).Background(p.line2)
+		seen := make(map[string]bool, len(a.appIDs))
+		for i, id := range a.appIDs {
+			if id == "" {
+				continue
+			}
+			seen[id] = true
+			if i == 0 || i >= len(a.appNames) {
+				continue
+			}
+			a.appMultiRow(c, p, m, a.appNames[i], id)
+		}
+		// A saved app that is not running keeps its row so it can be
+		// unchecked; the tap skips it until it runs.
+		for i, id := range a.snap.CaptureAppIDs {
+			if id == "" || seen[id] {
+				continue
+			}
+			name := id
+			if i < len(a.snap.CaptureAppNames) && a.snap.CaptureAppNames[i] != "" {
+				name = a.snap.CaptureAppNames[i]
+			}
+			a.appMultiRow(c, p, m, name, id)
+		}
+	})
+	return trigger
+}
+
+// appMultiRow is one checked row of the multi-select menu. The whole-system
+// row has an empty id and clears the selection.
+func (a *App) appMultiRow(c *ui.Context, p palette, m ui.MenuParts, label, id string) {
+	selected := len(a.appSelection) == 0
+	if id != "" {
+		selected = a.appSelection[id]
+	}
+	item := m.CheckItem(selected).KeepOpen().Padding(6, 10).Radius(5)
+	highlighted := item.Highlighted()
+	if highlighted {
+		item.Background(p.accent)
+	}
+	color := p.fg
+	if highlighted {
+		color = p.accentFg
+	}
+	item.Children(func() {
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+			if selected {
+				ui.Icon(c, iconCheck).Size(12, 12).TextColor(color).Shrink(0)
+			} else {
+				ui.Box(c).Size(12, 12).Shrink(0)
+			}
+			if id == "" {
+				ui.Icon(c, iconScreen).Size(16, 16).TextColor(color).Shrink(0)
+			} else if icon := a.appBitmapForID(id); icon != nil {
+				ui.Image(c, icon).Size(16, 16).Shrink(0)
+			} else {
+				ui.Box(c).Size(16, 16).Shrink(0)
+			}
+			ui.Text(c, label).FontSize(12.5).TextColor(color).SingleLine().Ellipsis("…")
+		})
+	})
+	if item.Clicked() {
+		switch {
+		case id == "":
+			if len(a.appSelection) > 0 {
+				a.appSelection = map[string]bool{}
+				a.scheduleAppSelection()
+			}
+		case a.appSelection[id]:
+			delete(a.appSelection, id)
+			a.scheduleAppSelection()
+		default:
+			if a.appSelection == nil {
+				a.appSelection = map[string]bool{}
+			}
+			a.appSelection[id] = true
+			a.scheduleAppSelection()
+		}
 	}
 }
 
-func captureStatusText(s engine.Snapshot) string {
+// appSingleSelect is the one-process picker used where multi-select is
+// unsupported.
+func (a *App) appSingleSelect(c *ui.Context, p palette) ui.Element {
+	m := ui.MenuBase(c, &a.appMenuOpen)
+	bg := p.pill
+	if m.Trigger.Hovered() {
+		bg = p.pillHover
+	}
+	if m.Trigger.Pressed() {
+		bg = p.line
+	}
+	trigger := m.Trigger.Width(captureSelectWidth).Height(28).Radius(7).Padding(0, 9).
+		Background(bg).Border(1, p.line).Label(locales.SettingsAppCapture())
+	trigger.Children(func() {
+		ui.Row(c).Grow(1).Gap(6).AlignItems(ui.Center).Children(func() {
+			a.appIcon(c, a.appChoicePID, p.muted)
+			ui.Text(c, a.appLabel(a.appChoicePID)).FontSize(12.5).TextColor(p.fg).Grow(1).SingleLine().Ellipsis("…")
+			ui.Icon(c, iconChevron).Size(10, 10).TextColor(p.muted).Shrink(0)
+		})
+	})
+	m.Popup(func(panel ui.Element) {
+		panel.MinWidth(captureSelectWidth).Padding(4).Radius(9).Background(p.card).Border(1, p.line)
+		for i, pid := range a.appPIDs {
+			if i >= len(a.appNames) {
+				break
+			}
+			item := m.Item().Padding(5, 8).Radius(5)
+			highlighted := item.Highlighted()
+			switch {
+			case highlighted:
+				item.Background(p.accent)
+			case pid == a.appChoicePID:
+				item.Background(p.pill)
+			}
+			color := p.fg
+			if highlighted {
+				color = p.accentFg
+			}
+			item.Children(func() {
+				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+					a.appIcon(c, pid, color)
+					ui.Text(c, a.appNames[i]).FontSize(12.5).TextColor(color).SingleLine().Ellipsis("…")
+				})
+			})
+			if item.Clicked() {
+				a.appChoicePID = pid
+				a.applyCaptureProcess()
+			}
+		}
+	})
+	return trigger
+}
+
+// appIcon draws the picker icon for pid, or a same-size gap so names without
+// an icon keep the text column aligned. The whole-system choice has no app
+// bundle, so it borrows the capture page's display glyph, tinted like the
+// text beside it.
+func (a *App) appIcon(c *ui.Context, pid uint32, tint ui.Color) {
+	if pid == 0 {
+		ui.Icon(c, iconScreen).Size(16, 16).TextColor(tint).Shrink(0)
+		return
+	}
+	if icon := a.appIcons[pid]; icon != nil {
+		ui.Image(c, icon).Size(16, 16).Shrink(0)
+		return
+	}
+	ui.Box(c).Size(16, 16).Shrink(0)
+}
+
+// captureStatusParts returns the status value, its rate suffix, and the
+// tooltip: a multi-app selection reads as a count, with the app names in the
+// tooltip, and a capture error keeps its detail there.
+func (a *App) captureStatusParts() (name, rate, tip string) {
+	s := a.snap
 	if s.CaptureError != "" {
-		return locales.SettingsCaptureError()
+		if s.CaptureWaitingApp {
+			return locales.SettingsCaptureWaitingApp(), "", s.CaptureError
+		}
+		return locales.SettingsCaptureError(), "", s.CaptureError
 	}
 	if !s.CaptureRunning {
-		return locales.SettingsCaptureNotRunning()
+		return locales.SettingsCaptureNotRunning(), "", ""
 	}
-	name := s.CaptureName
+	selected := len(s.CaptureAppIDs)
+	active := len(s.CaptureActiveAppIDs)
+	name = s.CaptureName
+	switch {
+	case selected > 1 && active < selected:
+		name = locales.SettingsAppCapturePartial(active, selected)
+		tip = a.captureAppsTip()
+	case selected > 1:
+		name = locales.SettingsAppCaptureCount(selected)
+		tip = strings.Join(s.CaptureAppNames, " + ")
+	}
+	if name == "" && len(s.CaptureAppNames) > 0 {
+		name = s.CaptureAppNames[0]
+	}
+	if name == "" && s.CaptureProcessPID != 0 && s.CaptureProcessName != "" {
+		name = s.CaptureProcessName
+	}
 	if name == "" {
 		name = locales.CaptureSystemDefault()
 	}
-	if s.CaptureRate > 0 {
-		return name + " · " + formatRate(s.CaptureRate)
+	if tip == "" {
+		tip = name
 	}
-	return name
+	if s.CaptureRate > 0 {
+		rate = formatRate(s.CaptureRate)
+	}
+	return name, rate, tip
+}
+
+// captureAppsTip lists the selected apps and marks the ones the current tap
+// could not include.
+func (a *App) captureAppsTip() string {
+	s := a.snap
+	active := make(map[string]bool, len(s.CaptureActiveAppIDs))
+	for _, id := range s.CaptureActiveAppIDs {
+		active[id] = true
+	}
+	parts := make([]string, 0, len(s.CaptureAppIDs))
+	for i, id := range s.CaptureAppIDs {
+		name := id
+		if i < len(s.CaptureAppNames) && s.CaptureAppNames[i] != "" {
+			name = s.CaptureAppNames[i]
+		}
+		if !active[id] {
+			name += " (" + locales.SettingsAppCaptureMissing() + ")"
+		}
+		parts = append(parts, name)
+	}
+	return strings.Join(parts, " + ")
+}
+
+// capturePartial reports a running app selection the tap could only partly
+// include, as when one selected app has no Core Audio process.
+func (a *App) capturePartial() bool {
+	s := a.snap
+	return s.CaptureError == "" && s.CaptureRunning &&
+		len(s.CaptureAppIDs) > 1 && len(s.CaptureActiveAppIDs) < len(s.CaptureAppIDs)
 }

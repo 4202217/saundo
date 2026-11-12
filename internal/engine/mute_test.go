@@ -65,6 +65,21 @@ func useMuter(h *harness, m *fakeMuter) {
 	h.e.endpoints = m.listEndpoints
 }
 
+type fakeProcessMuter struct {
+	calls []bool
+	err   error
+}
+
+func (f *fakeProcessMuter) set(muted bool) error {
+	f.calls = append(f.calls, muted)
+	return f.err
+}
+
+func useProcessMuter(h *harness, m *fakeProcessMuter) {
+	h.e.processMute = true
+	h.e.setProcessMuted = m.set
+}
+
 // settleMute drains worker results until the loop-visible state matches want.
 // The worker is real; only the endpoint calls are faked.
 func (h *harness) settleMute(t *testing.T, want MuteLocalState) {
@@ -215,6 +230,8 @@ func TestMuteLocalProcessCaptureUsesDefaultEndpoint(t *testing.T) {
 	h := newHarness(t)
 	m := newFakeMuter()
 	useMuter(h, m)
+	// A platform without process mute, as Windows: the endpoint fallback.
+	h.e.processMute = false
 	h.e.setsValue.MuteLocalOnConnect = true
 	h.e.captureEndpoint = "selected-ep"
 	h.e.captureProcess = 1234
@@ -228,6 +245,96 @@ func TestMuteLocalProcessCaptureUsesDefaultEndpoint(t *testing.T) {
 	}
 	if m.muted["selected-ep"] {
 		t.Fatal("process capture muted the selected capture endpoint")
+	}
+}
+
+// TestMuteLocalProcessCaptureMutesTheSelectedApp pins the macOS behavior: a
+// per-app session mutes only the captured app and never the output device.
+func TestMuteLocalProcessCaptureMutesTheSelectedApp(t *testing.T) {
+	h := newHarness(t)
+	m := newFakeMuter()
+	useMuter(h, m)
+	pm := &fakeProcessMuter{}
+	useProcessMuter(h, pm)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.e.captureProcess = 1234
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+
+	if len(pm.calls) == 0 || !pm.calls[len(pm.calls)-1] {
+		t.Fatalf("process mute calls = %v, want the last to be mute", pm.calls)
+	}
+	if len(m.setCalls) != 0 {
+		t.Fatalf("endpoint mute calls = %+v, want none", m.setCalls)
+	}
+
+	h.e.handleCommand(command{kind: cmdDisconnect})
+	h.settleMute(t, MuteLocalWaiting)
+	last := pm.calls[len(pm.calls)-1]
+	if last {
+		t.Fatalf("process mute calls = %v, want restore", pm.calls)
+	}
+	if len(m.setCalls) != 0 {
+		t.Fatalf("endpoint mute calls = %+v, want none", m.setCalls)
+	}
+}
+
+// TestMuteLocalAppSelectionMutesTheApps covers the multi-app selection with
+// the same tap mute as the legacy single process.
+func TestMuteLocalAppSelectionMutesTheApps(t *testing.T) {
+	h := newHarness(t)
+	m := newFakeMuter()
+	useMuter(h, m)
+	pm := &fakeProcessMuter{}
+	useProcessMuter(h, pm)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.e.captureApps = []string{"com.apple.Music", "com.google.Chrome"}
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+
+	if len(pm.calls) == 0 || !pm.calls[len(pm.calls)-1] {
+		t.Fatalf("process mute calls = %v, want the last to be mute", pm.calls)
+	}
+	if len(m.setCalls) != 0 {
+		t.Fatalf("endpoint mute calls = %+v, want none", m.setCalls)
+	}
+}
+
+func TestMuteLocalProcessFailureIsVisible(t *testing.T) {
+	h := newHarness(t)
+	pm := &fakeProcessMuter{err: errors.New("no tap")}
+	useProcessMuter(h, pm)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.e.captureProcess = 1234
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalFailed)
+
+	if snap := h.e.Snapshot(); snap.MuteLocalError == "" {
+		t.Fatal("failed process mute did not carry its error")
+	}
+}
+
+func TestMuteLocalProcessOffRestores(t *testing.T) {
+	h := newHarness(t)
+	pm := &fakeProcessMuter{}
+	useProcessMuter(h, pm)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.e.captureProcess = 1234
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+
+	h.e.handleCommand(command{kind: cmdMuteLocal, show: false})
+	h.settleMute(t, MuteLocalOff)
+	if last := pm.calls[len(pm.calls)-1]; last {
+		t.Fatalf("process mute calls = %v, want restore", pm.calls)
 	}
 }
 
