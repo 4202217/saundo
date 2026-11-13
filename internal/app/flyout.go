@@ -303,8 +303,8 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 
 	card := ui.Column(c).Radius(10).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
-		ui.Row(c).Padding(10, 12, 10, 12).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2)
+		ui.Row(c).Padding(10, 12, 10, 22).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2).Margin(0, 0, 0, -2)
 			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
 		})
 		rowLine(c, p)
@@ -326,7 +326,7 @@ func (a *App) latencySwitch(c *ui.Context, p palette) {
 		{locales.SettingsLatencyStable(), iconLatencyStable},
 		{locales.SettingsLatencyCustom(), iconSliders},
 	}
-	track := segmented(c, p, &seg, items, 0, false, locales.SettingsLatency())
+	track := segmented(c, p, &seg, items, 0, false, segmentLeading, locales.SettingsLatency())
 	if track.Changed() {
 		a.setLatencyMode(latencyModeAt(seg))
 	}

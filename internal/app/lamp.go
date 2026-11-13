@@ -463,7 +463,7 @@ func (a *App) lampPrioritySegment(c *ui.Context, p palette, compact bool) {
 		width = 128
 	}
 	items := []segmentItem{{locales.LampSourceCover(), nil}, {locales.LampSourceTemplate(), nil}}
-	if segmented(c, p, &seg, items, width, a.lampOff, locales.LampPriority()).Changed() {
+	if segmented(c, p, &seg, items, width, a.lampOff, segmentCenter, locales.LampPriority()).Changed() {
 		a.setLampCover(seg == 0)
 	}
 }

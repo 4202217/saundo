@@ -372,7 +372,7 @@ func (a *App) nowPlayingCoverRow(c *ui.Context, p palette) {
 			{locales.SettingsCoverPlaceholder(), iconNote},
 			{locales.SettingsCoverMedia(), iconImage},
 		}
-		if segmented(c, p, &seg, items, 200, false, locales.SettingsCover()).Changed() {
+		if segmented(c, p, &seg, items, 200, false, segmentCenter, locales.SettingsCover()).Changed() {
 			a.cfg.CoverMode = coverModeAt(seg)
 			a.persistNowPlaying()
 		}
