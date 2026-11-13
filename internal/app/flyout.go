@@ -277,7 +277,7 @@ func actionFor(ph phase, active, online bool) rowActionKind {
 func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, active bool) {
 	switch actionFor(ph, active, d.Online) {
 	case actionCancel:
-		textButton(c, p, locales.ActionCancel(), nil, p.ctl, func() { a.disconnect() })
+		textButton(c, p, locales.ActionCancel(), iconClose, p.ctl, func() { a.disconnect() })
 	case actionRetry:
 		label := locales.ActionRetry()
 		if a.snap.TakenOver {
