@@ -107,7 +107,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
 		"声渡", "AIRPLAY 2", "接收器", "HomePods", "Apple TV", "HomePod mini",
-		"连接", "断开连接", "离线", "音量", "65%", "正在通过 HomePods 播放",
+		"连接", "断开连接", "离线", "音量", "正在通过 HomePods 播放",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义",
 		"氛围灯", "沙丘",
 	} {
@@ -115,8 +115,8 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
-	if tt.HasText("6,500%") {
-		t.Fatalf("volume was scaled by 100: %q", tt.Texts())
+	if tt.HasText("65%") {
+		t.Fatalf("the volume row still prints a numeric readout: %q", tt.Texts())
 	}
 	if path := os.Getenv("SAUNDO_PREVIEW"); path != "" {
 		writePreview(t, tt, path)
@@ -128,7 +128,7 @@ func TestEnglishLocaleRenders(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
-		"Saundo", "AIRPLAY 2", "Receivers", "3 receivers", "65%", "Streaming to HomePods",
+		"Saundo", "AIRPLAY 2", "Receivers", "3 receivers", "Streaming to HomePods",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("English view is missing %q; texts: %q", want, tt.Texts())
@@ -839,8 +839,8 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	noMedia := map[int]int{0: 368, 1: 285, 2: 341, 3: 397, 5: 397}
-	withMedia := map[int]int{0: 518, 1: 435, 2: 491, 3: 547, 5: 547}
+	noMedia := map[int]int{0: 348, 1: 265, 2: 321, 3: 377, 5: 377}
+	withMedia := map[int]int{0: 498, 1: 415, 2: 471, 3: 527, 5: 527}
 	for _, tc := range []struct {
 		media bool
 		want  map[int]int

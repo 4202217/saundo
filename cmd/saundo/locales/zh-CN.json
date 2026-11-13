@@ -92,7 +92,6 @@
   "flyoutSyncNTP": "NTP",
   "flyoutSyncPTPReady": "PTP · 已同步",
   "flyoutSyncPTPPending": "PTP · 同步中",
-  "flyoutVolumeValue": "{v, number, integer}%",
   "flyoutNowPlayingNoMedia": "未检测到媒体",
   "flyoutNowPlayingSessionFailed": "无法读取系统媒体信息",
   "flyoutNowPlayingSession": "系统媒体",

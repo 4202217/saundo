@@ -41,7 +41,7 @@ If the evidence rules out the change the user asked for, show it and stop.
 Write one brief. Use it for the current session's mockup, and reuse it verbatim for every variant when fanning out. Carry:
 
 - The goal and the quoted complaint.
-- The surface and size. Settings is 720x500, minimum 640x420, with a 190-wide sidebar of nine pages. The flyout is 420 wide and its height follows `flyoutHeightFor`: 459 for three device rows, 62 less because the media card replaces the old Now Playing row, 90 for the permanent ambient section, +150 while a media session exists, +44 for the latency row, +48 for the connection error bar, and +53 for the expanded ambient grid (`flyoutHeightForState`).
+- The surface and size. Settings is 720x500, minimum 640x420, with a 190-wide sidebar of nine pages. The flyout is 420 wide and its height follows `flyoutHeightFor`: 439 for three device rows, 62 less because the media card replaces the old Now Playing row, 90 for the permanent ambient section, +150 while a media session exists, +44 for the latency row, +48 for the connection error bar, and +53 for the expanded ambient grid (`flyoutHeightForState`).
 - The token and geometry source: `internal/app/theme.go`, and `.audit/mockup-final.html` when it is the visual baseline.
 - The locale source: `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-CN.json`. New copy needs a key and both languages.
 - Native constraints: mygo primitives only (`Column`, `Row`, `Box`, `Text`, `ButtonBase`, `Icon`, `toggle`, `slider`, `CollapsibleBase`, `SegmentedBase`), plus borders, radius, padding, opacity, and the palette. No images, web fonts, or gradients outside the ambient preview's color glow. Inline SVG only for icons in `internal/app/icons.go`.
