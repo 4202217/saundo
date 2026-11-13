@@ -40,6 +40,15 @@ live state:
   confirmation stays the user's. The engine path is pinned by
   `TestLatencyRestartKeepsLocalMute`, `TestLatencyRestartKeepsProcessMute`,
   and `TestReceiverDelayRestartKeepsLocalMute`.
+- Local output mute across a receiver switch, and its restore when the switch
+  fails: no live run yet. The engine path is pinned by
+  `TestDeviceSwitchKeepsLocalMute`, `TestDeviceSwitchKeepsProcessMute`,
+  `TestDeviceSwitchRestoresMuteWhenTheNewSessionFails`, and
+  `TestDeviceSwitchRestoresMuteWhenTheLaunchFails`; the row action is pinned
+  by `TestRowActionKeepsOtherReceiversConnectable`. A live run should switch
+  between two receivers while streaming, check the log shows no restore
+  until the disconnect, then switch to an unreachable receiver and confirm
+  the endpoint comes back.
 - A two-computer takeover with both apps auto-reconnecting: the second
   should show the takeover state, the first should keep streaming, and
   neither should re-enter the reconnect loop. The single-machine two-session

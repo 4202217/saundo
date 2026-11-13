@@ -264,11 +264,13 @@ func actionFor(ph phase, active, online bool) rowActionKind {
 		return actionDisconnect
 	case !online:
 		return actionOffline
-	case ph == phaseConnecting || ph == phaseStreaming:
-		// One session at a time. A failed session leaves the engine idle, so
-		// only the error phase keeps the other rows connectable.
+	case ph == phaseConnecting:
+		// One session at a time. An attempt in progress must finish or be
+		// cancelled before another receiver can take the session.
 		return actionConnectDisabled
 	}
+	// While streaming, another row's connect switches the session to that
+	// receiver; the engine rebuilds in place and keeps the local mute.
 	return actionConnect
 }
 

@@ -1168,7 +1168,14 @@ func (e *Engine) handleCommand(cmd command) {
 			e.userDisconnect = false
 			e.reconnectCount = 0
 			e.connectAuto = false
-			e.connect(t.Device)
+			if e.tr != nil && e.tr.Active() {
+				// A connect that replaces a live session is a switch: the
+				// user's session continues on the new receiver, so it keeps
+				// the connection mute like an in-place restart.
+				e.restartSession(t.Device)
+			} else {
+				e.connect(t.Device)
+			}
 		} else {
 			e.fail(ErrDeviceMissing)
 			e.publish()
@@ -1386,10 +1393,11 @@ func (e *Engine) handleCommand(cmd command) {
 	}
 }
 
-// restartSession rebuilds the live session for an in-place setting change,
-// such as a latency switch. The connection mute belongs to the user's session,
-// not to the transport, so the local output stays muted across the rebuild;
-// connect restores it when the new session fails to open.
+// restartSession rebuilds the live session in place: a latency change, a
+// receiver delay edit, or a switch to another receiver. The connection mute
+// belongs to the user's session, not to the transport, so the local output
+// stays muted across the rebuild; connect restores it when the new session
+// fails to open.
 func (e *Engine) restartSession(d device.Device) {
 	e.holdLocalMute = true
 	e.connect(d)
