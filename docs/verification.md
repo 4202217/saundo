@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-13 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # Verification
 
@@ -1532,3 +1532,74 @@ surviving conclusion, and the pin.
   Pins: devices.md §HomePod. Not established: which receiver-internal buffer
   underruns, and whether larger, compressed blocks would move the floor
   below 200 ms.
+
+## 2026-11-14 — release 0.6.3 UI review
+
+- **Matrix.** `SAUNDO_PREVIEW_DIR=.audit/release-0.6.3/previews go test
+  ./internal/app -run TestRenderPreviews -count=1` rendered 250 PNGs in
+  English and Simplified Chinese, light and dark, including the flyout's
+  stream, connecting, empty, error, ambient, and media states and every
+  settings page. The matrix was re-rendered after the fixes and inspected
+  again.
+- **P0 findings fixed.** The English flyout latency segment truncated to
+  "Low late…" in every state with the row (`ui_kit.go` leading 8-DIP padding
+  plus the 14-DIP glyph); the English label is now Low, and the settings tile
+  keeps its 200 ms value and description. The capture page description said
+  "a single app" on macOS, where the release ships multi-select; it now reads
+  "System audio, or one or more apps." The tray mute row read "Mute local
+  output" while its click unmuted; it now reads Unmute local output while the
+  preference is on (`muteLabel`), matching the bell slash.
+- **P1 fixed.** English per-app copy is plural-neutral like the Chinese copy.
+  **P2 fixed.** The Windows per-app mute caveat and its Windows-only test were
+  removed: the engine drops an unsupported app selection at load, so the
+  state could not occur and the test manufactured it.
+- **Live run.** The UI review itself did not drive the app: the copy and
+  geometry changes were checked in the native preview matrix, the tray menu
+  copy has no native preview and is pinned by
+  `TestTrayMenuMuteLabelFollowsThePreference`, and the English segment is
+  checked in `flyout-stream-light-en.png` and pinned by
+  `TestFlyoutLatencyLowFitsItsSegment`, which fails with the old two-word
+  label. The verification skill's live pass
+  below drove the built app.
+- **Mockup templates.** Both templates already describe the shipped
+  interface: the flyout height rule (439 base, -62 for the old Now Playing row,
+  +90 ambient, +150 media, +44 latency, +48 error, +48 credential, +53
+  expanded), the palette tokens, the card order, and the latency labels
+  (Low, Standard, Stable, Custom) match `flyout.go`, `theme.go`, and
+  `ui_kit.go`; the settings samples match the shipped cards. Rendered 44 PNGs
+  into `.audit/release-0.6.3/mockups/` — settings target, normal, and edge;
+  flyout idle, streaming, empty, error, media, latency, and ambient states;
+  both locales and themes — and inspected them for clipping, overflow, and
+  wrapped copy. No template file changed.
+- **Independent review.** A fresh reviewer on a different model family read
+  the findings, the decision trail (`.audit/release-0.6.3/ui-review-trail.tsv`),
+  and the diff; a second fresh reviewer checked the fixes.
+- **Verification skill.** Outcome: changed. The source pass covered all six
+  feature pages, and every page needed at least one correction: stale refs,
+  the missing per-app states and mute copy, the fallback's disabled state,
+  and the updates disabled and folded-history behavior. The corrections
+  landed as their own commit before the release commit. No product defect.
+  The live pass is below; per-app capture and audible Mac checks are
+  unreachable on this Windows host, and the native tray menu and settings
+  window were not re-driven.
+- **Release candidate.** `go tool mygo build -platform windows/amd64` with
+  `MYGO_UPDATER_PRIVATE_KEY` and `MYGO_LDFLAGS=-X
+  saundo/internal/app.Version=0.6.3` produced `saundo-setup-0.6.3-amd64.exe`,
+  the update archive, the deltas, and `update-windows-amd64.json`: version
+  0.6.3, the English 0.6.3 notes, and an 88-character signature. The
+  maintainer's release request stands as the pre-release test; the same run
+  launched the build and streamed to the HomePods pair.
+- **Live pass (verification skill).** The 0.6.3 build launched from the
+  release worktree and auto-connected to the HomePods stereo pair. The log
+  records `control channel now encrypted`, `session SETUP ok`, `streaming to
+  "HomePod L"` and `"HomePod R"` at 44100 Hz encrypted, SET_PARAMETER 200s,
+  and `update: 0.6.2 available` (correct for a build past the 0.6.2 tag: the
+  git-describe stamp sorts below it). The flyout capture shows the receiver
+  row, the media-latency-volume playback card, the volume percent, the
+  ambient card, and the update chip:
+  `.audit/release-0.6.3/live/flyout-0.6.3.png`. Windows is this host, so the
+  per-app picker is correctly absent and the Capture page reads System audio.
+  Not re-driven live: the native tray menu (its only 0.6.3 delta is the mute
+  label, pinned by `TestTrayMenuMuteLabelFollowsThePreference`; the menu was
+  driven live on 2026-11-13), the settings window (the preview matrix is the
+  full visual record), and audible output on a Mac.
