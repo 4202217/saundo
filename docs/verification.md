@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-12 -->
+<!-- reviewed-through: 2026-11-13 -->
 
 # Verification
 
@@ -1034,6 +1034,77 @@ and the verification map is corrected.
   skips on Windows.
 - **Known gap.** The Windows process-loopback leaf and its development
   probes remain in the tree for a future capture path; they are not exposed.
+
+## 2026-11-12 — Windows loopback carries endpoint volume
+
+- **Finding.** On the default render endpoint (Realtek Digital Output,
+  Realtek(R) Audio, 51 volume steps), a 440 Hz tone captured through the
+  WASAPI loopback leaf measured RMS 0.0706 at step 50, 0.0227 at step 25,
+  0.0030 at step 5, and 0.0001 at step 0. The 0%/100% ratio is 0.001, so the
+  captured PCM carries the endpoint's volume and a quiet PC attenuates the
+  receiver's output by the same amount. The same device's endpoint mute did
+  not reach the tap (0.1679 before, 0.1768 while muted), so volume and mute
+  sit on opposite sides of the loopback tap on this driver.
+- **Status.** The manual volume probes were removed with the endpoint-volume
+  takeover on 2026-11-13. The measurement stays as the explanation for why a
+  Windows PC volume change scales the stream; saundo leaves the endpoint
+  volume alone. The macOS process tap is expected to sit before the output
+  device's volume; it has not been measured on a Mac.
+
+## 2026-11-13 — Windows endpoint-volume takeover removed
+
+- **Decision.** The connection mute no longer changes the render endpoint's
+  volume. It still mutes the endpoint while a session streams and restores it
+  afterwards. On Windows the HomePod level is multiplied by the PC volume
+  again; set the Windows volume to 100% when you want the HomePod level to be
+  independent, and lower it after the session.
+- **Why.** The takeover owned a system-wide setting for the whole session,
+  re-applied it every second, overrode the Windows volume keys, needed a crash
+  guard, and depended on driver and APO behavior. It was implicit under the
+  mute switch and too invasive for the convenience it added. User feedback
+  after a live test decided the removal.
+- **Kept.** The connection mute and its guard, the loopback measurement above,
+  and the AP2 first-connect volume rule below. The takeover code, re-assert
+  ticker, guard volume field, tests, and capture volume leaves were removed.
+  An old guard's volume field is ignored, and the next launch releases the
+  mute.
+
+## 2026-11-13 — AP2 first-connect volume fail-closed
+
+- **Root cause.** `beginPlayback` turned every unknown or muted handshake
+  `initialVolume` into `volume: 0.000000` (0 dB, full scale). The handshake
+  accepted any present key and ran it through `plistInt`, so a bool or string
+  became 0 and counted as known; the 1 Hz poll shared the same type
+  confusion. On windows/amd64 a NaN became `MinInt64` and still read as
+  known.
+- **Rule.** Only a finite numeric `initialVolume` in `[-144, 0]` is known.
+  `0` dB is full scale and `-144` is the mute sentinel. An unknown value
+  (absent, malformed plist, non-dictionary, bool, string, nil, NaN/Inf, or
+  positive) sends no `SET_PARAMETER volume`, so the receiver keeps its own
+  level. A value below `-144` clamps to `-144`. The handshake and the poll
+  share `plistRealOK` and `volumeDBInRange`; `InitialVolumePercent` uses the
+  poll's percent conversion.
+- **Pins that fail without the fix.**
+  `TestFirstConnectUnknownVolumeSendsNoRequest` (absent, string, bool,
+  malformed, non-dictionary, positive), `TestFirstConnectMuteSentinelStaysMuted`,
+  `TestFirstConnectBelowMuteClampsToMute`,
+  `TestFirstConnectRealVolumeKeepsFraction`,
+  `TestVolumePollRealVolumeMatchesTheHandshake`,
+  `TestVolumePollKeepsTheStoredVolumeOnUnknownField` (the bool and positive
+  subtests fail pre-fix; malformed is a guard), `TestPlistRealOK`, and
+  `TestVolumeDBInRange`. Engine-invariant guards:
+  `TestFirstLaunchAdoptsMuteSentinel`,
+  `TestFirstLaunchKeepsConfiguredVolumeWhenUnknown`,
+  `TestFirstLaunchKeepsRememberedVolume`,
+  `TestReceiverVolumeEventUpdatesPerDevice`, and
+  `TestFirstConnectKnownZeroSendsFullVolume`.
+- **Tradeoff.** An AP2 receiver with no usable `initialVolume` and a quiet or
+  muted knob stays as it is; the UI keeps the configured value until the
+  first poll reports the receiver. This is the fail-closed choice, not a
+  regression to hide. The C++ reference force-pushes 0 dB; saundo
+  deliberately does not.
+- **Live.** No HomePod, Apple TV, or Mac run in this entry. The fake receiver
+  covers the wire branches; the existing poll and live tests are unaffected.
 
 ## Graduated
 

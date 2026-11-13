@@ -8,10 +8,12 @@ diagnostics log row lives on the settings 关于 page.
 
 - Volume slider: sends `SET_PARAMETER volume` while streaming; 0 mutes
   (the `-144` dBFS sentinel); a remembered device reconnects at its stored
-  volume; a first connection adopts the receiver's `initialVolume`. While
-  streaming, the sender polls `GET /info` every second — a knob moved on the
-  receiver itself mirrors back into the slider. AP2 only; an AP1 session
-  never arms the poll.
+  volume; a first connection adopts the receiver's `initialVolume`. An
+  absent, malformed, non-numeric, or positive `initialVolume` sends no
+  volume request and the receiver keeps its own level; `-144` stays the mute
+  sentinel. While streaming, the sender polls `GET /info` every second — a
+  knob moved on the receiver itself mirrors back into the slider. AP2 only;
+  an AP1 session never arms the poll.
 - Latency: flyout segments 低延迟 200 ms (default) / 标准 1.5 s / 稳定 2 s /
   自定义 20–2000 ms; the value shows on the ALAC line
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,

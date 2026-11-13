@@ -48,6 +48,7 @@ func newHarnessWithLog(t *testing.T, sets *settings.Store, credsStore *creds.Sto
 			CredentialsObtained:    h.e.onCredentials,
 			StateChanged:           h.e.onStateChanged,
 			ReceiverLatencyChanged: h.e.onReceiverLatency,
+			VolumeChanged:          h.e.onReceiverVolume,
 		})
 		h.fake.rings = h.rings
 		return h.fake, func() { h.fake.stopped = true }, nil
