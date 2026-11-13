@@ -1603,3 +1603,25 @@ surviving conclusion, and the pin.
   label, pinned by `TestTrayMenuMuteLabelFollowsThePreference`; the menu was
   driven live on 2026-11-13), the settings window (the preview matrix is the
   full visual record), and audible output on a Mac.
+
+## 2026-11-14 — 0.6.3 release
+
+- **Draft verification.** The release workflow (run 43468834016) first failed
+  `check-macos` with a test-only `fatal error: concurrent map writes` in
+  `TestMuteGuardRecoversAfterCrash`: the harness's mute worker ran its first
+  `recoverMuteGuard` while the test called it directly, and both wrote the
+  fake muter's map. The failed job was re-run on the same tag and passed;
+  `build-macos` then ran and passed. The draft carried `install.ps1`,
+  `install.sh`, the Windows installer, both update archives, the four deltas,
+  both signed manifests, the arm64 dmg, and `SHA256SUMS`; `sha256sum -c`
+  passed for all ten checksummed files. Both manifests name 0.6.3, carry the
+  English 0.6.3 notes, and have an 88-character signature.
+- **Flake fix.** The two guard tests stop the mute worker before their direct
+  `recoverMuteGuard` call (`acd63dc`, on main after the tag; the tag stays at
+  the release commit `2f14bc5`). The UI review, mockup renders, live pass,
+  and candidate build are in the entry above.
+- **Publish and feed.** The release is published with the bilingual notes
+  (2026-11-13T17:23Z). `releases/latest/download/update-windows-amd64.json`
+  and `update-darwin-arm64.json` serve 0.6.3 with signatures, and the
+  installer and dmg downloads return 200. A live update from 0.6.2 is still
+  owed and stays on the pending list.
