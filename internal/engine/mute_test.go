@@ -470,6 +470,10 @@ func TestMuteLocalReleasesAPreMutedEndpoint(t *testing.T) {
 
 func TestMuteGuardRecoversAfterCrash(t *testing.T) {
 	h := newHarness(t)
+	// The harness starts the mute worker, whose first job is this recovery.
+	// Stop it so the direct call below is the only endpoint call; a delayed
+	// worker start raced the fake's map on CI.
+	h.e.stopMuteWorker()
 	m := newFakeMuter()
 	useMuter(h, m)
 	m.muted["default-ep"] = true
@@ -492,6 +496,7 @@ func TestMuteGuardRecoversAfterCrash(t *testing.T) {
 
 func TestMuteGuardCorruptIsLeftAlone(t *testing.T) {
 	h := newHarness(t)
+	h.e.stopMuteWorker()
 	m := newFakeMuter()
 	useMuter(h, m)
 	if err := os.WriteFile(h.e.muteGuardPath(), []byte("{"), 0o600); err != nil {
