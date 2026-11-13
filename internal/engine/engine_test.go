@@ -1041,7 +1041,7 @@ func TestGroupMemberRingsTakeOverCapture(t *testing.T) {
 		t.Fatalf("single ring received group audio: %d", h.e.ring.Available())
 	}
 
-	h.e.closeSession()
+	h.e.closeSession(false)
 	if len(h.e.memberRings) != 0 {
 		t.Fatal("member rings not detached")
 	}

@@ -363,6 +363,10 @@ type Engine struct {
 	muteStopOnce sync.Once
 	muteRunning  atomic.Bool
 	muteGen      int
+	// holdLocalMute keeps the connection mute in place across an in-place
+	// session restart, such as a latency change. restartSession sets it and
+	// the connect it wraps consumes it, so no other close can see it.
+	holdLocalMute bool
 
 	commands       chan command
 	quit           chan struct{}
@@ -891,7 +895,7 @@ func (e *Engine) run() {
 			// the teardown here, on the engine goroutine, outside
 			// HandleEvent — the sender's single-goroutine contract holds and
 			// the stop cannot re-enter a sender callback.
-			e.closeSession()
+			e.closeSession(false)
 		case devs := <-updates:
 			timer.Stop()
 			e.setDevices(devs)
@@ -1075,7 +1079,7 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 
 func (e *Engine) shutdown() {
 	e.stopping = true
-	e.closeSession()
+	e.closeSession(false)
 	// Force the final unmute through the worker and wait for it, so quitting
 	// never leaves the endpoint muted. closeSession already asked when it
 	// believed a mute was active; this covers a dropped status.
@@ -1095,8 +1099,13 @@ func (e *Engine) shutdown() {
 	}
 }
 
-func (e *Engine) closeSession() {
-	e.restoreLocalMute()
+// closeSession tears the session down. holdLocalMute keeps the connection
+// mute in place for an in-place restart, where the user's session continues
+// over a new stream; every other close ends the mute with the session.
+func (e *Engine) closeSession(holdLocalMute bool) {
+	if !holdLocalMute {
+		e.restoreLocalMute()
+	}
 	e.detachMemberRings()
 	e.resetIdle()
 	e.sessionStartedAt = time.Time{}
@@ -1177,7 +1186,7 @@ func (e *Engine) handleCommand(cmd command) {
 		if e.tr != nil && e.tr.Active() {
 			e.tr.Stop()
 		}
-		e.closeSession()
+		e.closeSession(false)
 		e.connectedName = ""
 		e.pinRequired = false
 		e.clearPasswordPrompt()
@@ -1282,7 +1291,7 @@ func (e *Engine) handleCommand(cmd command) {
 			} else {
 				e.userDisconnect = false
 				e.connectAuto = false
-				e.connect(d)
+				e.restartSession(d)
 			}
 		}
 		e.publish()
@@ -1377,9 +1386,23 @@ func (e *Engine) handleCommand(cmd command) {
 	}
 }
 
+// restartSession rebuilds the live session for an in-place setting change,
+// such as a latency switch. The connection mute belongs to the user's session,
+// not to the transport, so the local output stays muted across the rebuild;
+// connect restores it when the new session fails to open.
+func (e *Engine) restartSession(d device.Device) {
+	e.holdLocalMute = true
+	e.connect(d)
+}
+
 // connect starts a session with d. It keeps reconnectPending: only a
 // successful launch or a user disconnect clears it.
 func (e *Engine) connect(d device.Device) {
+	// An in-place restart wraps this connect and asks the old session to
+	// leave the connection mute alone; consume the flag here so a rejected
+	// connect cannot leak it into a later close.
+	holdLocalMute := e.holdLocalMute
+	e.holdLocalMute = false
 	// A receiver on this host cannot be a target: the sender and receiver
 	// would share one audio path, and the receiver refuses the session
 	// anyway. Discovery and merge mark the classified device; the sender's
@@ -1463,7 +1486,7 @@ func (e *Engine) connect(d device.Device) {
 		}
 	}
 	e.clearPasswordPrompt()
-	e.closeSession()
+	e.closeSession(holdLocalMute)
 	e.lampSkipLoggedFor = ""
 	e.prepareLampImage()
 	// The device being connected becomes the selection, so snapshots,
@@ -1473,6 +1496,11 @@ func (e *Engine) connect(d device.Device) {
 	e.activeMembers = d.Members
 	tr, stop, err := e.newSession(d)
 	if err != nil {
+		if holdLocalMute {
+			// The restart never produced a session, so the mute it was
+			// holding has no session left to belong to.
+			e.restoreLocalMute()
+		}
 		e.fail(ErrSessionOpen, err.Error())
 		e.logf("session open failed: %v", err)
 		e.publish()

@@ -33,6 +33,13 @@ live state:
   本机已静音；断开或退出时恢复 during the 2026-11-11 live pass, and the
   engine session path passed (`TestLiveMuteLocal`); toggling the switch
   itself has only headless coverage.
+- Local output mute across a live latency switch: a 2026-11-13 live HomePods
+  run logged the mute once and then four in-place stream rebuilds with no
+  restore between them, while earlier lines in the same log show a restore
+  after each session end. The log names no control per rebuild, so audible
+  confirmation stays the user's. The engine path is pinned by
+  `TestLatencyRestartKeepsLocalMute`, `TestLatencyRestartKeepsProcessMute`,
+  and `TestReceiverDelayRestartKeepsLocalMute`.
 - A two-computer takeover with both apps auto-reconnecting: the second
   should show the takeover state, the first should keep streaming, and
   neither should re-enter the reconnect loop. The single-machine two-session
