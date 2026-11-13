@@ -24,7 +24,7 @@ const (
 	// media card, and no error bar; the no-media panel is compact and the
 	// media card adds its own height when a session exists.
 	flyoutWidth  = 420
-	flyoutHeight = 459
+	flyoutHeight = 439
 
 	// errorBarHeight is the connection error bar under the device card.
 	errorBarHeight = 48
@@ -303,13 +303,9 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 
 	card := ui.Column(c).Radius(10).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
-		ui.Column(c).Padding(10, 12, 10, 12).Children(func() {
-			ui.Row(c).Children(func() {
-				ui.Text(c, locales.VolumeLabel()).FontSize(13).FontWeight(500)
-				ui.Spacer(c)
-				ui.Text(c, locales.FlyoutVolumeValue(a.volume)).FontSize(11.5).TextColor(p.muted)
-			})
-			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Margin(5, 0, 0, 0)
+		ui.Row(c).Padding(10, 12, 10, 12).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2)
+			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
 		})
 		rowLine(c, p)
 		if a.showLatencySwitch {

@@ -179,14 +179,6 @@
   "flyoutSyncNTP": "NTP",
   "flyoutSyncPTPReady": "PTP · Synced",
   "flyoutSyncPTPPending": "PTP · Syncing",
-  "flyoutVolumeValue": "{v, number, integer}%",
-  "@flyoutVolumeValue": {
-    "placeholders": {
-      "v": {
-        "type": "double"
-      }
-    }
-  },
   "flyoutNowPlayingNoMedia": "No media detected",
   "flyoutNowPlayingSessionFailed": "Could not read the system media information",
   "flyoutNowPlayingSession": "System media",

@@ -12,7 +12,7 @@
   Keep the tokens, flyout chrome, toolbar, and helpers.
 
   The flyout is 420 wide. Its height follows flyoutHeightFor in
-  internal/app/flyout.go: base 459 for three device rows, 62 less because the
+  internal/app/flyout.go: base 439 for three device rows, 62 less because the
   media card replaces the old Now Playing row, 90 for the permanent ambient
   section, +150 while a media session exists, +44 for the latency row, +48 for
   the connection error bar, +48 for the credential-recovery notice, and +53
@@ -228,11 +228,9 @@
   .credential-bar .icon { width: 12px; height: 12px; }
 
   .playback-card { flex: none; }
-  .volume { padding: 10px 12px 10px 12px; }
-  .volume-head { display: flex; align-items: baseline; }
-  .volume-label { font-size: 13px; font-weight: 500; }
-  .volume-value { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .range { position: relative; height: 20px; margin-top: 5px; padding: 0 8px; }
+  .volume { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 12px; }
+  .volume .icon { width: 16px; height: 16px; color: var(--fg2); }
+  .range { position: relative; flex: 1; height: 20px; padding: 0 8px; }
   .range::before {
     content: ""; position: absolute; left: 8px; right: 8px; top: 9px;
     height: 4px; border-radius: 2px; background: var(--line);
@@ -398,6 +396,7 @@ const ICON = {
   gear: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></g></svg>',
   doc: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></g></svg>',
   speaker: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="5.5"/><path d="M9.5 18.5h5"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></g></svg>',
+  volume: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.8 6a9 9 0 0 1 0 12"/></g></svg>',
   tv: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="12" rx="2.5"/><path d="M10 9.2l4 2.3-4 2.3z" fill="currentColor" stroke="none"/></g></svg>',
   mac: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2.5 18.5h19"/></g></svg>',
   link: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></g></svg>',
@@ -514,7 +513,7 @@ function notesHTML() {
       '<li><b>配对重置</b> The saved pairing could not be read; the 48 high credential notice sits under the device card, below the error bar when both show, and opens a 380 wide dialog.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
-      '<li>459 base for three rows, -29 for the empty card, -56 per missing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the credential notice, +53 for the expanded grid.</li>' +
+      '<li>439 base for three rows, -29 for the empty card, -56 per missing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the credential notice, +53 for the expanded grid.</li>' +
       '<li>No flexible spacer: the playback and ambient cards hold the same 8 DIP gap as the device and playback cards.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
@@ -544,10 +543,10 @@ const state = {
 function t(key) { return COPY[state.lang][key]; }
 
 /* Height rule, mirroring flyoutHeightFor and flyoutHeightForState:
-   459 base, 62 less for the old Now Playing row, 90 ambient, +150 media,
+   439 base, 62 less for the old Now Playing row, 90 ambient, +150 media,
    +44 latency, +48 error, +48 credential notice, +53 for the expanded
    six-template grid. */
-const FLYOUT_BASE = 459, DEVICE_ROWS = 3, DEVICE_ROW_H = 56, DEVICE_EMPTY = 141;
+const FLYOUT_BASE = 439, DEVICE_ROWS = 3, DEVICE_ROW_H = 56, DEVICE_EMPTY = 141;
 const NOW_ROW_H = 62, MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 48;
 function deviceCardHeight(n) { return n <= 0 ? DEVICE_EMPTY : Math.min(n, DEVICE_ROWS) * DEVICE_ROW_H + 2; }
 function lampGridHeight(count) {
@@ -677,9 +676,8 @@ function playbackSectionHTML() {
   const head = '<div class="section-head"><span class="section-label">' + esc(t('playback')) + '</span>' +
     '<span class="section-note">' + esc(playbackNote()) + '</span></div>';
   let card = '<div class="card playback-card">';
-  card += '<div class="volume"><div class="volume-head"><span class="volume-label">' + esc(t('volume')) + '</span>' +
-    '<span class="volume-value">65%</span></div>' +
-    '<div class="range" style="--value:.65"><span class="range-knob"></span></div></div>';
+  card += '<div class="volume">' + icon('volume') +
+    '<div class="range" role="slider" aria-label="' + esc(t('volume')) + '" style="--value:.65"><span class="range-knob"></span></div></div>';
   card += '<div class="line"></div>';
   if (state.latency) {
     card += '<div class="latency"><div class="seg">' +

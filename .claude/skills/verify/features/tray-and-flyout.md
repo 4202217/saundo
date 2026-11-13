@@ -16,9 +16,9 @@
   height from the device rows (56 each, 141 empty state), the latency row
   (44), the Now Playing card (150 while a session exists and
   `showNowPlayingPanel` is on), and the ambient section (90 collapsed, plus
-  53 when its preset grid expands). The base constant is 459, but the
+  53 when its preset grid expands). The base constant is 439, but the
   function subtracts the old 62-DIP media row and adds the 90-DIP lamp
-  section, so three device rows with no media measure 487. There is no
+  section, so three device rows with no media measure 467. There is no
   flexible spacer; the playback card follows the device card. The resize
   grows the flyout upward from the tray anchor (`fitFlyout`,
   `app.go:803-817`), pinned by `TestFlyoutHeightForDeviceRows`,

@@ -790,16 +790,6 @@ func (msgs Messages) FlyoutSyncPTPPending() string {
 	return Catalog.Format(msgs.locale, "flyoutSyncPTPPending", nil)
 }
 
-// FlyoutVolumeValue says "{v, number, integer}%"
-// in the language the app shows.
-func FlyoutVolumeValue(v float64) string { return In(i18n.Locale()).FlyoutVolumeValue(v) }
-
-// FlyoutVolumeValue says "{v, number, integer}%"
-// in the language of msgs.
-func (msgs Messages) FlyoutVolumeValue(v float64) string {
-	return Catalog.Format(msgs.locale, "flyoutVolumeValue", map[string]any{"v": v})
-}
-
 // FlyoutNowPlayingNoMedia says "No media detected"
 // in the language the app shows.
 func FlyoutNowPlayingNoMedia() string { return In(i18n.Locale()).FlyoutNowPlayingNoMedia() }
