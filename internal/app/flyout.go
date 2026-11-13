@@ -314,6 +314,8 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 		ui.Row(c).Padding(10, 12, 10, 22).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2).Margin(0, 0, 0, -2)
 			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
+			ui.Text(c, locales.FlyoutVolumeValue(a.volume)).FontSize(11.5).TextColor(p.muted).
+				FontFeatures("tnum").Width(34).TextAlign(ui.End).SingleLine()
 		})
 	})
 }
