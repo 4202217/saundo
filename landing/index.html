@@ -97,7 +97,7 @@ section{scroll-margin-top:96px}
 .reveal.in{opacity:1;transform:none}
 .reveal[data-d="1"]{transition-delay:.08s}.reveal[data-d="2"]{transition-delay:.16s}.reveal[data-d="3"]{transition-delay:.24s}.reveal[data-d="4"]{transition-delay:.32s}.reveal[data-d="5"]{transition-delay:.4s}
 
-/* 首屏入场编排：文案逐级落位，面板随后自上而下装配 */
+/* 首屏入场编排：文案逐级落位，面板整体随后到场（内部不再逐行装配） */
 .hero .reveal{transition-duration:.62s}
 .hero .hero-badge{transition-delay:.05s}
 .hero h1.reveal{transition-delay:.18s}
@@ -106,24 +106,6 @@ section{scroll-margin-top:96px}
 .hero .hero-note.reveal{transition-delay:.56s}
 .hero .hero-proof.reveal{transition-delay:.66s}
 .hero .hero-visual.reveal{transition-delay:.20s;transition-duration:.7s}
-.hero-visual .fly-head,
-.hero-visual .fly-body > *,
-.hero-visual .fly-foot{opacity:0;transform:translateY(10px);
-  transition:opacity .45s var(--ease),transform .45s var(--ease)}
-.hero-visual.in .fly-head,
-.hero-visual.in .fly-body > *,
-.hero-visual.in .fly-foot{opacity:1;transform:none}
-.hero-visual.in .fly-head{transition-delay:.42s}
-.hero-visual.in .fly-body > :nth-child(1){transition-delay:.50s}
-.hero-visual.in .fly-body > :nth-child(2){transition-delay:.58s}
-.hero-visual.in .fly-body > :nth-child(3){transition-delay:.66s}
-.hero-visual.in .fly-body > :nth-child(4){transition-delay:.74s}
-.hero-visual.in .fly-body > :nth-child(5){transition-delay:.82s}
-.hero-visual.in .fly-body > :nth-child(6){transition-delay:.90s}
-.hero-visual.in .fly-foot{transition-delay:.98s}
-@media (prefers-reduced-motion:reduce){
-  .hero-visual .fly-head,.hero-visual .fly-body > *,.hero-visual .fly-foot{opacity:1;transform:none;transition:none}
-}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
 
 /* ---------- nav (B7) ---------- */
@@ -195,9 +177,6 @@ html[data-theme="dark"] .hero-glow{background:radial-gradient(circle at 50% 45%,
 .hero-visual .flyout{width:100%}
 .hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.14)}
 html[data-theme="dark"] .hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.72)}
-#flyPanel .hi-hide{opacity:0;transform:translateY(-8px);pointer-events:none}
-.flyout.hi-search .fly-snote{color:var(--fl-accent);animation:hiPulse 1.2s ease-in-out infinite}
-@keyframes hiPulse{0%,100%{opacity:.4}50%{opacity:1}}
 
 @media (max-width:1020px){
   .hero{padding:calc(96px + 40px) 0 var(--sp-600)}
@@ -911,20 +890,20 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
           <div class="fly-body">
             <div class="fly-shead"><span class="fly-slabel" data-i18n="flyDevices">接收器</span><span class="fly-snote" id="fCount">2 台</span></div>
             <div class="fly-card">
-              <div class="fdev hi-hide" id="fDev0">
+              <div class="fdev sel" id="fDev0">
                 <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg><i class="fdot"></i></span>
                 <span class="fnamecol"><b>客厅 HomePod</b><span>AudioAccessory5,1 · AirPlay 2</span></span>
                 <button class="faction accent" id="fRowAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
               </div>
-              <div class="fdev hi-hide" id="fDev1">
+              <div class="fdev" id="fDev1">
                 <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-pair"/></svg><i class="fdot"></i></span>
                 <span class="fnamecol"><b>书房 HomePod mini 立体声组</b><span>AudioAccessory5,1 · 立体声组 2/2</span></span>
                 <button class="faction accent" type="button" id="fAtvAction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
               </div>
             </div>
 
-            <div class="fly-shead hi-hide" id="flyPlayHead"><span class="fly-slabel" data-i18n="flyPlayback">播放</span><span class="fly-snote" id="fNote">ALAC · 44.1 kHz · 延迟 200 ms</span></div>
-            <div class="fly-card hi-hide" id="flyPlayback">
+            <div class="fly-shead" id="flyPlayHead"><span class="fly-slabel" data-i18n="flyPlayback">播放</span><span class="fly-snote" id="fNote">ALAC · 44.1 kHz · 延迟 200 ms</span></div>
+            <div class="fly-card" id="flyPlayback">
               <div class="fvol">
                 <div class="fvolhead"><span data-i18n="flyVolume">音量</span><span class="fvolval" id="fVolPct">50%</span></div>
                 <input class="frange" id="fVol" type="range" min="0" max="100" value="50" aria-label="接收器音量">
@@ -1584,7 +1563,7 @@ var fCount = document.getElementById("fCount");
 var fNote = document.getElementById("fNote");
 var fDev0 = document.getElementById("fDev0");
 var fFootState = document.getElementById("fFootState");
-var flyState = "idle", busyTimer = null, autoTimer = null, introRunning = false;
+var flyState = "idle", busyTimer = null;
 var ICON_CONNECT = rowAction.querySelector("svg").outerHTML;
 var ICON_DISCONNECT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg>';
 function phaseLabel(){
@@ -1677,19 +1656,6 @@ atvAction.addEventListener("click", function(){
     fToast(t("已断开"));
   }
 });
-var flySeen = new IntersectionObserver(function(es){
-  if(es[0].isIntersecting){
-    flySeen.disconnect();
-    if(flyState === "idle" && !RM && !introRunning){
-      autoTimer = setTimeout(function(){
-        if(flyState !== "idle") return;
-        setFly("connecting");
-        busyTimer = setTimeout(function(){ setFly("streaming"); }, 1800);
-      }, 1200);
-    }
-  }
-},{threshold:.4});
-flySeen.observe(fly);
 
 /* volume */
 var fVol = document.getElementById("fVol");
@@ -2205,88 +2171,37 @@ document.querySelectorAll(".faq").forEach(function(d){
   paint();
 })();
 
-/* ---------- hero intro: from zero（搜索→发现→连接→音量→延迟→播放→氛围灯） ---------- */
+/* ---------- hero intro: panel arrives complete, one connect ---------- */
 (function(){
   var heroEl = document.querySelector('.hero');
   if(!heroEl) return;
-  var timers = [], done = false, rampRaf = 0;
-  function later(t, fn){ timers.push(setTimeout(fn, t)); }
-  function reveal(el){
-    if(!el) return;
-    el.classList.remove('hi-hide');
-    if(!RM) el.animate([{opacity:0, transform:'translateY(-8px)'},{opacity:1, transform:'none'}],
-      {duration:480, easing:'cubic-bezier(.22,1,.36,1)'});
+  var KEY = 'saundo-intro', autoTimer = 0, done = false;
+  function finish(){
+    if(done) return; done = true;
+    clearTimeout(autoTimer);
+    try{ sessionStorage.setItem(KEY, '1'); }catch(e){}
   }
-  function settle(){
-    if(done) return; done = true; introRunning = false;
-    if('scrollRestoration' in history) history.scrollRestoration = 'auto';
-    timers.forEach(clearTimeout); timers = [];
-    cancelAnimationFrame(rampRaf);
-    heroEl.classList.remove('intro-run');
-    var fly = document.getElementById('flyPanel');
-    if(fly) fly.classList.remove('hi-search');
-    document.querySelectorAll('#flyPanel .hi-hide').forEach(function(el){ el.classList.remove('hi-hide'); });
-    fCount.textContent = t('2 台');
-    setFly('streaming');
-    fVol.value = 50; fVol.dispatchEvent(new Event('input'));
-    segBtns.forEach(function(x){ x.classList.toggle('on', x.dataset.lat === '200'); });
-    currentLat = 200; latCustom = false; setFly('streaming');
-    if(!playing){ playing = true; fPlayIcon.innerHTML = ICON_PAUSE; }
+  var seen = false;
+  try{ seen = sessionStorage.getItem(KEY) === '1'; }catch(e){}
+  if(seen || RM){                      /* 回访或无动效：直接停在已连接状态 */
+    fCount.textContent = t("2 台");
+    setFly("streaming");
     glowPower = 1; glowPowerTarget = 1;
     if(!ambState.power) setAmb({power:true});
-    try{ sessionStorage.setItem('saundo-intro','1'); }catch(e){}
+    finish();
+    return;
   }
-  function skip(){ if(!done) settle(); }
-  function rampVol(){
-    var t0 = performance.now();
-    (function step(){
-      if(done) return;
-      var p = Math.min(1, (performance.now()-t0)/700);
-      fVol.value = Math.round(50*(1-Math.pow(1-p,2)));
-      fVol.dispatchEvent(new Event('input'));
-      if(p < 1) rampRaf = requestAnimationFrame(step);
-    })();
-  }
-  function run(){
-    introRunning = true;
-    if('scrollRestoration' in history) history.scrollRestoration = 'manual';   /* 从 0 开始：禁用滚动恢复 */
-    window.scrollTo(0, 0);
-    heroEl.classList.add('intro-run');
-    var fly = document.getElementById('flyPanel');
-    fly.classList.add('hi-search');
-    fCount.textContent = t('搜索中…');
-    fVol.value = 0; fVol.dispatchEvent(new Event('input'));
-    playing = false; fPlayIcon.innerHTML = ICON_PLAY;
-    later(1500, function(){ if(done) return; reveal(fDev0); fCount.textContent = t('1 台'); });
-    later(2500, function(){ if(done) return; reveal(fDev1); fCount.textContent = t('2 台'); });
-    later(3100, function(){ if(done) return; rowAction.click(); });          /* 连接：connecting → streaming */
-    later(4300, function(){ if(done) return; reveal(document.getElementById('flyPlayHead')); reveal(document.getElementById('flyPlayback')); });
-    later(4500, rampVol);                                                    /* 音量 0→50 */
-    later(5400, function(){ if(done) return; segBtns.forEach(function(x){ x.classList.toggle('on', x.dataset.lat === '1500'); }); currentLat = 1500; setFly(flyState); });
-    later(6000, function(){ if(done) return; segBtns.forEach(function(x){ x.classList.toggle('on', x.dataset.lat === '200'); }); currentLat = 200; setFly(flyState); });
-    later(6400, function(){ if(done) return; fPlayBtn.click(); });           /* 点播放：电平起舞 */
-    later(7100, function(){ if(done) return; fLampPower.click(); });         /* 开氛围灯 */
-    later(8000, function(){ settle(); });
-    /* 主动输入即跳过：滚轮/按下/按键。scroll 事件不做跳过——
-       浏览器的滚动恢复与实时滚动都会误触 */
-    document.addEventListener('pointerdown', skip, true);
-    document.addEventListener('wheel', skip, {passive:true, capture:true});
-    document.addEventListener('keydown', skip, true);
-  }
-  var skipNow = false;
-  try{ skipNow = sessionStorage.getItem('saundo-intro') === '1'; }catch(e){}
-  if(skipNow || RM){
-    var fly = document.getElementById('flyPanel');
-    if(fly) fly.classList.remove('hi-search');
-    document.querySelectorAll('#flyPanel .hi-hide').forEach(function(el){ el.classList.remove('hi-hide'); });
-    fCount.textContent = t('2 台');
-    glowPower = 1; glowPowerTarget = 1;
-    if(!ambState.power) setAmb({power:true});
-    done = true;
-    try{ sessionStorage.setItem('saundo-intro','1'); }catch(e){}
-  } else {
-    run();
-  }
+  fCount.textContent = t("2 台");
+  setFly("idle");                      /* 首帧：面板完整，接收器就位，尚未连接 */
+  glowPower = 1; glowPowerTarget = 1;
+  if(!ambState.power) setAmb({power:true});
+  autoTimer = setTimeout(function(){   /* 唯一的一段动效：连接 客厅 HomePod */
+    if(done) return;
+    rowAction.click();
+    finish();
+  }, 900);
+  /* 用户先动手，就不再自动演示 */
+  document.addEventListener('pointerdown', finish, {capture:true, once:true});
 })();
 
 /* ---------- theme + language + mobile menu ---------- */
