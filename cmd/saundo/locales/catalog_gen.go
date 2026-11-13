@@ -246,6 +246,16 @@ func (msgs Messages) TrayMuteLocal() string {
 	return Catalog.Format(msgs.locale, "trayMuteLocal", nil)
 }
 
+// TrayUnmuteLocal says "Unmute local output"
+// in the language the app shows.
+func TrayUnmuteLocal() string { return In(i18n.Locale()).TrayUnmuteLocal() }
+
+// TrayUnmuteLocal says "Unmute local output"
+// in the language of msgs.
+func (msgs Messages) TrayUnmuteLocal() string {
+	return Catalog.Format(msgs.locale, "trayUnmuteLocal", nil)
+}
+
 // TrayQuit says "Quit Saundo"
 // in the language the app shows.
 func TrayQuit() string { return In(i18n.Locale()).TrayQuit() }
@@ -1232,11 +1242,11 @@ func (msgs Messages) PageAudioDesc() string {
 	return Catalog.Format(msgs.locale, "pageAudioDesc", nil)
 }
 
-// PageCaptureDesc says "System audio or a single app."
+// PageCaptureDesc says "System audio, or one or more apps."
 // in the language the app shows.
 func PageCaptureDesc() string { return In(i18n.Locale()).PageCaptureDesc() }
 
-// PageCaptureDesc says "System audio or a single app."
+// PageCaptureDesc says "System audio, or one or more apps."
 // in the language of msgs.
 func (msgs Messages) PageCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "pageCaptureDesc", nil)
@@ -2418,11 +2428,11 @@ func (msgs Messages) SettingsLatency() string {
 	return Catalog.Format(msgs.locale, "settingsLatency", nil)
 }
 
-// SettingsLatencyLow says "Low latency"
+// SettingsLatencyLow says "Low"
 // in the language the app shows.
 func SettingsLatencyLow() string { return In(i18n.Locale()).SettingsLatencyLow() }
 
-// SettingsLatencyLow says "Low latency"
+// SettingsLatencyLow says "Low"
 // in the language of msgs.
 func (msgs Messages) SettingsLatencyLow() string {
 	return Catalog.Format(msgs.locale, "settingsLatencyLow", nil)
@@ -2628,46 +2638,34 @@ func (msgs Messages) SettingsMuteLocalNote() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalNote", nil)
 }
 
-// SettingsMuteLocalApp says "Mute the selected app while connected"
+// SettingsMuteLocalApp says "Mute the selected apps while connected"
 // in the language the app shows.
 func SettingsMuteLocalApp() string { return In(i18n.Locale()).SettingsMuteLocalApp() }
 
-// SettingsMuteLocalApp says "Mute the selected app while connected"
+// SettingsMuteLocalApp says "Mute the selected apps while connected"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalApp() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalApp", nil)
 }
 
-// SettingsMuteLocalDescAppOn says "Only the selected app is muted; other apps keep playing"
+// SettingsMuteLocalDescAppOn says "Only the selected apps are muted; other apps keep playing"
 // in the language the app shows.
 func SettingsMuteLocalDescAppOn() string { return In(i18n.Locale()).SettingsMuteLocalDescAppOn() }
 
-// SettingsMuteLocalDescAppOn says "Only the selected app is muted; other apps keep playing"
+// SettingsMuteLocalDescAppOn says "Only the selected apps are muted; other apps keep playing"
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalDescAppOn() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalDescAppOn", nil)
 }
 
-// SettingsMuteLocalAppNote says "Per-app capture mutes just the selected app locally. Other apps keep playing from this Mac."
+// SettingsMuteLocalAppNote says "Per-app capture mutes just the selected apps locally. Other apps keep playing from this Mac."
 // in the language the app shows.
 func SettingsMuteLocalAppNote() string { return In(i18n.Locale()).SettingsMuteLocalAppNote() }
 
-// SettingsMuteLocalAppNote says "Per-app capture mutes just the selected app locally. Other apps keep playing from this Mac."
+// SettingsMuteLocalAppNote says "Per-app capture mutes just the selected apps locally. Other apps keep playing from this Mac."
 // in the language of msgs.
 func (msgs Messages) SettingsMuteLocalAppNote() string {
 	return Catalog.Format(msgs.locale, "settingsMuteLocalAppNote", nil)
-}
-
-// SettingsMuteLocalWindowsAppNote says "Windows can mute only the whole output for per-app capture, so other apps are silenced too."
-// in the language the app shows.
-func SettingsMuteLocalWindowsAppNote() string {
-	return In(i18n.Locale()).SettingsMuteLocalWindowsAppNote()
-}
-
-// SettingsMuteLocalWindowsAppNote says "Windows can mute only the whole output for per-app capture, so other apps are silenced too."
-// in the language of msgs.
-func (msgs Messages) SettingsMuteLocalWindowsAppNote() string {
-	return Catalog.Format(msgs.locale, "settingsMuteLocalWindowsAppNote", nil)
 }
 
 // SettingsSystemOutput says "System audio"
@@ -2700,11 +2698,11 @@ func (msgs Messages) SettingsAppCapture() string {
 	return Catalog.Format(msgs.locale, "settingsAppCapture", nil)
 }
 
-// SettingsAppCaptureDesc says "Play only the selected app's audio"
+// SettingsAppCaptureDesc says "Play only the selected apps' audio"
 // in the language the app shows.
 func SettingsAppCaptureDesc() string { return In(i18n.Locale()).SettingsAppCaptureDesc() }
 
-// SettingsAppCaptureDesc says "Play only the selected app's audio"
+// SettingsAppCaptureDesc says "Play only the selected apps' audio"
 // in the language of msgs.
 func (msgs Messages) SettingsAppCaptureDesc() string {
 	return Catalog.Format(msgs.locale, "settingsAppCaptureDesc", nil)
@@ -2774,11 +2772,11 @@ func (msgs Messages) SettingsCaptureError() string {
 	return Catalog.Format(msgs.locale, "settingsCaptureError", nil)
 }
 
-// SettingsCaptureWaitingApp says "Waiting for the selected app"
+// SettingsCaptureWaitingApp says "Waiting for the selected apps"
 // in the language the app shows.
 func SettingsCaptureWaitingApp() string { return In(i18n.Locale()).SettingsCaptureWaitingApp() }
 
-// SettingsCaptureWaitingApp says "Waiting for the selected app"
+// SettingsCaptureWaitingApp says "Waiting for the selected apps"
 // in the language of msgs.
 func (msgs Messages) SettingsCaptureWaitingApp() string {
 	return Catalog.Format(msgs.locale, "settingsCaptureWaitingApp", nil)

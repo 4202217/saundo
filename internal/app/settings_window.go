@@ -621,13 +621,8 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 	})
 	if a.cfg.MuteLocalOnConnect {
 		note := locales.SettingsMuteLocalNote()
-		switch {
-		case a.processMuteMode():
+		if a.processMuteMode() {
 			note = locales.SettingsMuteLocalAppNote()
-		case a.perAppSelected():
-			// Windows has no per-process mute; per-app capture silences
-			// every app with the output-device mute.
-			note = locales.SettingsMuteLocalWindowsAppNote()
 		}
 		ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
 			infoNote(c, p, note)
@@ -721,9 +716,9 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 }
 
 // latencyStackWidth is the narrowest window whose three preset cards fit one
-// row: at the 720 default each card is 148 wide and its name box 72, exactly
-// the width of "Low latency". A narrower settings window stacks the presets as
-// full-width rows, so no name or description is cut.
+// row: at the 720 default each card is 148 wide and its name box 72, enough
+// for the longest preset name. A narrower settings window stacks the presets
+// as full-width rows, so no name or description is cut.
 const latencyStackWidth = 714
 
 // latencyPreset is one of the three named latency choices.

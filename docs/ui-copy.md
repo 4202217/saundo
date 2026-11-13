@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-13 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # UI copy standard
 
@@ -20,6 +20,8 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
 
 The ambient light is turned off with 关闭氛围灯 and on with 开启氛围灯. Do not use 熄灯.
+
+The tray menu's mute row names its action the same way: 静音本机输出 while the preference is off, 取消静音本机输出 while it is on.
 
 ## Latency and stability
 

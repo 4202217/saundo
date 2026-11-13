@@ -66,8 +66,8 @@ func TestTrayMenuShapeSelected(t *testing.T) {
 		t.Fatalf("Apple TV row icon key is %q, want dev:appletv", got)
 	}
 	assertTraySeparator(t, items[3], "after device rows")
-	if it := items[4]; it.Type == mygo.MenuItemCheckbox || it.Label != locales.TrayMuteLocal() {
-		t.Fatalf("item 4 is %+v, want a normal mute row", it)
+	if it := items[4]; it.Type == mygo.MenuItemCheckbox || it.Label != locales.TrayUnmuteLocal() {
+		t.Fatalf("item 4 is %+v, want a normal unmute row", it)
 	}
 	if it := items[5]; it.Label != m.lampLabel() {
 		t.Fatalf("item 5 is %q, want %q", it.Label, m.lampLabel())
@@ -208,6 +208,20 @@ func TestTrayMenuMuteIcon(t *testing.T) {
 	a.cfg.MuteLocalOnConnect = true
 	if got := a.trayModel("zh-CN", false).muteIcon(); got != "bellOff" {
 		t.Fatalf("mute icon with the preference on is %q, want bellOff", got)
+	}
+}
+
+// TestTrayMenuMuteLabelFollowsThePreference pins the mute row's action copy:
+// the row unmutes while the preference is on.
+func TestTrayMenuMuteLabelFollowsThePreference(t *testing.T) {
+	a := previewApp()
+	a.cfg.MuteLocalOnConnect = false
+	if got := a.trayModel("zh-CN", false).muteLabel(); got != locales.TrayMuteLocal() {
+		t.Fatalf("mute label with the preference off is %q, want %q", got, locales.TrayMuteLocal())
+	}
+	a.cfg.MuteLocalOnConnect = true
+	if got := a.trayModel("zh-CN", false).muteLabel(); got != locales.TrayUnmuteLocal() {
+		t.Fatalf("mute label with the preference on is %q, want %q", got, locales.TrayUnmuteLocal())
 	}
 }
 

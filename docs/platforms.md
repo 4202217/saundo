@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-12 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # Multi-platform development
 
@@ -113,7 +113,7 @@ Core Audio property codes stay inside the leaf packages.
   running is skipped until the tap is rebuilt; the capture status then reads
   as the captured/selected count and marks the missing app in its tooltip.
   When none of the selected apps has a process, the status reads as waiting
-  for the selected app and the capture keeps retrying; a real capture failure
+  for the selected apps and the capture keeps retrying; a real capture failure
   stays a red error.
 - **Per-app local mute replaces the output mute.** A per-app tap fixes its
   local-output behavior at creation, so the capture loop rebuilds it with
