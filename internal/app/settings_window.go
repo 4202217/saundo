@@ -667,6 +667,7 @@ func (a *App) setMuteLocal(on bool) {
 		a.eng.SetMuteLocal(on)
 	}
 	a.saveSettings()
+	a.rebuildTray()
 }
 
 func (a *App) audioPage(c *ui.Context, p palette) {

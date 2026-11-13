@@ -37,7 +37,7 @@
   "trayShowPanel": "显示托盘面板",
   "traySettings": "设置…",
   "trayConnectLast": "连接上次接收器",
-  "trayDisconnect": "断开连接",
+  "trayMuteLocal": "静音本机输出",
   "trayQuit": "退出声渡",
   "trayTooltip": "声渡",
   "statusReconnecting": "正在重连…",
@@ -517,8 +517,8 @@
       }
     }
   },
-  "lampTurnOff": "关灯",
-  "lampTurnOn": "开灯",
+  "lampTurnOff": "关闭氛围灯",
+  "lampTurnOn": "开启氛围灯",
   "lampOffStatus": "已关灯",
   "lampStandbyStatus": "待机",
   "lampNoMedia": "无媒体",

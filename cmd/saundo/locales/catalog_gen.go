@@ -236,14 +236,14 @@ func (msgs Messages) TrayConnectLast() string {
 	return Catalog.Format(msgs.locale, "trayConnectLast", nil)
 }
 
-// TrayDisconnect says "Disconnect"
+// TrayMuteLocal says "Mute local output"
 // in the language the app shows.
-func TrayDisconnect() string { return In(i18n.Locale()).TrayDisconnect() }
+func TrayMuteLocal() string { return In(i18n.Locale()).TrayMuteLocal() }
 
-// TrayDisconnect says "Disconnect"
+// TrayMuteLocal says "Mute local output"
 // in the language of msgs.
-func (msgs Messages) TrayDisconnect() string {
-	return Catalog.Format(msgs.locale, "trayDisconnect", nil)
+func (msgs Messages) TrayMuteLocal() string {
+	return Catalog.Format(msgs.locale, "trayMuteLocal", nil)
 }
 
 // TrayQuit says "Quit Saundo"
@@ -3470,21 +3470,21 @@ func (msgs Messages) SettingsLampStandbyMinutes(n int) string {
 	return Catalog.Format(msgs.locale, "settingsLampStandbyMinutes", map[string]any{"n": n})
 }
 
-// LampTurnOff says "Turn off"
+// LampTurnOff says "Turn off ambient light"
 // in the language the app shows.
 func LampTurnOff() string { return In(i18n.Locale()).LampTurnOff() }
 
-// LampTurnOff says "Turn off"
+// LampTurnOff says "Turn off ambient light"
 // in the language of msgs.
 func (msgs Messages) LampTurnOff() string {
 	return Catalog.Format(msgs.locale, "lampTurnOff", nil)
 }
 
-// LampTurnOn says "Turn on"
+// LampTurnOn says "Turn on ambient light"
 // in the language the app shows.
 func LampTurnOn() string { return In(i18n.Locale()).LampTurnOn() }
 
-// LampTurnOn says "Turn on"
+// LampTurnOn says "Turn on ambient light"
 // in the language of msgs.
 func (msgs Messages) LampTurnOn() string {
 	return Catalog.Format(msgs.locale, "lampTurnOn", nil)
