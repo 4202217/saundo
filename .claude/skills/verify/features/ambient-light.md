@@ -10,7 +10,7 @@ per receiver.
 
 - 氛围灯 settings page and the flyout's ambient card. The card is always
   present; the flyout head carries the section label and the power action
-  (关灯 when lit, 开灯 when dark), while the desk-lamp glyph is on the
+  (关闭氛围灯 when lit, 开启氛围灯 when dark), while the desk-lamp glyph is on the
   settings card head and the settings sidebar, not in the flyout head. The
   row carries the compact 封面/模板 priority
   segment left of the chevron. The settings page puts a 颜色来源 row
@@ -41,17 +41,17 @@ per receiver.
   page keeps the six templates visible in both priorities.
 - While the light is off the preview dims to 35% like the templates, the name
   and a 已关灯 chip mark the state, the priority segment and the templates
-  are disabled, and only 开灯 works. Turning the light on restores the
+  are disabled, and only 开启氛围灯 works. Turning the light on restores the
   current choice and leaves the template list collapsed.
 - A template leaves as one `SET_PARAMETER image/jpeg` cover on the encrypted
   control channel. It is sent when the choice changes and when a stream
   starts; the artwork POST command is not used.
 - The light follows the cover, not the play/pause state: a paused track
   keeps the current light, and a new cover (a track change) updates it. The
-  manual 关灯 action and the idle standby are the two ways to darken the
+  manual 关闭氛围灯 action and the idle standby are the two ways to darken the
   display; a media pause itself does not.
-- 关灯 posts the updateMRPlaybackState command with `mrPlaybackState` 2;
-  开灯 posts state 1 and then resends the current cover. A new session
+- 关闭氛围灯 posts the updateMRPlaybackState command with `mrPlaybackState` 2;
+  开启氛围灯 posts state 1 and then resends the current cover. A new session
   assumes playing and does not send a redundant state 1. The state is
   persisted as `lamp.off`; the light is on by default, and an old
   `lamp.enabled: false` migrates to off.
@@ -60,7 +60,7 @@ per receiver.
   valid old template keeps it off. The priority segment and the template
   grid write the same flag.
 - While the light is off, picking a template or the cover segment does
-  nothing and the grid is disabled; only 开灯 restores the current choice.
+  nothing and the grid is disabled; only 开启氛围灯 restores the current choice.
   `TestLampOffIgnoresPriorityAndPreset` pins the early return.
 - With cover priority on and no media cover, the sender stops sending an
   image and the receiver keeps its last light. A fresh session with no
@@ -81,11 +81,11 @@ per receiver.
   with a 从不/1/5/10/30 minute select (default 30). Five seconds of digital
   silence stops the RTP pacer, and once the configured idle time has passed
   since the last push the engine sends playback state 2. The first audible
-  sample sends state 1 and resumes; pressing 开灯 while the display is dark
+  sample sends state 1 and resumes; pressing 开启氛围灯 while the display is dark
   relights it immediately and holds it on until the next sound
   (`lamp.go:226-236`; `engine.go:1253-1259`; the gate at `:929`, cleared on
   sound at `:958-960`). The flyout chip reads 待机,
-  the power action 开灯, and the footer 已待机 · 播放声音即唤醒.
+  the power action 开启氛围灯, and the footer 已待机 · 播放声音即唤醒.
 
 ## How to get to it (user POV)
 
@@ -132,14 +132,14 @@ Live, with a HomePod at software 27.2 or later and Sound Glow on:
 3. Choose 封面. The chevron and the swatches hide; the top follows the
    cover again.
 4. Pause the track. The light stays on the current cover.
-5. Press 关灯. The top goes dark; the card stays and the glyph shows 开灯.
+5. Press 关闭氛围灯. The top goes dark; the card stays and the glyph shows 开启氛围灯.
    The preview dims like the templates, the segment and templates disable,
    and the chip reads 已关灯. A template cannot be picked while off.
-6. Press 开灯. The top shows the current cover or template again; only now can
+6. Press 开启氛围灯. The top shows the current cover or template again; only now can
    the segment and templates be changed.
 7. With the light on, pick another template in the settings page. The
    priority becomes template.
-8. Restart the app while the light is off. It stays off; 开灯 restores it.
+8. Restart the app while the light is off. It stays off; 开启氛围灯 restores it.
 9. Repeat with a stereo pair: each capable member repaints and goes dark.
 
 Both probes need the app stopped: they bind PTP UDP 319/320, which a running
@@ -195,7 +195,7 @@ and the off state survive a settings-window close/reopen and an app restart.
 
 - Sound Glow off leaves the top white. That is the HomePod setting, not the
   app; the app cannot enable it.
-- 关灯 is a playback state, not an image. There is no black or white reset
+- 关闭氛围灯 is a playback state, not an image. There is no black or white reset
   image; the display goes dark through the Now Playing renderer.
 - The white-center placeholder is the receiver's fresh-session scene, not
   the cover and not the Sound Glow palette. The sender cannot set it, and
