@@ -1,6 +1,6 @@
 # Settings window
 
-A separate `mygo.NewWindow` (`settings_window.go:94`): a 720×500 page
+A separate `mygo.NewWindow` (`settings_window.go:95`): a 720×500 page
 area (the window frame adds a few DIPs; min 640×420), hidden title bar,
 created hidden at startup before the engine starts. The title, cards, and
 notes share one content column capped at 720 DIP and centered on a wider
@@ -25,8 +25,10 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   严格验证接收器, and 连接后静音本机输出 (on by default).
   The mute row's subtitle follows the engine state (`MuteLocal`): off,
   waiting for a connection, muted now, or failed; the driver caveat under
-  the card shows only while the switch is on. Launch auto-connect is not
-  here — it is per receiver on the 接收器 page.
+  the card shows only while the switch is on. With a per-app selection on
+  macOS the row reads 连接后静音所选应用, its subtitle says only the selected
+  apps are muted, and the note says other apps keep playing. Launch
+  auto-connect is not here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
   manually added row with 启动时自动连接 (per receiver), hidden, and a
   0–2000 ms delay slider (500 ms debounced restart); a password row only
@@ -63,10 +65,13 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 - 采集 page: capture endpoint picker (跟随系统默认 or pinned) and, on
   macOS only, per-app capture (Core Audio process families with app icons,
   helpers folded into their app, checked multi-select applied live after a
-  250 ms pause and persisted as bundle IDs). Windows offers the system source
-  only: process loopback cannot keep the selected app off the local output
-  without silencing the capture. The status row counts a multi-app selection and
-  keeps the rate visible, with the full names in its tooltip. Both
+  250 ms pause and persisted as the bundle ID or `pid:<n>`; the list is a
+  launch-time snapshot). Windows offers the system source only: process
+  loopback cannot keep the selected app off the local output without
+  silencing the capture. The status row counts a multi-app selection and
+  keeps the rate visible, with the full names in its tooltip; it shows
+  `{active}/{selected}` with a warning dot when some apps are missing, and
+  "Waiting for the selected apps" until one has a process. Both
   pickers are 220 DIP wide, for device and app names. The status keeps the
   row's right-hand column, capped at 55% and ellipsized so a long device name
   cannot squeeze the title; the full name is in its tooltip.
@@ -102,7 +107,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Settings defaults:
@@ -146,7 +151,15 @@ change in the flyout).
   exercised (on the docs/verification.md pending list).
 - A settings change during a live session may restart the session
   (latency presets, receiver delay) with the 300/500 ms debounce — one
-  restart with the final value is correct; one per click is a bug.
+  restart with the final value is correct; one per click is a bug. The
+  connection mute is held across that in-place restart
+  (`engine.go:1401-1413`); a mute dropping there is a bug, not the expected
+  release.
+- Per-app claims need macOS 14.4+; on Windows the picker, its status states,
+  and the per-app mute copy are unreachable. In per-app mute mode no
+  `mute-guard.json` is written, so the forced-kill guard step needs system
+  capture. The picker list is a launch-time snapshot: launch apps before
+  saundo, and `pid:<n>` selections do not survive a restart.
 - The window title follows the app locale (`设置 · 声渡` / `Settings ·
   Saundo`); capture-window.ps1 with `-TitleLike "saundo"` matches neither
   locale — use `-Class MyGoWindow` plus `-ProcId`.

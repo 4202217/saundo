@@ -15,8 +15,9 @@ per receiver.
   row carries the compact 封面/模板 priority
   segment left of the chevron. The settings page puts a 颜色来源 row
   (封面 / 模板) at its right, under the 72-DIP preview and its name, and its
-  head keeps the HomePod 专属 tag. The tray menu has no
-  ambient item.
+  head keeps the HomePod 专属 tag. The tray menu carries the same lamp row
+  under the mute row (关闭氛围灯 when lit, 开启氛围灯 when dark), toggling the
+  one global choice.
 - Choices: the media cover (default) plus six templates: 暖烬, 沙丘, 苔庭,
   潮汐, 兰夜, 月白. `internal/lamp` renders each palette as a deterministic
   600×600 carrier of three flat color fields and caches it; the receiver's
@@ -83,8 +84,8 @@ per receiver.
   since the last push the engine sends playback state 2. The first audible
   sample sends state 1 and resumes; pressing 开启氛围灯 while the display is dark
   relights it immediately and holds it on until the next sound
-  (`lamp.go:226-236`; `engine.go:1253-1259`; the gate at `:929`, cleared on
-  sound at `:958-960`). The flyout chip reads 待机,
+  (`lamp.go:226-236`; `engine.go:1345-1357`; the gate at `:983-989`, cleared
+  on sound at `:1017-1019`). The flyout chip reads 待机,
   the power action 开启氛围灯, and the footer 已待机 · 播放声音即唤醒.
 
 ## How to get to it (user POV)
@@ -192,6 +193,11 @@ and the off state survive a settings-window close/reopen and an app restart.
 
 - The `SAUNDO_PLAYBACK_STATE_TEST` and `SAUNDO_PLACEHOLDER_TEST` probes need
   the app stopped: they bind PTP UDP 319/320, which a running instance owns.
+  The playback-state probe also needs inbound UDP timing allowed through
+  Windows Firewall (`playback_state_live_test.go:48-52`), and both probes
+  auto-select the first transient AirPlay 2 receiver
+  (`placeholder_live_test.go:36-46`), so with several HomePods they may not
+  hit the intended pair.
 
 - Sound Glow off leaves the top white. That is the HomePod setting, not the
   app; the app cannot enable it.
