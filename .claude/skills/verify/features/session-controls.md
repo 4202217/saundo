@@ -1,19 +1,24 @@
 # Session controls
 
-The flyout's playback area: volume, latency segments, and the Now Playing
-media card. Capture status lives on the settings 采集 page, and the
-diagnostics log row lives on the settings 关于 page.
+The flyout's playback area: the Now Playing media card, the latency
+segments, and the volume slider. Capture status lives on the settings 采集
+page, and the diagnostics log row lives on the settings 关于 page.
 
 ## Sub-features
 
-- Volume slider: sends `SET_PARAMETER volume` while streaming; 0 mutes
+- Volume slider: the flyout row is a 16-DIP speaker glyph on the 22-DIP
+  content column, the slider, and the integer percent in a fixed 34-DIP
+  right column. It sends `SET_PARAMETER volume` while streaming; 0 mutes
   (the `-144` dBFS sentinel); a remembered device reconnects at its stored
   volume; a first connection adopts the receiver's `initialVolume`. While
   streaming, the sender polls `GET /info` every second — a knob moved on the
   receiver itself mirrors back into the slider. AP2 only; an AP1 session
   never arms the poll.
-- Latency: flyout segments 低延迟 200 ms (default) / 标准 1.5 s / 稳定 2 s /
-  自定义 20–2000 ms; the value shows on the ALAC line
+- Latency: the flyout's four segments 低延迟 200 ms (default) / 标准 1.5 s /
+  稳定 2 s / 自定义 20–2000 ms sit under the media card and above the volume
+  row; their 14-DIP mode glyphs lead-align with an 8-DIP inner inset, and
+  the first glyph sits on the 22-DIP content column. The value shows on the
+  ALAC line
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
   value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
@@ -30,9 +35,9 @@ diagnostics log row lives on the settings 关于 page.
   height does not change); title and artist; a five-band meter delayed by
   the session's base latency; and a full-width progress row. Enabled
   transport controls (prev / play-pause / next) sit at the row's left as
-  24-DIP circles in the session arrow's card style — card fill, muted
-  12-DIP glyph, hover, 4 DIP apart, no filled primary — and call
-  `nowplaying.Control`. The row then shows elapsed, cover-field fill (only
+  bare foreground-colored 12-DIP glyphs on 24-DIP hit areas, 2 DIP apart
+  and starting on the card's content column; only the hovered button draws
+  its 24-DIP circle, and each calls `nowplaying.Control`. The row then shows elapsed, cover-field fill (only
   while 封面配色 is on), thumb, and remaining. A session with no timeline
   keeps the same row as an empty track: no fill, thumb, times, or copy.
   Refreshed every 2 s from the platform Now Playing source (SMTC on Windows,
@@ -41,8 +46,8 @@ diagnostics log row lives on the settings 关于 page.
   when the thumbnail is absent; the tile uses the card's own fill, so the
   first-artwork placeholder has no light edge.
   With no session at all the card is not drawn: the playback card keeps the
-  volume and latency rows, and `fitFlyout` shrinks the flyout by the card's
-  150 DIP. The 正在播放 settings page controls the card: the 媒体卡片
+  latency row and then the volume row, and `fitFlyout` shrinks the flyout by
+  the card's 150 DIP. The 正在播放 settings page controls the card: the 媒体卡片
   header's 托盘面板中显示 switch, 封面 (无/默认/媒体), 播放控制, 封面配色,
   and 音频电平. The switch only hides the flyout card and shortens the
   flyout; the preview stays live and the option rows stay active. The
@@ -112,7 +117,7 @@ must show an empty progress track, not a status line or a fake fill. In the
 and the flyout shortens, while the preview stays live and the option rows
 stay active; turn it on again and the card returns. Close
 every player and confirm the media card disappears entirely and the flyout
-shrinks; the volume and latency rows remain, with no empty card,
+shrinks; the latency and volume rows remain, with no empty card,
 status line, or reserved blank under the device card.
 
 Proven end state: the ALAC line carries the selected latency, the slider
