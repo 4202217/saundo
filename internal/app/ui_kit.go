@@ -315,7 +315,7 @@ func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width fl
 			s.Children(func() {
 				var ic ui.Element
 				if item.icon != nil {
-					ic = ui.Icon(c, item.icon).Size(12, 12)
+					ic = ui.Icon(c, item.icon).Size(14, 14)
 				}
 				tx := ui.Text(c, item.label).FontSize(11.5).SingleLine()
 				switch {
