@@ -1320,6 +1320,17 @@ func TestFlyoutLatencySegmentSelects(t *testing.T) {
 	}
 }
 
+// TestFlyoutLatencyLowFitsItsSegment pins the English label the flyout's
+// segment budget allows. The leading 8-DIP inset and the 14-DIP glyph leave
+// about 62 px at 11.5 px type, and the preview matrix caught "Low latency"
+// truncating to "Low late…"; a two-word label must not come back.
+func TestFlyoutLatencyLowFitsItsSegment(t *testing.T) {
+	withLocale(t, "en")
+	if got := locales.SettingsLatencyLow(); got != "Low" {
+		t.Fatalf("low latency label = %q, want %q; a two-word label truncates in the flyout segment", got, "Low")
+	}
+}
+
 func TestAudioCustomModeRendersSlider(t *testing.T) {
 	a := previewApp()
 	a.page = pageAudio

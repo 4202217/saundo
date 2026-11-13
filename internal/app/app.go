@@ -1166,6 +1166,14 @@ func (m trayMenuModel) muteIcon() string {
 	return "bell"
 }
 
+// muteLabel names the mute row's action: unmuting while the preference is on.
+func (m trayMenuModel) muteLabel() string {
+	if m.muteOn {
+		return locales.TrayUnmuteLocal()
+	}
+	return locales.TrayMuteLocal()
+}
+
 // lampLabel names the ambient light's action: turning off while it is lit.
 func (m trayMenuModel) lampLabel() string {
 	if m.lampOff {
@@ -1209,7 +1217,7 @@ func (a *App) trayMenuItems(m trayMenuModel) []*mygo.MenuItem {
 	}
 	items = append(items, mygo.Separator())
 	items = append(items,
-		&mygo.MenuItem{Label: locales.TrayMuteLocal(), Icon: a.menuIcons[m.muteIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
+		&mygo.MenuItem{Label: m.muteLabel(), Icon: a.menuIcons[m.muteIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
 			a.setMuteLocal(!m.muteOn)
 		}},
 		&mygo.MenuItem{Label: m.lampLabel(), Icon: a.menuIcons[m.lampIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
