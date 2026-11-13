@@ -34,8 +34,8 @@
   group with its auto-connect flag cleared (`merge.go:82-88`), drawn with
   the 本机 chip and no switch or expander (`receivers_page.go:217-230,335-336`),
   and never listed in the flyout. The engine refuses to connect it
-  (`engine.go:1305-1307`), the launch auto-connect skips it
-  (`engine.go:2014-2020`), and the sender stops a session whose socket local
+  (`engine.go:1414-1423`), the launch auto-connect skips it
+  (`engine.go:2133-2139`), and the sender stops a session whose socket local
   and peer addresses match (`sender.go:866-872`). A sender and its own
   receiver would share one audio path and loop.
 - Connect paths by auth kind: HAP transient (fixed PIN `3939`, stops at M4),
@@ -44,18 +44,17 @@
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  failed connect attempts, then 自动重连 5 次后停止 (`engine.go:311-315`,
-  budget at `:282-283`, give-up message at `:1438-1441`). A receiver that is
-  not
-  discovered is retried every 5 s without consuming the budget, so a
-  receiver that vanishes mid-session does not reach the give-up message.
+  failed connect attempts, then 自动重连 5 次后停止 (`engine.go:320-324`,
+  budget at `:291-292`, give-up message at `:1555-1559`). A key absent from
+  the list is retried every 5 s without consuming the budget; a receiver that
+  merely goes offline keeps its cached endpoint and each attempt counts.
 - Takeover is terminal: a clean control close during streaming stops the
-  reconnect (`engine.go:1663-1680`; `sender.go:917`), the status reads
+  reconnect (`engine.go:1781-1798`; `sender.go:917`), the status reads
   已被其他设备接管, and the active row offers 重新连接
-  (`flyout.go:281-283`; `app.go:1063-1064`). A close carrying an error stays
+  (`flyout.go:281-283`; `app.go:1341-1344`). A close carrying an error stays
   retryable.
 - A failed attempt clears its error on the next connect or disconnect
-  (`engine.go:1317`, `:1118`), and other online rows stay connectable in the
+  (`engine.go:1189`, `:1430`), and other online rows stay connectable in the
   error phase (`flyout.go:244-286`; `TestRowActionKeepsOtherReceiversConnectable`).
 
 ## How to get to it (user POV)
@@ -110,6 +109,10 @@ sidebar, not a flyout row.
 - A failed launch must not become the auto-connect target: the registry's
   auto-connect flag is seeded once from `lastDeviceId` by migration, and
   `lastDeviceId` is persisted only after streaming is first reached.
+- Takeover (已被其他设备接管) needs a second AirPlay sender to start to the
+  same receiver mid-stream; the app alone cannot produce it. The switch step
+  needs two simultaneously online receivers, because one receiver cannot
+  exercise the other rows' actions.
 - Windows Firewall must allow inbound UDP on the private network, or PTP
   and timing requests go unanswered (UI reports a PTP timeout). On macOS the
   equivalent is Local Network permission: mDNS, RTSP, and PTP are dropped

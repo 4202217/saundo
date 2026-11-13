@@ -10,11 +10,13 @@
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
 - Right click opens the menu: one row per visible receiver, each with its
-  receiver-family glyph in one icon column. The receiver in session draws
-  that glyph in the accent color; every other row, including a device merely
-  selected while idle, draws the template in the text color. An unreachable
-  row keeps the 离线 subtitle. The 连接上次接收器
-  fallback follows when no row is the target. Then the 静音本机输出 row (bell
+  receiver-family glyph in one icon column. The connecting or streaming
+  receiver draws that glyph in the accent color; every other row, including a
+  device merely selected while idle, draws the template in the text color. An
+  unreachable row keeps the 离线 subtitle. The 连接上次接收器
+  fallback follows when no row is the target, disabled when no receiver is
+  remembered. Then the mute row, 静音本机输出 while the preference is off and
+  取消静音本机输出 while it is on (bell
   glyph, slashed while the preference is on), 关闭氛围灯 or 开启氛围灯 for the ambient
   light, 显示托盘面板, 设置…, 检查更新…, and 退出声渡. The menu has no
   断开连接 row; the flyout's active row keeps it. No row uses a radio or
@@ -23,14 +25,14 @@
   for the duration of the popup.
 - Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
   height from the device rows (56 each, 141 empty state), the latency row
-  (44), the Now Playing card (150 while a session exists and
+  (44, while 托盘面板中显示 is on), the Now Playing card (150 while a session exists and
   `showNowPlayingPanel` is on), and the ambient section (90 collapsed, plus
   53 when its preset grid expands). The base constant is 439, but the
   function subtracts the old 62-DIP media row and adds the 90-DIP lamp
   section, so three device rows with no media measure 467. There is no
   flexible spacer; the playback card follows the device card. The resize
   grows the flyout upward from the tray anchor (`fitFlyout`,
-  `app.go:803-817`), pinned by `TestFlyoutHeightForDeviceRows`,
+  `app.go:828-842`), pinned by `TestFlyoutHeightForDeviceRows`,
   `TestFlyoutKeepsPlaybackGap`, and `TestFlyoutTargetHeightFitsPlayback`.
 - Ambient light card: a permanent 44-DIP row under the playback card, with
   a 32-DIP preview, the source name (or the preset name), a 待机 chip while
@@ -118,6 +120,12 @@ outside click and a UIA invoke, not an Escape press.
   noise sampled over seconds — the app-side cost stays under 1%.
 - The tray menu exists only while its popup is open; enumerating menus
   outside the right-click window finds nothing.
+- Credential recovery is unreachable from the UI: stop the app, corrupt
+  `%APPDATA%\saundo\credentials.dat` (it is quarantined as
+  `credentials.dat.corrupt-<UTC>`), and relaunch.
+- The disabled 连接上次接收器 row needs `selID == ""`; nothing in the app
+  clears it and `syncSelection` fills it from a visible receiver, so use a
+  fresh profile with nothing discovered.
 - Reduce Motion (Windows animation effects off) holds the static face even
   with the switch on — that is required behavior, not a broken toggle.
 - Device churn while the panel is open (rows appearing, height growing

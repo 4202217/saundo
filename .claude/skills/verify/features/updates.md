@@ -3,10 +3,11 @@
 Both platforms use the same updater. Each check reads the platform's signed
 manifest from the latest published release, `update-windows-amd64.json` or
 `update-darwin-arm64.json`, 10 s after launch and then every 24 h. A build
-that has no feed or cannot write where it is installed reports the disabled
-state: the version row says "Updates aren't available in this build", removes
-the chip, and makes no request. The disabled flag is in memory only, so a
-fresh launch shows the chip again.
+that has no feed or cannot write where it is installed schedules no automatic
+check: `startUpdateChecks` returns when the updater is disabled. A manual
+check reports the disabled state: the version row says "Updates aren't
+available in this build", removes the chip, and makes no request. The disabled
+flag is in memory only.
 
 ## Sub-features
 
@@ -20,8 +21,8 @@ fresh launch shows the chip again.
 - 更新 page in the settings window: channel (stable/beta), automatic check
   and download toggles, a check-now action, the primary action button
   (Install / Restart now / Retry by state), a Cancel link button, and the
-  S1 card's What's New, Skip this version, and Remind me later links beside
-  the byte and percent progress row (`settings_window.go:458-477`).
+  S1 card's What's New, Skip this version, and Remind me later links in the
+  row above the byte and percent progress row (`settings_window.go:463-482`).
 - Release-notes dialog: the offered version's notes plus, when fetchable,
   the history of every version since the running build — from `CHANGELOG.md`
   in English and `CHANGELOG.zh-CN.md` when the app language starts with
@@ -31,8 +32,8 @@ fresh launch shows the chip again.
   history is cached per language (`TestLanguageSwitchRefetchesHistory` pins
   the cache key); a dialog already open keeps the language it loaded. The
   head's range select switches between the history since this build and the
-  latest version only, and the older entries render as folded rows with a
-  history link (`update_dialog.go:36-45,115-132`). The fetch starts when the
+  latest version only, and the older entries render as folded rows; a failed
+  history fetch adds a releases link (`update_dialog.go:36-45,120-131`). The fetch starts when the
   update is found
   (`TestFoundUpdatePrefetchesTheLocalizedNotes`), and a non-English dialog
   shows the loading row rather than flashing English
@@ -42,11 +43,11 @@ fresh launch shows the chip again.
   installer process runs). On macOS it stages the new bundle and a helper
   swaps it after the app quits, so the Dock keeps one tile. A separate
   立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:678-700`, chip at
-  `:684-698`) shares state with the settings page; clicking it opens the
+- Update chip in the flyout **footer** (`flyout.go:677-699`, chip at
+  `:683-696`) shares state with the settings page; clicking it opens the
   更新 page. A waiting update also draws a dot on the 更新 sidebar item, and
   the tray tooltip and menu carry the check action and the available version
-  (`settings_window.go:203-206`; `app.go:956,971-985`; docs/ui.md).
+  (`settings_window.go:203-206`; `app.go:1230,1254-1258`; docs/ui.md).
 
 ## How to get to it (user POV)
 
@@ -72,8 +73,9 @@ curl -sL -o /dev/null -w '%{http_code}' \
 ```
 
 Open the 更新 page, click the check, and capture the state transition; the
-page and the log agree on available/downloading/ready/failed. The disabled
-path writes no log line (`update.go:130-137` returns before `finishCheck`).
+page and the log agree on available/up-to-date/failed, and an install adds
+its own lines. The disabled path writes no log line (`update.go:130-137`
+returns before `finishCheck`).
 
 macOS: a published darwin manifest finds an update and installs it in place.
 The running app keeps its version until it quits; the helper then swaps the
@@ -113,6 +115,13 @@ docs/verification.md keeps them in Currently pending.
   pushed — observed 2026-11-04 with `CHANGELOG.zh-CN.md` (25 unpushed
   commits at the time).
 - The first updater shipped in 0.4.0 — older builds have no update path.
+- Folded history rows need a build at least two releases behind; a dev build
+  stamped `0.6.2-23-g…` filters out to no history row. Build with
+  `VERSION=0.6.0` to see them.
+- The disabled state needs a build with no feed or an unwritable install dir,
+  and appears only after a manual check: no automatic check is scheduled.
+- The offered version's history fetch 404s until its changelog section is
+  pushed to the default branch.
 - The update history is localized: switch the app language and confirm the
   dialog reads the Chinese changelog.
 - Install does not restart the app by itself. On Windows the swap happens in

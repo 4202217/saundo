@@ -16,10 +16,11 @@ page, and the diagnostics log row lives on the settings 关于 page.
   sentinel. While streaming, the sender polls `GET /info` every second — a
   knob moved on the receiver itself mirrors back into the slider. AP2 only;
   an AP1 session never arms the poll.
-- Latency: the flyout's four segments 低延迟 200 ms (default) / 标准 1.5 s /
-  稳定 2 s / 自定义 20–2000 ms sit under the media card and above the volume
-  row; their 14-DIP mode glyphs lead-align with an 8-DIP inner inset, and
-  the first glyph sits on the 22-DIP content column. The value shows on the
+- Latency: the flyout's four segments (低延迟 / 标准 / 稳定 / 自定义, default
+  低延迟) sit under the media card and above the volume row; the values
+  (200 ms / 1.5 s / 2 s / 20–2000 ms) are the settings 音频 tile text. Their
+  14-DIP mode glyphs lead-align with an 8-DIP inner inset, and the first
+  glyph sits on the 22-DIP content column. The effective value shows on the
   ALAC line
   (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
@@ -58,27 +59,38 @@ page, and the diagnostics log row lives on the settings 关于 page.
   plus the cover image while streaming, independent of the card's display
   setting.
 - Capture source: 系统声音 follows the platform default output (WASAPI on
-  Windows, the Core Audio tap on macOS), pins a specific endpoint, or on
-  Windows captures one application (`settings_window.go:859-863`; a queued
-  async restart supersedes the in-flight one). The settings 采集状态 row
-  names the endpoint and rate; the flyout does not.
+  Windows, the Core Audio tap on macOS), pins a specific endpoint, or, on
+  macOS 14.4+, captures one or more selected apps (`settings_window.go:875-914`;
+  a queued async restart supersedes the in-flight one). The settings 采集状态
+  row names the endpoint and rate; the flyout does not.
 - Mute local output: the 连接 page's 连接后静音本机输出 switch mutes the
   local render endpoint while streaming and restores it on disconnect, quit,
   or switch-off, with a guard file for a crash
-  (`settings_window.go:609-643`; `internal/engine/mute.go`).
+  (`settings_window.go:609-643`; `internal/engine/mute.go`). On macOS with a
+  per-app selection the switch reads 连接后静音所选应用 and tap-mutes the
+  selected apps instead; no guard file is written in that mode. The mute is
+  held across an in-place latency or receiver-delay restart and across a
+  receiver switch while streaming, and it is restored if the switch fails
+  (`engine.go:1105-1110,1165-1178,1401-1413,1506-1510`).
+- Receiver switch: while streaming, another online receiver row offers 连接;
+  choosing it routes `cmdConnect` through `restartSession` and rebuilds in
+  place, so the mute and the session's settings survive the gap
+  (`flyout.go:257-275,293-294`; `engine.go:1165-1178`). While a connect is in
+  progress the other rows are disabled, and a switch that cannot open its new
+  session restores the local output.
 - Takeover: a clean control close during streaming is terminal. The flyout
   footer reads 已被其他设备接管 and the active receiver row offers
   重新连接 (`flyout.go:716-719`; the row action at
   `:280-284`; `docs/ui.md`).
 - Idle standby: after the configured silence threshold the engine sends
   playback state 2, the top display goes dark, and the flyout lamp card
-  shows the 待机 chip (`engine.go:957-1019`; see
+  shows the 待机 chip (`engine.go:1016-1080`; see
   [ambient-light.md](ambient-light.md)).
 - Silence suspend: after 5 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
-  (`engine.go:957-1019`; the meter Push is `silence.go:33-52`; resume
-  `stream.go:76-98`). AP2 only; an AP1 session keeps the continuous silence
+  (`engine.go:1016-1080`; the meter Push is `silence.go:40-64`; resume
+  `stream.go:67-101`). AP2 only; an AP1 session keeps the continuous silence
   stream.
 - Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log
   dialog whose 复制 button puts the visible log on the clipboard
@@ -137,6 +149,10 @@ endpoint that is actually rendering.
 
 - The progress-row transport controls change the user's real media playback;
   never press them in an automated check without asking.
+- Per-app capture and its tap mute are unreachable on Windows and need
+  macOS 14.4+ (`capture_darwin.go:488-496`). Expect `captured app muted
+  locally` in the log and no `mute-guard.json`; the volume mirror needs AP2,
+  and an AP1 session never polls.
 - A no-timeline session's empty progress track is the design, not a failed
   read; do not expect a status line or a fill. With no session at all the
   card is absent and the flyout shrinks — do not look for a no-media card.
