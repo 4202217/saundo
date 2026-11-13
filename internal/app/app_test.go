@@ -798,9 +798,10 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	}
 }
 
-// TestRowActionKeepsOtherReceiversConnectable pins the failed-session escape:
-// the failed row keeps retry, but the engine is idle after a failure, so the
-// other online rows must offer a working connect action.
+// TestRowActionKeepsOtherReceiversConnectable pins the failed-session escape
+// and the live switch: the failed row keeps retry, the engine is idle after a
+// failure, and a streaming session moves to another receiver by connecting
+// its row.
 func TestRowActionKeepsOtherReceiversConnectable(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -812,7 +813,7 @@ func TestRowActionKeepsOtherReceiversConnectable(t *testing.T) {
 		{"failed row retries", phaseError, true, true, actionRetry},
 		{"other row connects after failure", phaseError, false, true, actionConnect},
 		{"connecting keeps other rows disabled", phaseConnecting, false, true, actionConnectDisabled},
-		{"streaming keeps other rows disabled", phaseStreaming, false, true, actionConnectDisabled},
+		{"streaming switches to another row", phaseStreaming, false, true, actionConnect},
 		{"offline row stays offline", phaseError, false, false, actionOffline},
 		{"idle row connects", phaseIdle, false, true, actionConnect},
 	}

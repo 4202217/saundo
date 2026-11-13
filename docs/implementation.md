@@ -181,12 +181,20 @@ edits for 500 ms, so rapid switching coalesces into one restart with the final
 mode. The connection mute survives that restart: an in-place restart keeps the
 local output muted across the rebuild, because the mute belongs to the user's
 session rather than to the transport. Only a restart that cannot open its new
-session restores it.
+session restores it. A connect that replaces a live session is a switch to
+another receiver and takes the same path: `cmdConnect` routes it through
+`restartSession` while a transport is active, so the mute survives the gap. The
+flyout offers that connect on the other online rows only while streaming; a
+connection attempt in progress keeps them disabled. A switch whose new session
+cannot open restores the endpoint, whether the failure is synchronous or
+reported at launch.
 
 ## A connect, end to end
 
 1. The UI calls `Engine.Connect(id)`; the command reaches the engine
-   goroutine.
+   goroutine. With a live session the command is a switch: the engine
+   rebuilds through the in-place path, so the connection mute survives the
+   gap.
 2. The engine resolves the target — a device or a collapsed stereo group
    (`openSession` / `openGroupSession`) — checks stored credentials, and
    picks the pairing path from the device's auth kind. For the launch
