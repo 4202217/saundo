@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"saundo/internal/airplay/device"
 	"saundo/internal/capture"
 )
 
@@ -136,6 +137,109 @@ func TestMuteLocalFollowsTheSession(t *testing.T) {
 	}
 	if len(m.setCalls) != 2 || !m.setCalls[0].muted || m.setCalls[1].muted {
 		t.Fatalf("set calls = %+v, want mute then restore", m.setCalls)
+	}
+}
+
+// TestLatencyRestartKeepsLocalMute pins the restart policy: a latency change
+// rebuilds the stream, but the connection mute belongs to the user's session,
+// so the local output stays muted through the rebuild instead of playing
+// locally until the new session streams. A later disconnect still restores it.
+func TestLatencyRestartKeepsLocalMute(t *testing.T) {
+	h := newHarness(t)
+	m := newFakeMuter()
+	useMuter(h, m)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.addDeviceOnline()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+	before := len(m.setCalls)
+
+	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
+	if h.sessions != 2 {
+		t.Fatalf("sessions = %d, want 2 after the latency restart", h.sessions)
+	}
+	for _, c := range m.setCalls[before:] {
+		if !c.muted {
+			t.Fatalf("the latency restart unmuted the endpoint: %+v", m.setCalls)
+		}
+	}
+	if !m.muted["default-ep"] {
+		t.Fatal("the endpoint is not muted during the restart gap")
+	}
+
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+	if !m.muted["default-ep"] {
+		t.Fatal("the new session lost the mute")
+	}
+	if _, err := os.Stat(h.e.muteGuardPath()); err != nil {
+		t.Fatalf("mute guard missing after the restart: %v", err)
+	}
+
+	h.e.handleCommand(command{kind: cmdDisconnect})
+	h.settleMute(t, MuteLocalWaiting)
+	if m.muted["default-ep"] {
+		t.Fatal("disconnect after the restart left the endpoint muted")
+	}
+}
+
+// TestLatencyRestartKeepsProcessMute covers the per-app tap flavor: the tap
+// mute must not be rebuilt unmuted for the restart either.
+func TestLatencyRestartKeepsProcessMute(t *testing.T) {
+	h := newHarness(t)
+	pm := &fakeProcessMuter{}
+	useProcessMuter(h, pm)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.e.captureProcess = 1234
+	h.addDeviceOnline()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+	before := len(pm.calls)
+
+	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
+	for _, muted := range pm.calls[before:] {
+		if !muted {
+			t.Fatalf("the latency restart unmuted the tap: %v", pm.calls)
+		}
+	}
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+	if last := pm.calls[len(pm.calls)-1]; !last {
+		t.Fatalf("process mute calls = %v, want the last to be mute", pm.calls)
+	}
+
+	h.e.handleCommand(command{kind: cmdDisconnect})
+	h.settleMute(t, MuteLocalWaiting)
+	if last := pm.calls[len(pm.calls)-1]; last {
+		t.Fatalf("process mute calls = %v, want restore", pm.calls)
+	}
+}
+
+// TestLatencyRestartRestoresMuteWhenTheNewSessionFails pins the limit of the
+// hold: when the restart cannot open a session, the mute must not outlive the
+// session that owned it.
+func TestLatencyRestartRestoresMuteWhenTheNewSessionFails(t *testing.T) {
+	h := newHarness(t)
+	m := newFakeMuter()
+	useMuter(h, m)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.addDeviceOnline()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+
+	h.e.newSession = func(device.Device) (transport, func(), error) {
+		return nil, nil, errors.New("no route")
+	}
+	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
+	h.settleMute(t, MuteLocalWaiting)
+	if m.muted["default-ep"] {
+		t.Fatal("a failed restart left the endpoint muted")
+	}
+	if _, err := os.Stat(h.e.muteGuardPath()); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("a failed restart kept the guard: %v", err)
 	}
 }
 

@@ -62,6 +62,7 @@ func TestVolumePercentTopOfScale(t *testing.T) {
 		{1, 100},
 		{-0.0001, 99},
 		{-15, 50},
+		{-27.3, 8},
 		{-30, 0},
 		{-144, 0},
 	}
@@ -71,11 +72,11 @@ func TestVolumePercentTopOfScale(t *testing.T) {
 		}
 	}
 	s := &Sender{}
-	for _, db := range []float64{0, -3, -15, -30, -144} {
-		s.ap2 = &ap2State{hasInitial: true, initialVol: db}
+	for _, c := range cases {
+		s.ap2 = &ap2State{hasInitial: true, initialVol: c.db}
 		got, ok := s.InitialVolumePercent()
-		if !ok || got != float64(volPercentFromDB(db)) {
-			t.Errorf("InitialVolumePercent(%v) = %v, volPercentFromDB = %d", db, got, volPercentFromDB(db))
+		if !ok || got != float64(c.pct) {
+			t.Errorf("InitialVolumePercent(%v) = %v, want %d", c.db, got, c.pct)
 		}
 	}
 }
@@ -90,6 +91,9 @@ func TestVolumePollKeepsTheStoredVolumeOnUnknownField(t *testing.T) {
 	}{
 		{"missing key", func(f *fakeReceiver) { f.omitInitialVolume = true }},
 		{"wrong type", func(f *fakeReceiver) { f.initialVolumeString = true }},
+		{"bool", func(f *fakeReceiver) { f.initialVolumeBool = true }},
+		{"positive", func(f *fakeReceiver) { f.receiverVolume = 3 }},
+		{"malformed", func(f *fakeReceiver) { f.garbageInfo = true }},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -99,8 +103,12 @@ func TestVolumePollKeepsTheStoredVolumeOnUnknownField(t *testing.T) {
 			r.sender.receiverVol = 42
 			r.sender.volQuery = false
 			r.volumeEvents = nil
+			before := r.rx.requests["GET /info"]
 			r.sender.onVolumePoll()
 			r.step()
+			if got := r.rx.requests["GET /info"]; got <= before {
+				t.Fatal("the poll sent no GET /info")
+			}
 			if len(r.volumeEvents) != 0 {
 				t.Fatalf("volume changed from an unknown field: %v", r.volumeEvents)
 			}

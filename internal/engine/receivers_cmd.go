@@ -114,7 +114,7 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 			// automatic reconnect is still connecting. Start the standby
 			// clock at the new session so the light shows the restart.
 			e.connectAuto = false
-			e.connect(target.Device)
+			e.restartSession(target.Device)
 		}
 	}
 }
@@ -151,7 +151,7 @@ func (e *Engine) handleRemoveReceiver(key string) {
 		if e.tr != nil {
 			e.tr.Stop()
 		}
-		e.closeSession()
+		e.closeSession(false)
 		e.connectedName = ""
 	}
 	if err := e.recvStore.Save(e.reg); err != nil {

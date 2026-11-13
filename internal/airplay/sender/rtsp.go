@@ -3,6 +3,7 @@ package sender
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 	"strings"
 	"time"
 
@@ -497,13 +498,18 @@ func (s *Sender) handleVolumeReply(body []byte) {
 	if !ok {
 		return
 	}
-	raw, ok := plistIntOK(m, "initialVolume")
+	v, ok := plistRealOK(m, "initialVolume")
 	if !ok {
 		// An absent or unreadable field means the receiver's volume is
 		// unknown, not zero: keep the last value instead of overwriting it.
 		return
 	}
-	db := float64(raw)
+	db, usable := volumeDBInRange(v)
+	if !usable {
+		// A positive level is not expressible on this protocol; keep the
+		// last value instead of reporting full scale.
+		return
+	}
 	pct := float64(volPercentFromDB(db))
 	if s.receiverVol >= 0 && pct == float64(s.receiverVol) {
 		return
@@ -532,6 +538,24 @@ func volPercentFromDB(db float64) int {
 		pct = 100
 	}
 	return pct
+}
+
+// volumeDBInRange folds a reported level into the AirPlay dBFS domain. The
+// usable range is [-144, 0]: 0 dB is full scale and -144 is the mute sentinel.
+// A level below the sentinel is a known mute and clamps to -144. A positive
+// level is not expressible on this protocol and reads as unknown: turning a
+// malformed report into 0 dB would be the fail-open this rule prevents.
+func volumeDBInRange(db float64) (float64, bool) {
+	if math.IsNaN(db) || math.IsInf(db, 0) {
+		return 0, false
+	}
+	if db > 0 {
+		return 0, false
+	}
+	if db < -144 {
+		return -144, true
+	}
+	return db, true
 }
 
 // readyToStream runs when the receiver accepts the stream: RECORD on AP1, the
@@ -614,12 +638,12 @@ func (s *Sender) beginPlayback(epoch time.Time) {
 	s.sync.arm(now)
 
 	if s.airplay2 && s.pendingVolume <= noVolume+1 {
-		if s.ap2 != nil && s.ap2.hasInitial && s.ap2.initialVol > -144 {
+		if s.ap2 != nil && s.ap2.hasInitial {
 			// Start at the receiver's own volume instead of forcing 0 dB, so
-			// connecting never jumps a quiet HomePod to full volume.
+			// connecting never jumps a quiet HomePod to full volume. An
+			// unknown volume leaves pendingVolume at noVolume: no request goes
+			// out and the receiver keeps whatever it has.
 			s.pendingVolume = s.ap2.initialVol
-		} else {
-			s.pendingVolume = 0
 		}
 	}
 	if s.pendingVolume > noVolume+1 {
@@ -662,18 +686,7 @@ func (s *Sender) InitialVolumePercent() (float64, bool) {
 	if s.ap2 == nil || !s.ap2.hasInitial {
 		return 0, false
 	}
-	db := s.ap2.initialVol
-	if db <= -144 {
-		return 0, true
-	}
-	pct := (db*10 + 300) / 3
-	if pct < 0 {
-		pct = 0
-	}
-	if pct > 100 {
-		pct = 100
-	}
-	return pct, true
+	return float64(volPercentFromDB(s.ap2.initialVol)), true
 }
 
 // SetVolume sets the receiver volume in percent; 0 is AirPlay's mute sentinel.

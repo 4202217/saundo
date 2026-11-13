@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"math"
 	"strings"
 
 	"saundo/internal/airplay/crypto"
@@ -278,6 +279,27 @@ func plistIntOK(m map[string]any, key string) (int64, bool) {
 			return 1, true
 		}
 		return 0, true
+	}
+	return 0, false
+}
+
+// plistRealOK reads a numeric plist value without type confusion. bplist
+// integers decode as int64 and reals as float64; bool is not a number. The
+// decoder also yields bool false for null and fill (crypto/bplist.go), so
+// rejecting bool rejects those too. A non-finite real is unknown.
+func plistRealOK(m map[string]any, key string) (float64, bool) {
+	switch v := m[key].(type) {
+	case int64:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return 0, false
+		}
+		return v, true
 	}
 	return 0, false
 }
