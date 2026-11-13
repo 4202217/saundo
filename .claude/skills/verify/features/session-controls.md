@@ -10,10 +10,12 @@ page, and the diagnostics log row lives on the settings 关于 page.
   content column, the slider, and the integer percent in a fixed 34-DIP
   right column. It sends `SET_PARAMETER volume` while streaming; 0 mutes
   (the `-144` dBFS sentinel); a remembered device reconnects at its stored
-  volume; a first connection adopts the receiver's `initialVolume`. While
-  streaming, the sender polls `GET /info` every second — a knob moved on the
-  receiver itself mirrors back into the slider. AP2 only; an AP1 session
-  never arms the poll.
+  volume; a first connection adopts the receiver's `initialVolume`. An
+  absent, malformed, non-numeric, or positive `initialVolume` sends no
+  volume request and the receiver keeps its own level; `-144` stays the mute
+  sentinel. While streaming, the sender polls `GET /info` every second — a
+  knob moved on the receiver itself mirrors back into the slider. AP2 only;
+  an AP1 session never arms the poll.
 - Latency: the flyout's four segments 低延迟 200 ms (default) / 标准 1.5 s /
   稳定 2 s / 自定义 20–2000 ms sit under the media card and above the volume
   row; their 14-DIP mode glyphs lead-align with an 8-DIP inner inset, and

@@ -568,14 +568,9 @@ func TestInitialVolumeAdoptedWhenUserDidNotSetOne(t *testing.T) {
 	r.sender.AttachRing(rb)
 	r.start()
 	requireLaunched(t, r)
-	found := false
-	for _, p := range r.rx.setParams {
-		if strings.HasPrefix(p, "text/parameters\x00") && strings.Contains(p, "-27.000000") {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("receiver never got the initial volume; set-params: %q", r.rx.setParams)
+	got := volumeRequests(r)
+	if len(got) != 1 || got[0] != "volume: -27.000000" {
+		t.Fatalf("volume requests = %q, want [volume: -27.000000]", got)
 	}
 }
 

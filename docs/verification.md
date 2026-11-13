@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-12 -->
+<!-- reviewed-through: 2026-11-13 -->
 
 # Verification
 
@@ -33,6 +33,22 @@ live state:
   本机已静音；断开或退出时恢复 during the 2026-11-11 live pass, and the
   engine session path passed (`TestLiveMuteLocal`); toggling the switch
   itself has only headless coverage.
+- Local output mute across a live latency switch: a 2026-11-13 live HomePods
+  run logged the mute once and then four in-place stream rebuilds with no
+  restore between them, while earlier lines in the same log show a restore
+  after each session end. The log names no control per rebuild, so audible
+  confirmation stays the user's. The engine path is pinned by
+  `TestLatencyRestartKeepsLocalMute`, `TestLatencyRestartKeepsProcessMute`,
+  and `TestReceiverDelayRestartKeepsLocalMute`.
+- Local output mute across a receiver switch, and its restore when the switch
+  fails: no live run yet. The engine path is pinned by
+  `TestDeviceSwitchKeepsLocalMute`, `TestDeviceSwitchKeepsProcessMute`,
+  `TestDeviceSwitchRestoresMuteWhenTheNewSessionFails`, and
+  `TestDeviceSwitchRestoresMuteWhenTheLaunchFails`; the row action is pinned
+  by `TestRowActionKeepsOtherReceiversConnectable`. A live run should switch
+  between two receivers while streaming, check the log shows no restore
+  until the disconnect, then switch to an unreachable receiver and confirm
+  the endpoint comes back.
 - A two-computer takeover with both apps auto-reconnecting: the second
   should show the takeover state, the first should keep streaming, and
   neither should re-enter the reconnect loop. The single-machine two-session
@@ -1034,6 +1050,248 @@ and the verification map is corrected.
   skips on Windows.
 - **Known gap.** The Windows process-loopback leaf and its development
   probes remain in the tree for a future capture path; they are not exposed.
+
+## 2026-11-12 — Windows loopback carries endpoint volume
+
+- **Finding.** On the default render endpoint (Realtek Digital Output,
+  Realtek(R) Audio, 51 volume steps), a 440 Hz tone captured through the
+  WASAPI loopback leaf measured RMS 0.0706 at step 50, 0.0227 at step 25,
+  0.0030 at step 5, and 0.0001 at step 0. The 0%/100% ratio is 0.001, so the
+  captured PCM carries the endpoint's volume and a quiet PC attenuates the
+  receiver's output by the same amount. The same device's endpoint mute did
+  not reach the tap (0.1679 before, 0.1768 while muted), so volume and mute
+  sit on opposite sides of the loopback tap on this driver.
+- **Status.** The manual volume probes were removed with the endpoint-volume
+  takeover on 2026-11-13. The measurement stays as the explanation for why a
+  Windows PC volume change scales the stream; saundo leaves the endpoint
+  volume alone. The macOS process tap is expected to sit before the output
+  device's volume; it has not been measured on a Mac.
+
+## 2026-11-13 — Windows endpoint-volume takeover removed
+
+- **Decision.** The connection mute no longer changes the render endpoint's
+  volume. It still mutes the endpoint while a session streams and restores it
+  afterwards. On Windows the HomePod level is multiplied by the PC volume
+  again; set the Windows volume to 100% when you want the HomePod level to be
+  independent, and lower it after the session.
+- **Why.** The takeover owned a system-wide setting for the whole session,
+  re-applied it every second, overrode the Windows volume keys, needed a crash
+  guard, and depended on driver and APO behavior. It was implicit under the
+  mute switch and too invasive for the convenience it added. User feedback
+  after a live test decided the removal.
+- **Kept.** The connection mute and its guard, the loopback measurement above,
+  and the AP2 first-connect volume rule below. The takeover code, re-assert
+  ticker, guard volume field, tests, and capture volume leaves were removed.
+  An old guard's volume field is ignored, and the next launch releases the
+  mute.
+
+## 2026-11-13 — AP2 first-connect volume fail-closed
+
+- **Root cause.** `beginPlayback` turned every unknown or muted handshake
+  `initialVolume` into `volume: 0.000000` (0 dB, full scale). The handshake
+  accepted any present key and ran it through `plistInt`, so a bool or string
+  became 0 and counted as known; the 1 Hz poll shared the same type
+  confusion. On windows/amd64 a NaN became `MinInt64` and still read as
+  known.
+- **Rule.** Only a finite numeric `initialVolume` in `[-144, 0]` is known.
+  `0` dB is full scale and `-144` is the mute sentinel. An unknown value
+  (absent, malformed plist, non-dictionary, bool, string, nil, NaN/Inf, or
+  positive) sends no `SET_PARAMETER volume`, so the receiver keeps its own
+  level. A value below `-144` clamps to `-144`. The handshake and the poll
+  share `plistRealOK` and `volumeDBInRange`; `InitialVolumePercent` uses the
+  poll's percent conversion.
+- **Pins that fail without the fix.**
+  `TestFirstConnectUnknownVolumeSendsNoRequest` (absent, string, bool,
+  malformed, non-dictionary, positive), `TestFirstConnectMuteSentinelStaysMuted`,
+  `TestFirstConnectBelowMuteClampsToMute`,
+  `TestFirstConnectRealVolumeKeepsFraction`,
+  `TestVolumePollRealVolumeMatchesTheHandshake`,
+  `TestVolumePollKeepsTheStoredVolumeOnUnknownField` (the bool and positive
+  subtests fail pre-fix; malformed is a guard), `TestPlistRealOK`, and
+  `TestVolumeDBInRange`. Engine-invariant guards:
+  `TestFirstLaunchAdoptsMuteSentinel`,
+  `TestFirstLaunchKeepsConfiguredVolumeWhenUnknown`,
+  `TestFirstLaunchKeepsRememberedVolume`,
+  `TestReceiverVolumeEventUpdatesPerDevice`, and
+  `TestFirstConnectKnownZeroSendsFullVolume`.
+- **Tradeoff.** An AP2 receiver with no usable `initialVolume` and a quiet or
+  muted knob stays as it is; the UI keeps the configured value until the
+  first poll reports the receiver. This is the fail-closed choice, not a
+  regression to hide. The C++ reference force-pushes 0 dB; saundo
+  deliberately does not.
+- **Live.** No HomePod, Apple TV, or Mac run in this entry. The fake receiver
+  covers the wire branches; the existing poll and live tests are unaffected.
+
+## 2026-11-13 — tray menu quick actions
+
+- **Shape.** The tray menu lists one radio row per visible receiver, checked
+  for the current target. Clicking a row connects through the flyout's
+  `connectDevice`. An offline row keeps the 离线 subtitle and stays
+  clickable, because the engine reaches a remembered endpoint. When no row
+  is checked, a 连接上次接收器 fallback follows the rows, disabled without a
+  remembered receiver. 断开连接 shows while the session is not idle, then a
+  静音本机输出 checkbox bound to `MuteLocalOnConnect`, then 显示托盘面板,
+  设置…, 检查更新…, and 退出声渡. The model is `trayMenuModel`; the cached
+  menu rebuilds only when `trayMenuModel.key()` changes, which covers the
+  locale, session phase, current target, mute preference, and each row's ID,
+  name, and reachability. Pause is phase 2: the engine has no public pause
+  command yet, so the row is not drawn.
+- **Live run.** The app was built from this tree and relaunched. Its tray
+  icon sat in the notification-area overflow; opening 显示隐藏的图标 put the
+  button (`声渡 …`) in the UI Automation tree, a right-click at its rectangle
+  opened the native menu, and a screen capture showed `HomePods` checked,
+  断开连接, 静音本机输出 checked, 显示托盘面板, 设置…, 检查更新…, and
+  退出声渡 in that order while streaming to HomePods; Escape dismissed it.
+  The capture lives outside the repository (session temp); this entry is the
+  durable record.
+- **Environment finding.** At capture time the default endpoint read
+  `Mi Monitor (NVIDIA High Definition Audio): 已静音`, and the menu's mute
+  checkbox was checked. The local-output mute from a connected session
+  explains why `TestLoopbackReceivesSamples` fails on this machine (peak 90
+  against a rendered tone). The same failure reproduces at base commit
+  37352a4 in a clean worktree, so it is environmental, not a regression from
+  this change. Every other package passed.
+- **Pins.** `TestTrayMenuShapeSelected`,
+  `TestTrayMenuDisconnectWhileStreaming`, `TestTrayMenuFallbackWithNoDevices`,
+  `TestTrayMenuFallbackForHiddenTarget`, `TestTrayMenuMuteCheckbox`,
+  `TestTrayMenuKey`, `TestTrayMenuDeviceSubtitle`.
+
+## 2026-11-13 — tray menu icon refinement
+
+- **Defect.** The quick-action menu's first live render had two icon columns:
+  the receiver rows used `mygo.MenuItemRadio` and the mute row
+  `mygo.MenuItemCheckbox`, and the Windows backend reserves a check column
+  when any item uses either (`mygo@v0.9.0/internal/windows/menu.go:107`), so
+  the radio dot sat left of the action icons instead of aligning with them.
+- **Decision.** No item uses a radio, a checkbox, or `Checked`, so every row
+  draws in one icon column. A receiver row shows its `deviceIconKey` family
+  glyph: the current target (`SelectedID` else the remembered `selID`) draws
+  the glyph in the palette accent (`#4f46e5` light, `#a5b4fc` dark) and the
+  other rows draw it as a menu template tinted with the text color. The
+  colored copies replace `currentColor` in the stored SF source and load with
+  `ui.ParseSVG` plus `NewMenuIconSVG(..., false)`, because that constructor
+  tints only template images. The mute row is a normal item with `bell` off
+  and `bellOff` on, and a click toggles the preference. The menu's order,
+  labels, fallback row, and 离线 subtitle stay as the earlier entry records.
+- **Live run.** The binary from this tree was relaunched, its tray icon
+  opened through the overflow, and the right-click menu captured while
+  streaming to HomePods. Every glyph sat in one column. The HomePods row
+  drew the HomePod glyph in the dark accent (`#a5b4fc`), the MacBook Air row
+  and the REDMI display row drew the same family glyphs as menu templates,
+  and the mute row drew `bellOff` because `MuteLocalOnConnect` was on. The
+  capture lives outside the repository; this entry is the durable record.
+  The run's menu copy was English because the shared settings file carried
+  `"language": "en"` at the time, set outside this session.
+- **Pins.** `TestTrayMenuShapeSelected`,
+  `TestTrayMenuDisconnectWhileStreaming`, `TestTrayMenuFallbackWithNoDevices`,
+  `TestTrayMenuFallbackForHiddenTarget`, `TestTrayMenuMuteIcon`
+  (the renamed `TestTrayMenuMuteCheckbox`), `TestTrayMenuKey`, and
+  `TestTrayMenuDeviceSubtitle`. They assert icon keys through
+  `trayMenuModel.deviceIcon`/`muteIcon`, because `loadMenuIcons` needs a
+  running mygo app.
+
+## 2026-11-13 — tray menu rows simplified
+
+- **Decision.** Every receiver row now draws its family glyph as a menu
+  template in the text color, so the glyphs stay white (or the menu's ink)
+  and the colored accent variants are gone. The menu drops the 断开连接 row;
+  the flyout's active receiver row still offers it. A 关灯 or 开灯 row joins
+  the toggles under 静音本机输出, its label bound to `Snapshot.LampOff` and
+  its click calling `setLampOff(!off)`. The cached-menu key now carries
+  `lampOff`, so the label and glyph follow the light. The connected target
+  currently has no visible marker; the way to show it beside the name is an
+  open design question.
+- **Live run.** The binary from this tree was relaunched and its menu
+  captured while streaming to HomePods. The HomePods and MacBook Air rows
+  both drew white template glyphs in one column, no 断开连接 row appeared,
+  静音本机输出 drew the slashed bell, and 关灯 sat directly under it with the
+  lamp glyph. The capture lives outside the repository; this entry is the
+  durable record.
+- **Pins.** `TestTrayMenuShapeSelected`, `TestTrayMenuHasNoDisconnectRow`,
+  `TestTrayMenuLampRow`, `TestTrayMenuMuteIcon`, `TestTrayMenuKey`,
+  `TestTrayMenuFallbackWithNoDevices`, `TestTrayMenuFallbackForHiddenTarget`,
+  and `TestTrayMenuDeviceSubtitle`.
+
+## 2026-11-13 — tray menu connected color
+
+- **Decision.** With no right-side icon slot in mygo menus, the device glyph
+  carries the session state. The receiver named by `Snapshot.SelectedID`
+  while the session is not idle draws its family glyph in the palette accent
+  (`#4f46e5` light, `#a5b4fc` dark); every other row keeps the template glyph
+  in the text color. A device that is only selected while idle stays
+  template, so color means connected rather than chosen. The colored copies
+  are non-template images built from the SF source with `currentColor`
+  replaced, and the menu key carries the connected ID and the appearance, so
+  both a session change and a theme change rebuild it.
+- **Pins.** `TestTrayMenuDeviceIconFollowsSession`,
+  `TestTrayMenuShapeSelected`, `TestTrayMenuKey`.
+
+## 2026-11-13 — tray menu lamp icon state
+
+- **Decision.** The ambient-light row now matches the mute row's convention:
+  its glyph carries the state as well as the label. The light on draws
+  `lamp` with the label 关灯; the light off draws `lampOff`, the same glyph
+  with a diagonal slash, with the label 开灯. `trayMenuModel.lampIcon` derives
+  the key from `Snapshot.LampOff`, and the menu key already carries `lampOff`,
+  so the icon and label flip together.
+- **Pins.** `TestTrayMenuLampRow`.
+
+## 2026-11-13 — ambient-light copy names its object
+
+- **Decision.** The lamp action now reads 关闭氛围灯 when the light is lit and
+  开启氛围灯 when it is dark, replacing the bare 关灯 and 开灯. The English
+  copy follows: `Turn off ambient light` and `Turn on ambient light`. The
+  shared `lampTurnOff`/`lampTurnOn` keys feed both surfaces, so the tray
+  menu's row and the flyout power button's accessible label change together;
+  the flyout button stays icon-only and its layout is unchanged. The 已关灯
+  chip and 自动关闭氛围灯 setting keep their own copy.
+- **Pins.** `TestTrayMenuLampRow`, plus the catalog gates that reject a dead
+  key, a banned term, and a duplicate value.
+
+## 2026-11-13 — tray menu connected dot
+
+- **Decision.** The in-session receiver's row appends a bullet (`•`, preceded
+  by a space) to its name, so the connected state reads even where the
+  accent-colored glyph is hard to distinguish. `trayMenuModel.deviceLabel`
+  adds it only when the row's ID equals `connected`, the same condition the
+  colored glyph uses; a selected but idle device keeps its bare name. The
+  label is part of the menu key through `connected`, so the mark follows the
+  session.
+- **Pins.** `TestTrayMenuDeviceIconFollowsSession`.
+
+## 2026-11-13 — tray menu connected check mark
+
+- **Decision.** The bullet was too small to read as a state, so the
+  in-session receiver's label now appends a check mark (`✓`, preceded by a
+  space) instead. The condition is unchanged: `trayMenuModel.deviceLabel`
+  adds it only when the row's ID equals `connected`, and a selected but idle
+  device keeps its bare name.
+- **Pins.** `TestTrayMenuDeviceIconFollowsSession`.
+
+## 2026-11-13 — tray menu connected glyph
+
+- **Decision.** The text marks (dot, then check mark) are retired. The
+  in-session receiver's row now draws the connection glyph (`connect`,
+  `iconLink`) in place of its receiver-family glyph, so the state is a shape
+  rather than punctuation. Every other row keeps its receiver glyph, and a
+  device that is only selected while idle keeps it too. The accent-colored
+  variant machinery and the appearance-driven menu rebuilds are removed with
+  the color rule; the menu key still carries `connected`, so the glyph
+  follows the session.
+- **Pins.** `TestTrayMenuDeviceIconFollowsSession`, `TestTrayMenuShapeSelected`.
+
+## 2026-11-13 — connected mark settled on the icon color
+
+- **Decision.** The punctuation marks and the connection-glyph swap were both
+  tried and reverted. The in-session receiver keeps its receiver-family glyph
+  and draws it in the palette accent (`#4f46e5` light, `#a5b4fc` dark); every
+  other row draws the template in the text color, and a device that is only
+  selected while idle stays template, because color means connected, not
+  chosen. The name carries no mark. The accent variants and the
+  appearance-driven rebuild are back; the menu key carries `connected` and
+  `dark`.
+- **Pins.** `TestTrayMenuDeviceIconFollowsSession`, `TestTrayMenuShapeSelected`,
+  `TestTrayMenuKey`.
 
 ## Graduated
 

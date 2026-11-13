@@ -321,19 +321,25 @@ type fakeReceiver struct {
 	// SETUP paths.
 	omitEventPort       bool
 	garbageSessionSetup bool
-	// omitInitialVolume and initialVolumeString exercise the unknown-volume
-	// path in the streaming poll.
-	omitInitialVolume   bool
-	initialVolumeString bool
-	requests            map[string]int
-	seen                []request
-	setParams           []string
-	commands            []string
-	sessionSetup        map[string]any
-	streamSetup         map[string]any
-	setPeersBody        []byte
-	encryptAfterReply   bool
-	failAll             bool
+	// omitInitialVolume, initialVolumeString, initialVolumeBool,
+	// initialVolumeRealSet, and garbageInfo exercise the unknown-volume path
+	// in the handshake and the streaming poll.
+	omitInitialVolume    bool
+	initialVolumeString  bool
+	initialVolumeBool    bool
+	initialVolumeReal    float64
+	initialVolumeRealSet bool
+	garbageInfo          bool
+	infoArray            bool
+	requests             map[string]int
+	seen                 []request
+	setParams            []string
+	commands             []string
+	sessionSetup         map[string]any
+	streamSetup          map[string]any
+	setPeersBody         []byte
+	encryptAfterReply    bool
+	failAll              bool
 
 	digestChallenge  bool
 	digestNonce      string
@@ -433,11 +439,25 @@ func (f *fakeReceiver) dispatch(req request) {
 	case req.method == "POST" && req.uri == "/pair-verify":
 		f.pairVerify(req)
 	case req.method == "GET" && req.uri == "/info":
+		if f.garbageInfo {
+			f.reply(req, 200, "application/x-apple-binary-plist", []byte("not a plist"))
+			return
+		}
+		if f.infoArray {
+			body, _ := crypto.Encode([]any{"not", "a", "dictionary"})
+			f.reply(req, 200, "application/x-apple-binary-plist", body)
+			return
+		}
 		reply := map[string]any{}
 		if !f.omitInitialVolume {
-			if f.initialVolumeString {
+			switch {
+			case f.initialVolumeString:
 				reply["initialVolume"] = "loud"
-			} else {
+			case f.initialVolumeBool:
+				reply["initialVolume"] = true
+			case f.initialVolumeRealSet:
+				reply["initialVolume"] = f.initialVolumeReal
+			default:
 				reply["initialVolume"] = f.receiverVolume
 			}
 		}

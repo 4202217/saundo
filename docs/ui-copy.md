@@ -19,7 +19,7 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
 
-The ambient light is turned off with 关灯 or 关闭氛围灯. Do not use 熄灯.
+The ambient light is turned off with 关闭氛围灯 and on with 开启氛围灯. Do not use 熄灯.
 
 ## Latency and stability
 

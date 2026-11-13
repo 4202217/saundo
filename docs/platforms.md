@@ -39,6 +39,14 @@ the seams and the rules for extending them. The code map:
 | Engine wiring | injected function fields (`engine.go` `captureStartFn`, `defaultEndpoint`, `setEndpointMuted`, `processMute`, `setProcessMuted`, `endpoints`, `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
 | App wiring | `app.go` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `mygo.Updater` through the darwin manifest | stubs |
 
+The Windows loopback carries the endpoint volume. On Realtek Digital Output
+a 440 Hz tone measured RMS 0.0706 at the top step and 0.0001 at step 0 on
+2026-11-12, so a quiet PC attenuates the sent stream; the same device's
+endpoint mute did not reach the tap. saundo leaves the endpoint volume alone,
+so the PC volume remains a second gain stage on Windows. The macOS process tap
+is expected to sit before the output device's volume, so macOS leaves the
+volume alone; it has not been measured on a Mac.
+
 ## Adding a feature
 
 Ask one question first: does the feature talk to the OS beyond what mygo

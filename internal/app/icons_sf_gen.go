@@ -482,37 +482,43 @@ var sfIcons = func() map[string]*ui.SVG {
 	return m
 }()
 
-// deviceIcon picks the filled glyph by receiver family, Mac form, and whether
-// the row is a stereo group.
-func deviceIcon(model string, stereo bool) *ui.SVG {
+// deviceIconKey names the glyph by receiver family, Mac form, and whether the
+// row is a stereo group.
+func deviceIconKey(model string, stereo bool) string {
 	switch {
 	case strings.HasPrefix(model, "AudioAccessory"):
 		mini := strings.HasPrefix(model, "AudioAccessory5")
 		if stereo {
 			if mini {
-				return sfIcons["homepod-mini-pair"]
+				return "homepod-mini-pair"
 			}
-			return sfIcons["homepod-pair"]
+			return "homepod-pair"
 		}
 		if mini {
-			return sfIcons["homepod-mini"]
+			return "homepod-mini"
 		}
-		return sfIcons["homepod"]
+		return "homepod"
 	case strings.HasPrefix(model, "AppleTV"):
-		return sfIcons["appletv"]
+		return "appletv"
 	case strings.HasPrefix(model, "AirPort"):
-		return sfIcons["airport-express"]
+		return "airport-express"
 	default:
 		switch device.MacFormFor(model) {
 		case device.MacFormLaptop:
-			return sfIcons["macbook"]
+			return "macbook"
 		case device.MacFormMini:
-			return sfIcons["macmini"]
+			return "macmini"
 		case device.MacFormStudio:
-			return sfIcons["macstudio"]
+			return "macstudio"
 		case device.MacFormDesktop:
-			return sfIcons["desktop"]
+			return "desktop"
 		}
-		return sfIcons["hifispeaker"]
+		return "hifispeaker"
 	}
+}
+
+// deviceIcon picks the filled glyph by receiver family, Mac form, and whether
+// the row is a stereo group.
+func deviceIcon(model string, stereo bool) *ui.SVG {
+	return sfIcons[deviceIconKey(model, stereo)]
 }

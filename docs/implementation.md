@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-12 -->
+<!-- reviewed-through: 2026-11-13 -->
 
 # Implementation overview
 
@@ -178,12 +178,23 @@ last streaming snapshot for up to 3 s while an apply restarts, so the flyout
 keeps its streaming faces; only the latency row changes and a spinner follows
 the playback label. Preset clicks debounce the restart for 300 ms and custom
 edits for 500 ms, so rapid switching coalesces into one restart with the final
-mode.
+mode. The connection mute survives that restart: an in-place restart keeps the
+local output muted across the rebuild, because the mute belongs to the user's
+session rather than to the transport. Only a restart that cannot open its new
+session restores it. A connect that replaces a live session is a switch to
+another receiver and takes the same path: `cmdConnect` routes it through
+`restartSession` while a transport is active, so the mute survives the gap. The
+flyout offers that connect on the other online rows only while streaming; a
+connection attempt in progress keeps them disabled. A switch whose new session
+cannot open restores the endpoint, whether the failure is synchronous or
+reported at launch.
 
 ## A connect, end to end
 
 1. The UI calls `Engine.Connect(id)`; the command reaches the engine
-   goroutine.
+   goroutine. With a live session the command is a switch: the engine
+   rebuilds through the in-place path, so the connection mute survives the
+   gap.
 2. The engine resolves the target — a device or a collapsed stereo group
    (`openSession` / `openGroupSession`) — checks stored credentials, and
    picks the pairing path from the device's auth kind. For the launch
@@ -228,7 +239,8 @@ All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saun
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM. A file that fails to decrypt is moved to `credentials.dat.corrupt-<UTC time>` and a fresh store is created in its place; the next connect logs the quarantined path and says a receiver may need to be paired again.
 - `mute-guard.json` — written before the engine mutes the local render
   endpoint and removed after it releases it. The connection mute is temporary
-  and never outlives the session; a crash or forced kill leaves the guard for
+  and never outlives the session; an in-place restart such as a latency change
+  holds it across the rebuild, and a crash or forced kill leaves the guard for
   the next launch to release the endpoint (`internal/engine/mute.go`).
 - `saundo.log` (+ `saundo.log.1` rotation) — diagnostics.
 - The first run after the airgoplay rename copies `settings.json` and
