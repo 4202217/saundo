@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-12 -->
+<!-- reviewed-through: 2026-11-13 -->
 
 # AirPlay 2 wire protocol
 
@@ -122,6 +122,8 @@ Stream SETUP fields:
 The latency modes resolve to a millisecond value before SETUP. Low is 200 ms, standard is 1500 ms, stable is 2000 ms, and custom is 20 to 2000 ms. The base plus a receiver's DSP/DAC delay clamps to 20 to 4000 ms, and the sender sends that value unchanged. A live change restarts the session so the new latency reaches the stream SETUP and the sender re-anchors the timeline.
 
 A macOS receiver adds a 66150-sample scheduling latency (see [devices.md](devices.md)).
+
+**Volume.** `SET_PARAMETER` with `Content-Type: text/parameters` and body `volume: <dBFS>` sets the receiver's own absolute volume. The domain is `[-144, 0]` dBFS: `0` is full scale, `-30` is slider 0%, and `-144` is the mute sentinel; saundo maps 0–100% to `0.3·pct − 30` dB and sends `-144` at 0%. AP2 carries the message on the encrypted control channel without a `Session` header; AP1 sends the `Session` header. `GET /info` before session SETUP and the 1 Hz poll while streaming report `initialVolume`. Only a finite numeric value in `[-144, 0]` is known. A missing, unreadable, bool, or non-numeric value is unknown and the sender sends no volume, so the receiver keeps its own; a value below `-144` clamps to `-144`; a positive value is unknown, not full scale. A remembered per-device volume wins at connect; otherwise a known `initialVolume` is used, and the poll mirrors the receiver's knob back into the UI.
 
 ## 5. Event channel and keep-alive
 

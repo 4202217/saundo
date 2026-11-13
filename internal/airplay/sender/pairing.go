@@ -235,15 +235,22 @@ func (s *Sender) onPairingResponse(code int, headers map[string]string, body str
 		s.pairStage = pairDone
 		s.afterAuthOK()
 	case pairAP2Info:
-		if root, err := crypto.Decode([]byte(body)); err == nil {
-			if m, ok := root.(map[string]any); ok {
-				if _, present := m["initialVolume"]; present {
-					s.ap2.initialVol = float64(plistInt(m, "initialVolume"))
-					s.ap2.hasInitial = true
-				}
-			}
+		if s.ap2 == nil {
+			s.fail("AP2 info reply arrived without an AP2 session")
+			return
 		}
-		s.info("GET /info ok, starting session SETUP")
+		if root, err := crypto.Decode([]byte(body)); err != nil {
+			s.warn("GET /info decode failed (%v); receiver volume unknown", err)
+		} else if m, ok := root.(map[string]any); !ok {
+			s.warn("GET /info reply was not a dictionary; receiver volume unknown")
+		} else if v, numeric := plistRealOK(m, "initialVolume"); !numeric {
+			s.info("GET /info reports no usable initialVolume; receiver volume unknown")
+		} else if db, usable := volumeDBInRange(v); !usable {
+			s.warn("GET /info initialVolume %v is out of range; receiver volume unknown", v)
+		} else {
+			s.ap2.initialVol, s.ap2.hasInitial = db, true
+			s.info("GET /info reports initialVolume %v dBFS", db)
+		}
 		s.sendAP2SetupSession()
 	case pairAP2Session:
 		s.handleAP2SetupSession([]byte(body))
