@@ -6,6 +6,7 @@
 # Local design and audit scratch
 /.audit/
 /icon-check.png
+/.zcode/
 
 # Update signing key (never commit)
 mygo-update.key
