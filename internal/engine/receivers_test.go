@@ -419,6 +419,36 @@ func TestDelayJoinsLatencyAtConnectAndRestarts(t *testing.T) {
 	}
 }
 
+// TestReceiverDelayRestartKeepsLocalMute pins the same hold for the other
+// in-place restart caller: editing the active receiver's delay must not
+// blip the local output mute either.
+func TestReceiverDelayRestartKeepsLocalMute(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	m := newFakeMuter()
+	useMuter(h, m)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.addDeviceOnline()
+	h.connect()
+	h.launch()
+	h.settleMute(t, MuteLocalActive)
+	before := len(m.setCalls)
+
+	delay := 200
+	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: testDeviceID,
+		patch: receivers.Patch{DelayMS: &delay}})
+	if h.sessions != 2 {
+		t.Fatalf("sessions = %d, want a restart", h.sessions)
+	}
+	for _, c := range m.setCalls[before:] {
+		if !c.muted {
+			t.Fatalf("the delay restart unmuted the endpoint: %+v", m.setCalls)
+		}
+	}
+	if !m.muted["default-ep"] {
+		t.Fatal("the endpoint is not muted during the delay restart")
+	}
+}
+
 func TestDelayClampsIntoSenderWindow(t *testing.T) {
 	h := newHarnessWithRegistry(t)
 	h.addDevice()
