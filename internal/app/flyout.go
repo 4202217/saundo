@@ -303,16 +303,18 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 
 	card := ui.Column(c).Radius(10).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
-		ui.Row(c).Padding(10, 12, 10, 22).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2).Margin(0, 0, 0, -2)
-			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
-		})
-		rowLine(c, p)
+		if a.hasNowMedia() {
+			a.nowPlayingCard(c, p)
+			rowLine(c, p)
+		}
 		if a.showLatencySwitch {
 			ui.Column(c).Padding(8, 12, 8, 12).Children(func() { a.latencySwitch(c, p) })
 			rowLine(c, p)
 		}
-		a.nowPlayingCard(c, p)
+		ui.Row(c).Padding(10, 12, 10, 22).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2).Margin(0, 0, 0, -2)
+			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
+		})
 	})
 }
 
