@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -1456,6 +1457,34 @@ func TestAudioPageKeepsLatencyTextInsideItsCards(t *testing.T) {
 				t.Fatalf("at %d DIP, %q is %.1f wide, not one of three cards: the presets did not share a row",
 					width, preset.name, card.Bounds.W)
 			}
+		}
+	}
+}
+
+// TestAudioPagePresetCardsShareOneHeight pins the three preset cards to one
+// row height. Each card used to size to its own description, so a card whose
+// text wrapped to another line stood taller than its neighbours.
+func TestAudioPagePresetCardsShareOneHeight(t *testing.T) {
+	withLocale(t, "en")
+	a := previewApp()
+	a.page = pageAudio
+	a.latencyMode = settings.LatencyLow
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt.Frame()
+	var first ui.Rect
+	for i, preset := range latencyPresets() {
+		card, ok := tt.AccessByRole(ui.RoleRadio, preset.name+" · "+preset.latency)
+		if !ok {
+			t.Fatalf("the %q card is missing: %q", preset.name, tt.Texts())
+		}
+		if i == 0 {
+			first = card.Bounds
+			continue
+		}
+		if math.Abs(float64(card.Bounds.Y-first.Y)) > 0.5 || math.Abs(float64(card.Bounds.H-first.H)) > 0.5 {
+			t.Fatalf("the %q card is (%.1f, %.1f×%.1f), not the row's (%.1f, %.1f×%.1f)",
+				preset.name, card.Bounds.Y, card.Bounds.W, card.Bounds.H,
+				first.Y, first.W, first.H)
 		}
 	}
 }

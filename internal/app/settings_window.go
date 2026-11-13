@@ -691,7 +691,7 @@ func (a *App) audioPage(c *ui.Context, p palette) {
 					a.latencyStackRow(c, p, &mode, preset)
 				}
 			} else {
-				ui.Row(c).Padding(0, 14).Gap(8).Children(func() {
+				ui.Row(c).Padding(0, 14).Gap(8).AlignItems(ui.Stretch).Children(func() {
 					for _, preset := range latencyPresets() {
 						a.latencyModeTile(c, p, &mode, preset)
 					}
@@ -777,8 +777,9 @@ func latencyChoiceRow(c *ui.Context, p palette, mode *settings.LatencyMode,
 }
 
 // latencyModeTile is one of the three preset cards. The whole card is a radio
-// so the group keeps keyboard and assistive access. Its height follows its
-// content, so a wrapped description grows the card instead of leaving it.
+// so the group keeps keyboard and assistive access. The row stretches all
+// three to its tallest card, so a description that wraps to another line
+// grows the row instead of leaving the cards uneven.
 func (a *App) latencyModeTile(c *ui.Context, p palette, mode *settings.LatencyMode, preset latencyPreset) {
 	selected := *mode == preset.value
 	tile := ui.RadioBase(c, mode, preset.value).
