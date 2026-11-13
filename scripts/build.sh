@@ -99,6 +99,8 @@ Darwin)
 	)
 	set +e
 
+	# A fresh worktree has no bin/; the copy below needs it.
+	mkdir -p bin
 	taskkill //F //IM saundo.exe >/dev/null 2>&1
 
 	copied=0
