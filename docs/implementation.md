@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-13 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # Implementation overview
 
@@ -106,7 +106,7 @@ flyout cannot move the preview away from the top display.
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
 `Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetVolume`, `SubmitPIN`,
 `DismissPasswordPrompt`, `DismissCredentialReset`, `SetReceiverPassword`, `SetCaptureEndpoint`,
-`SetCaptureProcess`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
+`SetCaptureApps`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
 `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, `SetTrayAnimation`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
@@ -184,7 +184,8 @@ session rather than to the transport. Only a restart that cannot open its new
 session restores it. A connect that replaces a live session is a switch to
 another receiver and takes the same path: `cmdConnect` routes it through
 `restartSession` while a transport is active, so the mute survives the gap. The
-flyout offers that connect on the other online rows only while streaming; a
+flyout offers Connect on the other online rows in every phase but connecting;
+with a live session that click takes the `restartSession` switch path. A
 connection attempt in progress keeps them disabled. A switch whose new session
 cannot open restores the endpoint, whether the failure is synchronous or
 reported at launch.
@@ -233,7 +234,7 @@ reported at launch.
 
 All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saundo/` on macOS:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, the per-app capture selection (`captureAppIds`, `captureAppNames`), and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, cached member addresses, feature/auth bits, the last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM. A file that fails to decrypt is moved to `credentials.dat.corrupt-<UTC time>` and a fresh store is created in its place; the next connect logs the quarantined path and says a receiver may need to be paired again.

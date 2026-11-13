@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-11 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # Receiver profiles
 

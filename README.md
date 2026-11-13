@@ -17,7 +17,7 @@ HomePod, HomePod mini, Mac, and Apple TV: everything the Mac or PC plays, one tr
 <br>
 
 <p align="center">
-  <img src="docs/screenshots/flyout-stream-light-en.png" width="290" alt="The Saundo tray panel: receiver list, volume, media card">
+  <img src="docs/screenshots/flyout-stream-light-en.png" width="290" alt="The Saundo tray panel: receiver list, media card, latency, volume, and ambient light">
   &nbsp;&nbsp;&nbsp;
   <img src="docs/screenshots/settings-connection-light-en.png" width="470" alt="The settings window: connection page">
 </p>
@@ -57,21 +57,15 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 
 ## What it does
 
-- **System audio capture** — WASAPI loopback on Windows or a Core Audio process tap on macOS: the default output, a fixed endpoint, or, on macOS, one or more applications.
-- **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock (the sender is the PTP master for stereo pairs), encrypted control and event channels, retransmit on request.
-- **HomePod stereo pairs** — both members appear as one target and stream in lockstep.
-- **Receiver management** — add a receiver by IP or hostname when mDNS cannot find it, keep discovered receivers across power-offs, choose one auto-connect target, hide rows from the panel, and give each receiver a DSP/DAC delay plus its own OS-secured password (DPAPI on Windows, the Keychain on macOS). A directed unicast pass finds receivers that miss multicast; the receiver list is cached, so auto-connect starts at launch without waiting for discovery; and both surfaces list only the receivers you can use right now. A receiver that runs on the same computer is never a target: it stays in the hidden group with a Local chip.
-- **Connection health** — the Connection page names the receiver, its model, and its state, then shows the receiver's own reported processing time and this session's stability (Good, or Stuttering after a dropped sample). The two latency values measure different stages and are never added.
-- **Media card** — the tray panel shows the system media session with its app name and icon, cover, title, artist, the transport controls the session reports, and a live five-band meter; switch between open sessions. The Now Playing settings page controls the media card, the cover mode, cover colors, and the audio level. The receiver track-info push is always on.
-- **Ambient light** — on by default. The power action on the tray panel card turns a HomePod's top display off and on; a Cover/Template priority segment follows the media cover (the default) or one of six custom three-color templates. The preview mirrors the cover's extracted three-color palette and uses a media-glyph tile when there is no cover; the receiver's own fresh session shows a white-center placeholder. A pause keeps the current light. Idle standby turns the display off after a chosen period without playback — Never, 1, 5, 10, or 30 minutes — and the first sound wakes it. Turning it off disables the priority and template controls until it is on again. Choose it in the Ambient light settings page or the tray panel's ambient card.
-- **Mute the local output** — a connection switch, on by default, mutes the local output while a session streams and restores it on disconnect, with a guard file that recovers the state after a crash. With per-app capture on macOS, it mutes just the selected app, so other apps keep playing from this Mac.
-- **Appearance** — follow the system, light, or dark.
-- **Latency modes** — low 200 ms, standard 1.5 s, stable 2 s, or a custom 20 to 2000 ms value. Switch in the tray panel or the audio page. A live change restarts the stream with a spinner.
-- **A tray that shows the state** — the smile, stream, and connect faces animate at 12 frames per 100 ms while connecting or streaming. Turn it off in settings. Reduce Motion holds the static face.
-- **Updates in the app** — the settings Update page shows available releases, their notes, and the release history. It installs the signed update. The tray panel's update chip and the tray tooltip point to it. Each platform updates from its own signed manifest in the release. The macOS build is ad-hoc signed until a Developer ID exists, so an update can ask again for system-audio capture and Keychain access.
-- **English and Simplified Chinese** — the interface follows the system language by default, with a language setting and a localized update page, notes dialog, and every engine error message.
-- **Every pairing class** — password-free transient pairing (HomePod), on-screen PIN (Apple TV), receiver password with a first-connect dialog; credentials are protected by the OS secret store (DPAPI on Windows, the Keychain on macOS). If the saved pairing data cannot be read, the app moves it aside and a tray-panel notice explains the reset and offers to pair again.
-- **Stays out of the way** — suspends the stream after 5 s of digital silence and resumes cleanly, auto-reconnects with backoff, follows volume changes made on the receiver, and stops with a Reconnect action when another device takes the receiver over.
+- **System audio capture** — everything the Mac or PC plays: WASAPI loopback on Windows, a Core Audio process tap on macOS, or, on macOS, one or more selected apps.
+- **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock, encrypted control and event channels, retransmit on request. HomePod stereo pairs play in lockstep.
+- **Receivers, managed** — find them with mDNS or add an IP; keep them across power-offs; hide rows; choose one auto-connect target and set a per-receiver delay and password. Switch receivers from the panel or its right-click menu without stopping playback.
+- **One tray surface** — the panel carries the media card, latency, volume, and ambient light; the right-click menu carries receivers, local mute, the lamp, settings, updates, and quit. Animated faces follow the session.
+- **Ambient light** — a HomePod's top display follows the media cover or one of six three-color templates, and turns off after a chosen idle period.
+- **Mute the local output** — silences this computer while streaming and restores it on disconnect. With per-app capture on macOS, only the selected apps go quiet.
+- **Latency modes** — 200 ms, 1.5 s, 2 s, or a custom 20–2000 ms; switch while playing.
+- **Sessions that recover** — auto-reconnect with backoff, silence suspend, takeover handling, and receiver volume following.
+- **Updates, languages, pairing** — the settings update page installs signed updates on both platforms; English and Simplified Chinese; HomePod, Apple TV PIN, and receiver-password pairing with OS-secured credentials.
 
 ## Receiver support
 

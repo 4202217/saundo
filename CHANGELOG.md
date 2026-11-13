@@ -5,6 +5,46 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.6.3 - 2026-11-14
+
+### Added
+
+- Per-app capture on the Mac. The Capture settings list running applications
+  with their icons; pick one or more, and the selection streams through one
+  tap. Audio helpers fold into the app whose bundle ID prefixes theirs. The
+  selection keeps bundle IDs, so it survives restarts. The capture status
+  names the selection count and warns when an app is missing or is waiting
+  for its first sound.
+- Quick actions in the tray menu. A right click lists one row per visible
+  receiver, with the connected receiver in the accent color; when no row is
+  the target, Connect to last receiver follows. Mute local output and the
+  ambient light toggle from the same menu, and the mute row reads Unmute
+  local output while the preference is on.
+
+### Changed
+
+- Connecting another receiver while streaming switches to it in place. The
+  local mute survives the switch, and the previous output comes back if the
+  new session fails. While streaming, the panel offers Connect on the other
+  online rows.
+- The local mute survives a latency change that restarts the stream.
+- The playback card orders media, latency, and volume on one content column.
+  The volume row shows its integer percent on one line, the latency glyphs
+  are larger, and the transport glyphs draw their circle only on hover.
+- The latency preset cards share one height, so a wrapped description no
+  longer leaves them uneven. The connecting row's action carries a cancel
+  icon.
+- The tray menu no longer offers Disconnect; the panel's active receiver row
+  keeps it.
+
+### Fixed
+
+- An unknown receiver volume no longer means full scale. When the AP2
+  handshake has no usable initial volume, or reports -144 (mute), the sender
+  sends no volume command and the receiver keeps its own level. A malformed
+  value is no longer read as zero, a value below -144 clamps to mute, and the
+  1 Hz volume poll follows the same rule.
+
 ## 0.6.2 - 2026-11-12
 
 ### Added

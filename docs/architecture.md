@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-12 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # saundo Architecture and Technology Selection
 
@@ -21,7 +21,7 @@ Not targets:
 - Screen mirroring and video.
 - FairPlay audio. Apple TV 3-class receivers fail fast at discovery; see [devices.md](devices.md).
 
-Multi-room stereo pairs, application-level capture, and an AirPlay 1 fallback are implemented; they are documented where they belong, not here.
+Multi-room stereo pairs, application-level capture on macOS, and an AirPlay 1 fallback are implemented; they are documented where they belong, not here.
 
 ## 1. Decision
 
