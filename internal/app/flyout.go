@@ -309,7 +309,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 		})
 		rowLine(c, p)
 		if a.showLatencySwitch {
-			ui.Column(c).Padding(6, 12, 10, 12).Children(func() { a.latencySwitch(c, p) })
+			ui.Column(c).Padding(8, 12, 8, 12).Children(func() { a.latencySwitch(c, p) })
 			rowLine(c, p)
 		}
 		a.nowPlayingCard(c, p)
