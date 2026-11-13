@@ -492,13 +492,14 @@ func (a *App) nowPlayingPoster(c *ui.Context, p palette, art *ui.Bitmap, mode se
 	})
 }
 
-// nowTransport draws the enabled transport controls in the session arrow's
-// card style: 24-DIP circles 4 DIPs apart, with the same fill and muted glyph.
+// nowTransport draws the enabled transport controls as bare glyphs on
+// 24-DIP hit areas, 2 DIPs apart. The bare icons sit on the content column;
+// hovering one draws its circle back, so the rest of the row stays light.
 func (a *App) nowTransport(c *ui.Context, p palette, s nowplaying.Session, preview bool) {
 	if !a.cfg.PlaybackControls || !a.nowHasControls(s) {
 		return
 	}
-	ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
+	ui.Row(c).Gap(2).AlignItems(ui.Center).Shrink(0).Margin(0, 0, 0, -6).Children(func() {
 		if s.CanPrev {
 			a.nowTransportButton(c, p, iconPrev, locales.FlyoutPrevious(), nowplaying.ActionPrevious, s.AUMID, preview)
 		}
@@ -515,9 +516,9 @@ func (a *App) nowTransport(c *ui.Context, p palette, s nowplaying.Session, previ
 
 func (a *App) nowTransportButton(c *ui.Context, p palette, icon *ui.SVG, label string, action nowplaying.Action, aumid string, preview bool) {
 	btn := ui.ButtonBase(c).Size(24, 24).Radius(12).Center().
-		Background(p.card).Cursor(ui.CursorPointer).Label(label).Disabled(preview)
+		Cursor(ui.CursorPointer).Label(label).Disabled(preview)
 	if btn.Hovered() {
-		btn.Background(p.cardHover)
+		btn.Background(p.card)
 	}
 	btn.OnClick(func() {
 		if a.controlNow != nil {
@@ -525,11 +526,7 @@ func (a *App) nowTransportButton(c *ui.Context, p palette, icon *ui.SVG, label s
 		}
 	})
 	btn.Children(func() {
-		col := p.muted
-		if btn.Hovered() {
-			col = p.fg
-		}
-		ui.Icon(c, icon).Size(12, 12).TextColor(col)
+		ui.Icon(c, icon).Size(12, 12).TextColor(p.fg)
 	})
 }
 
