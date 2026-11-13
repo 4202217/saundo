@@ -277,9 +277,18 @@ type segmentItem struct {
 	icon  *ui.SVG
 }
 
+// segmentAlign places a segment's content. segmentLeading puts it on the
+// card's content column instead of centering it in the segment.
+type segmentAlign uint8
+
+const (
+	segmentCenter segmentAlign = iota
+	segmentLeading
+)
+
 // segmented is the shared 30-DIP segmented control. width 0 fills the parent.
 // dimmed greys every label and disables the track.
-func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width float32, dimmed bool, label string) ui.Element {
+func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width float32, dimmed bool, align segmentAlign, label string) ui.Element {
 	parts := ui.SegmentedBase(c, seg, len(items))
 	track := parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
 		Label(label).Disabled(dimmed)
@@ -288,8 +297,13 @@ func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width fl
 	}
 	track.Children(func() {
 		for i, item := range items {
-			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Center().Gap(4).
+			s := parts.Segment(i).Grow(1).Height(26).Radius(6).Gap(4).
 				Cursor(ui.CursorPointer).Label(item.label)
+			if align == segmentLeading {
+				s.Justify(ui.Start).AlignItems(ui.Center).Padding(0, 8)
+			} else {
+				s.Center()
+			}
 			if i == *seg {
 				if p.dark {
 					s.Background(p.pillHover)
