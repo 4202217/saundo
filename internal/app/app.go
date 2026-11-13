@@ -330,7 +330,7 @@ func (a *App) ready() {
 		ToolTip:        locales.TrayTooltip(),
 	})
 	if a.tray != nil {
-		a.tray.OnAppearanceChange(a.refreshTrayIcon)
+		a.tray.OnAppearanceChange(a.rebuildTray)
 		a.refreshTrayIcon()
 		a.tray.OnClick(a.toggleWindow)
 		a.tray.OnRightClick(func() {
@@ -1073,12 +1073,156 @@ func (a *App) toggleWindow() {
 	a.showWindow()
 }
 
+// trayMenuModel is everything the tray menu shows, derived from one snapshot.
+// Rebuilding compares the model, so an unchanged model keeps the cached menu.
+type trayMenuModel struct {
+	locale     string
+	dark       bool
+	connecting bool
+	selected   string
+	connected  string
+	muteOn     bool
+	lampOff    bool
+	devices    []trayMenuDevice
+}
+
+// trayMenuDevice is one receiver row.
+type trayMenuDevice struct {
+	id     string
+	name   string
+	family string
+	online bool
+}
+
 // trayMenuKey is what the tray menu's shape depends on. The tooltip follows
 // more of the snapshot and is compared on its own.
 type trayMenuKey struct {
-	connecting   bool
-	hasSelection bool
-	locale       string
+	locale     string
+	dark       bool
+	connecting bool
+	selected   string
+	connected  string
+	muteOn     bool
+	lampOff    bool
+	devices    string
+}
+
+func (a *App) trayModel(locale string, dark bool) trayMenuModel {
+	m := trayMenuModel{
+		locale:     locale,
+		dark:       dark,
+		connecting: a.snap.State != sender.StateIdle,
+		selected:   a.snap.SelectedID,
+		muteOn:     a.cfg.MuteLocalOnConnect,
+		lampOff:    a.snap.LampOff,
+		devices:    make([]trayMenuDevice, len(a.snap.Devices)),
+	}
+	if m.connecting {
+		m.connected = a.snap.SelectedID
+	}
+	if m.selected == "" {
+		m.selected = a.selID
+	}
+	for i, d := range a.snap.Devices {
+		m.devices[i] = trayMenuDevice{id: d.ID, name: d.Name, family: deviceIconKey(d.Model, d.IsStereoGroup()), online: d.Online}
+	}
+	return m
+}
+
+func (m trayMenuModel) key() trayMenuKey {
+	var b strings.Builder
+	for _, d := range m.devices {
+		fmt.Fprintf(&b, "%d:%s|%d:%s|%s|%t\n", len(d.id), d.id, len(d.name), d.name, d.family, d.online)
+	}
+	return trayMenuKey{
+		locale:     m.locale,
+		dark:       m.dark,
+		connecting: m.connecting,
+		selected:   m.selected,
+		connected:  m.connected,
+		muteOn:     m.muteOn,
+		lampOff:    m.lampOff,
+		devices:    b.String(),
+	}
+}
+
+// deviceIcon is the key of the receiver's glyph: the device in session takes
+// the accent-colored variant for the appearance, the other rows the template
+// in the menu's text color.
+func (m trayMenuModel) deviceIcon(d trayMenuDevice) string {
+	if d.id != m.connected {
+		return "dev:" + d.family
+	}
+	if m.dark {
+		return "devond:" + d.family
+	}
+	return "devon:" + d.family
+}
+
+func (m trayMenuModel) muteIcon() string {
+	if m.muteOn {
+		return "bellOff"
+	}
+	return "bell"
+}
+
+// lampLabel names the ambient light's action: turning off while it is lit.
+func (m trayMenuModel) lampLabel() string {
+	if m.lampOff {
+		return locales.LampTurnOn()
+	}
+	return locales.LampTurnOff()
+}
+
+// lampIcon matches the light's state, as the bell does for the mute row.
+func (m trayMenuModel) lampIcon() string {
+	if m.lampOff {
+		return "lampOff"
+	}
+	return "lamp"
+}
+
+func (a *App) trayMenuItems(m trayMenuModel) []*mygo.MenuItem {
+	items := make([]*mygo.MenuItem, 0, len(m.devices)+10)
+	targeted := false
+	for _, d := range m.devices {
+		item := &mygo.MenuItem{
+			Label: d.name,
+			Icon:  a.menuIcons[m.deviceIcon(d)],
+			Click: func(*mygo.MenuItem, *mygo.Window) { a.connectDevice(d.id) },
+		}
+		if !d.online {
+			item.Subtitle = locales.ActionOffline()
+		}
+		targeted = targeted || d.id == m.selected
+		items = append(items, item)
+	}
+	// No targeted row means the current target is not among the visible
+	// receivers, so offer the remembered one instead.
+	if !targeted {
+		items = append(items, &mygo.MenuItem{
+			Label:    locales.TrayConnectLast(),
+			Icon:     a.menuIcons["connect"],
+			Disabled: a.selID == "",
+			Click:    func(*mygo.MenuItem, *mygo.Window) { a.connectSelected() },
+		})
+	}
+	items = append(items, mygo.Separator())
+	items = append(items,
+		&mygo.MenuItem{Label: locales.TrayMuteLocal(), Icon: a.menuIcons[m.muteIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
+			a.setMuteLocal(!m.muteOn)
+		}},
+		&mygo.MenuItem{Label: m.lampLabel(), Icon: a.menuIcons[m.lampIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
+			a.setLampOff(!m.lampOff)
+		}},
+		mygo.Separator(),
+		&mygo.MenuItem{Label: locales.TrayShowPanel(), Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
+		&mygo.MenuItem{Label: locales.TraySettings(), Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
+		mygo.Separator(),
+		&mygo.MenuItem{Label: locales.TrayCheckUpdates(), Icon: a.menuIcons["update"], Click: func(*mygo.MenuItem, *mygo.Window) { a.openUpdateCheck() }},
+		&mygo.MenuItem{Role: mygo.RoleQuit, Label: locales.TrayQuit(), Icon: a.menuIcons["quit"]},
+	)
+	return items
 }
 
 func (a *App) rebuildTray() {
@@ -1088,28 +1232,13 @@ func (a *App) rebuildTray() {
 	if a.menuIcons == nil {
 		a.menuIcons = loadMenuIcons()
 	}
-	connecting := a.snap.State != sender.StateIdle
-	key := trayMenuKey{connecting: connecting, hasSelection: a.selID != "", locale: mygo.App.Locale()}
+	m := a.trayModel(mygo.App.Locale(), mygo.Theme.IsDark())
+	key := m.key()
 	if a.trayMenu == nil || key != a.menuKey {
 		a.menuKey = key
-		items := []*mygo.MenuItem{
-			{Label: locales.TrayShowPanel(), Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
-			{Label: locales.TraySettings(), Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
-			{Label: locales.TrayCheckUpdates(), Icon: a.menuIcons["update"], Click: func(*mygo.MenuItem, *mygo.Window) { a.openUpdateCheck() }},
-			mygo.Separator(),
-		}
-		if connecting {
-			items = append(items, &mygo.MenuItem{Label: locales.TrayDisconnect(), Icon: a.menuIcons["disconnect"], Click: func(*mygo.MenuItem, *mygo.Window) {
-				a.disconnect()
-			}})
-		} else {
-			items = append(items, &mygo.MenuItem{Label: locales.TrayConnectLast(), Icon: a.menuIcons["connect"], Disabled: a.selID == "", Click: func(*mygo.MenuItem, *mygo.Window) {
-				a.connectSelected()
-			}})
-		}
-		items = append(items, mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleQuit, Label: locales.TrayQuit(), Icon: a.menuIcons["quit"]})
-		a.trayMenu = mygo.NewMenu(items)
+		a.trayMenu = mygo.NewMenu(a.trayMenuItems(m))
 	}
+	connecting := a.snap.State != sender.StateIdle
 	tip := locales.TrayTooltip()
 	if connecting {
 		tip = locales.TrayTooltip() + " · " + a.statusText()
@@ -1335,4 +1464,5 @@ func (a *App) setTheme(label string) {
 	if a.setThemeSource != nil {
 		a.setThemeSource(appearanceSource(mode))
 	}
+	a.rebuildTray()
 }
