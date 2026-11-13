@@ -37,7 +37,7 @@
   "trayShowPanel": "Show tray panel",
   "traySettings": "Settings…",
   "trayConnectLast": "Connect to last receiver",
-  "trayDisconnect": "Disconnect",
+  "trayMuteLocal": "Mute local output",
   "trayQuit": "Quit Saundo",
   "trayTooltip": "Saundo",
   "statusReconnecting": "Reconnecting…",
@@ -653,8 +653,8 @@
       }
     }
   },
-  "lampTurnOff": "Turn off",
-  "lampTurnOn": "Turn on",
+  "lampTurnOff": "Turn off ambient light",
+  "lampTurnOn": "Turn on ambient light",
   "lampOffStatus": "Off",
   "lampStandbyStatus": "Standby",
   "lampNoMedia": "No media",

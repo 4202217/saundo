@@ -9,9 +9,18 @@
   wave); eyes static.
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
-- Right click opens the menu: 显示托盘面板, 设置…, 检查更新…, 断开连接 or
-  连接上次接收器, 退出声渡. The menu is installed only for the duration of
-  the popup.
+- Right click opens the menu: one row per visible receiver, each with its
+  receiver-family glyph in one icon column. The receiver in session draws
+  that glyph in the accent color; every other row, including a device merely
+  selected while idle, draws the template in the text color. An unreachable
+  row keeps the 离线 subtitle. The 连接上次接收器
+  fallback follows when no row is the target. Then the 静音本机输出 row (bell
+  glyph, slashed while the preference is on), 关闭氛围灯 or 开启氛围灯 for the ambient
+  light, 显示托盘面板, 设置…, 检查更新…, and 退出声渡. The menu has no
+  断开连接 row; the flyout's active row keeps it. No row uses a radio or
+  checkbox mark. The lamp glyph gains a slash while the light is off, as the
+  bell does for the mute row. The menu is installed only
+  for the duration of the popup.
 - Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
   height from the device rows (56 each, 141 empty state), the latency row
   (44), the Now Playing card (150 while a session exists and
