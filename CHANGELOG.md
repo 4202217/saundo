@@ -44,6 +44,9 @@ release notes.
   sends no volume command and the receiver keeps its own level. A malformed
   value is no longer read as zero, a value below -144 clamps to mute, and the
   1 Hz volume poll follows the same rule.
+- The English flyout's latency segment shows the single word Low instead of
+  a truncated label, and the capture page says System audio, or one or more
+  apps. instead of a single app.
 
 ## 0.6.2 - 2026-11-12
 

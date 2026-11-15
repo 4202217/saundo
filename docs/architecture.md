@@ -70,7 +70,7 @@ Port map:
 | `src/airplay_crypto.cpp` | SRP-6a, TLV8, bplist, ChaCha20-Poly1305, HKDF, X25519, Ed25519, digest auth | `internal/airplay/crypto` |
 | `src/raop_sender.cpp` | Pairing, encrypted control channel, event channel, AP2 SETUP, ALAC, pacing, retransmit | `internal/airplay/sender` |
 | `src/raop_io.h` | Six-method I/O interface | `internal/airplay/io` |
-| `src/raop_loop.cpp` | poll/WSAPoll host | `internal/airplay/host`, rewritten with Go net |
+| `src/raop_loop.cpp` | poll/WSAPoll host | `internal/airplay/io` (package `raopio`), rewritten with Go net |
 | `src/ring_buffer.h` | Single-producer single-consumer ring buffer | `internal/audio/ring` |
 | `src/raop_creds.h` | Credential JSON | `internal/airplay/creds` |
 | `test/core_tests.cpp` | In-process fake receiver covering both handshakes and encrypted audio | Go tests in `internal/airplay/sender` |

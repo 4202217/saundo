@@ -8,7 +8,7 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 
 | Concept | Chinese | English | Do not use |
 |---|---|---|---|
-| AirPlay receiver | 接收器 | receiver | 接收设备, 接收端, 设备, 当前接收器 (except 播放设备 for a Windows audio endpoint) |
+| AirPlay receiver | 接收器 | receiver | 接收设备, 接收端, 设备, 当前接收器 |
 | The tray panel (flyout) | 托盘面板 | tray panel | 面板 (bare), 控制面板, 控制中心 |
 | Playback | 播放 | play | 推流, 串流 |
 | Capture | 采集 | capture | 录制 |
@@ -17,7 +17,7 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | The light's target | 顶屏 | top display | 屏幕 |
 | A receiver on the machine running saundo | 本机 | local | 自身接收器, this device, this Mac as the chip |
 
-The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is the one place `播放设备` stays. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
+The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is named 系统声音 / system audio, never 接收器 or 设备. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
 
 The ambient light is turned off with 关闭氛围灯 and on with 开启氛围灯. Do not use 熄灯.
 
@@ -39,8 +39,8 @@ The two latency values measure different stages. Never draw them as one bar, nev
 | State | Long form | Short form |
 |---|---|---|
 | Connecting | 正在连接… / Connecting… | 连接中 / Connecting |
-| Reconnecting | 正在重连… / Reconnecting… | 重连中 / Reconnecting |
-| Pairing | 正在配对… / Pairing… | 配对中 / Pairing |
+| Reconnecting | 正在重连… / Reconnecting… | 连接中 / Connecting |
+| Pairing | 正在配对… / Pairing… | — |
 | Streaming | 正在通过 {name} 播放 / Streaming to {name} | 正在播放 / Streaming |
 | Standby | 已待机 · 播放声音即唤醒 / Standby · wakes when sound plays | 待机 / Standby |
 | Connected | 已连接 / Connected | 已连接 / Connected |
@@ -50,7 +50,7 @@ The two latency values measure different stages. Never draw them as one bar, nev
 | Update available | {version} 可用 / Version {version} is available | {version} 可用 / {version} available |
 | Update downloading | 正在下载 {version} / Downloading {version} | 正在下载 {percent}% / Downloading {percent}% |
 | Update ready | {version} 已下载 / {version} is ready | 待重启 / Update ready |
-| Update installing | 重启后完成安装。 / Restart to finish installing. | 重启以完成安装 / Restart to install |
+| Update installing | 重启后完成安装。 / Restart to finish installing. | — |
 
 The long form goes in the footer, the sidebar, and a status line. The short form goes in a chip. Never invent a third wording for the same state.
 
