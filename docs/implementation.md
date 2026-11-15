@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-15 -->
+<!-- reviewed-through: 2026-11-16 -->
 
 # Implementation overview
 
