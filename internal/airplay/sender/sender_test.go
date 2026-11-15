@@ -164,6 +164,7 @@ func TestStereoGroupSessionCarriesGroupUUIDAndPTPTimeline(t *testing.T) {
 	const tsid = "00000000-0000-4000-8000-000000000000"
 	r.sender.SetGroupUUID(tsid)
 	r.sender.SetPTPClock(readyClock{})
+	r.sender.SetTimingPeers([]string{"192.168.1.20"})
 	rb, _ := fillRing(44100)
 	r.sender.AttachRing(rb)
 	r.start()
@@ -173,10 +174,49 @@ func TestStereoGroupSessionCarriesGroupUUIDAndPTPTimeline(t *testing.T) {
 	if got := r.rx.sessionSetup["groupUUID"]; got != tsid {
 		t.Fatalf("groupUUID = %v, want %q", got, tsid)
 	}
-	// SETPEERS is a no-op on a PTP session; the receiver's grandmaster
-	// supplies the timeline, so the sender must not spend a round trip on it.
+	// A pair member announces its peers even on a PTP session: the member
+	// sync that carries Now Playing between the two top displays keys off the
+	// SETPEERS list, and skipping it left the follower's display stuck on its
+	// first light. Timing still comes from the sender's master; the peers
+	// body lists the members plus the sender's own address.
+	if len(r.rx.setPeersBody) == 0 {
+		t.Fatal("pair member sent no SETPEERS")
+	}
+	peers, err := crypto.Decode(r.rx.setPeersBody)
+	if err != nil {
+		t.Fatalf("SETPEERS body did not decode: %v", err)
+	}
+	list, ok := peers.([]any)
+	if !ok {
+		t.Fatalf("SETPEERS body = %T, want an address array", peers)
+	}
+	found := map[string]bool{}
+	for _, p := range list {
+		if s, ok := p.(string); ok {
+			found[s] = true
+		}
+	}
+	for _, want := range []string{"192.168.1.20", "192.168.1.10"} {
+		if !found[want] {
+			t.Fatalf("SETPEERS peers %v miss %q", list, want)
+		}
+	}
+}
+
+// TestStandalonePTPSessionSkipsSetPeers pins the standalone shortcut: a PTP
+// session with no timing peers (a single HomePod) spends no round trip on
+// SETPEERS, because the announcement only seeds a pair's member sync.
+func TestStandalonePTPSessionSkipsSetPeers(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.sender.SetPTPClock(readyClock{})
+	rb, _ := fillRing(44100)
+	r.sender.AttachRing(rb)
+	r.start()
+	r.advance(500 * time.Millisecond)
+	requireLaunched(t, r)
+
 	if len(r.rx.setPeersBody) != 0 {
-		t.Fatalf("unexpected SETPEERS on a PTP session: % x", r.rx.setPeersBody)
+		t.Fatalf("unexpected SETPEERS on a standalone PTP session: % x", r.rx.setPeersBody)
 	}
 }
 
