@@ -41,7 +41,7 @@ Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release co
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, `docs/architecture.md`, and `docs/platforms.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
 - `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
-- `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
+- `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `i18n.Locale()` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
 
 Run the UI review skill (`/ui-review`) before you write the changelogs. It inventories the copy, renders the preview matrix, and lists copy and layout findings by severity. Resolve every P0 and every terminology finding. Land the fixes as their own commit before the release commit; the changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the UI review outcome in `docs/verification.md`.

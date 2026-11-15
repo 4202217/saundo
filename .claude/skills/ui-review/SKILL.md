@@ -20,7 +20,8 @@ gates still apply.
 
 ## Stop conditions
 
-- `mingw32-make check` is red. Fix or report before reviewing.
+- `make check` is red (Windows: `mingw32-make check`). Fix or report before
+  reviewing.
 - The app is streaming and a rebuild would interrupt it. Ask first.
 - A change would edit `%APPDATA%\saundo\*`. Never do that.
 - The evidence contradicts the requested change. Show it and stop.
@@ -72,7 +73,7 @@ headers, card radii, dialog heads, type sizes, units, and status treatments.
    the older inline variants.
 5. Docs. Update `docs/ui-copy.md`, `docs/ui.md`, and the dated evidence in
    `docs/verification.md`; bump the `reviewed-through` dates.
-6. Verify. `mingw32-make check`, the preview matrix, then `mingw32-make build`.
+6. Verify. `make check`, the preview matrix, then `make build`.
    Drive the changed pages in the live app when the change is visual.
 
 ## 4. Independent review

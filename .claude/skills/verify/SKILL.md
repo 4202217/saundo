@@ -48,11 +48,16 @@ Stop and report when any of these is true:
 mingw32-make check
 ```
 
-`gofmt -l .` + `mygo i18n check` + `go vet` + `mygo vet` + `go test ./...`.
-If mingw32-make is missing, run the commands in AGENTS.md. A live run on a
-red gate proves nothing about the change.
+The `make check` target in the Makefile owns the step list; read it there
+instead of enumerating it here, where a copy drifts. If mingw32-make is missing, run
+the commands in AGENTS.md. A live run on a red gate proves nothing about the
+change.
 
 ## 2. Launch
+
+Windows uses the commands below; on macOS the same flow uses `make`,
+`bin/saundo.app`, and `~/Library/Application Support/saundo/saundo.log`, while
+the headless and protocol harnesses are unchanged.
 
 Two ways to get a drivable instance. Run the doctor (step 3) first — it tells
 you which situation you are in.
@@ -235,5 +240,5 @@ Gotchas; never weaken the journey to make it pass.
 When the app changes shape (new window class, renamed page, moved control),
 update features/ and this file in the same change. `scripts/check-verify-map.sh`
 (a one-pass Go scan, part of `mingw32-make check`) turns stale assertions in these pages into a red
-gate — fix the page, not the gate. `/maintain-verification-skill`
+gate — fix the page, not the gate. `/pstack:maintain-verification-skill`
 is the maintenance loop for exactly that.

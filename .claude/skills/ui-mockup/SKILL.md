@@ -25,7 +25,8 @@ The release refreshes both templates even when no design question is open: the r
 
 ## Stop conditions
 
-- The gate is red. Run `mingw32-make check` before spending on mockups.
+- The gate is red. Run `make check` (Windows: `mingw32-make check`) before
+  spending on mockups.
 - The app is streaming and a rebuild would interrupt it. Ask before stopping it.
 - Manufacturing the state needs `%APPDATA%\saundo\*` changed. Never mutate the user's registry, credentials, or settings.
 - A variant's render contradicts its report. Fix the variant or drop it.
@@ -102,7 +103,7 @@ After implementation, a further design change follows the same rule. Edit the wo
 Create an isolated worktree from HEAD when the main checkout may have other work:
 
 ```bash
-git worktree add --detach ../airgoplay-<topic> HEAD
+git worktree add --detach ../saundo-<topic> HEAD
 ```
 
 Give one owner the page, locale catalogs, generated accessors, tests, docs, and verify map. Do not split that unit across writers.
@@ -120,9 +121,9 @@ Add a `ui.Tester` test that asserts the visible text for each new state. Update 
 From the main checkout:
 
 ```bash
-mingw32-make check
+make check
 SAUNDO_PREVIEW_DIR="$(pwd)/.audit/previews/<topic>" go test ./internal/app -run TestRenderPreviews -count=1
-mingw32-make build
+make build
 ```
 
 Inspect the native PNGs for the chosen state, the normal state, both locales, and both themes. Rebuild only when it will not interrupt an active stream. Leave the change uncommitted unless the user asks to commit. When they do, use the `AGENTS.md` fields and name the tests that pin the new state.
