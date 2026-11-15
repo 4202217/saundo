@@ -583,7 +583,7 @@ func (e *Engine) openSession(d device.Device) (transport, func(), error) {
 		clock = c
 	}
 	sess := &session{host: host, ptp: clock, dead: make(chan struct{})}
-	s := sender.New(host, e.sessionEvents(sess), e.senderLog)
+	s := sender.New(host, e.sessionEvents(sess), e.senderLogFor(d.Name))
 	s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 	entry, _ := e.reg.Get(d.ID)
 	s.SetDuplicates(receivers.DuplicatesFor(entry))
@@ -2075,12 +2075,22 @@ func (e *Engine) onReceiverLatency(ms int) {
 	e.publish()
 }
 
-func (e *Engine) senderLog(level sender.Level, format string, args ...any) {
-	prefix := "info"
-	if level == sender.LevelWarn {
-		prefix = "warn"
+// senderLogFor tags every sender line with the receiver it belongs to. A
+// stereo pair runs one sender per member, and without the tag their cover,
+// playback-state, and reply lines are indistinguishable in the log.
+func (e *Engine) senderLogFor(name string) sender.Logger {
+	return func(level sender.Level, format string, args ...any) {
+		prefix := "info"
+		if level == sender.LevelWarn {
+			prefix = "warn"
+		}
+		line := fmt.Sprintf(format, args...)
+		if name == "" {
+			e.logf("%s: %s", prefix, line)
+			return
+		}
+		e.logf("%s [%s]: %s", prefix, name, line)
 	}
-	e.logf("%s: %s", prefix, fmt.Sprintf(format, args...))
 }
 
 func (e *Engine) logf(format string, args ...any) {
@@ -2167,7 +2177,7 @@ func (e *Engine) rememberDiscovered() {
 			}
 			e.reg.Put(receivers.Entry{
 				Key: d.ID, Kind: receivers.KindDiscovered,
-				Name: d.Name, Model: d.Model, AirPlay2: d.AirPlay2,
+				Name: d.Name, Model: d.Model, OSVersion: d.OSVersion, AirPlay2: d.AirPlay2,
 				Features: d.Features, FeaturesUnknown: d.FeaturesUnknown,
 				SF: d.SF, Auth: d.Auth,
 				Members: memberEntries(d.Members),
@@ -2187,6 +2197,10 @@ func (e *Engine) rememberDiscovered() {
 		}
 		if d.Model != "" && entry.Model != d.Model {
 			entry.Model = d.Model
+			entryChanged = true
+		}
+		if d.OSVersion != "" && entry.OSVersion != d.OSVersion {
+			entry.OSVersion = d.OSVersion
 			entryChanged = true
 		}
 		if d.AirPlay2 && !entry.AirPlay2 {
@@ -2276,6 +2290,7 @@ func memberEntries(members []device.Device) []receivers.Member {
 			Host:            m.Host,
 			Port:            m.Port,
 			Model:           m.Model,
+			OSVersion:       m.OSVersion,
 			AirPlay2:        m.AirPlay2,
 			Features:        m.Features,
 			FeaturesUnknown: m.FeaturesUnknown,

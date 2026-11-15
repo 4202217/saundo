@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-14 -->
+<!-- reviewed-through: 2026-11-15 -->
 
 # Verification
 
@@ -350,6 +350,39 @@ still owed and stays on the pending list.
   which would stream this Mac's desktop audio to the HomePods pair; the last
   live tray run (2026-11-13) stands for the menu shape.
 - **Pins.** `TestTrayRowActionTogglesTheSession`.
+
+## 2026-11-15 — cold-start stereo ambient light
+
+A cold start auto-connects a remembered stereo pair from the receiver
+registry before mDNS answers. The cached `Member` entries did not persist
+`OSVersion`, and `offlineDevice` dropped the member list entirely, so the
+`TopDisplayCapable` gate failed closed and the sender skipped both members
+(`ambient light: ... does not support top-display artwork; skipped`). The
+media cover path was not gated, so a pair could still light one top from the
+cover while the template never reached either. Whether the other top stayed
+dark because the cover missed it or because its renderer was paused was not
+isolated; a later reconnect uses the discovered record with `osVersion` and
+restores the template path.
+
+`receivers.Member` and `receivers.Entry` now persist `osVersion`;
+`CachedDevice` restores it per member and falls back to the entry's value;
+`offlineDevice` reuses the cached device so the registry projection and the
+cold-start connect describe the same pair. Sender log lines now carry the
+member name, and each RTSP reply names its method, content type, and byte
+count, so the two members are distinguishable. `SetPlaybackState` logs when
+a state is assumed rather than sent.
+
+Verified live on 2026-11-15 with HomePod L/R (`AudioAccessory5,1`, software
+27.3). Before the fix both members were skipped at launch. After it, a cold
+start logged `cover: 11108 bytes, lamp=true` for each member, each replied
+`200 OK` to `SET_PARAMETER image/jpeg (11108 B)`, and both tops lit. The
+state-1 launch assumption is unchanged; the intermittent single-dark
+occurrence on the media-cover path was not reproduced after the fix and
+remains open. Pins: `TestCachedDeviceGroupKeepsTopDisplayCapability`,
+`TestCachedDeviceGroupFallsBackToTheEntryOSVersion`,
+`TestMergeKeepsCachedGroupMembers`,
+`TestRememberedStereoPairKeepsTopDisplayCapability`,
+`TestSenderLogTagsTheReceiver`, `TestPendingRequestLabelNamesTheArtwork`.
 
 ## Graduated
 

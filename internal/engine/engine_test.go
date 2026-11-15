@@ -664,6 +664,21 @@ func countLogLines(h *harness, substr string) int {
 	return n
 }
 
+// TestSenderLogTagsTheReceiver pins the stereo-pair diagnostic: every sender
+// line carries the member name, so the shared log can attribute a cover or
+// playback-state line to the receiver that received it.
+func TestSenderLogTagsTheReceiver(t *testing.T) {
+	h := newHarness(t)
+	h.e.senderLogFor("Left")(sender.LevelWarn, "cover: %d bytes", 12)
+	h.e.senderLogFor("")(sender.LevelInfo, "unnamed line")
+	if n := countLogLines(h, "warn [Left]: cover: 12 bytes"); n != 1 {
+		t.Fatalf("tagged line count = %d, want 1; lines: %q", n, h.e.log.Lines())
+	}
+	if n := countLogLines(h, "info: unnamed line"); n != 1 {
+		t.Fatalf("untagged line count = %d, want 1; lines: %q", n, h.e.log.Lines())
+	}
+}
+
 func TestReconnectToggleOffCancelsPending(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

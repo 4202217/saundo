@@ -172,13 +172,23 @@ func (t *timer) disarm() { t.active = false }
 
 type pendingReq struct {
 	method string
-	http   bool
+	// label names the request in the reply log: a POST path, content type,
+	// and body size. Pairing requests leave it empty.
+	label string
+	http  bool
 	// replay resends the identical AP2 request with a fresh CSeq after a 401
 	// digest challenge.
 	replay func()
 	// authRetry marks a request sent in answer to a challenge; a second 401
 	// fails instead of looping.
 	authRetry bool
+}
+
+func (p pendingReq) describe() string {
+	if p.label != "" {
+		return p.label
+	}
+	return p.method
 }
 
 type pairStage uint8

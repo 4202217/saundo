@@ -58,7 +58,7 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 			out = append(out, Target{Device: d, Entry: e})
 			continue
 		}
-		out = append(out, Target{Device: offlineDevice(e), Entry: e})
+		out = append(out, Target{Device: offlineDevice(e, hasPassword), Entry: e})
 	}
 	for id, d := range live {
 		// A first sighting. The engine persists it as a remembered entry;
@@ -139,7 +139,15 @@ func pinnedDevice(e Entry, d device.Device) device.Device {
 // cached endpoint, auth path, and feature bits travel with it: a connect that
 // lands on this row must not fall back to AP1 or NTP, and the row still shows
 // the address the next launch probes.
-func offlineDevice(e Entry) device.Device {
+func offlineDevice(e Entry, hasPassword func(string) bool) device.Device {
+	// The registry projection and the cold-start connect must describe the
+	// same receiver: an offline pair keeps its cached members and their
+	// software versions, or the ambient-light capability gate fails closed
+	// while the session itself already has both members.
+	if d, ok := CachedDevice(e, hasPassword != nil && hasPassword(e.Key)); ok {
+		d.Online = false
+		return d
+	}
 	model := e.Model
 	if model == "" {
 		model = manualModel(TypeAirPlay2)
