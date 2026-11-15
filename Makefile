@@ -48,8 +48,9 @@ i18n:
 	$(GO) tool mygo i18n check cmd/saundo
 
 # The architecture seams: import direction, go statements in sans-I/O
-# packages, time.After/time.Tick, and data channels made without a visible
-# capacity, whether the channel type is written out or named in the package.
+# packages, time.After/time.Tick, data channels made without a visible
+# capacity whether the channel type is written out or named in the package,
+# and direct dependencies that must be on the allowlist.
 arch:
 	$(GO) run ./scripts/check-arch
 

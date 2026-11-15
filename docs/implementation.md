@@ -267,6 +267,7 @@ names an identity, replaces `bin/saundo.app`, and opens it.
 `mingw32-make platforms` (or `go run ./scripts/check-platforms`) builds and
 vets both targets on either host and rejects platform imports outside tagged
 files; it runs inside `make check` and in CI. `go run ./scripts/check-arch`
-enforces the import seams and the concurrency rules from AGENTS.md.
+enforces the import seams, the concurrency rules, and the dependency allowlist
+from AGENTS.md.
 `go run ./scripts/check-size` holds the line budget. Both run inside
 `make check` and in CI.
