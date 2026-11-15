@@ -104,6 +104,29 @@ func TestTrayMenuHasNoDisconnectRow(t *testing.T) {
 	}
 }
 
+// TestTrayRowActionTogglesTheSession pins the row's click: the row carrying
+// the session ends it, and every other row connects.
+func TestTrayRowActionTogglesTheSession(t *testing.T) {
+	cases := []struct {
+		name   string
+		ph     phase
+		active bool
+		want   rowActionKind
+	}{
+		{"idle row connects", phaseIdle, false, actionConnect},
+		{"selected row while idle connects", phaseIdle, true, actionConnect},
+		{"connecting row cancels", phaseConnecting, true, actionCancel},
+		{"streaming row disconnects", phaseStreaming, true, actionDisconnect},
+		{"failed row retries", phaseError, true, actionConnect},
+		{"another row while streaming switches", phaseStreaming, false, actionConnect},
+	}
+	for _, tc := range cases {
+		if got := trayRowAction(tc.ph, tc.active); got != tc.want {
+			t.Errorf("%s: trayRowAction(%d, %t) = %d, want %d", tc.name, tc.ph, tc.active, got, tc.want)
+		}
+	}
+}
+
 func TestTrayMenuLampRow(t *testing.T) {
 	a := previewApp()
 	a.snap.LampOff = false

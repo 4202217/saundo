@@ -1197,7 +1197,7 @@ func (a *App) trayMenuItems(m trayMenuModel) []*mygo.MenuItem {
 		item := &mygo.MenuItem{
 			Label: d.name,
 			Icon:  a.menuIcons[m.deviceIcon(d)],
-			Click: func(*mygo.MenuItem, *mygo.Window) { a.connectDevice(d.id) },
+			Click: func(*mygo.MenuItem, *mygo.Window) { a.trayDeviceClick(d.id) },
 		}
 		if !d.online {
 			item.Subtitle = locales.ActionOffline()
@@ -1231,6 +1231,30 @@ func (a *App) trayMenuItems(m trayMenuModel) []*mygo.MenuItem {
 		&mygo.MenuItem{Role: mygo.RoleQuit, Label: locales.TrayQuit(), Icon: a.menuIcons["quit"]},
 	)
 	return items
+}
+
+// trayDeviceClick toggles the receiver row's session: the row that carries it
+// ends it, and every other row becomes the new target. A failed row retries.
+func (a *App) trayDeviceClick(id string) {
+	switch trayRowAction(phaseOf(a.snap), id == a.snap.SelectedID) {
+	case actionCancel, actionDisconnect:
+		a.disconnect()
+	default:
+		a.connectDevice(id)
+	}
+}
+
+// trayRowAction is what clicking a receiver row does, in the flyout's action
+// vocabulary: a streaming row disconnects, a connecting row cancels, and any
+// other row starts a connection.
+func trayRowAction(ph phase, active bool) rowActionKind {
+	switch {
+	case active && ph == phaseConnecting:
+		return actionCancel
+	case active && ph == phaseStreaming:
+		return actionDisconnect
+	}
+	return actionConnect
 }
 
 func (a *App) rebuildTray() {
