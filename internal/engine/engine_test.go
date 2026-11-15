@@ -546,6 +546,40 @@ func TestReconnectBackoffEscalatesAndGivesUp(t *testing.T) {
 	}
 }
 
+// TestUserRetryAfterGiveUpResumesReconnect pins the retry row's recovery
+// path: once the automatic budget is spent, a user connect is a fresh
+// attempt, so its failure schedules the backoff again instead of re-entering
+// the give-up branch and leaving every later click a dead one-shot.
+func TestUserRetryAfterGiveUpResumesReconnect(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	h.fake.state = sender.StateIdle
+	h.e.onClosed()
+	for _, d := range []time.Duration{time.Second, 2 * time.Second, 5 * time.Second, 10 * time.Second, 15 * time.Second} {
+		h.advance(d)
+		h.e.attemptReconnect()
+		h.fake.launch(false, "Device refused")
+	}
+	if h.e.reconnectWanted || h.e.lastErrorKey != ErrReconnectStopped {
+		t.Fatalf("precondition: budget not exhausted, wanted=%v key=%q", h.e.reconnectWanted, h.e.lastErrorKey)
+	}
+
+	h.connect()
+	if h.sessions != 7 {
+		t.Fatalf("the retry did not start a session: sessions = %d, want 7", h.sessions)
+	}
+	h.fake.launch(false, "Device refused")
+	if !h.e.reconnectWanted || h.e.reconnectAt.IsZero() {
+		t.Fatal("a failed retry left the reconnect loop stopped")
+	}
+	if got := h.e.reconnectAt.Sub(h.now); got != time.Second {
+		t.Fatalf("retry after the failed attempt = %s, want the first backoff 1s", got)
+	}
+}
+
 func TestUserDisconnectDoesNotReconnect(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()

@@ -1167,6 +1167,10 @@ func (e *Engine) handleCommand(cmd command) {
 		if t, ok := e.target(cmd.deviceID); ok {
 			e.userDisconnect = false
 			e.reconnectCount = 0
+			// A user connect starts a fresh retry budget. Without this reset,
+			// a connect made after the automatic attempts were spent fails
+			// once and re-enters the give-up branch, so retry never resumes.
+			e.reconnectNum = 0
 			e.connectAuto = false
 			if e.tr != nil && e.tr.Active() {
 				// A connect that replaces a live session is a switch: the
