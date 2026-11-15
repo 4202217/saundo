@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "landing/index.html"
-      - "landing/assets/**"
+      - "site/index.html"
+      - "site/assets/**"
       - "LICENSES/OFL-1.1-Geist.txt"
       - "NOTICE"
       - ".github/workflows/deploy-landing.yml"
@@ -34,8 +34,8 @@ jobs:
       - name: Stage the published files
         run: |
           mkdir -p _site
-          cp landing/index.html _site/
-          cp -R landing/assets _site/assets
+          cp site/index.html _site/
+          cp -R site/assets _site/assets
           rm -rf _site/assets/src
           cp LICENSES/OFL-1.1-Geist.txt _site/OFL-1.1-Geist.txt
           cp NOTICE _site/NOTICE.txt

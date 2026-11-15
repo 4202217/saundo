@@ -11,7 +11,7 @@ Geist fonts are blocked by the file origin's CORS rules, and the page would
 silently fall back to a system font.
 
 ```bash
-python3 -m http.server 8000 --directory landing
+python3 -m http.server 8000 --directory site
 ```
 
 Then open <http://localhost:8000>.
@@ -28,8 +28,8 @@ ambient-light WebP images, the two Geist fonts, and the JPG social card.
 `assets/src/` carries the working sources, the PNG base images plus the
 `og.png`/`og.jpeg` exports. The page never requests anything from `assets/src/`.
 
-`landing/.audit/` holds local screenshots and probe scripts, and
-`landing/motion-lab.html` is a local design lab. Both are ignored by git and
+`site/.audit/` holds local screenshots and probe scripts, and
+`site/motion-lab.html` is a local design lab. Both are ignored by git and
 are not part of the published page.
 
 The fonts are Geist and Geist Mono by Vercel, under the SIL Open Font
@@ -159,7 +159,7 @@ fonts and the icon).
 ## Deploy
 
 `.github/workflows/deploy-landing.yml` publishes the site to GitHub Pages on
-pushes to `main` that touch `landing/index.html`, `landing/assets/`, the Geist
+pushes to `main` that touch `site/index.html`, `site/assets/`, the Geist
 license, the `NOTICE`, or the workflow. It stages only the shipped files
 (`index.html` and `assets/`, without `assets/src/`) plus the font license and
 `NOTICE`, uploads the artifact, and deploys it. The repository's Pages source
