@@ -1,11 +1,32 @@
 package creds
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestSecretFormattingRedacts(t *testing.T) {
+	key := Secret{1, 2, 3, 4}
+	for _, got := range []string{
+		fmt.Sprintf("%v", key),
+		fmt.Sprintf("%s", key),
+		fmt.Sprintf("%x", key),
+		fmt.Sprintf("%q", key),
+		fmt.Sprintf("%+v", key),
+	} {
+		if got != "[redacted]" {
+			t.Fatalf("formatted secret = %q, want [redacted]", got)
+		}
+	}
+	c := Credentials{ClientID: "c", LTSK: key}
+	got := fmt.Sprintf("%+v", c)
+	if !strings.Contains(got, "[redacted]") || strings.Contains(got, "[1 2 3 4]") || strings.Contains(got, "01020304") {
+		t.Fatalf("credentials = %q, want the long-term key redacted", got)
+	}
+}
 
 func TestMarshalParseRoundTrip(t *testing.T) {
 	want := Credentials{

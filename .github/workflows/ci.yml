@@ -36,6 +36,10 @@ jobs:
         run: go vet ./...
       - name: UI vet
         run: go tool mygo vet .
+      - name: Architecture
+        run: go run ./scripts/check-arch
+      - name: Size
+        run: go run ./scripts/check-size
       - name: Tests
         run: go test -short ./...
       - name: Verify map
@@ -67,6 +71,10 @@ jobs:
         run: go vet ./...
       - name: UI vet
         run: go tool mygo vet .
+      - name: Architecture
+        run: go run ./scripts/check-arch
+      - name: Size
+        run: go run ./scripts/check-size
       - name: Tests
         env:
           # Headless runs cannot answer a keychain prompt; the creds tests

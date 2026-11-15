@@ -32,12 +32,14 @@ If the architecture document conflicts with the reference implementation or real
 Make targets (Windows: Git Bash with `mingw32-make`; macOS: `make`, with cmake installed for the Now Playing adapter):
 
 ```bash
-mingw32-make check  # gofmt gate + go vet + mygo UI vet + go test + cross-platform gate — the milestone gate
+mingw32-make check  # gofmt gate + go vet + mygo UI vet + architecture and size gates + go test + cross-platform gate — the milestone gate
 mingw32-make platforms  # build + vet windows/amd64 and darwin/arm64 on either host, reject leaked platform imports
 mingw32-make test   # go test ./...
 mingw32-make race   # go test -race ./... (needs a C toolchain for the race detector)
 mingw32-make vet    # go vet ./...
 mingw32-make uivet  # go tool mygo vet . (native UI lifetime checks)
+mingw32-make arch   # scripts/check-arch: import seams, sans-I/O goroutines, time.After/time.Tick, channel capacity
+mingw32-make size   # scripts/check-size: grandfathered files may not grow, new non-test files stay at or below 800 lines
 mingw32-make fmt    # gofmt -w .
 mingw32-make build  # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe, so a commit past a release sorts below it and the updater still offers that release; scripts/build.sh then stops the running app and starts the new build
 mingw32-make build-fast  # the same build without the NSIS installer, for the development loop
@@ -49,14 +51,23 @@ Without mingw32-make, run the commands directly:
 go test ./...
 go vet ./...
 go tool mygo vet .
+go run ./scripts/check-arch
+go run ./scripts/check-size
 gofmt -l .
 ```
 
 If `go` is not on PATH, add its `bin` directory to PATH. Passing `GO=` alone is not enough for `check`: the gofmt gate and mygo's internal `go` calls resolve from PATH, so pair it with `GOFMT=` or, preferably, add the directory to PATH. On Windows the usual path is `C:\Program Files\Go\bin`.
 
-Run `mingw32-make check` (or all four commands) before declaring a milestone complete. A compiling binary is not a completed feature.
+Run `mingw32-make check` (or all six commands) before declaring a milestone complete. A compiling binary is not a completed feature.
 
 ## Architecture rules
+
+Several of these rules are gates, not review notes. `scripts/check-arch` owns
+the import seams, the sans-i/o goroutine rule, the `time.After` and
+`time.Tick` ban, and the capacity rule for data channels made with a literal
+channel type. `scripts/check-size` owns the line budget. `device.Features` and
+`creds.Secret` put two fail-closed rules in the type system. A rule added
+here without a gate is judgment-only.
 
 - Keep the engine UI-agnostic. The UI talks to an `Engine` interface and channels. No IPC and no sidecar.
 - Keep the sender sans-i/o, following `airplay2-sender-cpp`: `RaopIo` has six methods (TCP connect/send/close, UDP bind/send/close). The sender owns no sockets, timers, or threads; the host pushes data, connection events, and ticks into it.
@@ -70,14 +81,14 @@ Run `mingw32-make check` (or all four commands) before declaring a milestone com
   the 28-byte PTP sync packet. Keep timing behind the sender's `PTPClock`
   interface.
 - Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI and Core Audio bindings yourself. Now Playing on macOS reads through the vendored MediaRemote adapter (`native/mediaremote-adapter`), never from a third-party process directly.
-- Store credentials with the OS secret store: DPAPI on Windows, the login-Keychain master key with AES-256-GCM on macOS (`internal/darwin`). Never log PINs, long-term keys, or session keys.
+- Store credentials with the OS secret store: DPAPI on Windows, the login-Keychain master key with AES-256-GCM on macOS (`internal/darwin`). Never log PINs, long-term keys, or session keys. `LTSK` is `creds.Secret`; every format verb prints `[redacted]`.
 
 ## Code standards
 
 Error handling:
 
 - A failed read, parse, or decode means "unknown" — never "empty", "zero", or "absent". Where a previous value exists, keep it.
-- Gate decisions fail closed: unknown receiver features, unknown auth state, or unreadable credentials never silently take the permissive path. For example, a failed features parse must not route an `AudioAccessory` receiver to NTP.
+- Gate decisions fail closed: unknown receiver features, unknown auth state, or unreadable credentials never silently take the permissive path. For example, a failed features parse must not route an `AudioAccessory` receiver to NTP. `device.Features` makes a failed parse the zero value and hides the bits behind `Known()` and `Has()`.
 
 Tests:
 

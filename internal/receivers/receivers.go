@@ -249,19 +249,18 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 		}
 	}
 	d := device.Device{
-		ID:              e.Key,
-		Name:            e.DisplayName(),
-		Host:            host,
-		Port:            port,
-		Model:           model,
-		OSVersion:       e.OSVersion,
-		Features:        e.Features,
-		FeaturesUnknown: e.FeaturesUnknown,
-		SF:              e.SF,
-		AirPlay2:        e.AirPlay2,
-		Auth:            auth,
-		Family:          device.FamilyFor(model, ""),
-		Online:          true,
+		ID:        e.Key,
+		Name:      e.DisplayName(),
+		Host:      host,
+		Port:      port,
+		Model:     model,
+		OSVersion: e.OSVersion,
+		Features:  device.FeaturesFrom(e.Features, e.FeaturesUnknown),
+		SF:        e.SF,
+		AirPlay2:  e.AirPlay2,
+		Auth:      auth,
+		Family:    device.FamilyFor(model, ""),
+		Online:    true,
 	}
 	if e.IsGroup() && len(e.Members) > 0 {
 		d.StereoID = strings.TrimPrefix(e.Key, groupKeyPrefix)
@@ -280,19 +279,18 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 				ma = auth
 			}
 			d.Members = append(d.Members, device.Device{
-				ID:              m.ID,
-				Name:            m.Name,
-				Host:            m.Host,
-				Port:            m.Port,
-				Model:           mm,
-				OSVersion:       mv,
-				Features:        m.Features,
-				FeaturesUnknown: m.FeaturesUnknown,
-				SF:              m.SF,
-				AirPlay2:        m.AirPlay2,
-				Auth:            ma,
-				Family:          device.FamilyFor(mm, ""),
-				Online:          true,
+				ID:        m.ID,
+				Name:      m.Name,
+				Host:      m.Host,
+				Port:      m.Port,
+				Model:     mm,
+				OSVersion: mv,
+				Features:  device.FeaturesFrom(m.Features, m.FeaturesUnknown),
+				SF:        m.SF,
+				AirPlay2:  m.AirPlay2,
+				Auth:      ma,
+				Family:    device.FamilyFor(mm, ""),
+				Online:    true,
 			})
 		}
 	}

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-14 -->
+<!-- reviewed-through: 2026-11-15 -->
 
 # Multi-platform development
 
@@ -163,8 +163,17 @@ Core Audio property codes stay inside the leaf packages.
 
 - **Windows**: `mingw32-make check` and `mingw32-make build` from Git Bash.
 - **macOS**: `make check` and `make build` — the same checks (gofmt,
-  catalog, vet, `go tool mygo vet .`, tests) plus the app bundle. cmake
-  builds the Now Playing adapter.
+  catalog, vet, `go tool mygo vet .`, architecture, size, tests) plus the app
+  bundle. cmake builds the Now Playing adapter.
+- **Either host**: `scripts/check-arch` enforces the import seams, bans `go`
+  statements and `time.AfterFunc` in the sans-i/o packages, bans `time.After`
+  and `time.Tick` in product code, and requires an explicit capacity on a
+  data channel made with a literal channel type. `scripts/check-size` holds
+  the line budget: files grandfathered in
+  `scripts/check-size/baseline.txt` may not grow or shrink without updating
+  the baseline, and new non-test files stay at or below 800 lines. Generated
+  files are exempt. `make check` runs both, and CI runs them as the
+  Architecture and Size steps.
 - **Either host**: `make platforms` (`go run ./scripts/check-platforms`)
   builds and vets windows/amd64 and darwin/arm64 with `CGO_ENABLED=0` and
   rejects `saundo/internal/darwin`, `purego`, and `golang.org/x/sys/windows`

@@ -43,7 +43,7 @@ saundo 采集系统正在播放的一切声音——Windows 上为 WASAPI 环回
 **1 · 安装**。从 **[Releases](https://github.com/4202217/saundo/releases/latest)** 下载安装器，或者从源码构建：
 
 ```bash
-mingw32-make check  # gofmt 门、go vet、mygo UI vet、go test —— 验收门
+mingw32-make check  # gofmt 门、go vet、mygo UI vet、架构与行数门、go test —— 验收门
 mingw32-make build  # 经 mygo 构建 bin/saundo.exe 与 NSIS 安装器（bin/saundo-setup-*.exe），随后重启正在运行的应用
 ```
 

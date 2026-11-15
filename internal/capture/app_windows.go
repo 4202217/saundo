@@ -303,6 +303,8 @@ func activateProcessLoopback(pid uint32) (uintptr, error) {
 		defer release(operation)
 	}
 	deadline := time.Now().Add(3 * time.Second)
+	poll := time.NewTimer(50 * time.Millisecond)
+	defer poll.Stop()
 	for {
 		select {
 		case res := <-handler.ch:
@@ -313,11 +315,12 @@ func activateProcessLoopback(pid uint32) (uintptr, error) {
 				return 0, errors.New("capture: process-loopback activation returned no interface")
 			}
 			return res.client, nil
-		case <-time.After(50 * time.Millisecond):
+		case <-poll.C:
 		}
 		if time.Now().After(deadline) {
 			return 0, errors.New("capture: process-loopback activation timed out")
 		}
+		poll.Reset(50 * time.Millisecond)
 	}
 }
 

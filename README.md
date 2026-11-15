@@ -43,7 +43,7 @@ Runs on Windows 10 and 11 and on macOS 14.4+ (Apple Silicon); the interface ship
 **1 · Install**. Grab the installer from **[Releases](https://github.com/4202217/saundo/releases/latest)**, or build from source:
 
 ```bash
-mingw32-make check  # gofmt gate, go vet, mygo UI vet, go test — the acceptance gate
+mingw32-make check  # gofmt, go vet, mygo UI vet, architecture and size gates, go test — the acceptance gate
 mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-setup-*.exe) through mygo, then restarts the running app
 ```
 

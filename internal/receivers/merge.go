@@ -154,18 +154,17 @@ func offlineDevice(e Entry, hasPassword func(string) bool) device.Device {
 	}
 	host, port := e.Endpoint()
 	return device.Device{
-		ID:              e.Key,
-		Name:            e.DisplayName(),
-		Host:            host,
-		Port:            port,
-		Model:           model,
-		Features:        e.Features,
-		FeaturesUnknown: e.FeaturesUnknown,
-		SF:              e.SF,
-		AirPlay2:        e.AirPlay2,
-		Auth:            e.Auth,
-		Family:          device.FamilyFor(model, ""),
-		Online:          false,
+		ID:       e.Key,
+		Name:     e.DisplayName(),
+		Host:     host,
+		Port:     port,
+		Model:    model,
+		Features: device.FeaturesFrom(e.Features, e.FeaturesUnknown),
+		SF:       e.SF,
+		AirPlay2: e.AirPlay2,
+		Auth:     e.Auth,
+		Family:   device.FamilyFor(model, ""),
+		Online:   false,
 	}
 }
 

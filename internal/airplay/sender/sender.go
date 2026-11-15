@@ -214,7 +214,7 @@ const (
 type ap2State struct {
 	srp *crypto.SRPClient
 
-	ltSeed    []byte
+	ltSeed    creds.Secret
 	ltPub     []byte
 	pairingID []byte
 

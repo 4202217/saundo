@@ -285,7 +285,7 @@ func usesPTP(d device.Device) bool {
 	}
 	// An unknown features value fails closed: these families keep their own
 	// PTP grandmaster, and an NTP-timed stream is silently ignored.
-	return d.FeaturesUnknown || d.Features&ptpFeatureBit != 0
+	return !d.Features.Known() || d.Features.Has(ptpFeatureBit)
 }
 
 // maxReconnectAttempts bounds automatic retries before giving up.
@@ -2179,10 +2179,11 @@ func (e *Engine) rememberDiscovered() {
 			if e.creds.HasPassword(d.ID) {
 				e.passwords[d.ID] = true
 			}
+			featureBits, featureUnknown := d.Features.Persisted()
 			e.reg.Put(receivers.Entry{
 				Key: d.ID, Kind: receivers.KindDiscovered,
 				Name: d.Name, Model: d.Model, OSVersion: d.OSVersion, AirPlay2: d.AirPlay2,
-				Features: d.Features, FeaturesUnknown: d.FeaturesUnknown,
+				Features: featureBits, FeaturesUnknown: featureUnknown,
 				SF: d.SF, Auth: d.Auth,
 				Members: memberEntries(d.Members),
 				Host:    d.Host, Port: d.Port, LastSeen: now,
@@ -2218,12 +2219,13 @@ func (e *Engine) rememberDiscovered() {
 			entry.Host, entry.Port = d.Host, d.Port
 			entryChanged = true
 		}
-		if d.Features != 0 && entry.Features != d.Features {
-			entry.Features = d.Features
+		featureBits, featureUnknown := d.Features.Persisted()
+		if featureBits != 0 && entry.Features != featureBits {
+			entry.Features = featureBits
 			entryChanged = true
 		}
-		if entry.FeaturesUnknown != d.FeaturesUnknown {
-			entry.FeaturesUnknown = d.FeaturesUnknown
+		if entry.FeaturesUnknown != featureUnknown {
+			entry.FeaturesUnknown = featureUnknown
 			entryChanged = true
 		}
 		if d.SF != 0 && entry.SF != d.SF {
@@ -2288,6 +2290,7 @@ func memberEntries(members []device.Device) []receivers.Member {
 	}
 	out := make([]receivers.Member, 0, len(members))
 	for _, m := range members {
+		featureBits, featureUnknown := m.Features.Persisted()
 		out = append(out, receivers.Member{
 			ID:              m.ID,
 			Name:            m.Name,
@@ -2296,8 +2299,8 @@ func memberEntries(members []device.Device) []receivers.Member {
 			Model:           m.Model,
 			OSVersion:       m.OSVersion,
 			AirPlay2:        m.AirPlay2,
-			Features:        m.Features,
-			FeaturesUnknown: m.FeaturesUnknown,
+			Features:        featureBits,
+			FeaturesUnknown: featureUnknown,
 			SF:              m.SF,
 			Auth:            m.Auth,
 		})
