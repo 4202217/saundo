@@ -156,11 +156,23 @@ Measured on the development machine with 4x CPU throttling, glow visible, and
 LCP is 208 ms, CLS is 0, and the page makes three subresource requests (two
 fonts and the icon).
 
+## Deploy
+
+`.github/workflows/deploy-landing.yml` publishes the site to GitHub Pages on
+pushes to `main` that touch `landing/index.html`, `landing/assets/`, the Geist
+license, the `NOTICE`, or the workflow. It stages only the shipped files
+(`index.html` and `assets/`, without `assets/src/`) plus the font license and
+`NOTICE`, uploads the artifact, and deploys it. The repository's Pages source
+must be GitHub Actions; the workflow asks `actions/configure-pages` to enable
+it on the first run. If that step is rejected, set Settings → Pages → Build
+and deployment → Source to GitHub Actions once and re-run the workflow. The
+site is <https://4202217.github.io/saundo/>.
+
 ## Before publishing
 
-The `og:image` tag points at
-`https://raw.githubusercontent.com/4202217/saundo/main/landing/assets/og.jpg`.
-Change it to the final host if the page is served somewhere else.
+The canonical link, `og:url`, `og:image`, and `twitter:image` point at
+`https://4202217.github.io/saundo/`. Change them if a custom domain replaces
+the Pages host.
 
 Confirm the provenance and license of `assets/src/amb-base*.png` and
 `assets/amb-base*.webp` before publishing. They are project visual assets and
