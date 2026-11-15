@@ -337,6 +337,20 @@ checksummed files. Published 2026-11-13T17:23Z with bilingual notes; both
 feed manifests serve 0.6.3 with signatures. A live update from 0.6.2 is
 still owed and stays on the pending list.
 
+## 2026-11-14 — tray receiver rows toggle their session
+
+- **Decision.** A tray receiver row now toggles the session it carries. The
+  row whose ID is `Snapshot.SelectedID` while the phase is streaming
+  disconnects; while connecting it cancels the attempt, matching the flyout's
+  active-row action; a failed row still retries. Every other row connects or
+  switches, as before. The decision is `trayRowAction`, which reuses the
+  flyout's `rowActionKind` vocabulary, and `trayDeviceClick` dispatches it.
+  No separate 断开连接 row is added.
+- **Not run live.** The click path needs a real receiver and a live session,
+  which would stream this Mac's desktop audio to the HomePods pair; the last
+  live tray run (2026-11-13) stands for the menu shape.
+- **Pins.** `TestTrayRowActionTogglesTheSession`.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
@@ -819,7 +833,9 @@ one took it from 1627.
   shape while streaming to HomePods. Environment finding: the session's
   local-output mute explains `TestLoopbackReceivesSamples` failing on
   this machine (it reproduces at 37352a4), so the failure is
-  environmental, not a regression. Pins: `TestTrayMenuShapeSelected`,
+  environmental, not a regression. Superseded 2026-11-14: the in-session
+  row's click now ends the session, so the row itself carries the
+  disconnect (the tray-toggle entry above). Pins: `TestTrayMenuShapeSelected`,
   `TestTrayMenuHasNoDisconnectRow`, `TestTrayMenuLampRow`,
   `TestTrayMenuMuteIcon`, `TestTrayMenuDeviceIconFollowsSession`,
   `TestTrayMenuKey`, `TestTrayMenuDeviceSubtitle`,

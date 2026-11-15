@@ -13,13 +13,16 @@
   receiver-family glyph in one icon column. The connecting or streaming
   receiver draws that glyph in the accent color; every other row, including a
   device merely selected while idle, draws the template in the text color. An
-  unreachable row keeps the 离线 subtitle. The 连接上次接收器
+  unreachable row keeps the 离线 subtitle. Clicking the row that carries the
+  session ends it; clicking any other row connects or switches to it; a
+  failed session's row retries. The 连接上次接收器
   fallback follows when no row is the target, disabled when no receiver is
   remembered. Then the mute row, 静音本机输出 while the preference is off and
   取消静音本机输出 while it is on (bell
   glyph, slashed while the preference is on), 关闭氛围灯 or 开启氛围灯 for the ambient
   light, 显示托盘面板, 设置…, 检查更新…, and 退出声渡. The menu has no
-  断开连接 row; the flyout's active row keeps it. No row uses a radio or
+  separate 断开连接 row; the in-session row's click carries it, as the
+  flyout's active row does. No row uses a radio or
   checkbox mark. The lamp glyph gains a slash while the light is off, as the
   bell does for the mute row. The menu is installed only
   for the duration of the popup.
