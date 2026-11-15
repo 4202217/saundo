@@ -49,8 +49,8 @@ mingw32-make check
 ```
 
 `gofmt -l .` + `mygo i18n check` + `go vet` + `mygo vet` + `go test ./...`.
-If mingw32-make is missing, run the four commands from AGENTS.md. A live run
-on a red gate proves nothing about the change.
+If mingw32-make is missing, run the commands in AGENTS.md. A live run on a
+red gate proves nothing about the change.
 
 ## 2. Launch
 
