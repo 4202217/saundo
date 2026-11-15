@@ -106,7 +106,7 @@ func (e *Engine) openGroupSession(d device.Device) (transport, func(), error) {
 		memberRing := ring.New(e.ring.Capacity())
 		member := &groupMember{device: m, host: host, ring: memberRing}
 		idx := i
-		s := sender.New(host, g.memberEvents(idx), e.senderLog)
+		s := sender.New(host, g.memberEvents(idx), e.senderLogFor(m.Name))
 		s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 		entry, _ := e.reg.Get(d.ID)
 		s.SetDuplicates(receivers.DuplicatesFor(entry))

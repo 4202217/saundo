@@ -114,6 +114,57 @@ func TestSetDevicesRemembersFirstSightings(t *testing.T) {
 	_ = ring.New(1) // keep the ring import anchored to the harness fields
 }
 
+// TestRememberedStereoPairKeepsTopDisplayCapability pins the cold-start
+// ambient-light path end to end: the registry cache must carry each member's
+// software version, and the cached device must still pass the capability
+// gate before discovery answers.
+func TestRememberedStereoPairKeepsTopDisplayCapability(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	group := device.Device{
+		ID: device.StereoGroupID("tsid"), Name: "HomePods", StereoID: "tsid",
+		Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory6,1", OSVersion: "27.2",
+		Auth: device.AuthHAPTransient, AirPlay2: true, Online: true,
+		Members: []device.Device{
+			{ID: "AA:BB:CC:DD:EE:01", Name: "L", Host: "192.0.2.10", Port: 7000,
+				Model: "AudioAccessory6,1", OSVersion: "27.2", Auth: device.AuthHAPTransient,
+				AirPlay2: true, StereoID: "tsid", Online: true},
+			{ID: "AA:BB:CC:DD:EE:02", Name: "R", Host: "192.0.2.11", Port: 7000,
+				Model: "AudioAccessory6,1", OSVersion: "27.2", Auth: device.AuthHAPTransient,
+				AirPlay2: true, StereoID: "tsid", Online: true},
+		},
+	}
+	h.e.setDevices([]device.Device{group})
+
+	stored, err := h.e.recvStore.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := stored.Get(group.ID)
+	if !ok {
+		t.Fatalf("stereo group not remembered: %+v", stored.Entries)
+	}
+	if entry.OSVersion != "27.2" {
+		t.Fatalf("group OS version = %q, want 27.2", entry.OSVersion)
+	}
+	if len(entry.Members) != 2 {
+		t.Fatalf("cached members = %+v, want 2", entry.Members)
+	}
+	for _, m := range entry.Members {
+		if m.OSVersion != "27.2" {
+			t.Fatalf("cached member %s OS version = %q, want 27.2", m.ID, m.OSVersion)
+		}
+	}
+	cached, ok := receivers.CachedDevice(entry, false)
+	if !ok {
+		t.Fatal("CachedDevice rejected the remembered pair")
+	}
+	for i, m := range cached.Members {
+		if !device.TopDisplayCapable(m) {
+			t.Fatalf("cached member %d lost top-display capability: %+v", i, m)
+		}
+	}
+}
+
 // TestRememberedDeviceLeavesTheListsWhenOffline pins the display rule: a
 // remembered receiver without a live advertisement is hidden from both the
 // flyout and the settings page, but stays in the registry for when it

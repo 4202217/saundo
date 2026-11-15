@@ -53,7 +53,17 @@ func (s *Sender) sendRequest(method, uri, contentType, body string, extra []head
 	b.WriteString("\r\n")
 	b.WriteString(body)
 
-	s.pending = append(s.pending, pendingReq{method: method})
+	label := method
+	if strings.HasPrefix(uri, "/") {
+		label += " " + uri
+	}
+	if contentType != "" {
+		label += " " + contentType
+	}
+	if len(body) > 0 {
+		label += " (" + itoa(len(body)) + " B)"
+	}
+	s.pending = append(s.pending, pendingReq{method: method, label: label})
 	s.writeRTSP([]byte(b.String()))
 	if s.state == StateHandshake || s.state == StatePairing {
 		s.timeout.arm(s.now())
@@ -167,7 +177,7 @@ func (s *Sender) onRTSPData(data []byte) {
 		}
 		p := s.pending[0]
 		s.pending = s.pending[1:]
-		s.info("reply %q for %s", statusLine, p.method)
+		s.info("reply %q for %s", statusLine, p.describe())
 		switch {
 		case p.http && code == 401 && (p.replay != nil || p.authRetry):
 			s.handleAP2DigestChallenge(p, headers)
@@ -778,7 +788,13 @@ func (s *Sender) SetPlaybackState(playing bool) {
 // sendPlaybackState posts the MR playback-state command on the encrypted
 // control channel. The receiver applies it to the main session.
 func (s *Sender) sendPlaybackState() {
-	if s.state != StateStreaming || s.playbackState == 0 || s.playbackState == s.playbackStateSent {
+	if s.state != StateStreaming || s.playbackState == 0 {
+		return
+	}
+	if s.playbackState == s.playbackStateSent {
+		// A new session assumes state 1, so the first light sends no state
+		// command. The line makes that default visible when it matters.
+		s.info("playback state: %d unchanged, not sent", s.playbackState)
 		return
 	}
 	body, err := crypto.Encode(map[string]any{

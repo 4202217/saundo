@@ -173,6 +173,35 @@ func TestMergeKeepsOfflineCapabilities(t *testing.T) {
 	}
 }
 
+// TestMergeKeepsCachedGroupMembers pins the cold-start capability lookup: the
+// registry projection of an offline pair must carry the same members,
+// software versions, and endpoints the cached connect uses. Without them the
+// ambient-light gate fails closed before discovery answers.
+func TestMergeKeepsCachedGroupMembers(t *testing.T) {
+	reg := Registry{Entries: []Entry{{
+		Key: "stereo:tsid", Kind: KindDiscovered, Name: "Pair",
+		Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory6,1", OSVersion: "27.3",
+		AirPlay2: true, Auth: device.AuthHAPTransient,
+		Members: []Member{
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory6,1", OSVersion: "27.3"},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory6,1", OSVersion: "27.3"},
+		},
+	}}}
+	targets := Merge(reg, nil, nil)
+	if len(targets) != 1 {
+		t.Fatalf("targets = %d, want 1", len(targets))
+	}
+	d := targets[0].Device
+	if d.Online || len(d.Members) != 2 {
+		t.Fatalf("offline group = %+v, want two cached members", d)
+	}
+	for i, m := range d.Members {
+		if !device.TopDisplayCapable(m) {
+			t.Fatalf("member %d lost top-display capability: %+v", i, m)
+		}
+	}
+}
+
 // TestManageableDropsOfflineRememberedRows pins the display rule: a
 // remembered receiver with no live advertisement is not shown, while a
 // manual receiver and an online receiver are, and the active session's row
@@ -693,6 +722,58 @@ func TestCachedDeviceGroupUsesMembers(t *testing.T) {
 	}
 	if d.Features != 1<<41 || d.Auth != device.AuthHAPTransient {
 		t.Fatalf("cached group capabilities = features %#x auth %v", d.Features, d.Auth)
+	}
+}
+
+// TestCachedDeviceGroupKeepsTopDisplayCapability pins the cold-start path: a
+// remembered pair connects before discovery answers, so the cached members
+// must keep their software version or the ambient-light gate fails closed and
+// skips both of them.
+func TestCachedDeviceGroupKeepsTopDisplayCapability(t *testing.T) {
+	e := Entry{
+		Key: "stereo:tsid", Name: "Pair", Host: "192.0.2.10", Port: 7000,
+		Model: "AudioAccessory6,1", OSVersion: "27.3", AirPlay2: true,
+		Auth: device.AuthHAPTransient,
+		Members: []Member{
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory6,1", OSVersion: "27.3"},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory6,1", OSVersion: "27.3"},
+		},
+	}
+	d, ok := CachedDevice(e, false)
+	if !ok {
+		t.Fatal("CachedDevice rejected a complete group")
+	}
+	if d.OSVersion != "27.3" {
+		t.Fatalf("cached group OS version = %q, want 27.3", d.OSVersion)
+	}
+	for i, m := range d.Members {
+		if !device.TopDisplayCapable(m) {
+			t.Fatalf("cached member %d lost top-display capability: %+v", i, m)
+		}
+	}
+}
+
+// TestCachedDeviceGroupFallsBackToTheEntryOSVersion covers an older registry
+// entry whose members predate the per-member field: the group's own version
+// still restores the capability.
+func TestCachedDeviceGroupFallsBackToTheEntryOSVersion(t *testing.T) {
+	e := Entry{
+		Key: "stereo:tsid", Name: "Pair", Host: "192.0.2.10", Port: 7000,
+		Model: "AudioAccessory6,1", OSVersion: "27.2", AirPlay2: true,
+		Auth: device.AuthHAPTransient,
+		Members: []Member{
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory6,1"},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory6,1"},
+		},
+	}
+	d, ok := CachedDevice(e, false)
+	if !ok {
+		t.Fatal("CachedDevice rejected a complete group")
+	}
+	for i, m := range d.Members {
+		if m.OSVersion != "27.2" || !device.TopDisplayCapable(m) {
+			t.Fatalf("cached member %d = %+v, want the entry's OS version", i, m)
+		}
 	}
 }
 

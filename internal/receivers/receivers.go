@@ -55,13 +55,14 @@ const (
 // addresses; keeping them lets the next launch connect the pair without
 // waiting for mDNS.
 type Member struct {
-	ID       string `json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
-	Host     string `json:"host,omitempty"`
-	Port     uint16 `json:"port,omitempty"`
-	Model    string `json:"model,omitempty"`
-	AirPlay2 bool   `json:"airPlay2,omitempty"`
-	Features uint64 `json:"features,omitempty"`
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Host      string `json:"host,omitempty"`
+	Port      uint16 `json:"port,omitempty"`
+	Model     string `json:"model,omitempty"`
+	OSVersion string `json:"osVersion,omitempty"`
+	AirPlay2  bool   `json:"airPlay2,omitempty"`
+	Features  uint64 `json:"features,omitempty"`
 	// FeaturesUnknown marks a cached value whose advertisement did not parse.
 	FeaturesUnknown bool `json:"featuresUnknown,omitempty"`
 	// PairedHost and PairedPort pin the endpoint this member was paired with.
@@ -76,14 +77,15 @@ type Member struct {
 // the deviceid for a discovered receiver, "stereo:<tsid>" for a remembered
 // stereo pair, "m:<uuid>" for a manual receiver.
 type Entry struct {
-	Key      string `json:"key"`
-	Kind     Kind   `json:"kind"`
-	Type     Type   `json:"type,omitempty"`
-	Name     string `json:"name,omitempty"`
-	Host     string `json:"host,omitempty"`
-	Port     uint16 `json:"port,omitempty"`
-	Model    string `json:"model,omitempty"`
-	AirPlay2 bool   `json:"airPlay2,omitempty"`
+	Key       string `json:"key"`
+	Kind      Kind   `json:"kind"`
+	Type      Type   `json:"type,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Host      string `json:"host,omitempty"`
+	Port      uint16 `json:"port,omitempty"`
+	Model     string `json:"model,omitempty"`
+	OSVersion string `json:"osVersion,omitempty"`
+	AirPlay2  bool   `json:"airPlay2,omitempty"`
 	// Features and SF are the last advertised bitfields, cached so a launch
 	// can route a remembered receiver to PTP or NTP without discovery.
 	Features uint64 `json:"features,omitempty"`
@@ -252,6 +254,7 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 		Host:            host,
 		Port:            port,
 		Model:           model,
+		OSVersion:       e.OSVersion,
 		Features:        e.Features,
 		FeaturesUnknown: e.FeaturesUnknown,
 		SF:              e.SF,
@@ -268,6 +271,10 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 			if mm == "" {
 				mm = model
 			}
+			mv := m.OSVersion
+			if mv == "" {
+				mv = e.OSVersion
+			}
 			ma := m.Auth
 			if ma == device.AuthNone {
 				ma = auth
@@ -278,6 +285,7 @@ func CachedDevice(e Entry, hasPassword bool) (device.Device, bool) {
 				Host:            m.Host,
 				Port:            m.Port,
 				Model:           mm,
+				OSVersion:       mv,
 				Features:        m.Features,
 				FeaturesUnknown: m.FeaturesUnknown,
 				SF:              m.SF,
