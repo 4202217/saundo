@@ -56,13 +56,12 @@ approximation; the top display decides.
    `Base: scaleColor(Colors[0], 0.20)`, and a fresh `Seed`.
 3. Add the localized name to `cmd/saundo/locales/en.json` and
    `zh-CN.json` (the `lampPreset*` keys) and a case to `lampPresetName` in
-   `internal/app/lamp.go`. The catalog is generated; `mingw32-make check`
-   runs the i18n step.
+   `internal/app/lamp.go`. The catalog is generated; `make check` (Windows:
+   `mingw32-make check`) runs the i18n step.
 4. Update `docs/ui.md` (the template names), `docs/verification.md` (the
    pinned tests and the device observation), and the verify feature map's
    template list in `.claude/skills/verify/features/ambient-light.md`.
-5. Run `go test ./internal/lamp/`, then `mingw32-make check` and
-   `mingw32-make build`.
+5. Run `go test ./internal/lamp/`, then `make check` and `make build`.
 6. Render and inspect the native previews:
    `SAUNDO_PREVIEW_DIR=<absolute dir> go test ./internal/app -run TestRenderPreviews`,
    then open `settings-lamp-light-zh.png`.
