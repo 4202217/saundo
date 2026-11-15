@@ -879,3 +879,57 @@ one took it from 1627.
   button's accessible label (关闭氛围灯 / 开启氛围灯, Turn off / Turn on
   ambient light); the 已关灯 chip and 自动关闭氛围灯 setting keep their
   own copy. Pins: `TestTrayMenuLampRow` and the catalog gates.
+- 2026-11-15, a stereo pair follower never takes mid-session artwork from
+  its own session: HomePod L (the group row's host, the leader) followed
+  every template change while HomePod R (`AudioAccessory5,1`, software
+  27.3) stayed on its session-start image, although every push reached
+  both members over their own RTSP sessions with identical bytes and
+  both answered `200 OK` each time. Three live experiments on one
+  session pinned the rule. (1) Five artwork-only template switches at
+  19:56:02–13 (ember, dune, moss, tide, orchid): L followed all, R
+  ignored all. (2) Manual off/on at 20:04:07–13 sent real
+  `updateMRPlaybackState` 2 then 1 to both members; both displays
+  darkened and relit, and R relit with its old image even though the
+  resume re-pushed the artwork after state 1. (3) At 20:10:35–49 an
+  artwork-only push, then off, then on with new template bytes
+  (tide, 8847 B) riding the state-1 resume: R still showed the old
+  image. Conclusion: once a follower's session is running its display
+  is governed by the pair's internal sync, not its own session; only
+  the session-start first light reaches it. Two fix iterations. First,
+  a control-plane split: `groupTransport` routed metadata, artwork, and
+  playback state to the leader only (the member matching the group
+  row's host, first member as fallback). The routing shipped and the
+  lamp pushes visibly went to L only (20:52:55 and 20:55:49 sessions),
+  but R then stayed dark even at cold start — the pair's internal sync
+  never delivers the leader's artwork on its own, so leader-only
+  routing regressed the cold start and was reverted. That dead end
+  surfaced the root cause: 361c78f (2026-11-10) had removed the
+  SETPEERS announcement from PTP sessions as a timing no-op ("the
+  receiver can take about 0.4 s to answer it"), which unseeded the
+  member sync that carries Now Playing between the tops; the lamp
+  shipped 2026-11-14, after that removal, so the follower never
+  followed mid-session artwork. Fix as shipped: SETPEERS restored on a
+  pair member's PTP session (gated on non-empty timing peers, keeping
+  the standalone shortcut; the reply gates the stream SETUP on clock
+  readiness and the round trip hides inside the PTP wait), and the
+  control plane reverted to per-member fan-out. another app reference: one
+  aggregated artwork TCP write per lamp switch on the same pair (rea
+  doc,  §10). Same day, interleave observations with an iPhone
+  pushing to the pair: transient pair-setup failed with TLV error 2
+  (`Pairing PIN was not accepted`) across five backoff attempts
+  20:38–20:50 after the previous app was killed mid-stream, then
+  paired at 20:52:53 after an app restart; 3.7 s later the iPhone
+  retook the pair and saundo logged `session taken over: receiver
+  closed the session` (protocol.md §11 behavior). Whether the PIN
+  refusals were the dead-session aftermath or the iPhone's active
+  session is not resolved; both healed without device intervention.
+  Live verification of the follower following the SETPEERS seed: the
+  21:12:11 session answered `SETPEERS reply (200)` on both members and
+  the user confirmed color switches then followed on both tops. The
+  session also began from freshly power-cycled HomePods, so the
+  attribution between the restored announcement and the clean device
+  state is not isolated; the user keeps observing. Pins:
+  `TestStereoGroupSessionCarriesGroupUUIDAndPTPTimeline`,
+  `TestStandalonePTPSessionSkipsSetPeers`,
+  `TestGroupArtworkFansOutToBothCapableMembers`,
+  `TestGroupArtworkSkipsIncapableMember`.

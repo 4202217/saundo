@@ -175,9 +175,21 @@ func (s *Sender) onPairingResponse(code int, headers map[string]string, body str
 		}
 		s.info("AP2 RECORD reply (%d), proceeding to stream SETUP", code)
 		if s.ptpClock != nil {
-			// SETPEERS is a no-op on a PTP session, and the receiver can take
-			// hundreds of milliseconds to answer it. Activate the follower now
-			// and let the PTP readiness gate the stream SETUP directly.
+			if len(s.timingPeers) > 0 {
+				// A pair member still announces its peers on a PTP session.
+				// Timing comes from the sender's master, but the member sync
+				// that carries Now Playing between the two top displays keys
+				// off the SETPEERS list; skipping it left the follower's top
+				// display stuck on its first light (2026-11-15). The round
+				// trip hides inside the PTP wait, and the reply gates the
+				// stream SETUP on the clock's readiness.
+				s.sendSetPeers()
+				return
+			}
+			// A standalone PTP receiver has no peers to announce, and the
+			// receiver can take hundreds of milliseconds to answer a
+			// SETPEERS. Activate the follower now and let the PTP readiness
+			// gate the stream SETUP directly.
 			s.ptpClock.Activate()
 			s.pairStage = pairAP2WaitPTP
 			s.ptpWaitUntil = s.now().Add(30 * time.Second)
