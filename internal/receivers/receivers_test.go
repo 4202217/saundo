@@ -168,8 +168,8 @@ func TestMergeKeepsOfflineCapabilities(t *testing.T) {
 	if d.Auth != device.AuthHAPTransient {
 		t.Fatalf("offline row auth = %v, want HAP transient", d.Auth)
 	}
-	if d.Features != 1<<41 {
-		t.Fatalf("offline row features = %#x, want the cached bits", d.Features)
+	if d.Features.Bits() != 1<<41 {
+		t.Fatalf("offline row features = %#x, want the cached bits", d.Features.Bits())
 	}
 }
 
@@ -720,8 +720,8 @@ func TestCachedDeviceGroupUsesMembers(t *testing.T) {
 	if d.Members[1].Host != "192.0.2.11" || d.Members[1].Port != 7000 {
 		t.Fatalf("member R = %+v", d.Members[1])
 	}
-	if d.Features != 1<<41 || d.Auth != device.AuthHAPTransient {
-		t.Fatalf("cached group capabilities = features %#x auth %v", d.Features, d.Auth)
+	if d.Features.Bits() != 1<<41 || d.Auth != device.AuthHAPTransient {
+		t.Fatalf("cached group capabilities = features %#x auth %v", d.Features.Bits(), d.Auth)
 	}
 }
 

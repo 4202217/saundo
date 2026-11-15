@@ -196,13 +196,13 @@ func TestUsesPTPSelectsHomePodAndMac(t *testing.T) {
 		dev  device.Device
 		want bool
 	}{
-		{"homepod", device.Device{Model: "AudioAccessory5,1", Features: ptpFeatureBit, Auth: device.AuthHAPTransient}, true},
-		{"mac", device.Device{Model: "Mac14,2", Features: ptpFeatureBit, Auth: device.AuthHAPPassword}, true},
-		{"mac without ptp bit", device.Device{Model: "Mac14,2", Auth: device.AuthHAPPassword}, false},
-		{"unknown features on a homepod", device.Device{Model: "AudioAccessory6,1", FeaturesUnknown: true, Auth: device.AuthHAPTransient}, true},
-		{"unknown features on a mac", device.Device{Model: "Mac14,2", FeaturesUnknown: true, Auth: device.AuthHAPPassword}, true},
-		{"unknown features on a non-ptp family", device.Device{Model: "AppleTV6,2", FeaturesUnknown: true, Auth: device.AuthHAPPIN}, false},
-		{"non-ap2 mac", device.Device{Model: "Mac14,2", Features: ptpFeatureBit, Auth: device.AuthNone}, false},
+		{"homepod", device.Device{Model: "AudioAccessory5,1", Features: device.NewFeatures(ptpFeatureBit), Auth: device.AuthHAPTransient}, true},
+		{"mac", device.Device{Model: "Mac14,2", Features: device.NewFeatures(ptpFeatureBit), Auth: device.AuthHAPPassword}, true},
+		{"mac without ptp bit", device.Device{Model: "Mac14,2", Features: device.NewFeatures(0), Auth: device.AuthHAPPassword}, false},
+		{"unknown features on a homepod", device.Device{Model: "AudioAccessory6,1", Auth: device.AuthHAPTransient}, true},
+		{"unknown features on a mac", device.Device{Model: "Mac14,2", Auth: device.AuthHAPPassword}, true},
+		{"unknown features on a non-ptp family", device.Device{Model: "AppleTV6,2", Auth: device.AuthHAPPIN}, false},
+		{"non-ap2 mac", device.Device{Model: "Mac14,2", Features: device.NewFeatures(ptpFeatureBit), Auth: device.AuthNone}, false},
 		{"fairplay tv", device.Device{Model: "AppleTV3,2", Auth: device.AuthLegacyPin}, false},
 	}
 	for _, c := range cases {
@@ -1270,8 +1270,8 @@ func TestRememberDiscoveredCachesGroupMembers(t *testing.T) {
 		Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1",
 		AirPlay2: true, Auth: device.AuthHAPTransient, Online: true,
 		Members: []device.Device{
-			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Auth: device.AuthHAPTransient, Features: 1 << 41},
-			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Auth: device.AuthHAPTransient, Features: 1 << 41},
+			{ID: "L", Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Auth: device.AuthHAPTransient, Features: device.NewFeatures(1 << 41)},
+			{ID: "R", Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory5,1", AirPlay2: true, Auth: device.AuthHAPTransient, Features: device.NewFeatures(1 << 41)},
 		},
 	}
 	h.e.setDevices([]device.Device{group})

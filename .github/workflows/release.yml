@@ -37,6 +37,10 @@ jobs:
         run: go vet -tags updateharness ./cmd/saundo
       - name: UI vet
         run: go tool mygo vet .
+      - name: Architecture
+        run: go run ./scripts/check-arch
+      - name: Size
+        run: go run ./scripts/check-size
       - name: Tests
         run: go test -short ./...
       - name: Verify map
@@ -125,6 +129,10 @@ jobs:
         run: go vet ./...
       - name: UI vet
         run: go tool mygo vet .
+      - name: Architecture
+        run: go run ./scripts/check-arch
+      - name: Size
+        run: go run ./scripts/check-size
       - name: Tests
         env:
           SAUNDO_CREDS_MASTER_KEY: "6b65797320617265206e6f7420736563726574732e2074657374206f6e6c792e"

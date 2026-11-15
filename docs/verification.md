@@ -132,12 +132,14 @@ live state:
 ## Automated checks
 
 Run `mingw32-make check` from the repository root before declaring a build
-good; it chains the gofmt gate, `go vet`, and `go test ./...`. Without
-mingw32-make:
+good; it chains the gofmt gate, `go vet`, the architecture and size gates,
+and `go test ./...`. Without mingw32-make:
 
 ```bash
 go test ./...
 go vet ./...
+go run ./scripts/check-arch
+go run ./scripts/check-size
 gofmt -l .
 ```
 

@@ -2,6 +2,26 @@ package device
 
 import "testing"
 
+// TestUnknownFeaturesHideStaleBits pins the fail-closed read: the registry
+// can carry an older bit field beside an unknown flag, and Bits must not
+// surface it.
+func TestUnknownFeaturesHideStaleBits(t *testing.T) {
+	f := FeaturesFrom(0xF00, true)
+	if f.Known() {
+		t.Fatal("unknown features read as known")
+	}
+	if got := f.Bits(); got != 0 {
+		t.Fatalf("Bits = %#x, want zero for an unknown value", got)
+	}
+	if f.Has(0x800) {
+		t.Fatal("an unknown value reported a bit")
+	}
+	bits, unknown := f.Persisted()
+	if bits != 0xF00 || !unknown {
+		t.Fatalf("Persisted = %#x, %v, want the cached bits and unknown", bits, unknown)
+	}
+}
+
 func TestTopDisplayCapable(t *testing.T) {
 	cases := []struct {
 		name string

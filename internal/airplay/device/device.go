@@ -108,6 +108,44 @@ func FamilyFor(model, am string) Family {
 	}
 }
 
+// Features is a receiver's parsed `features` bit field. The zero value is
+// unknown and Has fails closed, so a missing parse never grants a capability.
+// A gate that distinguishes unknown from zero calls Known.
+type Features struct {
+	bits  uint64
+	known bool
+}
+
+// NewFeatures returns a features value that parsed successfully.
+func NewFeatures(bits uint64) Features { return Features{bits: bits, known: true} }
+
+// FeaturesFrom rebuilds a value from its persisted form. An entry stored
+// before the field existed reads as known zero, matching its old meaning.
+func FeaturesFrom(bits uint64, unknown bool) Features {
+	return Features{bits: bits, known: !unknown}
+}
+
+// Known reports whether the advertisement carried a parsed features value.
+func (f Features) Known() bool { return f.known }
+
+// Bits returns the raw field when it is known. An unknown value reads as
+// zero even when the registry kept an older bit field, so a gate that treats
+// zero as "no capabilities" still fails closed.
+func (f Features) Bits() uint64 {
+	if !f.known {
+		return 0
+	}
+	return f.bits
+}
+
+// Has reports whether bit is set. An unknown value has no bits.
+func (f Features) Has(bit uint64) bool { return f.known && f.bits&bit != 0 }
+
+// Persisted returns the cached form the receiver registry stores.
+func (f Features) Persisted() (bits uint64, unknown bool) {
+	return f.bits, !f.known
+}
+
 // Device is one AirPlay receiver as discovery sees it.
 type Device struct {
 	// ID is the `deviceid` TXT value, a colon-separated MAC address.
@@ -123,12 +161,10 @@ type Device struct {
 	Model string
 	// OSVersion is the `osvers` TXT value, for example 27.2.
 	OSVersion string
-	// Features and SF are the parsed `features` and `sf` bit fields.
-	// FeaturesUnknown marks a features value that did not parse, so a gate
-	// never treats unknown capabilities as absent ones.
-	Features        uint64
-	FeaturesUnknown bool
-	SF              uint64
+	// Features and SF are the parsed `features` and `sf` bit fields. A
+	// features value that did not parse stays unknown rather than zero.
+	Features Features
+	SF       uint64
 	// AM is the `am` TXT value.
 	AM string
 	// PasswordRequired reports that the receiver gates AirPlay with a

@@ -110,9 +110,11 @@ func (e *Engine) stopLevelPump() {
 		return
 	}
 	close(e.levelStop)
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
 	select {
 	case <-e.levelDone:
-	case <-time.After(2 * time.Second):
+	case <-timer.C:
 		e.logf("level pump did not stop within 2s")
 	}
 }

@@ -13,6 +13,15 @@ import (
 	"time"
 )
 
+// Secret is a long-term key. Every formatting verb redacts it, so a stray
+// log line or error message cannot print the key.
+type Secret []byte
+
+// Format makes %v, %s, %x, and %q all print [redacted].
+func (s Secret) Format(f fmt.State, verb rune) {
+	_, _ = f.Write([]byte("[redacted]"))
+}
+
 // Credentials are the long-term keys from a successful HAP pairing. LTSK is
 // our secret, LTPK the receiver's public key, ATVID the receiver's pairing
 // identifier, and ClientID our pairing UUID.
@@ -20,7 +29,7 @@ type Credentials struct {
 	ATVID    []byte `json:"-"`
 	ClientID string `json:"-"`
 	LTPK     []byte `json:"-"`
-	LTSK     []byte `json:"-"`
+	LTSK     Secret `json:"-"`
 }
 
 type wireCreds struct {
@@ -57,7 +66,7 @@ func Parse(text string) (Credentials, bool) {
 	if err1 != nil || err2 != nil || err3 != nil || w.ClientID == "" {
 		return Credentials{}, false
 	}
-	return Credentials{ATVID: atv, ClientID: w.ClientID, LTPK: ltpk, LTSK: ltsk}, true
+	return Credentials{ATVID: atv, ClientID: w.ClientID, LTPK: ltpk, LTSK: Secret(ltsk)}, true
 }
 
 // Store keeps one credentials blob per device, encrypted at rest.

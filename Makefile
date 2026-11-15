@@ -14,7 +14,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
 
-.PHONY: build build-fast test race vet uivet i18n fmt check platforms test-mac-update
+.PHONY: build build-fast test race vet uivet i18n fmt arch size check platforms test-mac-update
 
 build:
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh
@@ -47,6 +47,17 @@ uivet:
 i18n:
 	$(GO) tool mygo i18n check cmd/saundo
 
+# The architecture seams: import direction, go statements in sans-I/O
+# packages, time.After/time.Tick, and data channels made with a literal type
+# and no capacity.
+arch:
+	$(GO) run ./scripts/check-arch
+
+# The line budget: grandfathered files may not grow, new non-test files stay
+# at or below 800 lines. Generated files are exempt.
+size:
+	$(GO) run ./scripts/check-size
+
 fmt:
 	$(GOFMT) -w .
 
@@ -59,4 +70,4 @@ check:
 	@command -v "$(GOFMT)" >/dev/null 2>&1 || { echo "gofmt not found; set GOFMT=... or put Go on PATH"; exit 1; }
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) tool mygo vet . && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms

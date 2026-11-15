@@ -38,10 +38,10 @@ func TestParseRAOPEntry(t *testing.T) {
 	if d.Auth != device.AuthHAPTransient {
 		t.Fatalf("auth = %v, want transient", d.Auth)
 	}
-	if d.Features != 0x3C354B004A7FCA00 {
-		t.Fatalf("features = %#x", d.Features)
+	if d.Features.Bits() != 0x3C354B004A7FCA00 {
+		t.Fatalf("features = %#x", d.Features.Bits())
 	}
-	if d.FeaturesUnknown {
+	if !d.Features.Known() {
 		t.Fatal("a parsed features value was marked unknown")
 	}
 }
@@ -63,8 +63,8 @@ func TestParseEntryUppercaseFeaturePrefixKeepsCapabilities(t *testing.T) {
 	if !ok {
 		t.Fatal("entry rejected")
 	}
-	if d.Features != 0x3C354B004A7FCA00 {
-		t.Fatalf("features = %#x, want 0x3C354B004A7FCA00", d.Features)
+	if d.Features.Bits() != 0x3C354B004A7FCA00 {
+		t.Fatalf("features = %#x, want 0x3C354B004A7FCA00", d.Features.Bits())
 	}
 	if d.Auth != device.AuthHAPTransient {
 		t.Fatalf("auth = %v, want HAP transient", d.Auth)
@@ -88,8 +88,8 @@ func TestParseEntryMarksAnUnparseableFeatureWord(t *testing.T) {
 	if !ok {
 		t.Fatal("entry rejected")
 	}
-	if !d.FeaturesUnknown {
-		t.Fatalf("features = %#x, want unknown", d.Features)
+	if d.Features.Known() {
+		t.Fatalf("features = %#x, want unknown", d.Features.Bits())
 	}
 	if d.Auth != device.AuthHAPTransient {
 		t.Fatalf("auth = %v, want HAP transient", d.Auth)
@@ -244,7 +244,7 @@ func TestMergeKeepsOSVersion(t *testing.T) {
 }
 
 func TestPasswordAndAirportAuth(t *testing.T) {
-	ap := device.Device{AM: "AirPort10,115", Features: featureHKPairing}
+	ap := device.Device{AM: "AirPort10,115", Features: device.NewFeatures(featureHKPairing)}
 	if chooseAuth(ap) != device.AuthSetup {
 		t.Fatal("AirPort device should use auth-setup")
 	}
@@ -252,7 +252,7 @@ func TestPasswordAndAirportAuth(t *testing.T) {
 	if chooseAuth(pw) != device.AuthPassword {
 		t.Fatal("a password gate without HAP bits is the legacy AP1 digest")
 	}
-	hapPw := device.Device{PasswordRequired: true, Features: featureHKPairing}
+	hapPw := device.Device{PasswordRequired: true, Features: device.NewFeatures(featureHKPairing)}
 	if chooseAuth(hapPw) != device.AuthHAPPassword {
 		t.Fatal("a password gate with HAP bits must use HAP password pairing")
 	}
@@ -748,7 +748,7 @@ func TestLegacyAppleTVFailsFastForFairPlay(t *testing.T) {
 	if chooseAuth(legacy) != device.AuthLegacyPin {
 		t.Fatalf("auth = %v, want legacy-pin for a HAP-less AppleTV3,2", chooseAuth(legacy))
 	}
-	modern := device.Device{Model: "AppleTV6,2", Features: featureHKPairing}
+	modern := device.Device{Model: "AppleTV6,2", Features: device.NewFeatures(featureHKPairing)}
 	if chooseAuth(modern) != device.AuthHAPPIN {
 		t.Fatalf("auth = %v, want hap-pin", chooseAuth(modern))
 	}

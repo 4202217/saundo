@@ -334,12 +334,13 @@ func (s *Service) merge(d device.Device) {
 	if d.OSVersion != "" {
 		merged.OSVersion = d.OSVersion
 	}
-	if !d.FeaturesUnknown && d.Features != 0 {
+	if d.Features.Known() && d.Features.Bits() != 0 {
 		merged.Features = d.Features
+	} else if d.Features.Known() {
+		// One advertisement with a parsed features value makes the device
+		// known, even when the other service's record carried none.
+		merged.Features = device.NewFeatures(merged.Features.Bits())
 	}
-	// One advertisement with a parsed features value makes the device known,
-	// even when the other service's record carried none.
-	merged.FeaturesUnknown = merged.FeaturesUnknown && d.FeaturesUnknown
 	if d.SF != 0 {
 		merged.SF = d.SF
 	}
@@ -510,8 +511,7 @@ func parseEntry(e *mdns.ServiceEntry, service string) (device.Device, bool) {
 		Port:             uint16(e.Port),
 		Model:            model,
 		OSVersion:        strings.TrimSpace(txt["osvers"]),
-		Features:         featureBits,
-		FeaturesUnknown:  !featuresOK,
+		Features:         device.FeaturesFrom(featureBits, !featuresOK),
 		SF:               sf,
 		AM:               txt["am"],
 		PasswordRequired: strings.EqualFold(txt["pw"], "true") || strings.EqualFold(txt["pw"], "1") || sf&0x80 != 0,
@@ -701,7 +701,7 @@ func chooseAuth(d device.Device) device.Auth {
 	if strings.HasPrefix(d.AM, "AirPort") {
 		return device.AuthSetup
 	}
-	if d.FeaturesUnknown && (strings.HasPrefix(d.Model, "AudioAccessory") || strings.HasPrefix(d.Model, "Mac")) {
+	if !d.Features.Known() && (strings.HasPrefix(d.Model, "AudioAccessory") || strings.HasPrefix(d.Model, "Mac")) {
 		// A failed features parse must not take the permissive AP1 path for a
 		// family that pairs over HAP.
 		if d.PasswordRequired {
@@ -709,7 +709,7 @@ func chooseAuth(d device.Device) device.Auth {
 		}
 		return device.AuthHAPTransient
 	}
-	hap := d.Features&featureHKPairing != 0 || d.Features&featureCoreUtils != 0
+	hap := d.Features.Has(featureHKPairing) || d.Features.Has(featureCoreUtils)
 	switch {
 	case hap && d.PasswordRequired:
 		// A HAP receiver with Require Password gates HAP pair-setup, not the

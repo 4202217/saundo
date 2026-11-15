@@ -84,9 +84,11 @@ func (e *Engine) stopMuteWorker() {
 		return
 	}
 	e.muteStopOnce.Do(func() { close(e.muteStop) })
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
 	select {
 	case <-e.muteDone:
-	case <-time.After(2 * time.Second):
+	case <-timer.C:
 		e.logf("mute worker did not stop within 2s")
 	}
 }
