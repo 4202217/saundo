@@ -1,12 +1,13 @@
 // Command check-arch turns the architecture rules in AGENTS.md into a gate.
 // It parses the tree once and reports every violated import seam and the
-// concurrency shapes it can see: a go statement or time.AfterFunc in a listed
-// sans-I/O package, time.After or time.Tick anywhere in product code, and a
-// data channel made without a visible capacity, whether its type is written
-// out or named anywhere in the same package. A struct{} signal channel is
-// allowed, and a channel type imported from another package is beyond what a
-// parser-only check can see. It also rejects a direct dependency that is not
-// on the allowlist, so a stale library cannot enter just because it compiles.
+// concurrency shapes it can see: a go statement, time.AfterFunc, or time.Sleep
+// in a listed sans-I/O package, time.After or time.Tick anywhere in product
+// code, and a data channel made without a visible capacity, whether its type
+// is written out or named anywhere in the same package. A struct{} signal
+// channel is allowed, and a channel type imported from another package is
+// beyond what a parser-only check can see. It also rejects a direct dependency
+// that is not on the allowlist, so a stale library cannot enter just because
+// it compiles.
 package main
 
 import (
@@ -78,6 +79,14 @@ var sansIOPackages = []string{
 var timerCalls = map[string]string{
 	"After": "time.After cannot be stopped; use time.NewTimer and Stop it",
 	"Tick":  "time.Tick leaks its ticker; use time.NewTicker and Stop it",
+}
+
+// sansIOCalls name the standard-library helpers a sans-I/O package may not
+// call: they start a goroutine or block the host's loop, and such a package
+// owns neither.
+var sansIOCalls = map[string]string{
+	"AfterFunc": "it starts a goroutine",
+	"Sleep":     "it blocks the host's event loop",
 }
 
 func main() {
@@ -260,10 +269,10 @@ func checkTimers(rel string, fset *token.FileSet, f *ast.File) []string {
 		if !ok || !names[id.Name] {
 			return true
 		}
-		if sel.Sel.Name == "AfterFunc" && underAny(rel, sansIOPackages) {
+		if why, banned := sansIOCalls[sel.Sel.Name]; banned && underAny(rel, sansIOPackages) {
 			out = append(out, fmt.Sprintf(
-				"%s calls %s.AfterFunc; it starts a goroutine, and this package is sans-I/O",
-				at(rel, fset, call.Pos()), id.Name))
+				"%s calls %s.%s; %s, and this package is sans-I/O",
+				at(rel, fset, call.Pos()), id.Name, sel.Sel.Name, why))
 			return true
 		}
 		why, banned := timerCalls[sel.Sel.Name]

@@ -156,6 +156,25 @@ func TestAfterFuncOutsideSansIOAllowed(t *testing.T) {
 	}
 }
 
+func TestSleepBannedInSansIOPackage(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/airplay/sender/sender.go": "package sender\nimport \"time\"\nfunc Wait() { time.Sleep(time.Second) }\n",
+	})
+	err := run(root)
+	if err == nil || !strings.Contains(err.Error(), "time.Sleep") {
+		t.Fatalf("sans-I/O sleep = %v, want a sleep violation", err)
+	}
+}
+
+func TestSleepOutsideSansIOAllowed(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/engine/engine.go": "package engine\nimport \"time\"\nfunc Backoff() { time.Sleep(time.Second) }\n",
+	})
+	if err := run(root); err != nil {
+		t.Fatalf("engine sleep = %v, want no violation", err)
+	}
+}
+
 func TestSignalChannelAllowed(t *testing.T) {
 	root := seed(t, map[string]string{
 		"internal/engine/engine.go": "package engine\nfunc Run() { ch := make(chan struct{}); _ = ch }\n",
