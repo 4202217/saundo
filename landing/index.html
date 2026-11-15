@@ -1,0 +1,2635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>声渡 saundo：电脑里一放，HomePod 就响</title>
+<meta name="description" content="声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。">
+<meta property="og:title" content="声渡 saundo：电脑里一放，HomePod 就响">
+<meta property="og:description" content="开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，PTP 或 NTP 对时，托盘常驻。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="saundo">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:image" content="https://raw.githubusercontent.com/4202217/saundo/main/landing/assets/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="声渡 saundo：电脑里一放，HomePod 就响。">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/4202217/saundo/main/landing/assets/og.jpg">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="preload" href="assets/fonts/Geist-VF.woff2" as="font" type="font/woff2" crossorigin>
+<script>(function(){try{var t=localStorage.getItem("saundo-theme");if(t!=="dark"&&t!=="light"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+<style>
+/* ---------- fonts (self-hosted, upright only — no italic faces shipped) ---------- */
+@font-face{
+  font-family:"Geist"; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url("assets/fonts/Geist-VF.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Geist Mono"; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url("assets/fonts/GeistMono-VF.woff2") format("woff2");
+}
+/* ---------- tokens ---------- */
+/* hidden 属性优先于任何 author display 声明（.fchip/.flampgrid 等曾覆盖 UA 样式导致 [hidden] 失效） */
+[hidden]{display:none !important}
+.nowrap{white-space:nowrap}
+:root{
+  --bg:#fafafa; --surface:#ffffff;
+  --text:#1d1d1f; --text2:#6e6e73; --line:rgba(0,0,0,.09);
+  --green:#189a58; --green-soft:rgba(24,154,88,.12);
+  --nav-bg:rgba(250,250,250,.72); --chip-bg:rgba(255,255,255,.82); --chip-shadow:rgba(0,0,0,.1);
+  --hover-soft:rgba(0,0,0,.05); --soft-fill:rgba(0,0,0,.08); --row-hover:#fafafa;
+  --green-text:#14713f; --dot-idle:#c7c7cc;
+    --panel:#ffffff;
+  --amb-card:#ffffff; --amb-row:#fafafa; --eq-bar:#1d1d1f; --prog-well:rgba(0,0,0,.12); --prog-fill:#1d1d1f; --seg-well:#f0f0f3; --seg-on:#ffffff; --seg-shadow:rgba(0,0,0,.12); --switch-on:#000000; --switch-knob:#ffffff; --swatch-ring:rgba(0,0,0,.08);
+  --d-bg:#0a0a0a; --d-card:#181818; --d-card2:#1f1f1f; --d-text:#f5f5f7; --d-text2:#9b9b9b; --d-line:rgba(255,255,255,.1);
+  /* 阴影统一色：黑 + 16% 主光色相，随 --amb-1 实时联动，让设备阴影与光同色系 */
+  --amb-shadow:color-mix(in srgb, var(--amb-1) 16%, #000);
+  --ease:cubic-bezier(.22,1,.36,1);
+  --r-card:24px; --r-inner:12px;
+  --sp-75:8px; --sp-100:12px; --sp-200:16px; --sp-300:24px; --sp-400:32px; --sp-500:40px; --sp-600:48px; --sp-700:64px; --sp-800:80px; --sp-900:96px;
+}
+html[data-theme="dark"]{
+  --bg:#0a0a0a; --surface:#1f1f1f;
+  --text:#f5f5f7; --text2:#9b9b9b; --line:rgba(255,255,255,.1);
+  --nav-bg:rgba(32,32,34,.72); --chip-bg:rgba(24,24,24,.86); --chip-shadow:rgba(0,0,0,.5);
+  --hover-soft:rgba(255,255,255,.07); --soft-fill:rgba(255,255,255,.1); --row-hover:#1f1f1f; --seg-on:#272727;
+  --green-text:#6fdc8c; --dot-idle:#48484a;
+    --panel:#181818;
+  --amb-card:#1f1f1f; --amb-row:#272727; --eq-bar:#d6d6db; --prog-well:rgba(255,255,255,.14); --prog-fill:#e8e8ec; --seg-well:#181818; --seg-on:#313131; --seg-shadow:rgba(0,0,0,.5); --switch-on:#ffffff; --switch-knob:#181818; --swatch-ring:rgba(255,255,255,.12);
+  color-scheme:dark;
+}
+html[data-theme="dark"] .hero h1{background:linear-gradient(90deg,#fff,#9b9b9b);-webkit-background-clip:text;background-clip:text}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  font-family:"Geist",-apple-system,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  font-style:normal; font-synthesis-style:none;
+  overflow-x:hidden;
+}
+i,em{font-style:normal}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:6px}
+::selection{background:rgba(24,154,88,.2)}
+.skip{position:fixed;top:8px;left:8px;z-index:200;background:#000;color:#fff;padding:8px 16px;border-radius:999px;transform:translateY(-64px);transition:transform .5s var(--ease)}
+.skip:focus{transform:translateY(0)}
+
+/* ---------- type styles (B1) ---------- */
+.heading-1{font-size:60px;line-height:60px;font-weight:600;letter-spacing:-.022em;text-wrap:balance}
+.heading-2{font-size:48px;line-height:48px;font-weight:600;letter-spacing:-.02em;text-wrap:balance}
+.heading-3{font-size:36px;line-height:40px;font-weight:600;letter-spacing:-.018em;text-wrap:balance}
+.heading-4{font-size:30px;line-height:36px;font-weight:600;letter-spacing:-.015em}
+.title-1{font-size:20px;line-height:28px;font-weight:500}
+.title-2{font-size:18px;line-height:28px;font-weight:500}
+.body-1{font-size:16px;line-height:24px;font-weight:600}
+.body-2{font-size:16px;line-height:24px;font-weight:500}
+.body-3{font-size:16px;line-height:26px;font-weight:400;color:var(--text2);text-wrap:pretty}
+.caption-1{font-size:14px;line-height:20px;font-weight:500;color:var(--text2)}
+.caption-2{font-size:14px;line-height:20px;font-weight:400;color:var(--text2)}
+.caption-3{font-size:12px;line-height:16px;font-weight:600}
+.mono{font-family:"Geist Mono",ui-monospace,"SF Mono",monospace}
+@media (max-width:1120px){.hero h1{font-size:48px;line-height:52px;letter-spacing:-.02em}}
+@media (max-width:900px){.heading-1{font-size:48px}.heading-2{font-size:36px;line-height:40px}.heading-3{font-size:30px;line-height:36px}}
+@media (max-width:560px){.heading-1{font-size:36px;line-height:44px}.heading-2{font-size:30px;line-height:36px}.heading-3{font-size:26px;line-height:32px}}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1200px;margin:0 auto;padding:0 var(--sp-500)}
+section{scroll-margin-top:96px}
+.sec-head{max-width:680px;margin:0 auto var(--sp-700);text-align:center;display:grid;gap:var(--sp-300)}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;transform:translateY(32px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.reveal[data-d="1"]{transition-delay:.08s}.reveal[data-d="2"]{transition-delay:.16s}.reveal[data-d="3"]{transition-delay:.24s}.reveal[data-d="4"]{transition-delay:.32s}.reveal[data-d="5"]{transition-delay:.4s}
+
+/* 首屏入场编排：文案逐级落位，面板整体随后到场（内部不再逐行装配） */
+.hero .reveal{transition-duration:.62s}
+.hero .hero-badge{transition-delay:.05s}
+.hero h1.reveal{transition-delay:.18s}
+.hero .sub.reveal{transition-delay:.31s}
+.hero .hero-cta.reveal{transition-delay:.44s}
+.hero .hero-note.reveal{transition-delay:.56s}
+.hero .hero-proof.reveal{transition-delay:.66s}
+.hero .hero-visual.reveal{transition-delay:.20s;transition-duration:.7s}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+/* ---------- nav (B7) ---------- */
+.nav{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:var(--sp-100);
+  padding:8px 8px 8px 16px;border-radius:999px;background:var(--nav-bg);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border:1px solid var(--line);box-shadow:0 8px 32px rgba(0,0,0,.08);white-space:nowrap}
+.nav .logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.nav .logo img{width:22px;height:22px;border-radius:6px}
+.nav .links{display:flex;gap:2px}
+.nav .links a{font-size:14px;font-weight:500;color:var(--text2);padding:6px 12px;border-radius:999px;transition:color .3s var(--ease),background .3s var(--ease)}
+.nav .links a:hover{color:var(--text);background:var(--hover-soft)}
+.nav .gh{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;color:var(--text2);transition:color .3s var(--ease),background .3s var(--ease)}
+.nav .gh:hover{color:var(--text);background:var(--hover-soft)}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;font-size:14px;font-weight:600;
+  transition:transform .5s var(--ease),background .3s var(--ease),color .3s var(--ease),box-shadow .3s var(--ease);will-change:transform}
+.btn:active{transform:scale(.97)}
+.btn-dark{background:#000;color:#fff}
+.btn-dark:hover{background:#272727;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+html[data-theme="dark"] .btn-dark{background:var(--d-text);color:#000}
+html[data-theme="dark"] .btn-dark:hover{background:#fff;box-shadow:0 6px 24px rgba(255,255,255,.16)}
+.btn-ghost{border:1px solid var(--line);background:var(--chip-bg)}
+.btn-ghost:hover{background:var(--surface)}
+.btn-lg{font-size:18px;font-weight:600;padding:12px 24px}
+@media (max-width:900px){.nav .links{display:none}.nav{padding-left:12px}}
+.tbtn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;color:var(--text2);
+  font-size:12px;font-weight:700;letter-spacing:.02em;transition:color .3s var(--ease),background .3s var(--ease)}
+.tbtn:hover{color:var(--text);background:var(--hover-soft)}
+.tbtn svg{width:16px;height:16px}
+#langBtn{width:auto;padding:6px 12px;font-size:14px;font-weight:500;letter-spacing:normal}
+html[data-theme="light"] .ic-moon{display:none}
+html[data-theme="dark"] .ic-sun{display:none}
+.menu-btn{display:none;width:34px;height:34px;border-radius:999px;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.menu-btn .mb-line{width:16px;height:2px;border-radius:1px;background:var(--text);transition:transform .5s var(--ease)}
+.menu-btn[aria-expanded="true"] .mb-line:nth-child(1){transform:translateY(3.5px) rotate(45deg)}
+.menu-btn[aria-expanded="true"] .mb-line:nth-child(2){transform:translateY(-3.5px) rotate(-45deg)}
+.mmenu{position:fixed;inset:0;z-index:90;background:var(--bg);opacity:.96;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center}
+.mmenu[hidden]{display:none}
+.mmenu-inner{display:grid;justify-items:center;gap:var(--sp-300);text-align:center}
+.mmenu-inner a{font-size:24px;line-height:32px;font-weight:600;color:var(--text);opacity:0;transform:translateY(24px);transition:opacity .45s var(--ease),transform .45s var(--ease);transition-delay:0s}
+.mmenu-inner a.btn{color:var(--bg)}
+.mmenu.open .mmenu-inner a{opacity:1;transform:none}
+.mmenu.open .mmenu-inner a:nth-child(1){transition-delay:.02s}.mmenu.open .mmenu-inner a:nth-child(2){transition-delay:.08s}.mmenu.open .mmenu-inner a:nth-child(3){transition-delay:.14s}.mmenu.open .mmenu-inner a:nth-child(4){transition-delay:.2s}.mmenu.open .mmenu-inner a:nth-child(5){transition-delay:.26s}.mmenu.open .mmenu-inner a:nth-child(6){transition-delay:.32s}.mmenu.open .mmenu-inner a:nth-child(7){transition-delay:.38s}
+@media (max-width:900px){.menu-btn{display:flex}}
+@media (max-width:560px){.nav-dl{display:none}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:calc(96px + 64px) 0 var(--sp-600);background:var(--bg);overflow-x:clip;overflow-y:visible}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:var(--sp-800);align-items:center;
+  max-width:1120px;margin:0 auto;padding:0 var(--sp-500)}
+.hero-copy{display:grid;justify-items:start;gap:var(--sp-300);max-width:560px;min-width:0;width:100%}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--text2);
+  border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.hero h1{background:linear-gradient(90deg,#000,#666);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+@supports not ((-webkit-background-clip: text) or (background-clip: text)){
+  .hero h1, html[data-theme="dark"] .hero h1{background:none !important;color:var(--text) !important;-webkit-text-fill-color:currentColor !important}
+}
+@media print{
+  .hero h1, html[data-theme="dark"] .hero h1{background:none !important;color:#000 !important;-webkit-text-fill-color:currentColor !important}
+}
+.hero .sub{max-width:500px}
+.hero-cta{display:flex;align-items:center;gap:var(--sp-300);flex-wrap:wrap;margin-top:var(--sp-100)}
+.hero-alt{font-size:14px;font-weight:600;color:var(--text2);display:inline-flex;align-items:center;gap:6px;
+  border-bottom:1px solid transparent;padding-bottom:2px;transition:color .3s var(--ease),border-color .3s var(--ease)}
+.hero-alt:hover{color:var(--text);border-bottom-color:var(--line)}
+.hero-note{font-size:13px;line-height:20px;color:var(--text2);max-width:460px;display:inline-block}
+.hero-note b{color:var(--text);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap}
+.hero-note:hover b{border-bottom-color:var(--text)}
+/* proof line: one flowing sentence with interpunct separators, platforms as release links */
+.hero-proof{font-size:14px;color:var(--text2);font-weight:500;line-height:24px}
+.hero-proof a{color:var(--text2);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;transition:color .3s var(--ease)}
+.hero-proof a:hover{color:var(--text)}
+.hero-proof .dot-sep{margin:0 9px}
+/* zoom, not a narrower column: panel, glow and caption scale together as one object,
+   and the layout height shrinks with it (transform:scale would strand empty space) */
+.hero-visual{position:relative;justify-self:end;width:100%;max-width:380px;min-width:0;zoom:.85}
+/* the halo is a field of uneven color blobs inside an organic silhouette — the
+   border-radius is randomized per load (no SVG filter: displacement maps are
+   software-rasterized on phones and stall first paint at DPR 3) */
+.hero-glow{position:absolute;inset:-26%;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(40% 36% at 58% 30%, color-mix(in srgb, var(--amb-1) 26%, transparent) 0%, transparent 100%),
+    radial-gradient(32% 28% at 27% 30%, color-mix(in srgb, var(--amb-2) 18%, transparent) 0%, transparent 100%),
+    radial-gradient(40% 36% at 48% 74%, color-mix(in srgb, var(--amb-1) 24%, transparent) 0%, transparent 100%),
+    radial-gradient(28% 26% at 77% 70%, color-mix(in srgb, var(--amb-2) 16%, transparent) 0%, transparent 100%),
+    radial-gradient(24% 22% at 19% 58%, color-mix(in srgb, var(--amb-3) 16%, transparent) 0%, transparent 100%),
+    radial-gradient(20% 18% at 70% 86%, color-mix(in srgb, var(--amb-3) 12%, transparent) 0%, transparent 100%),
+    radial-gradient(48% 44% at 50% 50%, color-mix(in srgb, var(--amb-1) 12%, transparent) 0%, transparent 100%);
+  filter:blur(24px);
+  border-radius:46% 54% 58% 42% / 46% 44% 56% 54%;
+  opacity:.55;
+  transition:--amb-1 .9s var(--ease), --amb-2 .9s var(--ease), --amb-3 .9s var(--ease), opacity .7s var(--ease);
+  animation:glowDrift 26s ease-in-out infinite}
+html[data-theme="dark"] .hero-glow{opacity:.8}
+html[data-lamp-glow="off"] .hero-glow{opacity:0}
+@keyframes glowDrift{0%,100%{transform:rotate(-1.4deg) scale(1)}50%{transform:rotate(1.8deg) scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.hero-glow{animation:none}}
+.hero-visual .fly-wrap{position:relative;z-index:1;width:100%}
+.hero-visual .flyout{width:100%}
+.hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.14), 0 4px 38px color-mix(in srgb, var(--amb-1) 12%, transparent), 0 0 80px color-mix(in srgb, var(--amb-1) 8%, transparent);
+  transition:box-shadow .7s var(--ease)}
+html[data-theme="dark"] .hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.72), 0 4px 44px color-mix(in srgb, var(--amb-1) 16%, transparent), 0 0 88px color-mix(in srgb, var(--amb-1) 12%, transparent)}
+html[data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.14)}
+html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.72)}
+
+@media (max-width:1020px){
+  .hero{padding:calc(96px + 40px) 0 var(--sp-600)}
+  .hero-grid{grid-template-columns:minmax(0,1fr);gap:var(--sp-600);padding:0 var(--sp-300);justify-items:center;text-align:center}
+  .hero-copy{justify-items:center;order:1;max-width:560px;min-width:0;width:100%}
+  /* stacked below the copy the panel is content, not a prop: render at design size */
+  .hero-visual{zoom:1}
+  .hero-cta{justify-content:center}
+  .hero-visual{order:2;justify-self:center;max-width:380px;min-width:0}
+  .hero .sub{max-width:100%}
+}
+@media (max-width:560px){
+  .steps-sec,.feat-sec,.amb-sec,.colors-sec,.faq-sec{padding-top:var(--sp-700);padding-bottom:var(--sp-700)}
+  /* .hero h1 outranked .heading-1, so the phone step never applied */
+  .hero h1{font-size:36px;line-height:44px}
+  /* the English headline is one long phrase; tighten tracking so both lines fit 342px */
+  html[lang="en"] .hero h1{letter-spacing:-.035em}
+}
+
+/* ---------- marquee ---------- */
+.marquee-sec{padding:0 0 var(--sp-800);background:var(--bg)}
+/* Edge fade is two static overlays, not mask-image: a mask on the container of an animated
+   track is re-composited every frame and flickers on phones while scrolling. */
+.marquee{overflow:hidden;position:relative;display:flex}
+.marquee::before,.marquee::after{content:"";position:absolute;top:0;bottom:0;width:12%;z-index:1;pointer-events:none}
+.marquee::before{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
+.marquee::after{right:0;background:linear-gradient(270deg,var(--bg),transparent)}
+.marquee-track{display:flex;gap:var(--sp-600);align-items:center;flex-shrink:0;animation:scrollx 28s linear infinite;padding-right:var(--sp-600);will-change:transform}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@keyframes scrollx{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.marquee-track{animation:none}}
+.mq-item{display:inline-flex;align-items:center;gap:10px;font-size:18px;font-weight:500;color:var(--text2)}
+.mq-item svg{width:22px;height:22px}
+.mq-item svg.sfg,.fglyph svg.sfg,.rg svg.sfg{fill:currentColor}
+.mq-item svg.sfg{width:20px;height:20px}
+.mq-dot{width:4px;height:4px;border-radius:50%;background:var(--line);align-self:center}
+
+.hero{position:relative}
+.hero-copy{position:relative;z-index:1}
+.hero-visual{position:relative;z-index:1}
+
+/* ---------- steps ---------- */
+.steps-sec{padding:var(--sp-800) 0;background:var(--bg)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-300)}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:var(--sp-400);display:grid;gap:var(--sp-200);transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.step:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.07)}
+.step .num{font-family:"Geist Mono",monospace;font-size:13px;font-weight:500;color:var(--text2)}
+.step-art{height:120px;display:flex;align-items:center;justify-content:center}
+.step h3{font-size:20px;line-height:28px;font-weight:600}
+.step p{font-size:15px;line-height:24px;color:var(--text2);text-wrap:pretty}
+@media (max-width:900px){.steps{grid-template-columns:1fr}.step-art{height:96px}}
+
+/* step art animations — one 4.6s loop per card, telling the step's story */
+.art-tray{position:relative;width:150px;height:92px}
+.art-tray .bar{position:absolute;left:0;right:0;bottom:0;height:30px;border-radius:11px;background:var(--soft-fill);border:1px solid var(--line)}
+.art-tray .slot{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:44px;height:4px;border-radius:2px;background:var(--dot-idle);opacity:.6}
+.art-tray .tile{position:absolute;left:50%;bottom:9px;width:36px;height:36px;margin-left:-18px;border-radius:10px;background:var(--text);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(0,0,0,.2);animation:traydrop 4.6s var(--ease) infinite}
+.art-tray .tile svg{width:24px;height:24px}
+.art-tray .tile .eye{fill:var(--surface)}
+.art-tray .tile .mouth{fill:none;stroke:var(--surface);stroke-width:2.6;stroke-linecap:round}
+.art-tray .dot{position:absolute;left:calc(50% + 26px);bottom:20px;width:7px;height:7px;border-radius:50%;background:var(--green);opacity:0;animation:traydot 4.6s var(--ease) infinite}
+@keyframes traydrop{
+  0%{transform:translateY(-58px);opacity:0;animation-timing-function:cubic-bezier(.5,0,.9,.4)}
+  26%{transform:translateY(0) scale(1,1);opacity:1;animation-timing-function:cubic-bezier(.3,.9,.5,1.4)}
+  31%{transform:translateY(-7px) scale(.96,1.06);animation-timing-function:var(--ease)}
+  35%,82%{transform:translateY(0) scale(1,1);opacity:1}
+  92%,100%{transform:translateY(0) scale(1,1);opacity:0}
+}
+@keyframes traydot{
+  0%,34%{opacity:0}
+  40%,84%{opacity:1;box-shadow:0 0 0 0 rgba(48,179,82,.4)}
+  48%{box-shadow:0 0 0 9px rgba(48,179,82,0)}
+  100%{opacity:0;box-shadow:0 0 0 0 rgba(48,179,82,0)}
+}
+.art-pick{position:relative;width:200px;height:86px}
+.art-pick .row{position:absolute;left:0;right:0;height:24px;border-radius:9px;background:var(--soft-fill);display:flex;align-items:center;gap:7px;padding:0 9px;border:1.5px solid transparent}
+.art-pick .row:nth-child(1){top:0}
+.art-pick .row.main{top:31px;animation:rowon 4.6s var(--ease) infinite}
+.art-pick .row:nth-child(3){top:62px}
+.art-pick .rg{width:13px;height:13px;color:var(--text2);flex:none}
+.art-pick .rg svg{width:100%;height:100%;display:block}
+.art-pick .rname{flex:1;height:7px;border-radius:4px;background:var(--dot-idle);opacity:.45}
+.art-pick .rdot{width:7px;height:7px;border-radius:50%;background:var(--dot-idle);flex:none}
+.art-pick .row.main .rdot{animation:rdot 4.6s var(--ease) infinite}
+.art-pick .cursor{position:absolute;left:150px;top:6px;width:17px;height:17px;color:var(--text);filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));animation:pick 4.6s var(--ease) infinite}
+@keyframes rowon{0%,44%{background:var(--soft-fill);border-color:transparent}52%,72%{background:var(--green-soft);border-color:var(--green)}80%,100%{background:var(--soft-fill);border-color:transparent}}
+@keyframes rdot{0%,46%{background:var(--dot-idle);box-shadow:0 0 0 0 rgba(48,179,82,0)}50%,74%{background:var(--green);box-shadow:0 0 0 0 rgba(48,179,82,.4)}58%{box-shadow:0 0 0 6px rgba(48,179,82,0)}80%,100%{background:var(--dot-idle);box-shadow:0 0 0 0 rgba(48,179,82,0)}}
+@keyframes pick{
+  0%,34%{transform:translate(0,0)}
+  44%{transform:translate(-64px,30px);animation-timing-function:cubic-bezier(.3,0,.7,1)}
+  50%{transform:translate(-64px,30px) scale(.82)}
+  54%{transform:translate(-64px,30px) scale(1)}
+  70%{transform:translate(-64px,30px)}
+  82%,100%{transform:translate(0,0)}
+}
+/* card art: play from any app
+   轮流：三个 app 各占一拍（4.6s / 3），当前源那条线亮起，其余低亮。
+   电平以壶心那条水平线为轴上下生长，两端全圆。 */
+.art-play{display:flex;align-items:center;gap:8px;height:96px}
+.art-play .apps{display:grid;gap:6px}
+.art-play .apps i{font-style:normal;font-size:11px;font-weight:600;color:var(--text2);background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 12px;text-align:center;width:100%;box-sizing:border-box;animation:appcycle 4.6s var(--ease) infinite}
+.art-play .apps i:nth-child(2){animation-delay:-3.0667s}
+.art-play .apps i:nth-child(3){animation-delay:-1.5333s}
+.art-play .apps i.on{color:var(--green-text);background:var(--green-soft);border-color:var(--green)}
+@keyframes appcycle{
+  0%,2%{color:var(--text2);background:transparent;border-color:var(--line)}
+  6%,27%{color:var(--green-text);background:var(--green-soft);border-color:var(--green)}
+  32%,100%{color:var(--text2);background:transparent;border-color:var(--line)}
+}
+.art-play .wave{width:44px;height:96px;flex:none}
+.art-play .wave path{fill:none;stroke:var(--green);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:4 8;opacity:.14;animation:srcpath 4.6s var(--ease) infinite}
+.art-play .wave .w2{animation-delay:-3.0667s}
+.art-play .wave .w3{animation-delay:-1.5333s}
+@keyframes srcpath{0%,2%{opacity:.1}6%,27%{opacity:.92}32%,100%{opacity:.1}}
+.art-play .podq{display:flex;align-items:center;gap:9px}
+.art-play .podq-glyph{width:32px;height:42px;flex:none;fill:var(--text);opacity:.92}
+.art-play .peq{display:flex;align-items:center;gap:3px;height:42px}
+.art-play .peq i{width:5px;border-radius:999px;background:var(--green);opacity:.92;transform-origin:center;transform:scaleY(.55);animation:eqcycle 4.6s ease-in-out infinite both}
+.art-play .peq i:nth-child(1){height:52%}
+.art-play .peq i:nth-child(2){height:80%;animation-delay:.05s}
+.art-play .peq i:nth-child(3){height:96%;animation-delay:.1s}
+.art-play .peq i:nth-child(4){height:68%;animation-delay:.15s}
+.art-play .peq i:nth-child(5){height:30%;animation-delay:.2s}
+/* 同一 4.6s 主时间轴上，电平性格随源切换（与 chip 轮换对齐）：
+   浏览器 0-33%：平稳／游戏 33-66%：尖峰／播放器 66-100%：饱满连绵 */
+@keyframes eqcycle{
+  0%{transform:scaleY(.55)}6%{transform:scaleY(.82)}12%{transform:scaleY(.62)}18%{transform:scaleY(.76)}24%{transform:scaleY(.6)}30%{transform:scaleY(.72)}33.33%{transform:scaleY(.55)}
+  38%{transform:scaleY(.95)}41%{transform:scaleY(.58)}45%{transform:scaleY(.88)}48%{transform:scaleY(.52)}52%{transform:scaleY(.92)}55%{transform:scaleY(.6)}59%{transform:scaleY(.84)}62%{transform:scaleY(.62)}66.67%{transform:scaleY(.5)}
+  72%{transform:scaleY(.8)}78%{transform:scaleY(.68)}84%{transform:scaleY(.88)}90%{transform:scaleY(.74)}96%{transform:scaleY(.84)}100%{transform:scaleY(.55)}
+}
+@media (prefers-reduced-motion:reduce){
+  .art-tray .tile,.art-tray .dot,.art-pick .row.main,.art-pick .row.main .rdot,.art-pick .cursor,
+  .art-play .apps i,.art-play .wave path,.art-play .peq i{animation:none}
+  .art-tray .dot{opacity:1}
+  .art-pick .row.main{background:var(--green-soft);border-color:var(--green)}
+  .art-pick .row.main .rdot{background:var(--green)}
+  .art-pick .cursor{transform:translate(-64px,30px)}
+  .art-play .apps i:nth-child(2),.art-play .apps i:nth-child(3){opacity:.55}
+  .art-play .wave .w1{opacity:.9}
+  .art-play .wave .w2,.art-play .wave .w3{opacity:.12}
+  .art-play .peq i{transform:scaleY(.8)}
+}
+
+/* ---------- bento features ---------- */
+.feat-sec{padding:var(--sp-900) 0;background:var(--bg)}
+/* flat features: five rows, no cards */
+.feat-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:64px;align-items:start}
+.feat-intro{position:sticky;top:120px;display:grid;gap:18px}
+.feat-lead{font-size:16px;line-height:26px;color:var(--text2);max-width:30ch;text-wrap:pretty}
+.feat-specs{display:flex;gap:8px;flex-wrap:wrap}
+.feat-specs span{font-family:"Geist Mono",monospace;font-size:10px;color:var(--green-text);border:1px solid var(--green);border-radius:6px;padding:4px 8px;background:var(--green-soft)}
+
+@media (max-width:1020px){.feat-layout{grid-template-columns:1fr;gap:34px}.feat-intro{position:static;max-width:680px}}
+
+
+/* feature art: latency rail */
+.fa-lat{width:100%;display:grid;gap:7px}
+.fa-rail{position:relative;height:1px;margin:4px 8px;background:var(--line)}
+.fa-tick{position:absolute;top:-2.5px;width:1px;height:6px;background:var(--line)}
+.fa-mark{position:absolute;top:50%;left:12.5%;width:9px;height:9px;border-radius:50%;background:var(--green);transform:translate(-50%,-50%);box-shadow:0 0 0 4px var(--green-soft);transition:left .45s var(--ease)}
+.fa-lat-modes{display:grid;grid-template-columns:repeat(4,1fr);margin:0 8px}
+.fa-lat-modes button{display:grid;justify-items:center;gap:4px;font-family:"Geist Mono","Geist",-apple-system,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,sans-serif;font-size:12px;color:var(--text2);padding:3px 0;border-radius:4px;transition:color .2s var(--ease)}
+.fa-lat-modes button svg{width:15px;height:15px}
+.fa-lat-modes button:hover{color:var(--text)}
+.fa-lat-modes button.on{color:var(--green-text);font-weight:600}
+@media (prefers-reduced-motion:reduce){.fa-mark{transition:none}}
+
+/* feature art: ambient orb (reuses the section's --amb colors) */
+.feat-art .fa-amb .orb{width:78px;height:78px}
+.fa-amb .orb::before{content:"";position:absolute;inset:-12px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--amb-1) 38%,transparent),transparent 70%);filter:blur(10px);z-index:-1}
+.fa-amb .orb-swirl{animation-duration:4.5s}
+/* feature art: five faces */
+.fa-faces{display:flex;align-items:flex-start;justify-content:space-between;gap:4px;width:100%;max-width:240px}
+.fa-face{display:grid;justify-items:center;gap:6px;min-width:36px;color:var(--text2)}
+.fa-face svg{width:28px;height:28px;display:block}
+.fa-face i{font-style:normal;font-size:8px;line-height:1;color:var(--text2);white-space:nowrap}
+.fa-face.is-stream svg{color:var(--green)}
+.fa-face.is-connect svg{color:var(--accent)}
+.fa-face.is-error svg{color:var(--red)}
+.fbar{transform-box:fill-box;transform-origin:50% 100%;animation:faFaceBar 1.2s steps(12,end) infinite}
+.fdot{animation:faFaceDot 1.4s ease-in-out infinite}
+.fbar:nth-of-type(2){animation-delay:-.3s}.fbar:nth-of-type(3){animation-delay:-.6s}.fbar:nth-of-type(4){animation-delay:-.15s}.fbar:nth-of-type(5){animation-delay:-.45s}
+.fdot:nth-of-type(2){animation-delay:.2s}.fdot:nth-of-type(3){animation-delay:.4s}
+@keyframes faFaceBar{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
+@keyframes faFaceDot{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.fbar,.fdot{animation:none}.fbar{transform:none}.fdot{opacity:1}}
+.bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-300)}
+.bnum{font-family:"Geist Mono",monospace;font-size:11px;font-weight:500;color:var(--green-text)}
+/* 灯卡：文字上、灯球下，.art 底锚定（margin-top:auto）——底边与媒体卡同一条内容底线，不随文字行数漂移。
+   注意 .card 同特异性且在后，display:flex 必须用 .card.blamp 才压得住它的 grid */
+.card.blamp{display:flex;flex-direction:column}
+.blamp-body{display:grid;gap:var(--sp-200);min-width:0}
+.blamp .art-ambient .orb{width:150px;height:150px}
+/* 光斑盘径对齐真机：玻璃盘=机身径 0.56（mask transparent 56%），亮核≈0.38 */
+.blamp .art-ambient .orb-swirl{inset:0;
+  -webkit-mask-image:radial-gradient(closest-side,#000 38%,rgba(0,0,0,.85) 45%,rgba(0,0,0,.32) 50%,transparent 56%);
+  mask-image:radial-gradient(closest-side,#000 38%,rgba(0,0,0,.85) 45%,rgba(0,0,0,.32) 50%,transparent 56%)}
+.blamp .art-ambient .orb-glass{inset:19%}
+/* 机身环（半径 30%→100%）给出内缘亮边与表面微光，让它读成一圈机体而不是暗区；bezel 暗环随屏幕盘移到 0.62 机身径 */
+.blamp .art-ambient .orb::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, transparent 0 28%, rgba(255,255,255,.16) 30%, rgba(255,255,255,.05) 34%, color-mix(in srgb, var(--amb-shadow) 18%, transparent) 44%, transparent 50%),
+    radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(255,255,255,.045) 42%, rgba(255,255,255,.02) 62%, transparent 78%);
+  pointer-events:none}
+/* 媒体卡：托盘同款卡片（hero 的 .fmedia 结构），播放态，时钟随进度一起走；纵排 + .art 底锚定，与灯卡底边对齐 */
+.card.bmedia{display:flex;flex-direction:column}
+/* 视觉带等高（150px=灯球径）：媒体卡在带内居中，竖直中心与灯球中心同一水平线 */
+.card.bmedia .art{min-height:150px}
+#bmMedia{width:100%;max-width:300px;margin:0}
+/* bento 卡幅比托盘面板小一档：控件按钮跟着缩一档 */
+#bmMedia .ftransport{gap:2px}
+#bmMedia .ftransport button{width:20px;height:20px;border-radius:10px}
+#bmMedia .ftransport button svg{width:10px;height:10px}
+/* 设备配对卡：每台接收器一条自己的配对路径、一把自己的密钥（protocol.md §2） */
+.bpair{display:grid;gap:8px;width:100%;max-width:300px;animation:bpairShow 6s var(--ease) infinite}
+.bpair-row{display:flex;align-items:center;gap:8px;background:var(--soft-fill);border-radius:10px;padding:7px 11px}
+.bpair-name{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+.bpair-name svg{width:14px;height:14px;flex:none;fill:currentColor}
+.bpair-how{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--text2);border:1px solid var(--line);border-radius:999px;padding:3px 9px;background:var(--surface);white-space:nowrap;opacity:0}
+.bpair-how b{font-family:"Geist Mono",monospace;font-weight:600;color:var(--text)}
+.bpair-type{display:inline-block;clip-path:inset(0 100% 0 0)}
+.bpair-key{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text2)}
+.bpair-key svg{width:10px;height:10px}
+.bpair .hp .bpair-how{animation:bpairHowHp 6s var(--ease) infinite}
+.bpair .atv .bpair-how{animation:bpairHowAtv 6s var(--ease) infinite}
+.bpair .mac .bpair-how{animation:bpairHowMac 6s var(--ease) infinite}
+.bpair .atv .bpair-type{animation:bpairTypeAtv 6s linear infinite}
+.bpair .mac .bpair-type{animation:bpairTypeMac 6s linear infinite}
+.bpair .hp .bpair-key{animation:bpairKeyHp 6s var(--ease) infinite}
+.bpair .atv .bpair-key{animation:bpairKeyAtv 6s var(--ease) infinite}
+.bpair .mac .bpair-key{animation:bpairKeyMac 6s var(--ease) infinite}
+/* HomePod 全程无输入；Apple TV/Mac 的输入逐位打出；输过的输入条最后收起而钥匙常亮——存好的凭据让重连跳过 pair-setup */
+@keyframes bpairShow{0%{opacity:0;transform:translateY(5px)}4%{opacity:1;transform:none}92%{opacity:1;transform:none}97%,100%{opacity:0;transform:translateY(3px)}}
+@keyframes bpairHowHp{0%,8%{opacity:0;transform:scale(.92)}12%,78%{opacity:1;transform:none}84%,100%{opacity:0;transform:scale(.95)}}
+@keyframes bpairHowAtv{0%,26%{opacity:0;transform:scale(.92)}30%,78%{opacity:1;transform:none}84%,100%{opacity:0;transform:scale(.95)}}
+@keyframes bpairHowMac{0%,48%{opacity:0;transform:scale(.92)}52%,78%{opacity:1;transform:none}84%,100%{opacity:0;transform:scale(.95)}}
+@keyframes bpairTypeAtv{0%,32%{clip-path:inset(0 100% 0 0);animation-timing-function:steps(4,end)}40%,100%{clip-path:inset(0 0 0 0)}}
+@keyframes bpairTypeMac{0%,54%{clip-path:inset(0 100% 0 0);animation-timing-function:steps(6,end)}62%,100%{clip-path:inset(0 0 0 0)}}
+@keyframes bpairKeyHp{0%,16%{color:var(--text2);border-color:var(--line);background:var(--surface);transform:scale(1)}19%{color:var(--green-text);border-color:var(--green);background:var(--green-soft);transform:scale(1.18)}22%,100%{color:var(--green-text);border-color:var(--green);background:var(--green-soft);transform:scale(1)}}
+@keyframes bpairKeyAtv{0%,44%{color:var(--text2);border-color:var(--line);background:var(--surface);transform:scale(1)}47%{color:var(--green-text);border-color:var(--green);background:var(--green-soft);transform:scale(1.18)}50%,100%{color:var(--green-text);border-color:var(--green);background:var(--green-soft);transform:scale(1)}}
+@keyframes bpairKeyMac{0%,66%{color:var(--text2);border-color:var(--line);background:var(--surface);transform:scale(1)}69%{color:var(--green-text);border-color:var(--green);background:var(--green-soft);transform:scale(1.18)}72%,100%{color:var(--green-text);border-color:var(--green);background:var(--green-soft);transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){
+  .bpair{animation:none}
+  .bpair .bpair-how{animation:none;opacity:1;transform:none}
+  .bpair .bpair-type{animation:none;clip-path:none}
+  .bpair .bpair-key{animation:none;color:var(--green-text);border-color:var(--green);background:var(--green-soft)}
+}
+.card{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);
+  padding:var(--sp-400);display:grid;gap:var(--sp-200);align-content:start;min-height:230px;
+  transition:transform .5s var(--ease),box-shadow .5s var(--ease);will-change:transform}
+.card:hover{box-shadow:0 20px 48px rgba(0,0,0,.08)}
+.card h3{font-size:20px;line-height:28px;font-weight:600}
+.card p{font-size:15px;line-height:24px;color:var(--text2);text-wrap:pretty}
+.card .art{margin-top:auto;position:relative;min-height:110px;display:flex;align-items:center;justify-content:center}
+@media (max-width:900px){.card{min-height:200px}}
+/* ≤700 单列：放在基础 .bento 之后才生效（同特异性，后者胜）；520 旧断点并入此条 */
+@media (max-width:700px){.bento{grid-template-columns:1fr}.card{min-height:0}}
+
+/* card art: capture */
+.art-capture{display:flex;align-items:center;gap:10px}
+.cap-flow{display:flex;align-items:center;gap:12px}
+.cap-src{display:grid;gap:10px}
+.src{display:flex;align-items:center;gap:10px}
+.src-name{font-size:12px;font-weight:600;color:var(--text2);width:48px;text-align:right;white-space:nowrap}
+.src-meter{display:flex;align-items:flex-end;gap:2.5px;height:24px}
+.src-meter i{width:4.5px;border-radius:2.5px;transform-origin:bottom;animation:eq 1.3s ease-in-out infinite}
+.src-meter i:nth-child(1){height:45%}
+.src-meter i:nth-child(2){height:80%}
+.src-meter i:nth-child(3){height:60%}
+.src-meter i:nth-child(4){height:92%}
+.src:nth-child(2) .src-meter i{animation-delay:-.43s}
+.src:nth-child(3) .src-meter i{animation-delay:-.86s}
+/* 来源签名色：环回抓走的是每一个 App，各自的颜色同时跳动 */
+.src-a .src-meter i{background:var(--green)}
+.src-b .src-meter i{background:#5b5be0}
+.src-c .src-meter i{background:#8f6fd8}
+.cap-bus{flex:none;color:var(--line)}
+html[data-theme="dark"] .cap-bus{color:rgba(255,255,255,.16)}
+.cap-arrow{color:var(--green);animation:nudge 1.8s var(--ease) infinite}
+@keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+.cap-flow .mini-eq{height:64px;gap:4px}
+.cap-flow .mini-eq i{width:7px;background:var(--green);opacity:.9}
+.mini-eq{display:flex;align-items:flex-end;gap:4px;height:56px}
+.mini-eq i{width:6px;border-radius:3px;background:var(--eq-bar);animation:eq 1.3s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.cap-arrow,.mini-eq i,.src-meter i{animation:none}}
+
+/* card art: stereo pair（两只合成一个目标，共享一只时钟） */
+.art-pair2{display:flex;align-items:center;justify-content:center;gap:16px}
+.pod-g{position:relative;width:46px;display:grid;justify-items:center;gap:9px}
+.pod-g .shape{position:relative;width:42px;height:60px;border-radius:21px;background:var(--text)}
+.pod-g .shape::before{content:"";position:absolute;left:50%;top:8px;transform:translateX(-50%);width:20px;height:6px;border-radius:50%;background:var(--surface);opacity:.9}
+.pod-g .ring{position:absolute;inset:-4px;border-radius:25px;border:1.5px solid var(--green);opacity:0;animation:pairring 2.8s var(--ease) infinite}
+.art-pair2 .pod-g:last-child .ring{animation-delay:1.4s}
+.pod-g .lbl{font-family:"Geist Mono",monospace;font-size:10px;font-weight:500;color:var(--text2)}
+@keyframes pairring{0%{transform:scale(.72);opacity:.5}70%,100%{transform:scale(1.3);opacity:0}}
+.art-pair2 .pair-link{font-family:"Geist Mono",monospace;font-size:10px;font-weight:600;color:var(--text2);background:var(--soft-fill);border-radius:999px;padding:4px 9px}
+@media (prefers-reduced-motion:reduce){.pod-g .ring{animation:none;opacity:0}}
+
+/* card art: alac */
+.art-alac{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
+.bits{display:flex;gap:4px}
+.bits i{flex:1;height:16px;border-radius:4px;background:var(--soft-fill)}
+.bits i.on{background:var(--text);animation:bit 2.6s var(--ease) infinite}
+@media (prefers-reduced-motion:reduce){.bits i{animation:none !important}}
+@keyframes bit{0%,10%{opacity:.25}25%,70%{opacity:1;background:var(--text)}85%,100%{opacity:.25}}
+/* card art: ambient（mini 顶面：盘面 + 三色旋涡显示区 + 玻璃弧光，颜色随 --amb-* 实时联动） */
+.art-ambient{display:flex;align-items:center;justify-content:center}
+.art-ambient .orb{position:relative;width:104px;height:104px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 50%, #f8fafd 0 42.5%, #edf0f5 43.5%, rgba(168,175,188,.5) 45%, rgba(168,175,188,0) 48.5%), radial-gradient(circle at 38% 30%, #ffffff, #eef0f4 60%, #d9dde4 100%);
+  box-shadow:0 18px 36px color-mix(in srgb, var(--amb-shadow) 22%, transparent), 0 4px 10px color-mix(in srgb, var(--amb-shadow) 12%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--amb-shadow) 9%, transparent)}
+.art-ambient .orb-swirl{position:absolute;inset:15%;border-radius:50%;
+  background:conic-gradient(from 20deg, var(--amb-1), var(--amb-2), var(--amb-3), var(--amb-1));
+  filter:blur(1.2px) saturate(1.3);
+  -webkit-mask-image:radial-gradient(closest-side, #000 26%, rgba(0,0,0,.88) 56%, rgba(0,0,0,.3) 80%, transparent 96%);
+  mask-image:radial-gradient(closest-side, #000 26%, rgba(0,0,0,.88) 56%, rgba(0,0,0,.3) 80%, transparent 96%);
+  animation:spin 7s linear infinite;
+  transition:--amb-1 .9s var(--ease), --amb-2 .9s var(--ease), --amb-3 .9s var(--ease)}
+.art-ambient .orb-swirl::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(closest-side, transparent 56%, rgba(0,0,0,.2) 82%, rgba(0,0,0,.38) 100%)}
+.art-ambient .orb-swirl::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 44% 38%, rgba(255,255,255,.6) 0%, rgba(255,255,255,.16) 34%, transparent 52%)}
+.art-ambient .orb-glass{position:absolute;inset:11%;border-radius:50%;
+  background:linear-gradient(155deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.05) 36%, transparent 52%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28), inset 0 -10px 18px color-mix(in srgb, var(--amb-shadow) 8%, transparent)}
+html[data-theme="dark"] .art-ambient .orb{background:radial-gradient(circle at 50% 50%, #15171d 0 42.5%, rgba(21,23,29,0) 48.5%), radial-gradient(circle at 38% 30%, #2b2d33, #202227 60%, #181a1f 100%);
+  box-shadow:0 16px 32px color-mix(in srgb, var(--amb-shadow) 50%, transparent), inset 0 0 0 1px rgba(255,255,255,.06)}
+
+html[data-theme="dark"] .art-ambient .orb-glass{background:linear-gradient(155deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,.03) 36%, transparent 52%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1), inset 0 -10px 18px color-mix(in srgb, var(--amb-shadow) 30%, transparent)}
+@media (prefers-reduced-motion:reduce){.art-ambient .orb-swirl{animation:none}}
+/* card art: latency */
+.art-latency{flex-direction:column;gap:16px;width:100%}
+.lat-row{position:relative;height:34px;width:100%}
+.lat-chip{position:absolute;top:0;left:9.1%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  font-family:"Geist Mono",monospace;font-size:12px;font-weight:500;background:var(--green-soft);color:var(--green-text);border-radius:999px;padding:5px 11px}
+.lat-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:latpulse 1s var(--ease) infinite}
+@keyframes latpulse{0%{box-shadow:0 0 0 0 rgba(48,179,82,.4)}90%,100%{box-shadow:0 0 0 14px rgba(48,179,82,0)}}
+@media (prefers-reduced-motion:reduce){.lat-dot{animation:none}}
+.lat-scale{position:relative;height:15px;margin-top:4px;width:100%}
+.lat-scale span{position:absolute;transform:translateX(-50%);font-family:"Geist Mono",monospace;font-size:10px;color:var(--text2);white-space:nowrap}
+.lat-scale span:last-child{transform:translateX(-100%)}
+.lat-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+  background:var(--prog-well);accent-color:var(--green)}
+.lat-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.28);cursor:pointer}
+.lat-slider::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:var(--text);cursor:pointer}
+
+/* card art: lossless packet path */
+.art-lossless{display:grid;gap:9px;justify-items:center;width:100%;max-width:460px}
+.ll-flow{display:flex;align-items:center;justify-content:center;gap:10px}
+.ll-src{display:flex;align-items:center;gap:7px;flex:none}
+.ll-wave{display:flex;align-items:center;gap:2px;height:30px}
+.ll-wave i{width:3.5px;border-radius:2px;background:var(--green);transform-origin:center;animation:llwave 1.2s ease-in-out infinite}
+.ll-wave i:nth-child(1){height:28%}.ll-wave i:nth-child(2){height:62%;animation-delay:-.3s}
+.ll-wave i:nth-child(3){height:92%;animation-delay:-.6s}.ll-wave i:nth-child(4){height:48%;animation-delay:-.9s}
+.ll-wave i:nth-child(5){height:76%;animation-delay:-.45s}.ll-wave i:nth-child(6){height:36%;animation-delay:-.75s}
+@keyframes llwave{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
+.ll-cap{font-family:"Geist Mono",monospace;font-size:9px;color:var(--text2)}
+.ll-rail{position:relative;width:54px;height:20px;flex:none;border-bottom:1px dashed var(--line)}
+.ll-rail2{width:30px}
+.ll-pkt{position:absolute;left:0;bottom:2px;width:11px;height:11px;border-radius:3px;background:var(--green);opacity:0;animation:llmove 2.4s linear infinite}
+.ll-pkt.p2{animation-delay:-.8s}.ll-pkt.p3{animation-delay:-1.6s}.ll-pkt.p4{animation-delay:-.4s}
+@keyframes llmove{0%{transform:translateX(-8px);opacity:0}14%{opacity:1}84%{opacity:1}100%{transform:translateX(54px);opacity:0}}
+.ll-frame{display:grid;gap:1px;padding:8px 11px;border-radius:9px;background:var(--green-soft);border:1px solid var(--green);color:var(--green-text);text-align:center;flex:none}
+.ll-frame b{font-size:11px;letter-spacing:.03em}.ll-frame small{font-size:8.5px;opacity:.8}
+.ll-rx{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none}
+.ll-pod{width:22px;height:29px;color:var(--text);fill:currentColor}
+.ll-ok{font-family:"Geist Mono",monospace;font-size:8.5px;color:var(--green-text);background:var(--green-soft);border-radius:5px;padding:2px 6px;white-space:nowrap}
+.ll-proof{display:flex;align-items:center;justify-content:center;gap:7px;border-top:1px dashed var(--line);padding-top:5px;width:100%}
+.ll-wave2 i{background:var(--text2);opacity:.65;animation:none;transform:scaleY(.85)}
+.ll-proof-label{font-size:9px;color:var(--text2)}
+.ll-check{font-size:10px;font-weight:700;color:var(--green-text)}
+@media (prefers-reduced-motion:reduce){.ll-wave i,.ll-pkt{animation:none}.ll-wave i{transform:none}.ll-pkt{opacity:1}}
+
+/* card art: latency, two stages */
+.card .art.art-lat2{height:auto;min-height:110px;align-items:stretch}
+.art-lat2{flex-direction:column;justify-content:center;gap:8px;width:100%}
+.lat-modes{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--soft-fill);padding:3px;border-radius:9px}
+.lat-modes button{font-size:10.5px;font-weight:600;color:var(--text2);padding:5px 0;border-radius:7px;transition:background .3s var(--ease),color .3s var(--ease)}
+.lat-modes button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px var(--seg-shadow)}
+.lat-lanes{display:grid;gap:5px}
+.lat-lane{display:grid;grid-template-columns:76px minmax(0,1fr) 46px;align-items:center;gap:8px;font-size:9.5px;color:var(--text2)}
+.lat-k{white-space:nowrap}
+.lat-track{height:9px;border-radius:5px;background:var(--prog-well);position:relative;overflow:hidden}
+.lat-buffer{display:block;height:100%;width:18%;border-radius:inherit;background:var(--green);transition:width .5s var(--ease);position:relative}
+.lat-buffer::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 5px,rgba(255,255,255,.22) 5px 7px)}
+.lat-rxbar{display:block;width:8%;height:100%;border-radius:inherit;background:var(--text2);opacity:.55}
+.lat-v{font-family:"Geist Mono",monospace;font-size:9px;text-align:right;color:var(--text2)}
+.lat-finenote{font-size:9px;color:var(--text2);margin-left:84px}
+.lat-status{display:flex;align-items:center;gap:7px;font-family:"Geist Mono",monospace;font-size:9.5px;color:var(--text2);border-top:1px solid var(--line);padding-top:6px}
+.lat-spin{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--line);border-top-color:var(--green);animation:spin .8s linear infinite;flex:none}
+.lat-slider2{margin-top:2px}
+@media (prefers-reduced-motion:reduce){.lat-buffer{transition:none}.lat-spin{animation:none}}
+
+/* card art: receiver management */
+.art-recv{display:grid;gap:4px;width:100%;max-width:360px}
+.recv-row{display:flex;align-items:center;gap:7px;min-height:22px;padding:3px 8px;border-radius:8px;background:var(--soft-fill);border:1px solid transparent;font-size:10px;color:var(--text2)}
+.recv-row.main{background:var(--green-soft);border-color:color-mix(in srgb,var(--green) 26%,transparent);animation:recvPulse 4.2s var(--ease) infinite}
+@keyframes recvPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 14%,transparent)}}
+@media (prefers-reduced-motion:reduce){.recv-row.main{animation:none}}
+.recv-row.dim{opacity:.55}
+.recv-glyph{width:18px;height:18px;display:grid;place-items:center;color:var(--text);flex:none}
+.recv-glyph svg{width:14px;height:17px;fill:currentColor}
+.recv-name{font-size:10.5px;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recv-sub{font-size:9px;color:var(--text2)}
+.recv-chip{font-size:8.5px;font-weight:600;color:var(--green-text);background:var(--green-soft);border-radius:5px;padding:2px 6px;white-space:nowrap}
+.recv-val{font-family:"Geist Mono",monospace;font-size:9px;color:var(--text2)}
+.recv-add{border:1px dashed var(--line);border-radius:8px;padding:4px;text-align:center;font-size:9.5px;color:var(--text2)}
+
+/* card art: connection health */
+.art-health{width:100%;max-width:340px;background:var(--soft-fill);border:1px solid var(--line);border-radius:11px;padding:8px 10px;display:grid;gap:6px}
+.health-top{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:600;color:var(--text)}
+.health-chip{font-size:8px;color:var(--green-text);background:var(--green-soft);border-radius:5px;padding:2px 6px}
+.health-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.health-stats div{display:grid;gap:1px;min-width:0}
+.health-stats span{font-size:8px;color:var(--text2);white-space:nowrap}
+.health-stats b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.health-stats b.ok{color:var(--green-text)}
+.health-stats small{font-size:7.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.health-note{font-size:8px;color:var(--text2);border-top:1px solid var(--line);padding-top:4px}
+
+/* card art: mute local output */
+.art-mute{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
+.mute-local{position:relative;width:38px;height:38px;border-radius:10px;background:var(--soft-fill);display:grid;place-items:center;color:var(--text2)}
+.mute-local svg{width:20px;height:20px}
+.mute-slash{position:absolute;width:2px;height:30px;border-radius:2px;background:var(--red);transform:rotate(45deg)}
+.mute-route{position:relative;width:40px;height:1px;background:var(--line)}
+.mute-route i{position:absolute;top:-2px;left:0;width:5px;height:5px;border-radius:50%;background:var(--green);animation:mutedot 1.8s linear infinite}
+@keyframes mutedot{0%{transform:translateX(0);opacity:0}20%{opacity:1}100%{transform:translateX(38px);opacity:0}}
+.mute-pod{width:30px;height:38px;color:var(--text);display:grid;place-items:center}
+.mute-pod svg{width:22px;height:30px;fill:currentColor}
+.mute-chip{font-size:8.5px;font-weight:600;color:var(--green-text);background:var(--green-soft);border-radius:5px;padding:2px 6px;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.mute-route i{animation:none;opacity:1}}
+
+/* ---------- tray flyout (mirrors internal/app/flyout.go) ---------- */
+.fly-wrap{justify-self:center;width:100%;max-width:380px}
+.flyout{background:var(--fl-panel);color:var(--fl-fg);border:1px solid var(--fl-line);border-radius:12px;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.14);display:flex;flex-direction:column;user-select:none;text-align:left}
+/* header */
+.fly-head{height:46px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px 0 14px}
+.fly-mark{width:21px;height:21px;border-radius:6px}
+.fly-id{display:flex;flex-direction:column;gap:1px}
+.fly-app{font-size:13px;font-weight:600;line-height:1.2}
+.fly-sub{font-size:8.5px;font-weight:600;letter-spacing:1.1px;color:var(--fl-muted);line-height:1.2}
+.fly-sp{flex:1}
+.fly-ibtn{width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-muted);transition:background .3s var(--ease),color .3s var(--ease)}
+.fly-ibtn:hover{background:var(--fl-pill)}
+.fly-ibtn svg{width:14px;height:14px}
+.fly-head .fly-ibtn:last-child svg{width:15px;height:15px}
+/* body */
+.fly-body{flex:none;display:flex;flex-direction:column;padding:2px 12px 8px 12px;gap:8px}
+.fly-shead{padding:6px 2px 2px 2px;display:flex;align-items:center;gap:4px}
+.fly-slabel{font-size:11.5px;font-weight:600;letter-spacing:.55px;color:var(--fl-muted)}
+.fly-snote{margin-left:auto;font-size:11.5px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.fly-card{border:1px solid var(--fl-line);border-radius:10px;background:var(--fl-card);overflow:hidden}
+.fly-card.flamp{margin-top:2px}
+/* device rows */
+.fdev{height:56px;display:flex;align-items:center;gap:10px;padding:9px 12px;transition:background .14s var(--ease)}
+.fdev + .fdev{border-top:1px solid var(--fl-line2)}
+.fdev.sel{background:var(--fl-sel)}
+.fdev:hover:not(.sel){background:var(--fl-cardHover)}
+.fglyph{position:relative;width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:15px;background:var(--fl-pill);color:var(--fl-fg2)}
+.fdev.sel .fglyph{background:var(--fl-card);color:var(--fl-accent)}
+.fglyph svg{width:16px;height:16px}
+.fdot{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:var(--fl-green);box-shadow:0 0 0 2px var(--fl-card)}
+.fdev.sel .fdot{box-shadow:0 0 0 2px var(--fl-sel)}
+.fnamecol{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.fnamecol b{font-size:13px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fnamecol span{font-size:11.5px;line-height:1.35;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.faction{height:26px;flex:none;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border-radius:13px;
+  font-size:11.5px;font-weight:500;white-space:nowrap;transition:background .3s var(--ease),color .3s var(--ease)}
+.faction svg{width:12px;height:12px}
+.faction.accent{color:var(--fl-accent)}
+.faction.strong{color:var(--fl-fg2)}
+.faction.ctl{color:var(--fl-ctl)}
+.faction.dimmed{color:var(--fl-faint)}
+.faction:not(:disabled):hover{background:var(--fl-pill)}
+.faction:disabled{cursor:default}
+/* volume */
+.fvol{padding:10px 12px 10px 22px;display:flex;align-items:center;gap:8px}
+.fvolic{width:16px;height:16px;flex:none;color:var(--fl-fg2);margin-left:-2px}
+.fvolval{flex:none;width:34px;text-align:right;font-size:11.5px;color:var(--fl-muted);font-variant-numeric:tabular-nums}
+.frange{flex:1;appearance:none;-webkit-appearance:none;height:20px;background:transparent;cursor:pointer}
+.frange::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--fl-fg) 0 var(--fly-vol,50%),var(--fl-line) var(--fly-vol,50%) 100%)}
+.frange::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);margin-top:-6px;border:0}
+.frange::-moz-range-track{height:4px;border-radius:2px;background:var(--fl-line)}
+.frange::-moz-range-progress{height:4px;border-radius:2px;background:var(--fl-fg)}
+.fline{height:1px;background:var(--fl-line2)}
+/* latency segmented */
+.flat{padding:6px 12px 10px 12px}
+.fseg{height:30px;display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--fl-pill)}
+.fseg button{flex:1;height:26px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  font-size:11.5px;color:var(--fl-muted);white-space:nowrap;transition:background .3s var(--ease),color .3s var(--ease),box-shadow .3s var(--ease)}
+.fseg button svg{width:12px;height:12px}
+.fseg button.on{background:var(--fl-card);color:var(--fl-fg);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shadow:none}
+.fseg button.on svg{color:var(--fl-accent)}
+/* media card */
+.fmedia{margin:8px 12px 10px 12px;padding:8px 10px;border-radius:12px;background:var(--fl-pill)}
+.fmediahead{height:28px;display:flex;align-items:center;gap:7px}
+.fappic{width:16px;height:16px;flex:none;color:var(--fl-fg2)}
+.fapp{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmediamain{height:62px;display:flex;align-items:center;gap:10px;padding:6px 0 4px 0}
+.fposter{width:52px;height:52px;flex:none;border-radius:9px;background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0);position:relative;overflow:hidden}
+.fposter::after{content:"";position:absolute;inset:0;background:radial-gradient(20px 20px at 70% 30%,rgba(255,255,255,.4),transparent)}
+.fmedcopy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fmedcopy b{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmedcopy span{font-size:11.5px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmeter{position:relative;width:23px;height:24px;flex:none}
+.fmeter i{position:absolute;width:3px;border-radius:1.5px;opacity:.9;transform-origin:center;animation:eq 1.15s ease-in-out infinite}
+.fmeter i:nth-child(1){left:0;height:40%;top:30%;background:linear-gradient(180deg,#5b5be0,#7a64dc)}
+.fmeter i:nth-child(2){left:5px;height:62%;top:19%;animation-delay:.12s;background:linear-gradient(180deg,#6461e0,#746cd8)}
+.fmeter i:nth-child(3){left:10px;height:88%;top:6%;animation-delay:.24s;background:linear-gradient(180deg,#7669da,#6684d5)}
+.fmeter i:nth-child(4){left:15px;height:52%;top:24%;animation-delay:.36s;background:linear-gradient(180deg,#8a6fd8,#5193d9)}
+.fmeter i:nth-child(5){left:20px;height:30%;top:35%;animation-delay:.48s;background:linear-gradient(180deg,#9c73d4,#3d9be0)}
+@media (prefers-reduced-motion:reduce){.fmeter i{animation:none;transform:scaleY(.7)}}
+.fprog{height:28px;display:flex;align-items:center;gap:7px;padding-top:4px}
+.ftransport{display:flex;align-items:center;gap:4px;flex:none}
+.ftransport button{width:24px;height:24px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--fl-fg);transition:background .3s var(--ease),color .3s var(--ease)}
+.ftransport button:hover{background:var(--fl-card);color:var(--fl-fg)}
+.ftransport button svg{width:12px;height:12px}
+.fclock{flex:none;font-size:10.5px;color:var(--fl-muted);font-variant-numeric:tabular-nums}
+.ftrack{position:relative;flex:1;height:3px;border-radius:1.5px;background:var(--fl-line)}
+.ffill{position:absolute;left:0;top:0;height:3px;border-radius:1.5px;background:var(--fl-fg)}
+.fthumb{position:absolute;top:-3px;width:9px;height:9px;border-radius:4.5px;background:var(--fl-card);border:1px solid var(--fl-line);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+/* ambient (lamp) card */
+.flamprow{height:44px;display:flex;align-items:center;gap:8px;padding:0 12px}
+.flamp-prev{width:32px;height:32px;flex:none;border-radius:9px;background:var(--fl-card);position:relative;overflow:hidden;transition:opacity .5s var(--ease)}
+.flamp-prev::before{content:"";position:absolute;inset:0;background:radial-gradient(circle, transparent 34%, rgba(0,0,0,.14) 72%, rgba(0,0,0,.32) 100%),radial-gradient(circle at 30% 28%, var(--amb-1) 0%, transparent 62%),radial-gradient(circle at 72% 38%, var(--amb-2) 0%, transparent 60%),radial-gradient(circle at 50% 82%, var(--amb-3) 0%, transparent 64%);transition:--amb-1 .9s var(--ease),--amb-2 .9s var(--ease),--amb-3 .9s var(--ease),opacity .5s var(--ease)}
+.lamp-pick{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+#flyPanel[data-lamp="tpl"] .lamp-pick{cursor:pointer}
+#flyPanel[data-lamp="cover"] #fLampArrow{display:none}
+.flamp-copy{min-width:0;display:flex;align-items:center;gap:6px}
+.flamp-copy b{font-size:13px;font-weight:500;white-space:nowrap}
+.fchip{height:22px;padding:0 9px;border-radius:11px;flex:none;display:inline-flex;align-items:center;white-space:nowrap;font-size:11.5px;background:var(--fl-card);border:1px solid var(--fl-line);color:var(--fl-fg2)}
+#fLampPower{color:var(--fl-fg);margin-left:auto}
+#fLampName.lamp-off{color:var(--fl-faint)}
+#fLampPower.lamp-off{color:var(--fl-accent)}
+.flampseg{width:128px;flex:none}
+.flampseg button{padding:0 10px}
+/* the expanded palette: six swatches in a row under the lamp row */
+.flampgrid{display:flex;gap:8px;align-items:center;padding:0 12px 12px}
+.flampswatch{width:24px;height:24px;flex:none;border-radius:50%;border:1px solid var(--fl-line);cursor:pointer;transition:transform .16s var(--ease)}
+.flampswatch:hover{transform:scale(1.1)}
+.flampswatch.sel{box-shadow:0 0 0 2px var(--fl-panel),0 0 0 3.5px var(--text)}
+#fLampArrow svg{width:12px;height:12px;transition:transform .16s var(--ease)}
+#fLampArrow.open svg{transform:rotate(180deg)}
+/* state machine (mirrors internal/app phases, scanning and lamp-off states) */
+.fdev{cursor:pointer}
+.faction{cursor:pointer}
+.flyout .fdot{transition:opacity .25s var(--ease)}
+.flyout.scanning .fdot{opacity:0}
+.fly-spin{width:10px;height:10px;flex:none;border-radius:50%;border:1.5px solid var(--fl-line);border-top-color:var(--fl-accent);animation:flyspin .8s linear infinite}
+@keyframes flyspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.fly-spin{animation:none}}
+.flamp-prev.off{opacity:.35}
+/* the level meter follows the media session: flat and dimmed while paused */
+.fmeter.off i{animation:none;height:3px;top:calc(50% - 1.5px);opacity:.45}
+html[data-theme="dark"] .fmeter.off i{opacity:.58}
+/* footer */
+.fly-foot{height:34px;flex:none;display:flex;align-items:center;gap:6px;padding:4px 12px 6px 14px}
+.fly-wrap{position:relative}
+.fly-toast{position:absolute;left:50%;bottom:40px;transform:translate(-50%,8px);background:var(--fl-fg);color:var(--fl-panel);
+  font-size:11.5px;font-weight:600;border-radius:999px;padding:6px 14px;opacity:0;pointer-events:none;white-space:nowrap;
+  transition:opacity .4s var(--ease),transform .4s var(--ease);z-index:3;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.fly-toast.on{opacity:1;transform:translate(-50%,0)}
+.fface{width:16px;height:16px;flex:none;color:var(--fl-muted)}
+.fface svg{display:block;width:100%;height:100%}
+.flyout.streaming .fface{color:var(--fl-green)}
+.flyout.connecting .fface{color:var(--fl-accent)}
+.fstatus{flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fl-muted)}
+.flyout.streaming .fstatus{color:var(--fl-green)}
+.flyout.connecting .fstatus{color:var(--fl-accent)}
+/* palette: real flyout tokens from internal/app/theme.go */
+.fly-wrap,#bmMedia{
+  --fl-panel:#f2f2f5; --fl-card:#ffffff; --fl-cardHover:#f9f9fb; --fl-pill:#f1f1f4; --fl-pillHover:#e9e9ed;
+  --fl-line:#e3e3e8; --fl-line2:#ececf0; --fl-fg:#1c1c21; --fl-fg2:#4b4b53; --fl-muted:#85858d; --fl-faint:#b9b9c2;
+  --fl-accent:#4f46e5; --fl-sel:#ecebfb; --fl-green:#189a58; --fl-ctl:#63636b;
+}
+html[data-theme="dark"] .fly-wrap,html[data-theme="dark"] #bmMedia{
+  --fl-panel:#1b1c20; --fl-card:#232327; --fl-cardHover:#26262b; --fl-pill:#2d2d33; --fl-pillHover:#35353c;
+  --fl-line:#333339; --fl-line2:#2c2c32; --fl-fg:#ededf1; --fl-fg2:#b9b9c1; --fl-muted:#8b8b94; --fl-faint:#56565f;
+  --fl-accent:#a5b4fc; --fl-sel:#33345a; --fl-green:#6fd99b; --fl-ctl:#a1a1aa;
+}
+@media (max-width:1020px){.fly-wrap{justify-self:center;width:100%;max-width:380px;min-width:0}}
+/* touch reach: transparent pseudo overlays enlarge the hot zones — not a visual
+   pixel moves. Vertical-only on the adjacent seg buttons so neighbors never steal taps. */
+.ftransport button,.fseg button,.fly-ibtn,.faction,.flampswatch{position:relative}
+.ftransport button::after{content:"";position:absolute;inset:-6px}
+.fseg button::after{content:"";position:absolute;inset:-7px 0}
+.fly-ibtn::after{content:"";position:absolute;inset:-6px}
+.faction::after{content:"";position:absolute;inset:-6px}
+.flampswatch::after{content:"";position:absolute;inset:-7px;border-radius:50%}
+.flyout button,.fdev,.amb-hit,.amb-tpl{touch-action:manipulation}
+@media (max-width:560px){
+  .wrap{padding:0 24px}
+  .card{padding:24px}
+  .cap-flow{gap:10px}
+  .mini-eq{gap:3px}
+  .mini-eq i{width:5px}
+  .hero-visual .fly-wrap{max-width:none}
+}
+
+/* ---------- ambient light section ---------- */
+@property --amb-1{syntax:"<color>";inherits:true;initial-value:#5b5be0}
+@property --amb-2{syntax:"<color>";inherits:true;initial-value:#8f6fd8}
+@property --amb-3{syntax:"<color>";inherits:true;initial-value:#3d9be0}
+.amb-sec{padding:var(--sp-900) 0;background:var(--bg);overflow:clip}
+/* the copy reads from the top of the pod, not from the middle: centring it left a
+   130px band between the sync section and this heading. The copy block is centred
+   in the space right of the pod: left-aligned it stranded ~180px of ink-free width
+   on the right, far more than the sections above leave. */
+/* the pod flexes down to 45% of the layout before the copy drops below its 460px budget:
+   with a fixed 480px pod + 80px gap, a ~1100px window squeezed the copy to 376px and the
+   338px dot row touched both column edges. The track uses min(480px,45%) directly and the
+   pod fills its stage at 100% — a percentage inside --pod would resolve against different
+   containers for the track and the pod. The stacked breakpoint restores min(480px,78vw). */
+.amb-layout{display:grid;grid-template-columns:min(480px,45%) minmax(0,1fr);gap:64px;align-items:start}
+/* pod on the left; copy stays first in the DOM so the reading order is heading → controls → pod */
+.amb-left{display:grid;gap:40px;align-content:start;justify-self:center;max-width:min(460px,100%);grid-column:2;grid-row:1}
+.amb-copy{display:grid;gap:16px;max-width:560px}
+.amb-controls{display:grid;gap:24px;justify-items:start;max-width:560px}
+.amb-stage{display:flex;align-items:center;justify-content:center;position:relative;min-width:0;grid-column:1;grid-row:1}
+/* state row reads as identity (name + mode) left, power right; the hairline on the picker
+   row groups "current state" apart from "choose a light", and the footnote sits below both */
+.amb-current{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:15px;font-weight:600;color:var(--text);width:100%}
+.amb-id{display:inline-flex;align-items:center;gap:12px;min-width:0}
+.amb-power{flex:none}
+.amb-chip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:var(--amb-row);border:1px solid var(--line);font-size:11px;font-weight:500;color:var(--text2)}
+.amb-tplrow{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:16px;width:100%;max-width:100%;border-top:1px solid var(--line);padding-top:24px}
+.amb-tpl{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text2)}
+.amb-tpl .dot{width:42px;height:42px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--swatch-ring),0 2px 8px rgba(0,0,0,.1);transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.amb-tpl:hover .dot{transform:scale(1.07)}
+.amb-tpl[aria-pressed="true"] .dot{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text),0 2px 8px rgba(0,0,0,.1)}
+.amb-tpl[aria-pressed="true"]{color:var(--text)}
+.amb-cover .dot{background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0)}
+.amb-hit{position:absolute;inset:0;border-radius:50%;z-index:2;cursor:pointer;background:transparent}
+.amb-hit:focus-visible{outline:2px solid var(--green);outline-offset:8px}
+.amb-aura{position:absolute;inset:-12%;border-radius:50%;z-index:0;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--amb-1) 24%,transparent) 0%,color-mix(in srgb,var(--amb-2) 14%,transparent) 34%,transparent 66%);
+  filter:blur(38px);opacity:.5;transition:--amb-1 .9s var(--ease),--amb-2 .9s var(--ease),--amb-3 .9s var(--ease),opacity .7s var(--ease)}
+html[data-theme="dark"] .amb-aura{opacity:.7}
+.amb-stage.off .amb-aura{opacity:0}
+
+.amb-pod{position:relative;z-index:1;width:100%;aspect-ratio:1}
+/* amb-base carries an 11% transparent border on every side; beside the copy that band
+   is dead space, so the pod is pulled up into it. Stacked on mobile it is breathing room. */
+@media (min-width:1021px){.amb-pod{margin:-11% 0}}
+/* 白/黑两张叠放，主题切换时交叉淡入而不是瞬间换图 */
+.amb-pod .amb-base{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;user-select:none;
+  transition:opacity .85s var(--ease);
+  -webkit-mask-image:radial-gradient(circle, #000 90%, transparent 99%);mask-image:radial-gradient(circle, #000 90%, transparent 99%)}
+.amb-base-dark{opacity:0}
+html[data-theme="dark"] .amb-base-light{opacity:0}
+html[data-theme="dark"] .amb-base-dark{opacity:1}
+/* 暗角：压在 display 之上。中心透明→盘缘最暗→轻微外溢羽化；阴影走 --amb-shadow（黑+主光色相），与光同色系；灯关时隐去 */
+/* 盘径对齐真机实测（真机玻璃盘=机身径 0.56）：43% pod ≈ 机身 0.551，盘缘落在底图网罩边界（0.52 机身径）上 */
+.amb-pod::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44.5%;aspect-ratio:1;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle, transparent 0%, transparent 30%, color-mix(in srgb, var(--amb-shadow) 8%, transparent) 50%, color-mix(in srgb, var(--amb-shadow) 28%, transparent) 72%, color-mix(in srgb, var(--amb-shadow) 46%, transparent) 88%, color-mix(in srgb, var(--amb-shadow) 30%, transparent) 96%, transparent 100%);
+  transition:opacity .7s var(--ease)}
+.amb-stage.off .amb-pod::after{opacity:0}
+.amb-display{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:43%;aspect-ratio:1;border-radius:50%;overflow:hidden;
+  box-shadow:0 0 14px color-mix(in srgb, var(--amb-1) 42%, transparent), 0 0 60px color-mix(in srgb, var(--amb-1) 16%, transparent);
+  transition:box-shadow .7s var(--ease);
+  -webkit-mask-image:radial-gradient(circle, #000 0%, #000 58%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.18) 92%, transparent 100%);
+  mask-image:radial-gradient(circle, #000 0%, #000 58%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.18) 92%, transparent 100%)}
+/* 面玻璃：半透明白，露出底图的 +/− 触控符号；灯关时它就是待机屏 */
+
+.amb-blobs{position:absolute;inset:0;border-radius:50%;transition:opacity .7s var(--ease);mix-blend-mode:multiply}
+.amb-canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;mix-blend-mode:screen}
+.amb-blob{position:absolute;border-radius:50%;transform:translate(-50%,-50%);will-change:transform;aspect-ratio:1}
+.amb-siri{position:absolute;inset:0;border-radius:50%;opacity:0;transition:opacity .5s var(--ease);
+  background:radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--amb-1) 85%, #fff 15%) 0%, color-mix(in srgb, var(--amb-1) 70%, transparent) 32%, color-mix(in srgb, var(--amb-1) 30%, transparent) 58%, transparent 74%)}
+.amb-stage.siri .amb-siri{opacity:.92}
+.amb-stage.siri .amb-blobs{opacity:.25}
+.amb-stage.off .amb-blobs{opacity:0}
+.amb-stage.off .amb-siri{opacity:0}
+.amb-stage.off .amb-display{box-shadow:0 0 22px rgba(0,0,0,.10)}
+@media (prefers-reduced-motion:reduce){
+  .amb-blobs,.amb-siri,.amb-aura{transition:opacity .2s linear}
+}
+
+.amb-panel{background:var(--amb-card);border:1px solid var(--line);border-radius:24px;padding:var(--sp-400);display:grid;gap:var(--sp-300);box-shadow:0 20px 50px rgba(0,0,0,.08)}
+html[data-theme="dark"] .amb-panel{box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.amb-head{display:flex;align-items:center;justify-content:space-between}
+.amb-head h3{font-size:18px;line-height:28px;font-weight:600;color:var(--text)}
+.switch{position:relative;width:46px;height:27px;border-radius:999px;background:var(--dot-idle);transition:background .3s var(--ease);flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:var(--switch-knob);box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .45s var(--ease)}
+.switch[aria-checked="true"]{background:var(--switch-on)}
+.switch[aria-checked="true"]::after{transform:translateX(19px)}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--seg-well);border-radius:12px;padding:4px}
+.seg2 button{font-size:13px;font-weight:600;color:var(--text2);border-radius:9px;padding:8px 0;transition:background .3s var(--ease),color .3s var(--ease)}
+.seg2 button.on{background:var(--seg-on);color:var(--text);box-shadow:0 1px 4px var(--seg-shadow)}
+.amb-pane{display:grid;gap:var(--sp-200)}
+.amb-pane[hidden]{display:none}
+.cover-row{display:flex;align-items:center;gap:var(--sp-200);border:1px solid var(--line);border-radius:14px;padding:var(--sp-200);background:var(--amb-row)}
+.cover-row .media-t b{color:var(--text)}
+.cover-row .media-t span{color:var(--text2)}
+.cover-tile{width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0);flex:none}
+.pal{display:flex;gap:8px;margin-left:auto}
+.pal i{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--swatch-ring)}
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-300);justify-items:center}
+.tpl{display:grid;justify-items:center;gap:8px;padding:0}
+.tpl .dot{width:52px;height:52px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--swatch-ring), 0 2px 8px rgba(0,0,0,.1);transition:transform .4s var(--ease), box-shadow .3s var(--ease);border:0}
+.tpl:hover .dot{transform:scale(1.08)}
+.tpl:active .dot{transform:scale(.96)}
+.tpl.on .dot{box-shadow:0 0 0 3px var(--bg), 0 0 0 5px var(--text), 0 2px 8px rgba(0,0,0,.1)}
+.tpl > span:last-child{font-size:12px;font-weight:600;color:var(--text2)}
+.tpl.on > span:last-child{color:var(--text)}
+.amb-fine{font-size:13px;line-height:20px;color:var(--text2);text-align:left;max-width:520px;margin-top:8px}
+@media (max-width:1020px){
+  .amb-layout{grid-template-columns:1fr;gap:34px}
+  .amb-left{display:contents}
+  /* the section is stacked from here down, so heading, pod and controls share one centre line */
+  .amb-copy{order:1;justify-self:center;justify-items:center;text-align:center;max-width:none}
+  .amb-stage{order:2;justify-self:center;grid-column:auto;grid-row:auto;width:min(480px,78vw)}
+  .amb-controls{order:3;justify-self:center;justify-items:center;text-align:center;max-width:none}
+  .amb-controls .amb-current,.amb-controls .amb-tplrow{justify-content:center}
+  .amb-controls .amb-fine{text-align:center}
+}
+@media (max-width:700px){
+  /* seven swatches never fit one row on a phone; four per row, the short row centred */
+  .amb-tplrow{display:flex;flex-wrap:wrap;justify-content:center;gap:16px 8px}
+  .amb-tpl{flex:0 0 calc(25% - 6px)}
+}
+
+/* media card (bento): token-driven, both themes */
+.media{border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px;background:var(--amb-row);width:100%;max-width:250px}
+.media-top{display:flex;align-items:center;gap:10px}
+.media-cover{width:44px;height:44px;border-radius:9px;flex:none;background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0);position:relative;overflow:hidden}
+.media-cover::after{content:"";position:absolute;inset:0;background:radial-gradient(18px 18px at 70% 28%,rgba(255,255,255,.45),transparent)}
+.media-t{flex:1;min-width:0}
+.media-t b{display:block;font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.media-t span{font-size:12px;color:var(--text2)}
+.media-eq{display:flex;align-items:flex-end;gap:3px;height:24px;flex:none}
+.media-eq i{width:4px;border-radius:2px;background:var(--eq-bar);height:100%;transform-origin:bottom;transform:scaleY(.2);animation:eq 1.1s ease-in-out infinite}
+.media-eq i:nth-child(1){animation-delay:0s}.media-eq i:nth-child(2){animation-delay:.12s}.media-eq i:nth-child(3){animation-delay:.24s}.media-eq i:nth-child(4){animation-delay:.36s}.media-eq i:nth-child(5){animation-delay:.48s}
+.media-prog{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text2)}
+.media-prog .mono{font-variant-numeric:tabular-nums}
+.prog-track{flex:1;height:4px;border-radius:2px;background:var(--prog-well);overflow:hidden}
+.prog-fill{display:block;height:100%;width:100%;background:var(--prog-fill);transform-origin:left;transform:scaleX(.36)}
+@media (prefers-reduced-motion:reduce){.media-eq i{animation:none;transform:scaleY(.7)}}
+
+/* ---------- trust: flat manifesto section ---------- */
+.colors-sec{padding:0;background:var(--bg)}
+.colors-sec .wrap{padding-top:var(--sp-900);padding-bottom:var(--sp-900)}
+.trust-head{display:flex;align-items:flex-start;gap:24px;max-width:840px}
+.trust-icon{width:64px;height:64px;flex:none;border-radius:16px;overflow:hidden;display:block;background:transparent;box-shadow:0 0 0 1px var(--line),0 16px 40px rgba(0,0,0,.18)}
+.trust-icon img{width:100%;height:100%;display:block;object-fit:cover}
+.trust-head h2{color:var(--text)}
+.trust-head .body-3{color:var(--text2);margin-top:12px;max-width:56ch;font-size:18px;line-height:28px}
+.trust-principles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:40px;margin-top:56px;padding-top:32px;border-top:1px solid var(--line)}
+.tprinciple{display:grid;gap:8px;align-content:start}
+.tp-num{font-family:"Geist Mono",monospace;font-size:11px;font-weight:500;color:var(--green-text)}
+.tprinciple h3{font-size:18px;line-height:26px;font-weight:600;color:var(--text)}
+.tprinciple p{font-size:14px;line-height:23px;color:var(--text2)}
+@media (max-width:900px){
+  .colors-sec .wrap{padding-top:var(--sp-800);padding-bottom:var(--sp-800)}
+  .trust-head{flex-direction:column;gap:20px}
+  .trust-principles{grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 28px;margin-top:44px}
+}
+@media (max-width:560px){.trust-principles{grid-template-columns:1fr}}
+
+/* ---------- install notes: a light preflight checklist ---------- */
+/* ---------- FAQ ---------- */
+.faq-sec{padding:var(--sp-900) 0;background:var(--bg)}
+.faq-list{max-width:760px;margin:0 auto;border-bottom:1px solid var(--line)}
+.faq{border-top:1px solid var(--line);scroll-margin-top:120px}
+.faq summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-200);padding:var(--sp-300) 0;font-size:17px;font-weight:600;cursor:pointer}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .plus{position:relative;width:20px;height:20px;flex:none;color:var(--text2);transition:color .3s var(--ease)}
+.faq[open] summary .plus{color:var(--text)}
+.faq summary .plus::before,.faq summary .plus::after{content:"";position:absolute;inset:50% auto auto 50%;width:14px;height:2px;background:currentColor;border-radius:1px;transform:translate(-50%,-50%);transition:transform .45s var(--ease)}
+.faq summary .plus::after{transform:translate(-50%,-50%) rotate(90deg)}
+.faq[open] summary .plus::after{transform:translate(-50%,-50%) rotate(0deg)}
+.faq .ans{padding:0 0 var(--sp-300);max-width:640px;font-size:15px;line-height:26px;color:var(--text2);text-wrap:pretty}
+@media (prefers-reduced-motion:reduce){.faq summary .plus::before,.faq summary .plus::after{transition:none}}
+
+/* ---------- final CTA ---------- */
+.final{background:var(--bg);color:var(--text);padding:var(--sp-900) 0;text-align:center;position:relative;overflow:hidden}
+.final .glow{position:absolute;left:50%;bottom:-340px;transform:translateX(-50%);width:720px;height:520px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(48,179,82,.24),transparent);filter:blur(20px);pointer-events:none;animation:glowb 6s ease-in-out infinite}
+html[data-theme="light"] .final .glow{background:radial-gradient(closest-side,rgba(48,179,82,.13),transparent)}
+@keyframes glowb{0%,100%{opacity:.7}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.final .glow{animation:none}}
+.final .inner{position:relative;display:grid;justify-items:center;gap:var(--sp-300)}
+.final .row{display:flex;gap:var(--sp-300);flex-wrap:wrap;justify-content:center;align-items:center;margin-top:var(--sp-100)}
+.final-alt{font-size:14px;font-weight:600;color:var(--text2);border-bottom:1px solid transparent;padding-bottom:2px;transition:color .3s var(--ease),border-color .3s var(--ease)}
+.final-alt:hover{color:var(--text);border-bottom-color:var(--text2)}
+
+/* ---------- footer ---------- */
+body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(--line);padding:var(--sp-600) 0 var(--sp-700)}
+.foot-grid{display:flex;justify-content:space-between;gap:var(--sp-400);flex-wrap:wrap;align-items:flex-start}
+.foot-brand{display:flex;align-items:center;gap:10px;color:var(--text);font-weight:600}
+.foot-brand img{width:24px;height:24px;border-radius:6px}
+.foot-links{display:flex;gap:var(--sp-300);flex-wrap:wrap}
+.foot-links a{font-size:14px;transition:color .3s var(--ease)}
+.foot-links a:hover{color:var(--text)}
+.foot-fine{margin-top:var(--sp-500);font-size:12px;line-height:20px}
+</style>
+
+<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs><symbol id="g-homepod" viewBox="0 0 1065.362637 1361.756996"><g transform="translate(-1.499998,1363.769128) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M4960 13629 c-1011 -30 -1877 -190 -2330 -430 -246 -131 -372 -285 -357 -435 8 -78 39 -137 108 -210 388 -404 1697 -650 3262 -613 1443 34 2541 325 2738 726 36 71 34 168 -5 246 -146 299 -819 544 -1807 657 -264 30 -557 49 -902 60 -337 10 -343 10 -707 -1z M1017 12139 c-115 -27 -206 -107 -333 -294 -144 -212 -253 -416 -344 -645 -40 -101 -133 -381 -145 -440 -4 -19 -11 -37 -15 -40 -20 -13 -97 -421 -124 -660 -41 -361 -41 -379 -41 -3270 0 -2941 0 -2926 46 -3305 29 -243 99 -612 118 -625 4 -3 16 -36 26 -75 117 -445 354 -922 622 -1255 219 -272 533 -545 848 -735 148 -89 429 -229 595 -294 74 -30 137 -57 140 -61 9 -13 338 -117 504 -160 519 -133 1091 -214 1775 -250 251 -13 1040 -13 1297 0 826 43 1524 158 2107 347 92 29 167 58 167 63 0 6 5 10 10 10 22 0 269 103 406 169 252 122 490 270 699 435 120 95 385 358 479 476 190 239 402 616 511 910 47 126 135 418 135 446 0 8 4 13 8 10 9 -6 72 301 97 469 64 442 67 626 62 3650 -4 2692 -4 2700 -43 3035 -26 227 -96 608 -113 620 -5 3 -14 30 -21 60 -19 82 -107 352 -150 460 -103 257 -235 499 -388 710 -102 141 -178 204 -281 234 -134 39 -255 2 -410 -125 -362 -295 -980 -556 -1771 -748 -1312 -318 -2676 -340 -4014 -65 -904 186 -1648 481 -2062 817 -145 119 -266 157 -397 126z"/> </g></symbol><symbol id="g-homepod-mini" viewBox="0 0 1264.451493 1157.657815"><g transform="translate(-1.967742,1159.607871) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M5935 11590 c-819 -26 -1600 -143 -2041 -305 -227 -83 -433 -205 -510 -302 -76 -94 -101 -197 -70 -289 67 -202 404 -392 928 -524 369 -93 767 -150 1338 -192 239 -18 1281 -18 1525 0 1134 82 1892 283 2174 576 78 82 105 139 105 226 -1 343 -668 624 -1779 750 -512 57 -1084 78 -1670 60z M1863 10245 c-129 -35 -211 -98 -371 -285 -431 -503 -774 -1070 -1029 -1700 -68 -169 -171 -476 -214 -640 -18 -69 -36 -127 -40 -130 -11 -8 -85 -358 -113 -535 -57 -357 -76 -619 -76 -1009 0 -403 25 -721 86 -1081 31 -186 93 -478 103 -485 4 -3 22 -63 40 -134 95 -372 271 -837 462 -1218 330 -660 759 -1242 1290 -1750 240 -229 415 -377 584 -491 33 -23 66 -47 73 -54 8 -7 63 -42 123 -78 662 -393 1434 -570 2734 -625 315 -14 1343 -14 1655 0 899 39 1492 128 2025 304 324 107 663 273 857 417 25 19 94 70 154 114 313 229 702 610 1021 1000 303 372 605 856 814 1305 154 334 309 760 394 1085 20 77 40 149 45 160 15 30 55 219 89 415 104 598 123 1228 55 1840 -28 252 -117 740 -144 788 -5 10 -21 62 -36 117 -192 733 -557 1480 -1022 2094 -140 185 -344 423 -404 471 -111 89 -241 131 -352 112 -91 -15 -156 -46 -280 -135 -581 -418 -1114 -668 -1771 -831 -615 -152 -1195 -214 -2106 -223 -796 -8 -1353 24 -1867 107 -927 150 -1598 415 -2282 900 -184 131 -224 153 -307 175 -70 18 -121 18 -190 0z"/> </g></symbol><symbol id="g-homepod-pair" viewBox="0 0 1313.723871 1276.284188"><g transform="translate(-1.153390,1279.795612) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3550 12793 c-431 -20 -931 -94 -1232 -183 -333 -97 -530 -212 -604 -351 -29 -54 -25 -144 8 -201 85 -143 352 -280 731 -372 250 -61 556 -108 912 -138 241 -21 1081 -17 1325 5 724 67 1239 205 1475 395 187 150 166 330 -57 478 -281 187 -868 319 -1618 364 -148 9 -773 11 -940 3z M748 11665 c-60 -22 -120 -68 -169 -131 -72 -91 -172 -249 -228 -358 -28 -55 -51 -95 -51 -90 -1 5 -14 -22 -31 -61 -106 -244 -186 -569 -224 -905 -32 -279 -36 -687 -32 -2676 3 -1382 8 -1993 16 -2074 34 -342 75 -563 147 -790 47 -149 108 -310 121 -319 5 -3 34 -58 65 -121 390 -786 1182 -1273 2368 -1454 256 -39 413 -54 849 -81 l84 -5 -6 28 c-8 38 -34 274 -49 432 -7 87 -12 803 -15 2355 -5 2262 -1 2615 32 2935 75 733 271 1330 603 1840 125 193 427 555 544 654 43 36 43 36 13 31 -204 -36 -872 -56 -1175 -36 -1028 68 -2026 357 -2530 732 -138 102 -235 130 -332 94z M8410 11270 c-1140 -45 -2003 -283 -2156 -595 -22 -47 -26 -65 -22 -119 3 -55 10 -73 42 -120 357 -519 2619 -741 4110 -405 625 141 965 363 906 591 -83 319 -877 574 -1985 637 -263 15 -658 20 -895 11z M5158 10025 c-62 -23 -120 -69 -173 -136 -28 -35 -57 -71 -66 -80 -20 -20 -109 -157 -109 -167 0 -5 -27 -60 -60 -124 -213 -411 -331 -881 -370 -1473 -14 -209 -13 -4649 0 -4860 26 -402 84 -725 186 -1037 58 -179 114 -310 215 -506 80 -156 105 -198 145 -242 13 -14 60 -72 106 -129 521 -660 1400 -1055 2647 -1191 375 -41 483 -45 1091 -45 625 0 749 6 1160 56 891 107 1582 350 2100 738 140 104 344 301 453 436 395 490 609 1122 657 1940 16 267 8 4848 -8 4990 -48 415 -111 698 -219 992 -91 250 -287 598 -413 737 -68 74 -136 108 -224 114 -96 6 -162 -20 -268 -105 -185 -148 -424 -279 -712 -392 -550 -215 -1172 -350 -1916 -418 -245 -22 -974 -25 -1200 -5 -496 44 -916 114 -1317 217 -576 149 -1059 362 -1338 588 -104 85 -164 111 -255 114 -46 2 -89 -3 -112 -12z"/> </g></symbol><symbol id="g-appletv" viewBox="0 0 1271.745557 1270.498369"><g transform="translate(-0.132012,1270.623417) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3050 12700 c-789 -21 -1308 -125 -1753 -352 -596 -304 -985 -820 -1162 -1542 -54 -222 -85 -432 -117 -791 -16 -183 -24 -6699 -8 -7078 30 -753 128 -1220 341 -1638 246 -482 648 -843 1163 -1044 381 -149 785 -219 1413 -245 366 -16 6916 -8 7098 8 476 42 765 95 1055 192 433 145 783 386 1050 721 315 394 488 896 554 1608 34 360 37 734 33 4036 -4 3327 -4 3333 -42 3690 -83 761 -300 1282 -704 1686 -171 170 -332 287 -549 397 -387 198 -793 292 -1472 343 -177 14 -6425 21 -6900 9z m6745 -1030 c781 -42 1260 -227 1535 -592 126 -167 232 -430 289 -715 45 -221 60 -384 72 -738 15 -461 6 -6677 -9 -6840 -41 -419 -117 -734 -233 -966 -46 -92 -143 -230 -213 -302 -248 -254 -617 -398 -1188 -464 -144 -17 -368 -18 -3673 -18 -3780 0 -3619 -2 -3935 51 -691 116 -1067 396 -1255 934 -91 264 -135 523 -155 930 -13 265 -13 6526 0 6800 44 908 263 1399 740 1658 273 148 658 236 1139 261 222 12 6673 12 6886 1z M4549 8825 c-320 -65 -617 -341 -718 -668 -26 -85 -46 -234 -37 -281 l7 -36 63 0 c266 0 566 217 712 515 63 129 86 225 88 365 l1 115 -25 2 c-14 1 -55 -4 -91 -12z M6320 7995 l0 -365 -222 -2 -223 -3 -3 -267 -2 -268 224 0 225 0 4 -992 c3 -910 5 -999 21 -1068 70 -297 236 -455 541 -517 74 -15 135 -18 335 -17 135 0 263 5 285 10 l40 10 3 268 2 268 -56 -7 c-105 -13 -261 -8 -320 11 -71 22 -135 79 -165 146 l-24 53 -3 918 -3 917 291 0 290 0 0 270 0 270 -290 0 -290 0 -2 363 -3 362 -327 3 -328 2 0 -365z M4453 7769 c-76 -11 -243 -60 -423 -125 -193 -69 -224 -68 -479 20 -236 80 -310 96 -443 96 -444 -1 -837 -297 -997 -753 -63 -181 -75 -266 -76 -537 0 -277 10 -360 75 -615 62 -245 152 -468 272 -678 72 -127 276 -395 376 -495 148 -149 259 -204 407 -205 103 -1 160 14 298 75 200 88 318 115 470 105 107 -7 190 -31 340 -98 380 -171 589 -95 911 330 101 132 159 227 239 387 61 122 129 282 142 335 5 21 1 27 -32 43 -68 32 -176 109 -245 175 -128 120 -213 257 -265 428 -24 80 -26 104 -27 258 -1 146 2 181 21 250 57 209 181 390 366 534 37 29 67 57 67 61 0 31 -143 174 -240 240 -206 140 -501 205 -757 169z M7827 7623 c-2 -5 116 -345 263 -758 147 -412 389 -1096 539 -1520 151 -423 279 -785 287 -802 l13 -33 334 0 c256 0 337 3 345 13 5 6 82 217 169 467 713 2033 920 2626 916 2633 -2 4 -155 7 -338 7 l-334 0 -37 -117 c-20 -65 -49 -156 -64 -203 -15 -47 -164 -535 -330 -1085 -167 -550 -306 -1004 -310 -1008 -8 -9 -31 66 -441 1398 -164 534 -303 980 -309 993 l-10 22 -344 0 c-190 0 -347 -3 -349 -7z"/> </g></symbol><symbol id="g-desktop" viewBox="0 0 1313.570329 1114.788615"><g transform="translate(-0.490802,1115.930942) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M1070 11149 c-505 -57 -874 -353 -1005 -805 -65 -224 -60 95 -60 -3779 0 -3323 1 -3515 18 -3605 51 -272 154 -483 314 -644 125 -126 263 -210 446 -271 221 -74 59 -69 2160 -72 l1887 -3 0 -534 0 -533 -75 -5 c-244 -16 -438 -266 -397 -511 15 -94 52 -168 117 -236 61 -64 122 -101 206 -125 50 -15 234 -16 1915 -14 l1859 3 67 32 c91 43 133 77 185 147 128 174 106 428 -52 581 -75 74 -168 117 -262 123 l-73 5 0 533 0 534 1829 0 c1988 0 1939 -1 2151 55 129 35 315 127 417 209 226 180 372 460 412 791 15 127 15 6953 0 7080 -41 333 -186 611 -413 792 -101 80 -288 174 -416 208 -221 59 170 55 -5738 54 -2979 -1 -5451 -5 -5492 -10z m10863 -889 c132 -21 232 -93 284 -205 l28 -60 3 -2720 2 -2720 -22 -45 c-18 -35 -35 -51 -73 -70 l-50 -25 -5530 0 c-4536 0 -5537 2 -5567 13 -46 16 -94 69 -107 119 -15 51 -15 5370 -1 5431 34 148 133 244 283 277 52 11 940 14 5377 14 3289 1 5337 -3 5373 -9z"/> </g></symbol><symbol id="face-idle" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="face-stream" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></symbol><symbol id="face-connect" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></symbol><symbol id="face-error" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="face-smile" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></symbol></defs></svg>
+<a class="skip" href="#main">跳到正文</a>
+
+<nav class="nav" aria-label="主导航">
+  <a class="logo" href="#top"><img src="assets/icon.png" alt="声渡图标">声渡</a>
+  <div class="links">
+    <a href="#how" data-i18n="navHow">上手</a>
+    <a href="#features" data-i18n="navFeatures">功能</a>
+    <a href="#ambient" data-i18n="navAmbient">氛围灯</a>
+    <a href="#faq" data-i18n="navFaq">常见问题</a>
+  </div>
+  <button class="tbtn" id="langBtn" type="button" aria-label="切换语言">EN</button>
+  <button class="tbtn" id="themeBtn" type="button" aria-label="切换深浅配色">
+    <svg class="ic-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+    <svg class="ic-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+  </button>
+  <a class="gh" href="https://github.com/4202217/saundo" target="_blank" rel="noopener" aria-label="GitHub 源码">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.87-.01-1.7-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.36 9.36 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.03 10.03 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"/></svg>
+  </a>
+  <a class="btn btn-dark nav-dl" href="https://github.com/4202217/saundo/releases/latest" target="_blank" rel="noopener" data-i18n="navDownload">免费下载</a>
+  <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="mobileMenu" aria-label="菜单">
+    <span class="mb-line"></span><span class="mb-line"></span>
+  </button>
+</nav>
+
+<div class="mmenu" id="mobileMenu" role="dialog" aria-modal="true" aria-label="菜单" hidden>
+  <div class="mmenu-inner">
+    <a href="#how" data-i18n="navHow">上手</a>
+    <a href="#features" data-i18n="navFeatures">功能</a>
+    <a href="#ambient" data-i18n="navAmbient">氛围灯</a>
+    <a href="#faq" data-i18n="navFaq">常见问题</a>
+    <a class="btn btn-dark btn-lg" href="https://github.com/4202217/saundo/releases/latest" target="_blank" rel="noopener" data-i18n="navDownload">免费下载</a>
+  </div>
+</div>
+
+<main id="main">
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <span class="hero-badge reveal"><span class="dot"></span>开源 AirPlay 2 发送器</span>
+      <h1 class="heading-1 reveal">电脑里一放，<br>HomePod 就响。</h1>
+      <p class="body-3 sub reveal" data-en="Everything your computer plays, straight to the HomePod on your network. No output to switch. No app to set up.">整台电脑的声音，都送到同一网络里的 HomePod。不用切系统输出，也不用管是哪个 app。</p>
+      <div class="hero-cta reveal">
+        <a class="btn btn-dark btn-lg magnetic" href="https://github.com/4202217/saundo/releases/latest" target="_blank" rel="noopener">
+          免费下载
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
+        </a>
+        <a class="hero-alt" href="https://github.com/4202217/saundo" target="_blank" rel="noopener">看看源码</a>
+      </div>
+      <a class="hero-note reveal" href="#install" data-en="The system blocks the first launch. <b>Read the install notes first</b>">第一次打开，系统会拦一下。<b>先看安装说明</b></a>
+      <p class="hero-proof reveal">
+        <a href="https://github.com/4202217/saundo/releases/latest" target="_blank" rel="noopener">Windows 10 · 11</a><span class="dot-sep" aria-hidden="true">·</span><a href="https://github.com/4202217/saundo/releases/latest" target="_blank" rel="noopener">macOS 14.4+（Apple 芯片）</a><span class="dot-sep" aria-hidden="true">·</span><span>免费 · GPL-3.0</span>
+      </p>
+    </div>
+
+    <div class="hero-visual reveal" aria-label="声渡托盘面板：接收器、音量、延迟、播放与氛围灯">
+      <span class="hero-glow" aria-hidden="true"></span>
+      <div class="fly-wrap">
+        <div class="flyout" id="flyPanel">
+          <header class="fly-head">
+            <img class="fly-mark" src="assets/icon.png" alt="" width="21" height="21">
+            <div class="fly-id"><div class="fly-app">声渡</div><div class="fly-sub" data-i18n="flySub">AIRPLAY 2</div></div>
+            <span class="fly-sp"></span>
+            <button class="fly-ibtn" id="fRefresh" type="button" aria-label="刷新接收器"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5h-4.5"/></svg></button>
+            <button class="fly-ibtn" type="button" aria-label="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </header>
+
+          <div class="fly-body">
+            <div class="fly-shead"><span class="fly-slabel" data-i18n="flyDevices">接收器</span><span class="fly-snote" id="fCount">2 台</span></div>
+            <div class="fly-card">
+              <div class="fdev sel" id="fDev0">
+                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg><i class="fdot"></i></span>
+                <span class="fnamecol"><b>客厅 HomePod</b><span>AudioAccessory5,1 · AirPlay 2</span></span>
+                <button class="faction accent" id="fRowAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
+              </div>
+              <div class="fdev" id="fDev1">
+                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-pair"/></svg><i class="fdot"></i></span>
+                <span class="fnamecol"><b>书房 HomePods</b><span>AudioAccessory5,1 · 立体声组 2/2</span></span>
+                <button class="faction accent" type="button" id="fAtvAction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
+              </div>
+            </div>
+
+            <div class="fly-shead" id="flyPlayHead"><span class="fly-slabel" data-i18n="flyPlayback">播放</span><span class="fly-spin" id="fLatSpin" hidden aria-hidden="true"></span><span class="fly-snote" id="fNote">ALAC · 44.1 kHz · 延迟 200 ms</span></div>
+            <div class="fly-card" id="flyPlayback">
+              <div class="fmedia">
+                <div class="fmediahead">
+                  <svg class="fappic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></svg>
+                  <span class="fapp">Music</span>
+                </div>
+                <div class="fmediamain">
+                  <span class="fposter" aria-hidden="true"></span>
+                  <span class="fmedcopy"><b>夜航</b><span>白鲸电台</span></span>
+                  <span class="fmeter" id="fMeter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                </div>
+                <div class="fprog">
+                  <span class="ftransport">
+                    <button type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12l11-7Z"/></svg></button>
+                    <button type="button" id="fPlayBtn" aria-label="播放或暂停"><svg id="fPlayIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5Z"/></svg></button>
+                    <button type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5l11 7L4 19V5Z"/></svg></button>
+                  </span>
+                  <span class="fclock">2:08</span>
+                  <span class="ftrack"><i class="ffill" style="width:52%"></i><i class="fthumb" style="left:calc(52% - 4.5px)"></i></span>
+                  <span class="fclock">-1:56</span>
+                </div>
+              </div>
+              <div class="fline"></div>
+              <div class="flat">
+                <div class="fseg" role="group" aria-label="延迟模式">
+                  <button class="on" data-lat="200" type="button"><svg viewBox="0 0 24 24"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span data-i18n="latLow">低延迟</span></button>
+                  <button data-lat="1500" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span data-i18n="latStandard">标准</span></button>
+                  <button data-lat="2000" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span data-i18n="latStable">稳定</span></button>
+                  <button data-lat="custom" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-i18n="latCustom">自定义</span></button>
+                </div>
+              </div>
+              <div class="fline"></div>
+              <div class="fvol">
+                <svg class="fvolic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.8 6a9 9 0 0 1 0 12"/></svg>
+                <input class="frange" id="fVol" type="range" min="0" max="100" value="30" aria-label="接收器音量">
+                <span class="fvolval" id="fVolPct">30%</span>
+              </div>
+            </div>
+
+            <div class="fly-shead">
+              <span class="fly-slabel" data-i18n="flyLamp">氛围灯</span>
+              <button class="fly-ibtn" id="fLampPower" type="button" aria-label="关灯"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
+            </div>
+            <div class="fly-card flamp">
+              <div class="flamprow">
+                <div class="lamp-pick"><span class="flamp-prev" id="fLampPrev" aria-hidden="true"></span><span class="flamp-copy"><b id="fLampName">夜航</b><span class="fchip" id="fLampChip" hidden data-i18n="lampOffChip">已关灯</span></span></div>
+                <div class="fseg flampseg" role="group" aria-label="灯光来源">
+                  <button class="on" id="fLampCover" type="button" data-i18n="lampCoverSeg">封面</button>
+                  <button id="fLampTpl" type="button" data-i18n="lampTplSeg">模板</button>
+                </div>
+                <button class="fly-ibtn" id="fLampArrow" type="button" aria-label="展开配色"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+              </div>
+              <div class="flampgrid" id="fLampGrid" hidden></div>
+            </div>
+          </div>
+
+          <span class="fly-toast" id="fToast" role="status"></span>
+          <footer class="fly-foot">
+            <span class="fface" id="fFootFace" aria-hidden="true"><svg viewBox="0 0 24 24"><use id="fFaceUse" href="#face-idle"/></svg></span>
+            <span class="fstatus" id="fFootState" role="status">未连接</span>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+
+
+<!-- ================= RECEIVER MARQUEE ================= -->
+<section class="marquee-sec" aria-label="支持的接收器">
+  <div class="marquee reveal" data-d="1">
+    <div class="marquee-track" id="mq1">
+      <span class="mq-item"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg>HomePod</span>
+      <span class="mq-dot" aria-hidden="true"></span>
+      <span class="mq-item"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg>HomePod mini</span>
+      <span class="mq-dot" aria-hidden="true"></span>
+      <span class="mq-item"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-pair"/></svg>Stereo pair</span>
+      <span class="mq-dot" aria-hidden="true"></span>
+      <span class="mq-item"><svg class="sfg" aria-hidden="true"><use href="#g-appletv"/></svg>Apple TV</span>
+      <span class="mq-dot" aria-hidden="true"></span>
+      <span class="mq-item"><svg class="sfg" aria-hidden="true"><use href="#g-desktop"/></svg>Mac receiver</span>
+      <span class="mq-dot" aria-hidden="true"></span>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= STEPS ================= -->
+<section class="steps-sec" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="heading-2 reveal">三步，声音就到 HomePod。</h2>
+    </div>
+    <div class="steps">
+      <article class="step reveal" data-d="1">
+        <span class="num">01</span>
+        <div class="step-art" aria-hidden="true"><div class="art-tray"><span class="tile"><svg viewBox="0 0 40 40"><circle class="eye" cx="15" cy="17" r="2.2"/><circle class="eye" cx="25" cy="17" r="2.2"/><path class="mouth" d="M14 26 Q20 31 26 26"/></svg></span><span class="bar"><span class="slot"></span></span><span class="dot"></span></div></div>
+        <h3>装好，就不用管了。</h3>
+        <p>图标就在系统托盘里，点开就用。不用另装任何东西。</p>
+      </article>
+      <article class="step reveal" data-d="2">
+        <span class="num">02</span>
+        <div class="step-art" aria-hidden="true"><div class="art-pick"><span class="row"><span class="rg"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg></span><span class="rname"></span><span class="rdot"></span></span><span class="row main"><span class="rg"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg></span><span class="rname"></span><span class="rdot"></span></span><span class="row"><span class="rg"><svg class="sfg" aria-hidden="true"><use href="#g-appletv"/></svg></span><span class="rname"></span><span class="rdot"></span></span><span class="cursor"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 8-6.5 1.5L9 19 5 3Z"/></svg></span></div></div>
+        <h3>点一下，连上。</h3>
+        <p>HomePod 会自己出现在列表里。要密码的，输一次就记住。想换一台，点一下就行。</p>
+      </article>
+      <article class="step reveal" data-d="3">
+        <span class="num">03</span>
+        <div class="step-art" aria-hidden="true"><div class="art-play"><span class="apps"><i class="on">浏览器</i><i>游戏</i><i>播放器</i></span><svg class="wave" viewBox="0 0 44 96"><path class="w1" pathLength="100" d="M1 17 C 17 17, 23 48, 42 48"/><path class="w2" pathLength="100" d="M1 48 C 17 48, 23 48, 42 48"/><path class="w3" pathLength="100" d="M1 79 C 17 79, 23 48, 42 48"/></svg><span class="podq"><svg class="sfg podq-glyph" aria-hidden="true"><use href="#g-homepod-mini"/></svg><span class="peq"><i></i><i></i><i></i><i></i><i></i></span></span></div></div>
+        <h3>随便播点什么。</h3>
+        <p>浏览器、游戏、播放器、会议，声音全都送过去。macOS 还能只送选中的 app。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES BENTO ================= -->
+<section class="feat-sec" id="features">
+  <div class="wrap">
+    <div class="feat-layout">
+      <div class="feat-intro reveal">
+        <h2 class="heading-2" data-en="From sound to cover art.">从声音，到封面。</h2>
+        <p class="feat-lead" data-en="Sound, on the receiver's clock. Sent as it is. Nothing early, nothing late. The light on top follows the artwork.">声音跟着接收器的时钟走。原样送出，不早不晚。顶部的光，跟着封面换色。</p>
+        <div class="feat-specs" aria-hidden="true">
+          <span data-en="ALAC · 44.1 kHz">ALAC · 44.1 kHz</span>
+          <span data-en="No re-encode">不重编码</span>
+          <span data-en="PTP clock sync">PTP 时钟同步</span>
+        </div>
+      </div>
+      <div class="bento">
+        <article class="card blamp reveal">
+          <div class="blamp-body">
+            <span class="bnum">01</span>
+            <h3 data-en="New cover. New light.">封面一换，灯就换。</h3>
+            <p data-en="Three colors from the artwork, a new set with every track. Or pick one of six templates.">封面取三色，切歌就换。也能手选六套模板。</p>
+          </div>
+          <div class="art" aria-hidden="true">
+            <div class="art-ambient fa-amb"><span class="orb"><span class="orb-swirl"></span><span class="orb-glass"></span></span></div>
+          </div>
+        </article>
+        <article class="card bmedia reveal" data-d="1">
+          <span class="bnum">02</span>
+          <h3 data-en="The tray knows what's playing.">放什么，托盘知道。</h3>
+          <p data-en="Play a song. Title, artist, progress, and artwork land in the tray.">歌一放，曲名、艺人、进度、封面，自己出现在托盘里。</p>
+          <div class="art">
+            <div class="fmedia" id="bmMedia">
+              <div class="fmediahead">
+                <svg class="fappic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></svg>
+                <span class="fapp">Music</span>
+              </div>
+              <div class="fmediamain">
+                <span class="fposter"></span>
+                <span class="fmedcopy"><b>夜航</b><span>白鲸电台</span></span>
+                <span class="fmeter"><i></i><i></i><i></i><i></i><i></i></span>
+              </div>
+              <div class="fprog">
+                <span class="ftransport">
+                  <button type="button" aria-label="上一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12l11-7Z"/></svg></button>
+                  <button type="button" id="bmPlayBtn" aria-label="播放或暂停"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg></button>
+                  <button type="button" aria-label="下一首"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5l11 7L4 19V5Z"/></svg></button>
+                </span>
+                <span class="fclock">2:08</span>
+                <span class="ftrack"><i class="ffill" style="width:52%"></i><i class="fthumb" style="left:calc(52% - 4.5px)"></i></span>
+                <span class="fclock">-1:56</span>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="card reveal" data-d="2">
+          <span class="bnum">03</span>
+          <h3 data-en="Latency. Your call.">延迟，自己定。</h3>
+          <p data-en="Three presets at 200 ms, 1.5 s, and 2 s, or set anything from 20 to 2000 ms. Switching briefly restarts the stream.">200 ms、1.5 s、2 s 三档预设，也可以自己填 20 到 2000 ms。切档会短暂重启音频流。</p>
+          <div class="art">
+            <div class="fa-lat">
+              <div class="fa-rail" aria-hidden="true">
+                <i class="fa-tick" style="left:12.5%"></i><i class="fa-tick" style="left:37.5%"></i><i class="fa-tick" style="left:62.5%"></i><i class="fa-tick" style="left:87.5%"></i>
+                <i class="fa-mark" id="faMark"></i>
+              </div>
+              <div class="fa-lat-modes" role="group" aria-label="延迟模式">
+                <button class="on" type="button" data-fa-lat="200" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span>200 ms</span></button>
+                <button type="button" data-fa-lat="1500" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span>1.5 s</span></button>
+                <button type="button" data-fa-lat="2000" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span>2 s</span></button>
+                <button type="button" data-fa-lat="custom" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-en="Custom" data-zh="自定义">自定义</span></button>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="card reveal" data-d="3">
+          <span class="bnum">04</span>
+          <h3 data-en="Every receiver, paired once.">每台接收器，只配一次。</h3>
+          <p data-en="HomePods pair themselves. Apple TV shows a code. Mac receivers ask for a password. Entered once, remembered.">HomePod 自己配对，Apple TV 出配对码，Mac 接收器要密码。输过一次就记住。</p>
+          <div class="art" aria-hidden="true">
+            <div class="bpair">
+              <div class="bpair-row hp">
+                <span class="bpair-name"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg><span data-en="Living Room HomePod" data-zh="客厅 HomePod">客厅 HomePod</span></span>
+                <span class="bpair-how"><span data-en="Auto pairing" data-zh="自动配对">自动配对</span></span>
+                <span class="bpair-key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              </div>
+              <div class="bpair-row atv">
+                <span class="bpair-name"><svg class="sfg" aria-hidden="true"><use href="#g-appletv"/></svg><span>Apple TV</span></span>
+                <span class="bpair-how"><span data-en="Pairing code" data-zh="配对码">配对码</span><b class="bpair-type">3921</b></span>
+                <span class="bpair-key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              </div>
+              <div class="bpair-row mac">
+                <span class="bpair-name"><svg class="sfg" aria-hidden="true"><use href="#g-desktop"/></svg><span data-en="Study Mac" data-zh="书房 Mac">书房 Mac</span></span>
+                <span class="bpair-how"><span data-en="Password" data-zh="密码">密码</span><b class="bpair-type">••••••</b></span>
+                <span class="bpair-key"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= AMBIENT LIGHT ================= -->
+<section class="amb-sec" id="ambient">
+  <div class="wrap">
+    <div class="amb-layout">
+      <div class="amb-left">
+        <div class="amb-copy">
+          <h2 class="heading-2 reveal" data-en="One tap.<br>A different light." data-zh="点一下，换种光。">点一下，换种光。</h2>
+        </div>
+        <div class="amb-controls reveal" data-d="1">
+          <div class="amb-current">
+            <span class="amb-id">
+              <span class="amb-name" id="ambName">夜航</span>
+              <span class="amb-chip" id="ambCap">跟随封面</span>
+            </span>
+            <button class="switch amb-power" id="ambPower" role="switch" aria-checked="true" aria-label="氛围灯开关"></button>
+          </div>
+          <div class="amb-tplrow" id="ambTplRow" role="group" aria-label="灯光来源">
+            <button class="amb-tpl amb-cover" type="button" data-mode="cover" aria-pressed="false"><span class="dot"></span><span>封面</span></button>
+            <button class="amb-tpl" type="button" data-tpl="ember" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#ff5a1f,#ffc020 55%,#b3261e)"></span><span>暖烬</span></button>
+            <button class="amb-tpl" type="button" data-tpl="dune" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#c08a00,#c47a1e 55%,#7a3f14)"></span><span>沙丘</span></button>
+            <button class="amb-tpl" type="button" data-tpl="moss" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#4e8a42,#b8d42e 55%,#2f7f86)"></span><span>苔庭</span></button>
+            <button class="amb-tpl" type="button" data-tpl="tide" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#2e7fd0,#3fc9c0 55%,#4fd18a)"></span><span>潮汐</span></button>
+            <button class="amb-tpl" type="button" data-tpl="orchid" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#a83ed0,#4a5fe0 55%,#c85a9e)"></span><span>兰夜</span></button>
+            <button class="amb-tpl" type="button" data-tpl="moon" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#c4d6ee,#6e84a8 55%,#e0c48a)"></span><span>月白</span></button>
+          </div>
+          <p class="amb-fine" data-en="HomePod only. Turn on Sound Glow in the Home app first.">仅 HomePod。先在“家庭”app 打开“声音光晕”。</p>
+        </div>
+      </div>
+      <div class="amb-stage reveal" id="ambStage">
+        <div class="amb-pod">
+          <span class="amb-aura" aria-hidden="true"></span>
+          <img class="amb-base amb-base-light" src="assets/amb-base.webp" alt="HomePod mini 俯视图" width="960" height="960" loading="lazy" decoding="async" draggable="false">
+          <img class="amb-base amb-base-dark" src="assets/amb-base-dark.webp" alt="" width="960" height="960" loading="lazy" decoding="async" draggable="false">
+          <div class="amb-display" aria-hidden="true">
+            <span class="amb-blobs" id="ambBlobs"></span>
+            <span class="amb-siri"></span>
+          </div>
+          <button class="amb-hit" id="ambHit" type="button" aria-label="切换氛围灯"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= COLORS ================= -->
+<section class="colors-sec" id="colors">
+  <div class="wrap">
+    <div class="trust-head">
+      <span class="trust-icon" aria-hidden="true"><img src="assets/icon.png" alt=""></span>
+      <div>
+        <h2 class="heading-2" data-en="The whole app. One icon.">整个 app，一个图标。</h2>
+      </div>
+    </div>
+    <div class="trust-principles">
+      <div class="tprinciple reveal" data-d="1">
+        <span class="tp-num">01</span>
+        <h3 data-en="One file. One process.">一个文件，一个进程。</h3>
+        <p data-en="No WebView. No resident service. Quit, and nothing stays behind.">没有 WebView，没有常驻服务。退出后，什么都不留下。</p>
+      </div>
+      <div class="tprinciple reveal" data-d="2">
+        <span class="tp-num">02</span>
+        <h3 data-en="Your sound stays home.">声音不出家门。</h3>
+        <p data-en="Audio goes straight from this machine to the receiver, with no server in between. Discovery uses mDNS, with a direct query when needed.">音频只在本机和接收器之间直传，不经过任何服务器。接收器用 mDNS 发现，必要时补一次直接查询。</p>
+      </div>
+      <div class="tprinciple reveal" data-d="3">
+        <span class="tp-num">03</span>
+        <h3 data-en="Never asked twice.">密码不问第二遍。</h3>
+        <p data-en="A receiver password is asked once, then stored in Windows Credential Manager (DPAPI) or the macOS keychain. Keys never reach the logs.">密码只问一次，存进 Windows 凭据管理器（DPAPI）或 macOS 钥匙串。日志里不会出现密钥。</p>
+      </div>
+      <div class="tprinciple reveal" data-d="4">
+        <span class="tp-num">04</span>
+        <h3 data-en="Every link is recorded.">每条链路，都有记录。</h3>
+        <p data-en="Which receiver, which OS build, which path was tested. It's all in the repo.">哪台接收器、哪个系统版本、跑通了哪条链路，都写在仓库的验证记录里。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="faq-sec" id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="heading-2 reveal">常见问题</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq reveal"><summary>声渡和系统自带的 AirPlay 有什么不同？<span class="plus"></span></summary>
+        <p class="ans">Windows 没有系统级的 AirPlay 发送。macOS 只能把整机输出切到 AirPlay，没有延迟档位，也看不到接收器细节。声渡按每台接收器的方式配对、对时；连接时本机扬声器静音，断开就恢复，不会两边一起响。全在一个托盘图标里。</p></details>
+      <details class="faq reveal" data-d="1"><summary>哪些设备能连？<span class="plus"></span></summary>
+        <p class="ans">真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组合、Mac 的 AirPlay 接收器（包括设了密码的）。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。</p></details>
+      <details class="faq reveal" data-d="2"><summary>为什么接收器列表是空的？<span class="plus"></span></summary>
+        <p class="ans">多半是权限没放行。Windows 第一次启动会弹防火墙提示，选「允许」，发现和 PTP 都要入站 UDP；macOS 15 起要在「系统设置 → 隐私与安全性」里允许本地网络。放行后重开应用，列表就回来了。</p></details>
+      <details class="faq reveal" data-d="2"><summary>延迟最低能到多少？<span class="plus"></span></summary>
+        <p class="ans">预设最低 200 ms，自定义能到 20 ms。低于 200 ms 稳不稳，要看接收器。看视频用低延迟 200 ms，听音乐用标准 1.5 s，网络不稳就切稳定 2 s。</p></details>
+      <details class="faq reveal" data-d="3"><summary>切换接收器会断音吗？<span class="plus"></span></summary>
+        <p class="ans">会短暂中断。换接收器时，声渡会重建 AirPlay 会话，声音停一下再继续。连接后本机静音的设置不受影响。</p></details>
+      <details class="faq reveal" id="install" data-d="4"><summary>第一次打开被系统拦下来，怎么办？<span class="plus"></span></summary>
+        <p class="ans">Windows 在 SmartScreen 里点「更多信息 → 仍要运行」。macOS 到「系统设置 → 隐私与安全性」底部，点「仍要打开」。安装包还没有代码签名，所以会被拦，不是它有问题。源码整份在 GitHub 上，可以自己编译比对。</p></details>
+      <details class="faq reveal" data-d="4"><summary>有数据会出局域网吗？<span class="plus"></span></summary>
+        <p class="ans">不会。唯一的对外请求是版本更新检查，只连 GitHub。</p></details>
+      <details class="faq reveal" data-d="5"><summary>需要账号或付费吗？<span class="plus"></span></summary>
+        <p class="ans">都不需要。免费，无账号，装完就能用。源码整份在 GitHub 上，想自己编译也行。</p></details>
+      <details class="faq reveal" data-d="5"><summary>为什么只做音频？<span class="plus"></span></summary>
+        <p class="ans">声渡只发送音频。视频和投屏需要 FairPlay，不在设计范围内。碰到只支持 FairPlay 的接收器，它会直接说明原因，不会连上却没声音。</p></details>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <span class="glow" aria-hidden="true"></span>
+  <div class="wrap inner">
+    <h2 class="heading-2 reveal">现在，轮到 HomePod 了。</h2>
+    <div class="row reveal" data-d="2">
+      <a class="btn btn-dark btn-lg magnetic" href="https://github.com/4202217/saundo/releases/latest" target="_blank" rel="noopener">免费下载</a>
+      <a class="final-alt" href="https://github.com/4202217/saundo" target="_blank" rel="noopener">GitHub 源码</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand"><img src="assets/icon.png" alt="声渡图标"><span data-en="Saundo">声渡 saundo</span></div>
+      <div class="foot-links">
+        <a href="https://github.com/4202217/saundo" target="_blank" rel="noopener">源码</a>
+        <a href="https://github.com/4202217/saundo/issues" target="_blank" rel="noopener">问题反馈</a>
+        <a href="https://github.com/4202217/saundo/blob/main/docs/verification.md" target="_blank" rel="noopener">验证记录</a>
+        <a href="#top">回到顶部</a>
+      </div>
+    </div>
+    <p class="foot-fine">© 2026 saundo 贡献者 · GPL-3.0-only<br>HomePod、HomePod mini、Apple TV 与 Mac 是 Apple Inc. 的商标。本项目与 Apple 无关。</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+var RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- i18n core: zh source strings are the keys ---------- */
+var TITLE_ZH = document.title;
+var TITLE_EN = "saundo: computer sound, on HomePod";
+var META_ZH = {
+  "desc": "声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。",
+  "ogTitle": "声渡 saundo：电脑里一放，HomePod 就响",
+  "ogDesc": "开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，PTP 或 NTP 对时，托盘常驻。",
+  "alt": "声渡 saundo：电脑里一放，HomePod 就响。",
+  "locale": "zh_CN"
+};
+var META_EN = {
+  "desc": "saundo is an open-source AirPlay 2 sender. Your whole computer's sound, in uncompressed ALAC at 44.1 kHz, to HomePod, Apple TV, and Mac. PTP or NTP timing, latency from 20 to 2000 ms, one tray icon, one binary, no WebView.",
+  "ogTitle": "saundo: computer sound, on HomePod",
+  "ogDesc": "Open-source AirPlay 2 sender. Your computer's sound, uncompressed ALAC, PTP or NTP timing, one tray icon.",
+  "alt": "saundo: computer sound, on HomePod.",
+  "locale": "en_US"
+};
+function setMetaContent(selector, value){
+  var el = document.querySelector(selector);
+  if(el) el.setAttribute("content", value);
+}
+var EN = {
+  "声渡 saundo：电脑里一放，HomePod 就响": "saundo: computer sound, on HomePod",
+  "跳到正文": "Skip to content",
+  "主导航": "Main navigation",
+  "声渡": "Saundo",
+  "声渡图标": "saundo icon",
+  "上手": "Start",
+  "功能": "Features",
+  "氛围灯": "Ambient",
+  "常见问题": "FAQ",
+  "切换语言": "Switch language",
+  "切换深浅配色": "Toggle light or dark",
+  "GitHub 源码": "GitHub source",
+  "免费下载": "Free download",
+  "菜单": "Menu",
+  "开源 AirPlay 2 发送器": "Open-source AirPlay 2 sender",
+  "看看源码": "Read the source",
+  "免费 · GPL-3.0": "Free · GPL-3.0",
+  "声渡托盘面板：接收器、音量、延迟、播放与氛围灯": "saundo tray panel: receivers, volume, latency, playback and ambient light",
+  "刷新接收器": "Refresh receivers",
+  "设置": "Settings",
+  "接收器": "Receivers",
+  "2 台": "2 receivers",
+  "客厅 HomePod": "Living Room HomePod",
+  "连接": "Connect",
+  "书房 HomePods": "Study HomePods",
+  "AudioAccessory5,1 · 立体声组 2/2": "AudioAccessory5,1 · Stereo pair 2/2",
+  "播放": "Playback",
+  "ALAC · 44.1 kHz · 延迟 200 ms": "ALAC · 44.1 kHz · 200 ms latency",
+  "上一首": "Previous track",
+  "播放或暂停": "Play or pause",
+  "下一首": "Next track",
+  "延迟模式": "Latency mode",
+  "低延迟": "Low",
+  "标准": "Standard",
+  "稳定": "Stable",
+  "自定义": "Custom",
+  "接收器音量": "Receiver volume",
+  "关灯": "Turn the light off",
+  "已关灯": "Lamp off",
+  "灯光来源": "Light source",
+  "封面": "Cover",
+  "模板": "Template",
+  "展开配色": "Expand colors",
+  "未连接": "Not connected",
+  "支持的接收器": "Supported receivers",
+  "三步，声音就到 HomePod。": "Three steps to HomePod.",
+  "装好，就不用管了。": "Set it up. Then forget it.",
+  "图标就在系统托盘里，点开就用。不用另装任何东西。": "The icon lives in your system tray. Open it and play. Nothing else to install.",
+  "点一下，连上。": "One click. Connected.",
+  "HomePod 会自己出现在列表里。要密码的，输一次就记住。想换一台，点一下就行。": "HomePods show up on their own. Enter a password once, and it's remembered. To switch, click another receiver.",
+  "浏览器": "Browsers",
+  "游戏": "Games",
+  "播放器": "Players",
+  "随便播点什么。": "Play anything.",
+  "浏览器、游戏、播放器、会议，声音全都送过去。macOS 还能只送选中的 app。": "Browsers. Games. Players. Meetings. All of it goes. On macOS, you can send just the apps you pick.",
+  "跟随封面": "Follow artwork",
+  "氛围灯开关": "Ambient light switch",
+  "暖烬": "Ember",
+  "沙丘": "Dune",
+  "苔庭": "Moss",
+  "潮汐": "Tide",
+  "兰夜": "Orchid",
+  "月白": "Moonlight",
+  "HomePod mini 俯视图": "HomePod mini, top view",
+  "切换氛围灯": "Change the ambient light",
+  "声渡和系统自带的 AirPlay 有什么不同？": "How is saundo different from the built-in AirPlay?",
+  "Windows 没有系统级的 AirPlay 发送。macOS 只能把整机输出切到 AirPlay，没有延迟档位，也看不到接收器细节。声渡按每台接收器的方式配对、对时；连接时本机扬声器静音，断开就恢复，不会两边一起响。全在一个托盘图标里。": "Windows has no system AirPlay sender. macOS can only switch the whole system output to AirPlay, with no latency modes and no receiver detail. saundo pairs and times each receiver its own way. Your speakers go quiet while it streams, and come back on disconnect. It all lives in one tray icon.",
+  "哪些设备能连？": "What can it connect to?",
+  "真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组合、Mac 的 AirPlay 接收器（包括设了密码的）。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。": "Verified on hardware: HomePod and HomePod mini (software 27), HomePod stereo pairs, and Mac AirPlay receivers, including password-protected ones. Apple TV screen PIN pairing is implemented but not yet verified on hardware. FairPlay-only TVs are out of scope. saundo flags them at discovery instead of connecting quietly. The macOS build is Apple silicon only. The Windows build is x64.",
+  "为什么接收器列表是空的？": "Why is the receiver list empty?",
+  "多半是权限没放行。Windows 第一次启动会弹防火墙提示，选「允许」，发现和 PTP 都要入站 UDP；macOS 15 起要在「系统设置 → 隐私与安全性」里允许本地网络。放行后重开应用，列表就回来了。": "Permissions, most likely. On Windows, choose Allow when the firewall prompt appears on first launch. Discovery and PTP both need inbound UDP. On macOS 15 and later, allow Local Network in System Settings → Privacy & Security. Reopen the app and the list fills.",
+  "延迟最低能到多少？": "What's the lowest latency?",
+  "预设最低 200 ms，自定义能到 20 ms。低于 200 ms 稳不稳，要看接收器。看视频用低延迟 200 ms，听音乐用标准 1.5 s，网络不稳就切稳定 2 s。": "The lowest preset is 200 ms. Custom goes down to 20 ms, though below 200 ms stability depends on the receiver. For video, Low latency at 200 ms. For music, Standard at 1.5 s. On a shaky network, Stable at 2 s.",
+  "切换接收器会断音吗？": "Does switching receivers cut the sound?",
+  "会短暂中断。换接收器时，声渡会重建 AirPlay 会话，声音停一下再继续。连接后本机静音的设置不受影响。": "Yes, briefly. Switching receivers rebuilds the AirPlay session, so the sound stops for a moment and resumes. The local mute setting stays in effect.",
+  "第一次打开被系统拦下来，怎么办？": "What if the system blocks the first launch?",
+  "Windows 在 SmartScreen 里点「更多信息 → 仍要运行」。macOS 到「系统设置 → 隐私与安全性」底部，点「仍要打开」。安装包还没有代码签名，所以会被拦，不是它有问题。源码整份在 GitHub 上，可以自己编译比对。": "On Windows, click More info → Run anyway in SmartScreen. On macOS, open System Settings → Privacy & Security and click Open Anyway at the bottom. The installer isn't code-signed yet, so the system stops it. That's the reason, not a problem with the app. The full source is on GitHub if you want to build and compare.",
+  "有数据会出局域网吗？": "Does anything leave the LAN?",
+  "不会。唯一的对外请求是版本更新检查，只连 GitHub。": "No. The only outbound request is the update check, to GitHub.",
+  "需要账号或付费吗？": "Is there an account or a fee?",
+  "都不需要。免费，无账号，装完就能用。源码整份在 GitHub 上，想自己编译也行。": "Neither. It's free, there's no account, and it works once installed. The full source is on GitHub if you'd rather build it yourself.",
+  "为什么只做音频？": "Why audio only?",
+  "声渡只发送音频。视频和投屏需要 FairPlay，不在设计范围内。碰到只支持 FairPlay 的接收器，它会直接说明原因，不会连上却没声音。": "saundo sends audio only. Video and screen mirroring need FairPlay, which is out of scope. A FairPlay-only receiver gets a plain reason, not a silent connection.",
+  "现在，轮到 HomePod 了。": "Now it's HomePod's turn.",
+  "源码": "Source",
+  "问题反馈": "Issues",
+  "验证记录": "Verification",
+  "回到顶部": "Back to top",
+  "© 2026 saundo 贡献者 · GPL-3.0-only": "© 2026 the saundo contributors · GPL-3.0-only",
+  "HomePod、HomePod mini、Apple TV 与 Mac 是 Apple Inc. 的商标。本项目与 Apple 无关。": "HomePod, HomePod mini, Apple TV and Mac are trademarks of Apple Inc. This project is not affiliated with Apple.",
+  "关闭氛围灯": "Turn off ambient light",
+  "开启氛围灯": "Turn on ambient light",
+  "收起配色": "Collapse colors",
+  "已关闭": "Off",
+  "待机": "Standby",
+  "灯光已关": "Light off",
+  "三色模板": "Three-color template",
+  "关闭菜单": "Close menu",
+  "取消": "Cancel",
+  "断开连接": "Disconnect",
+  "正在连接…": "Connecting…",
+  "已待机 · 播放声音即唤醒": "Standby · wakes when sound plays",
+  "开灯": "Turn the light on",
+  "已隐藏": "Hidden",
+  "启动时": "At launch",
+  "发送端缓冲": "Sender buffer",
+  "接收器处理": "Receiver processing",
+  "重试": "Retry",
+  "正在播放": "Streaming",
+  "已连接 · 音频正在播放": "Connected · audio is playing",
+  "已断开": "Disconnected",
+  "离线 · 不在当前列表": "Offline · not in the current list",
+  "正在连接 HomePods…": "Connecting to HomePods…",
+  "连接中": "Connecting",
+  "1 台": "1 receiver",
+  "搜索中…": "Searching…",
+  "已暂停": "Paused",
+  "空闲": "Idle",
+  "离线": "Offline",
+  "在音频设置里调 20 到 2000 ms": "Set 20 to 2000 ms in audio settings",
+  "延迟 自定义": "Custom latency",
+  "正在配对…": "Pairing…",
+  "macOS 14.4+（Apple 芯片）": "macOS 14.4+ (Apple silicon)"
+};
+var EN_INV = null;
+var LANG = "zh";
+function t(s){
+  if(LANG !== "en") return s;
+  return EN[s] !== undefined ? EN[s] : s;
+}
+function translateTextNodes(root, map){
+  var walker = document.createTreeWalker(root, 4, null);
+  var n;
+  while((n = walker.nextNode())){
+    var p = n.parentElement;
+    if(p && (p.tagName === "SCRIPT" || p.tagName === "STYLE" || p.tagName === "NOSCRIPT")) continue;
+    var key = n.nodeValue.trim();
+    if(key && map[key] !== undefined){
+      var v = n.nodeValue;
+      n.nodeValue = v.match(/^\s*/)[0] + map[key] + v.match(/\s*$/)[0];
+    }
+  }
+}
+function translateAria(root, map){
+  root.querySelectorAll("[aria-label]").forEach(function(el){
+    var k = el.getAttribute("aria-label");
+    if(map[k] !== undefined) el.setAttribute("aria-label", map[k]);
+  });
+}
+function translateAlt(root, map){
+  root.querySelectorAll("img[alt]").forEach(function(el){
+    var k = el.getAttribute("alt");
+    if(map[k] !== undefined) el.setAttribute("alt", map[k]);
+  });
+}
+function invertMap(){
+  if(EN_INV) return EN_INV;
+  EN_INV = {};
+  Object.keys(EN).forEach(function(k){ if(EN_INV[EN[k]] === undefined) EN_INV[EN[k]] = k; });
+  return EN_INV;
+}
+function applyLang(lang){
+  LANG = lang;
+  try{ localStorage.setItem("saundo-lang", lang); }catch(e){}
+  document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
+  document.title = lang === "en" ? TITLE_EN : TITLE_ZH;
+  var meta = lang === "en" ? META_EN : META_ZH;
+  setMetaContent('meta[name="description"]', meta.desc);
+  setMetaContent('meta[property="og:title"]', meta.ogTitle);
+  setMetaContent('meta[property="og:description"]', meta.ogDesc);
+  setMetaContent('meta[property="og:image:alt"]', meta.alt);
+  setMetaContent('meta[property="og:locale"]', meta.locale);
+  var map = lang === "en" ? EN : invertMap();
+  /* Swap data-en blocks before the text-node walk, so their Chinese source is
+     cached while it is still Chinese (the walk would translate it first). */
+  document.querySelectorAll("[data-en]").forEach(function(el){
+    if(!el.dataset.zh) el.dataset.zh = el.innerHTML;
+    el.innerHTML = lang === "en" ? el.dataset.en : el.dataset.zh;
+  });
+  translateTextNodes(document.body, map);
+  translateAria(document.body, map);
+  translateAlt(document.body, map);
+  var h1 = document.querySelector(".hero h1");
+  if(h1) h1.innerHTML = lang === "en" ? "Play it here.<br>Hear it on HomePod." : "电脑里一放，<br>HomePod 就响。";
+  var lb = document.getElementById("langBtn");
+  if(lb){ lb.textContent = lang === "en" ? "中文" : "EN"; lb.setAttribute("aria-label", lang === "en" ? "Switch to Chinese" : "切换到 English"); }
+
+  if(typeof flyRender === "function") flyRender();   /* tray demo + ambient section re-render their dynamic labels */
+  if(typeof renderLatency === "function") renderLatency();
+  if(typeof menuBtn !== "undefined" && menuBtn){
+    menuBtn.setAttribute("aria-label", t(menuBtn.getAttribute("aria-expanded") === "true" ? "关闭菜单" : "菜单"));
+  }
+}
+
+/* ---------- marquee: one copy per track, add tracks to cover the viewport ----------
+   A track holding two copies is 2261 px, 6783 device px at DPR 3. That is past
+   the compositor's layer texture limit, so on iPhone the strip flickers while
+   scrolling and paints incompletely at rest. One copy per track (1131 px, 3393
+   device px) renders correctly, so wide viewports get more tracks, not longer ones. */
+(function(){
+  var mq = document.getElementById("mq1");
+  if(!mq) return;
+  var viewport = document.documentElement.clientWidth;
+  var width = mq.getBoundingClientRect().width || viewport || 1;
+  var count = Math.max(2, 1 + Math.ceil(viewport / width));
+  for(var i = 1; i < count; i++){
+    var clone = mq.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.setAttribute("aria-hidden","true");
+    mq.parentNode.appendChild(clone);
+  }
+})();
+
+/* ---------- scroll reveals ---------- */
+var io = new IntersectionObserver(function(es){
+  es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+},{threshold:.12, rootMargin:"0px 0px -6% 0px"});
+document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+
+/* ---------- magnetic buttons ---------- */
+if(!RM){
+  document.querySelectorAll(".magnetic").forEach(function(b){
+    b.addEventListener("pointermove", function(e){
+      var r = b.getBoundingClientRect();
+      var x = (e.clientX - r.left - r.width/2)*.18, y = (e.clientY - r.top - r.height/2)*.3;
+      b.style.transform = "translate("+x.toFixed(1)+"px,"+y.toFixed(1)+"px)";
+    });
+    b.addEventListener("pointerleave", function(){ b.style.transform = ""; });
+  });
+}
+
+
+/* ---------- ambient light (mirrors internal/lamp/presets.go) ---------- */
+var AMB_TPLS = {
+  ember:{n:'暖烬',c:['#ff5a1f','#ffc020','#b3261e'],seed:11},
+  dune:{n:'沙丘',c:['#c08a00','#c47a1e','#7a3f14'],seed:23},
+  moss:{n:'苔庭',c:['#4e8a42','#b8d42e','#2f7f86'],seed:37},
+  tide:{n:'潮汐',c:['#2e7fd0','#3fc9c0','#4fd18a'],seed:41},
+  orchid:{n:'兰夜',c:['#a83ed0','#4a5fe0','#c85a9e'],seed:53},
+  moon:{n:'月白',c:['#c4d6ee','#6e84a8','#e0c48a'],seed:67}
+};
+/* One light, one state: the ambient section, the tray lamp card and the bento
+   orb all render from `lamp`. Cover colors come from the current track (media.i). */
+var lamp = { off:false, cover:true, preset:"dune" };
+var lampUI = { expanded:false };                         /* flyout-only: the swatch grid */
+var ambStage = document.getElementById('ambStage');
+var ambPower = document.getElementById('ambPower');
+var ambNameEl = document.getElementById('ambName');
+var ambCapEl = document.getElementById('ambCap');
+var ambTplBtns = document.querySelectorAll('#ambTplRow .amb-tpl:not(.amb-cover)');
+var ambCoverBtn = document.querySelector('#ambTplRow .amb-cover');
+var ambHit = document.getElementById('ambHit');
+function mulberry32(a){ return function(){ a+=0x6D2B79F5; var t=a; t=(t^(t>>15))*(t|1); t^=t+(t^(t>>7))*(t|61); return ((t^(t>>14))>>>0)/4294967296; }; }
+function hexA(h, a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a.toFixed(3)+')'; }
+function dimHex(h, k){ var n=parseInt(h.slice(1),16), f=function(v){return Math.round(v*k);}; return 'rgb('+f((n>>16)&255)+','+f((n>>8)&255)+','+f(n&255)+')'; }
+/* ---------- SoundGlowRenderer (per HomePod-SoundGlow逆向.md §3.5) ----------
+   双图层：NoiseMap 背景底纹（mediaColors 色标，tz 时间滚动，intensity 音频驱动）
+         + Blob 前景光斑（主色，radius/alpha 由 low/mid/high 包络驱动）
+   包络链：band → preGain(1/2/4) → threshold 0.1 → postGain(10/7/7) → 高斯平滑 0.4s
+   亮度曲线：0...0.7 → 0...0.2 + 0.015 底亮（官方压暗）
+   色标归一化：1/max(min(rgb),1e-4)，防止深色封面把灯效变黑 */
+var ambCanvas = document.createElement('canvas');
+ambCanvas.className = 'amb-canvas';
+var glowRaf = 0, glowColors = null, glowSeeds = null, glowPlaying = true;
+var glowFrom = null, glowTo = null, glowBlendT0 = 0;          /* 调色板交叉淡化 */
+var glowPower = 0, glowPowerTarget = 0;                        /* 开关整层亮度（初始灭灯） */
+(function(){                                                    /* 光晕剪影：每页加载随机一组有机圆角 + 随机呼吸相位 */
+  var g = document.querySelector('.hero-glow');
+  if(!g) return;
+  var r = function(a, b){ return Math.round(a + Math.random() * (b - a)); };
+  g.style.borderRadius = r(38, 50) + '% ' + r(50, 62) + '% ' + r(54, 66) + '% ' + r(34, 46) + '% / ' +
+    r(40, 52) + '% ' + r(38, 50) + '% ' + r(48, 60) + '% ' + r(40, 52) + '%';
+  g.style.animationDelay = '-' + r(0, 26) + 's';
+})();
+function colorStops(cols){
+  /* NoiseMapOperator.colorStops：官方 1/min 归一化保证最亮通道到 1；
+     页面 mock 保留 60% 原色调，避免三色全部被拉成灰白 */
+  return cols.map(function(h){
+    var n = parseInt(h.slice(1), 16);
+    var r = ((n>>16)&255)/255, g = ((n>>8)&255)/255, b = (n&255)/255;
+    var mn = Math.max(Math.min(r,g,b), 1e-4);
+    var k = 1/mn;
+    var nr = Math.min(r*k,1), ng = Math.min(g*k,1), nb = Math.min(b*k,1);
+    return [r*.85 + nr*.15, g*.85 + ng*.15, b*.85 + nb*.15];
+  });
+}
+function initGlowCanvas(){
+  var display = document.querySelector('.amb-display');
+  if(!display || display.querySelector('.amb-canvas')) return;
+  display.appendChild(ambCanvas);   /* 画布在最上层：噪声底纹之下是玻璃，光画在其上 */
+}
+function sizeGlowCanvas(){
+  var d = ambCanvas.parentElement; if(!d) return;
+  var r = d.getBoundingClientRect();
+  if(!r.width) return;
+  var px = Math.round(r.width * Math.min(devicePixelRatio, 2));
+  if(ambCanvas.width !== px){ ambCanvas.width = px; ambCanvas.height = px; }
+}
+/* 官方包络：low 增益最大——鼓点驱动光斑 */
+function envelope(band, t){
+  var base = .5 + .5*Math.sin(t*band.freq + band.phase)
+           * Math.sin(t*band.freq*0.37 + band.phase*1.7);
+  var v = Math.abs(base) * band.pre;
+  v = Math.max(0, v - .1) * band.post;
+  v = Math.min(1, v);
+  return gaussSmooth(band, v, t);
+}
+function gaussSmooth(band, v, t){
+  band.hist.push([t, v]);
+  while(band.hist.length > 24 || t - band.hist[0][0] > .9) band.hist.shift();
+  var acc = 0, wsum = 0, sw = band.sw;
+  for(var i=0;i<band.hist.length;i++){
+    var dt = t - band.hist[i][0];
+    var w = Math.exp(-(dt*dt)/(2*sw*sw));
+    acc += band.hist[i][1]*w; wsum += w;
+  }
+  return wsum ? acc/wsum : v;
+}
+/* 值噪声（value noise），对应 NoiseOperator(period 3.0, amplitude .5)×2 的漂移场 */
+var noisePerm = (function(){
+  var p = new Uint8Array(512), src = [];
+  for(var i=0;i<256;i++) src.push(i);
+  var rnd = mulberry32(1);               /* NoiseOperator seed 1 */
+  for(var j=255;j>0;j--){ var k = Math.floor(rnd()*(j+1)); var tmp=src[j]; src[j]=src[k]; src[k]=tmp; }
+  for(var m=0;m<512;m++) p[m]=src[m&255];
+  return p;
+})();
+function vnoise(x, y){
+  var xi = Math.floor(x)&255, yi = Math.floor(y)&255;
+  var xf = x-Math.floor(x), yf = y-Math.floor(y);
+  var u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+  function g(a,b){ return noisePerm[(noisePerm[a&255]+ (b&255))&255]/255; }
+  var a = g(xi,yi), b2 = g(xi+1,yi), c = g(xi,yi+1), d = g(xi+1,yi+1);
+  return a + (b2-a)*u + (c-a)*v + (a-b2-c+d)*u*v;
+}
+function fbm(x, y, t){
+  /* 两层 NoiseOperator 叠加 + 时间×5/×10 的漂移链（官方时间链 multiply 10/10/5） */
+  var tz = t*5;
+  var n1 = vnoise(x*3 + tz*.35, y*3 + Math.sin(t*.7)*.4);
+  var n2 = vnoise(x*3 + 17.3 - tz*.22, y*3 + 9.1 + Math.cos(t*.5)*.4);
+  return (n1*.5 + n2*.5 - .5) * 2;      /* ±1 */
+}
+function drawGlow(t){
+  sizeGlowCanvas();
+  var W = ambCanvas.width, H = ambCanvas.height;
+  if(!W){ return; }
+  var ctx = ambCanvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  if(!glowColors) return;
+  /* 切换配色：旧→新调色板 0.9s 交叉淡化（performance.now 驱动，暂停时也继续） */
+  if(glowTo){
+    var bp = Math.min(1, (performance.now()/1000 - glowBlendT0)/.9);
+    glowColors = lerpPal(glowFrom, glowTo, bp*bp*(3-2*bp));
+    if(bp >= 1){ glowColors = glowTo; glowFrom = glowTo = null; }
+  }
+  var cx = W/2, cy = H/2, R = W*.5;
+  var lo = envelope(BANDS.low, t), mid = envelope(BANDS.mid, t), hi = envelope(BANDS.high, t);
+  var audio = (lo+mid+hi)/3;
+
+  /* --- background: NoiseMap 底纹（色标沿环向随 tz 滚动，intensity 随音频） --- */
+  var stops = glowColors.stops, main = glowColors.main;
+  var bright = (Math.min(.32, audio*1.15) + .115) * 2.1;   /* 官方 0.7→0.2+0.015；实心区扩到 58% 半径后按面积比 2.1 反比补偿，亮度观感不变 */
+  var img = ctx.createImageData(W, H);
+  var data = img.data;
+  /* 预生成环形查找表：每像素只算一次噪声 */
+  for(var py=0; py<H; py++){
+    var dy = (py-cy)/R;
+    for(var px2=0; px2<W; px2++){
+      var idx = (py*W+px2)*4;
+      var dx = (px2-cx)/R;
+      var dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist > 1){ data[idx+3]=0; continue; }
+      var ang = Math.atan2(dy, dx);
+      var nx = (Math.cos(ang)+1)*.75 + t*.12;
+      var ny = (Math.sin(ang)+1)*.75 + dist*1.4;
+      var nz = fbm(nx, ny, t);
+      /* 从内到外：实→虚。噪声对比度随半径增大——中心色块完整（实），边缘碎化（虚） */
+      var nzAmp = (.10 + dist*.52) * (.55 + audio*.8);
+      var inten = .5 + nz*nzAmp;
+      /* 色标边界同样随半径被噪声揉碎 */
+      var ph = (ang/(Math.PI*2) + .5 + nz*(.05 + dist*.15) + t*.02) % 1;
+      if(ph<0) ph+=1;
+      var seg = ph*3, si = Math.floor(seg)%3, sf0 = seg-Math.floor(seg);
+      var sf = sf0*sf0*(3-2*sf0);   /* smoothstep 锐化色标边界 */
+      var c0 = stops[si], c1 = stops[(si+1)%3];
+      /* 从内到外：亮→暗。58% 半径内保持全亮（真机亮核≈玻璃半径 0.71），之后向盘缘平滑降到 0 */
+      var ft = Math.min(1, Math.max(0, (dist - .58)/.42));
+      var fall = 1 - ft*ft*(3-2*ft);
+      var k = bright * (0.62 + inten*.62) * fall;
+      if(k<=0){ data[idx+3]=0; continue; }
+      data[idx]   = Math.min(255, (c0[0]+(c1[0]-c0[0])*sf)*255);
+      data[idx+1] = Math.min(255, (c0[1]+(c1[1]-c0[1])*sf)*255);
+      data[idx+2] = Math.min(255, (c0[2]+(c1[2]-c0[2])*sf)*255);
+      data[idx+3] = Math.min(255, k*255);   /* 亮度进 alpha：黑=透明，符号可透出 */
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  /* --- foreground: Blob 光斑（主色常量色，几何随包络呼吸） --- */
+  var pulse = .84 + lo*.34;                        /* 低频推 radius：官方观感是整体呼吸，不散点 */
+  var alpha = Math.min(1, .48 + mid*.44);          /* 中频推 alpha：核心更实，白底上不被 screen 洗淡 */
+  var drift = fbm(.9, .4, t)*.05;                  /* 漂移收窄：光团基本居中 */
+  var bx = cx + drift*R*.3, by = cy + fbm(.2,.8,t)*R*.08;
+  var br = R*pulse;
+  var mr = main[0], mg = main[1], mb = main[2];
+  var sat = 1.25;
+  var mm = (mr+mg+mb)/3;
+  mr = Math.min(1, mm+(mr-mm)*sat); mg = Math.min(1, mm+(mg-mm)*sat); mb = Math.min(1, mm+(mb-mm)*sat);
+  var grad = ctx.createRadialGradient(bx,by,0, bx,by,br);
+  /* 从内到外：实→虚。核心 ~1/3 半径保持实色，之后加速虚化到边缘归零 */
+  grad.addColorStop(0, 'rgba('+(mr*255|0)+','+(mg*255|0)+','+(mb*255|0)+','+alpha.toFixed(3)+')');
+  grad.addColorStop(.34, 'rgba('+(mr*255|0)+','+(mg*255|0)+','+(mb*255|0)+','+(alpha*.88).toFixed(3)+')');
+  grad.addColorStop(.62, 'rgba('+(mr*255|0)+','+(mg*255|0)+','+(mb*255|0)+','+(alpha*.36).toFixed(3)+')');
+  grad.addColorStop(.85, 'rgba('+(mr*255|0)+','+(mg*255|0)+','+(mb*255|0)+','+(alpha*.09).toFixed(3)+')');
+  grad.addColorStop(1, 'rgba('+(mr*255|0)+','+(mg*255|0)+','+(mb*255|0)+',0)');
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
+  /* 第二光斑：噪声漂移，低权重 */
+  var bx2 = cx - drift*R*.7 + fbm(.55,.15,t*1.3)*R*.22;
+  var by2 = cy + fbm(.85,.65,t*1.1)*R*.18;
+  var br2 = R*(.44 + hi*.4);
+  var g2 = ctx.createRadialGradient(bx2,by2,br2*.08, bx2,by2,br2);
+  var a2 = .12 + hi*.16;
+  g2.addColorStop(0, 'rgba('+(stops[1][0]*255|0)+','+(stops[1][1]*255|0)+','+(stops[1][2]*255|0)+','+a2.toFixed(3)+')');
+  g2.addColorStop(.4, 'rgba('+(stops[1][0]*255|0)+','+(stops[1][1]*255|0)+','+(stops[1][2]*255|0)+','+(a2*.55).toFixed(3)+')');
+  g2.addColorStop(1, 'rgba('+(stops[1][0]*255|0)+','+(stops[1][1]*255|0)+','+(stops[1][2]*255|0)+',0)');
+  ctx.fillStyle = g2;
+  ctx.beginPath(); ctx.arc(bx2,by2,br2,0,Math.PI*2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  /* 开关过渡：整层 alpha 乘 glowPower，亮起/熄灭与 CSS 过渡同步 */
+  if(glowPower < 1){
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.globalAlpha = glowPower;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+var glowT = 2.35;
+var glowCleared = false, glowLastTs = 0;
+function glowLoop(ts){
+  glowRaf = requestAnimationFrame(glowLoop);
+  var stage = document.getElementById('ambStage');
+  if(!stage) return;
+  var dt = glowLastTs ? Math.min(.1, (ts - glowLastTs)/1000) : .016;
+  glowLastTs = ts;
+  /* 开关过渡：整层亮度 0.7s 滑向目标，与暗角、光晕的 CSS 过渡同步 */
+  if(glowPower !== glowPowerTarget){
+    var step = dt/.7;
+    glowPower += glowPowerTarget > glowPower
+      ? Math.min(step, glowPowerTarget - glowPower)
+      : -Math.min(step, glowPower - glowPowerTarget);
+  }
+  if(glowPower <= 0 && glowPowerTarget === 0){
+    if(!glowCleared && ambCanvas.getContext){
+      ambCanvas.getContext('2d').clearRect(0, 0, ambCanvas.width, ambCanvas.height);
+      glowCleared = true;
+    }
+    return;
+  }
+  glowCleared = false;
+  var rect = stage.getBoundingClientRect();
+  if(rect.bottom < -80 || rect.top > innerHeight + 80) return;   /* 视口外不画 */
+  glowT = ts/1000;
+  drawGlow(glowT);
+}
+/* 三条包络链：low preGain1 postGain10 / mid 2,7 / high 4,7，smoothingWidth .4 */
+var BANDS = {
+  low:{freq:1.1, phase:0, pre:1, post:10, sw:.4, hist:[]},
+  mid:{freq:2.3, phase:2.1, pre:2, post:7, sw:.4, hist:[]},
+  high:{freq:4.3, phase:4.2, pre:4, post:7, sw:.4, hist:[]}
+};
+function startGlow(){
+  initGlowCanvas();
+  if(RM){ sizeGlowCanvas(); drawGlow(2.35); return; }   /* 静态一帧 */
+  sizeGlowCanvas(); drawGlow(2.35);                     /* 先画一帧，避免进视口前空盘 */
+  if(!glowRaf){ glowRaf = requestAnimationFrame(glowLoop); }
+}
+function setGlowColors(cols){
+  var next = { stops: colorStops(cols), main: colorStops([cols[0]])[0] };
+  if(RM || !glowColors){ glowColors = next; }
+  else { glowFrom = glowColors; glowTo = next; glowBlendT0 = performance.now()/1000; }
+  initGlowCanvas(); startGlow();
+}
+function lerpPal(a, b, k){
+  var stops = a.stops.map(function(c, i){
+    var d = b.stops[i];
+    return [c[0]+(d[0]-c[0])*k, c[1]+(d[1]-c[1])*k, c[2]+(d[2]-c[2])*k];
+  });
+  return { stops: stops, main: [
+    a.main[0]+(b.main[0]-a.main[0])*k,
+    a.main[1]+(b.main[1]-a.main[1])*k,
+    a.main[2]+(b.main[2]-a.main[2])*k ] };
+}
+function renderBlobs(cols, seed){
+  /* 保留 DOM 模式给 RM/降级：噪声层 canvas 由 --noise-img 喂静态纹理 */
+  glowSeeds = seed;
+  setGlowColors(cols);
+  var stage = document.getElementById('ambStage');
+  if(stage) stage.classList.remove('siri');
+}
+/* The exact three-color seeded blobs from internal/lamp/presets.go: the
+   same base color, the same six mulberry32 draws, painted into the pod. */
+function lampCols(){ return lamp.cover ? MEDIA[media.i].cols : AMB_TPLS[lamp.preset].c; }
+/* Palette changes only on a real source switch (track ↔ template ↔ track):
+   the glow canvas crossfades 0.9 s, the CSS --amb vars carry their own
+   transitions; no-op renders must not retrigger them. */
+var lampAppliedKey = null;
+function lampApplyColors(){
+  var cols = lampCols();
+  var key = lamp.cover ? "cover:" + media.i : "tpl:" + lamp.preset;
+  if(key === lampAppliedKey) return;
+  lampAppliedKey = key;
+  var r = document.documentElement.style;
+  r.setProperty('--amb-1', cols[0]); r.setProperty('--amb-2', cols[1]); r.setProperty('--amb-3', cols[2]);
+  r.setProperty('--amb-base', dimHex(cols[0], .2));
+  renderBlobs(cols, lamp.cover ? 7 : AMB_TPLS[lamp.preset].seed);
+}
+/* setLamp(): every lamp surface calls this. p.tpl sets template priority,
+   p.cover picks cover priority, p.on turns the light on (deliberate picks in
+   the section demo), p.off switches it off. */
+function setLamp(p){
+  if(p.tpl){ lamp.cover = false; lamp.preset = p.tpl; }
+  if(p.cover !== undefined) lamp.cover = p.cover;
+  if(p.on) lamp.off = false;
+  if(p.off !== undefined) lamp.off = p.off;
+  if(lamp.off) lampUI.expanded = false;
+  lampRender();
+}
+function lampRender(){
+  lampApplyColors();
+  var tpl = AMB_TPLS[lamp.preset];
+  var tr = MEDIA[media.i];
+  /* --- ambient section --- */
+  /* The light lives on the receiver: lamp on but no active session → the pod
+     stays dark and the hero halo stays hidden until streaming begins. */
+  var lit = !lamp.off && fly.phase === "streaming";
+  ambStage.classList.toggle('off', !lit);
+  ambPower.setAttribute('aria-checked', String(!lamp.off));
+  if(ambCoverBtn) ambCoverBtn.setAttribute('aria-pressed', String(!lamp.off && lamp.cover));
+  ambTplBtns.forEach(function(b){ b.setAttribute('aria-pressed', String(!lamp.off && !lamp.cover && b.dataset.tpl === lamp.preset)); });
+  var coverDot = document.querySelector('#ambTplRow .amb-cover .dot');
+  if(coverDot) coverDot.style.background = posterGradient(tr.cols);   /* the 封面 swatch previews the current artwork */
+  if(ambHit) ambHit.setAttribute('aria-label', t('切换氛围灯'));
+  if(ambNameEl) ambNameEl.textContent = lamp.off ? t('灯光已关')
+    : lamp.cover ? (LANG === "en" ? tr.et : tr.t) : t(tpl.n);   /* cover mode names the track: the light follows the album */
+  if(ambCapEl) ambCapEl.textContent = lamp.off ? t('已关闭')
+    : !lit ? t('未连接')
+    : lamp.cover ? t('跟随封面') : t('三色模板');
+  glowPowerTarget = lit ? 1 : 0;
+  document.documentElement.dataset.lampGlow = lit ? "on" : "off";   /* the hero panel's glow follows lamp × session */
+  if(RM) glowPower = glowPowerTarget;      /* RM 无动画循环，直接落到目标亮度 */
+  /* --- tray lamp card (lamp.go lampSection) --- */
+  flyPanel.setAttribute("data-lamp", lamp.cover ? "cover" : "tpl");
+  var name = document.getElementById("fLampName");
+  name.textContent = lamp.cover ? t("封面") : t(tpl.n);   /* lampModeName() */
+  name.classList.toggle("lamp-off", lamp.off);
+  document.getElementById("fLampPrev").classList.toggle("off", lamp.off);
+  var chip = document.getElementById("fLampChip");
+  var chipKey = lamp.off ? "已关灯" : fly.standby ? "待机" : "";
+  chip.hidden = !chipKey;
+  if(chipKey) chip.textContent = t(chipKey);
+  var power = document.getElementById("fLampPower");
+  power.classList.toggle("lamp-off", lamp.off);
+  power.setAttribute("aria-label", t(lamp.off ? "开启氛围灯" : "关闭氛围灯"));
+  document.getElementById("fLampCover").classList.toggle("on", lamp.cover);
+  document.getElementById("fLampTpl").classList.toggle("on", !lamp.cover);
+  var arrow = document.getElementById("fLampArrow");
+  arrow.classList.toggle("open", lampUI.expanded);
+  arrow.setAttribute("aria-label", t(lampUI.expanded ? "收起配色" : "展开配色"));
+  var grid = document.getElementById("fLampGrid");
+  grid.hidden = !(lamp.cover === false && lampUI.expanded);   /* the grid is template-priority only */
+  if(!grid.hidden && !grid.childNodes.length) flyBuildGrid(grid);
+  if(grid.childNodes.length){
+    grid.querySelectorAll(".flampswatch").forEach(function(sw){
+      sw.classList.toggle("sel", sw.dataset.tpl === lamp.preset);
+      sw.setAttribute("aria-label", t(AMB_TPLS[sw.dataset.tpl].n));
+    });
+  }
+  /* the preview paints its own three colors on the panel, scoped off the section demo */
+  var cols = lampCols();
+  flyPanel.style.setProperty("--amb-1", cols[0]);
+  flyPanel.style.setProperty("--amb-2", cols[1]);
+  flyPanel.style.setProperty("--amb-3", cols[2]);
+}
+ambPower.addEventListener('click', function(){ setLamp({off: !lamp.off}); });
+if(ambCoverBtn) ambCoverBtn.addEventListener('click', function(){ setLamp({cover:true, on:true}); });
+ambTplBtns.forEach(function(b){ b.addEventListener('click', function(){ setLamp({tpl:b.dataset.tpl, on:true}); }); });
+if(ambHit){
+  ambHit.addEventListener('click', function(){
+    if(lamp.off){ setLamp(lamp.cover ? {cover:true, on:true} : {tpl:lamp.preset, on:true}); return; }
+    if(lamp.cover){ setLamp({tpl:lamp.preset || 'dune', on:true}); return; }
+    var keys = Object.keys(AMB_TPLS);
+    var i = keys.indexOf(lamp.preset);
+    setLamp({tpl:keys[(i + 1) % keys.length], on:true});
+  });
+}
+
+
+/* ---------- FAQ smooth height ---------- */
+document.querySelectorAll(".faq").forEach(function(d){
+  d.addEventListener("toggle", function(){
+    if(d.open && !RM){
+      var a = d.querySelector(".ans");
+      a.animate([{opacity:0, transform:"translateY(-6px)"},{opacity:1, transform:"none"}], {duration:400, easing:"cubic-bezier(.22,1,.36,1)"});
+    }
+  });
+});
+
+/* deep links into a collapsed FAQ entry (e.g. #install from the hero) open it */
+function openHashedFaq(){
+  if(location.hash.length < 2) return;
+  try{
+    var el = document.querySelector(location.hash);
+    if(el && el.tagName === "DETAILS" && !el.open) el.open = true;
+  }catch(e){}
+}
+window.addEventListener("hashchange", openHashedFaq);
+openHashedFaq();
+
+/* ---------- latency: one state behind the tray seg and the bento rail ---------- */
+var lat = { mode:"low", custom:700 };        /* settings.go: LatencyLowMS…, DefaultLatencyCustomMS */
+var LAT_SEGMAP = { low:"200", standard:"1500", stable:"2000", custom:"custom" };
+var LAT_RAW2MODE = { "200":"low", "1500":"standard", "2000":"stable", custom:"custom" };
+var LAT_RAIL = { low:0, standard:1, stable:2, custom:3 };
+function renderLatency(){
+  var mark = document.getElementById('faMark');
+  if(mark) mark.style.left = (12.5 + LAT_RAIL[lat.mode] * 25) + '%';
+  document.querySelectorAll('.fa-lat-modes [data-fa-lat]').forEach(function(b){
+    var on = b.dataset.faLat === LAT_SEGMAP[lat.mode];
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  document.querySelectorAll('#flyPlayback .fseg button').forEach(function(b){
+    b.classList.toggle('on', b.dataset.lat === LAT_SEGMAP[lat.mode]);
+  });
+}
+/* Both surfaces hand over the raw seg value; the mode name is resolved here. */
+function setLatency(raw){
+  lat.mode = LAT_RAW2MODE[raw] || raw;
+  renderLatency();
+  flyRenderNote();                             /* the ALAC line follows at once, streaming or idle */
+  if(fly.phase === "streaming"){               /* beginLatencyApply: the stream restarts under the held face */
+    fly.applying = true;
+    flyRenderNote();
+    flySetTimer("apply", function(){ fly.applying = false; flyRenderNote(); }, 900);
+  }
+}
+
+(function(){
+  document.querySelectorAll('.fa-lat-modes [data-fa-lat]').forEach(function(b){
+    b.addEventListener('click', function(){ setLatency(b.dataset.faLat); });
+  });
+  renderLatency();
+})();
+
+
+
+/* ---------- theme + language + mobile menu ---------- */
+var themeBtn = document.getElementById("themeBtn");
+themeBtn.addEventListener("click", function(){
+  var next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try{ localStorage.setItem("saundo-theme", next); }catch(e){}
+});
+var langBtn = document.getElementById("langBtn");
+langBtn.addEventListener("click", function(){ applyLang(LANG === "en" ? "zh" : "en"); });
+var menuBtn = document.getElementById("menuBtn");
+var mmenu = document.getElementById("mobileMenu");
+var menuCloseT = null;
+function menuFocusables(){
+  return Array.prototype.slice.call(mmenu.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+}
+function setMenu(open){
+  clearTimeout(menuCloseT);
+  menuBtn.setAttribute("aria-expanded", String(open));
+  menuBtn.setAttribute("aria-label", t(open ? "关闭菜单" : "菜单"));
+  if(open){
+    mmenu.hidden = false;
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        mmenu.classList.add("open");
+        var first = menuFocusables()[0];
+        if(first) first.focus({preventScroll:true});
+      });
+    });
+    document.body.style.overflow = "hidden";
+  } else {
+    mmenu.classList.remove("open");
+    document.body.style.overflow = "";
+    menuBtn.focus({preventScroll:true});
+    menuCloseT = setTimeout(function(){ mmenu.hidden = true; }, 480);
+  }
+}
+menuBtn.addEventListener("click", function(){ setMenu(menuBtn.getAttribute("aria-expanded") !== "true"); });
+mmenu.querySelectorAll("a").forEach(function(a){ a.addEventListener("click", function(){ setMenu(false); }); });
+addEventListener("keydown", function(e){
+  if(menuBtn.getAttribute("aria-expanded") !== "true") return;
+  if(e.key === "Escape"){ e.preventDefault(); setMenu(false); return; }
+  if(e.key !== "Tab") return;
+  var f = menuFocusables();
+  if(!f.length) return;
+  var first = f[0], last = f[f.length-1], active = document.activeElement;
+  if(e.shiftKey){
+    if(active === first || active === menuBtn){ e.preventDefault(); last.focus(); }
+  } else {
+    if(active === last){ e.preventDefault(); menuBtn.focus(); }
+    else if(active === menuBtn){ e.preventDefault(); first.focus(); }
+  }
+});
+
+/* ---------- flyout state machine (mirrors internal/app: ui_kit.go phaseOf/faceOf,
+   flyout.go actionFor/statusText, latency.go apply-hold, lamp.go lampSection) ---------- */
+var FLY_DEVS = [
+  { id:"living", row:"fDev0", btn:"fRowAction", zh:"客厅 HomePod", en:"Living Room HomePod" },
+  { id:"study",  row:"fDev1", btn:"fAtvAction", zh:"书房 HomePods", en:"Study HomePods" }
+];
+var FLY_MODES = { low:200, standard:1500, stable:2000 };       /* settings.go: LatencyLowMS… */
+var FLY_ICONS = {
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg>',
+  unlink:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>'
+};
+/* ---------- the system media session: one playlist behind every media surface ----------
+   The tray card and the bento card both render from `media`. Track 0 keeps the
+   shipped poster palette — the @property --amb-* initial values match it, so the
+   default page looks exactly as before. cols also feed the lamp in cover mode. */
+var MEDIA = [
+  { t:"夜航",     et:"Night Flight", ar:"白鲸电台", ear:"White Whale Radio", app:"Music",   dur:244, cols:['#5b5be0','#8f6fd8','#3d9be0'] },
+  { t:"落日公路", et:"Sunset Drive", ar:"霓虹车队", ear:"Neon Convoy",       app:"Music",   dur:207, cols:['#ff9a3d','#ef5d7a','#9a4fa8'] },
+  { t:"玻璃海",   et:"Glass Sea",    ar:"潮汐信号", ear:"Tidal Signal",      app:"浏览器",  eapp:"Browser", dur:312, cols:['#35d0c5','#3aa6d0','#1b3d8f'] },
+  { t:"绯红",     et:"Crimson",      ar:"玫瑰刺",   ear:"Rose Thorn",        app:"Spotify", dur:238, cols:['#e34b6f','#c22a55','#7a1f3d'] },
+  { t:"雪松与雾", et:"Cedar & Mist", ar:"苔原电台", ear:"Tundra Radio",      app:"Music",   dur:281, cols:['#2f6b4f','#7fae5a','#b08954'] }
+];
+var media = { i:0, playing:false, pos:0 };    /* 夜航 — 白鲸电台, paused at 0:00 until the session starts */
+var fly = {
+  phase:"streaming", /* the page opens on a live session: the glow is up on entry */
+  sel:"living",      /* a.selID: the row last chosen */
+  active:"living",   /* snap.SelectedID while a session exists */
+  pairing:false,     /* sender.StatePairing on a first-time connect */
+  paired:{living:true},
+  ptp:true,          /* the PTP follower settled before the page loaded */
+  standby:false,     /* snap.Standby */
+  applying:false     /* latencyApplying: the stream restarts under the held face */
+};
+var flyTimers = {};
+var flyPanel = document.getElementById("flyPanel");
+var fNoteEl = document.getElementById("fNote");
+var fLatSpin = document.getElementById("fLatSpin");
+var fFaceUse = document.getElementById("fFaceUse");
+var fFootState = document.getElementById("fFootState");
+var fPlayIcon = document.getElementById("fPlayIcon");
+var fPlayPath = fPlayIcon.querySelector("path");
+var fPlayBtn = document.getElementById("fPlayBtn");
+var fVolEl = document.getElementById("fVol");
+var fVolPct = document.getElementById("fVolPct");
+var fMediaEl = document.querySelector("#flyPlayback .fmedia");
+var fFill = fMediaEl.querySelector(".ffill");
+var fThumb = fMediaEl.querySelector(".fthumb");
+var fClocks = fMediaEl.querySelectorAll(".fclock");
+var fMeter = fMediaEl.querySelector(".fmeter");
+
+function flyDev(id){
+  for(var i = 0; i < FLY_DEVS.length; i++){ if(FLY_DEVS[i].id === id) return FLY_DEVS[i]; }
+  return FLY_DEVS[0];
+}
+function flyDevName(d){ return LANG === "en" ? d.en : d.zh; }
+function flySetTimer(k, fn, ms){
+  flyClearTimer(k);
+  flyTimers[k] = setTimeout(function(){ flyTimers[k] = null; fn(); }, ms);
+}
+function flyClearTimer(k){ if(flyTimers[k]){ clearTimeout(flyTimers[k]); flyTimers[k] = null; } }
+function flyClock(s){ var n = Math.max(0, Math.floor(s)); return Math.floor(n/60) + ":" + ("0" + n%60).slice(-2); }
+
+/* statusText(): the footer line, worded like the app's own phases */
+function flyStatusText(){
+  if(fly.phase === "streaming"){
+    if(fly.standby) return t("已待机 · 播放声音即唤醒");
+    var name = flyDevName(flyDev(fly.active));       /* composed per LANG, not via the dict */
+    return LANG === "en" ? "Streaming to " + name : "正在通过 " + name + " 播放";
+  }
+  if(fly.phase === "connecting") return t(fly.pairing ? "正在配对…" : "正在连接…");
+  return t("未连接");
+}
+/* playbackSection(): ALAC line, the sync suffix only while streaming */
+/* settings.LatencyText: below 1 s in ms; whole seconds bare; otherwise one decimal */
+function latText(ms){ return ms < 1000 ? ms + " ms" : (ms % 1000 === 0 ? (ms / 1000) + " s" : (ms / 1000).toFixed(1) + " s"); }
+function flyNoteText(){
+  var s = "ALAC · 44.1 kHz";
+  if(fly.phase === "streaming") s += " · " + (LANG === "en" ? (fly.ptp ? "PTP · Synced" : "PTP · Syncing") : (fly.ptp ? "PTP · 已同步" : "PTP · 同步中"));
+  var ms = lat.mode === "custom" ? lat.custom : FLY_MODES[lat.mode];
+  var lt = latText(ms);
+  s += LANG === "en" ? " · " + lt + " latency" : " · 延迟 " + lt;
+  return s;
+}
+/* actionFor(): the control each row offers, a pure function of the phase */
+function flyActionFor(d){
+  var active = fly.active === d.id && fly.phase !== "idle";
+  if(active && fly.phase === "connecting") return "cancel";
+  if(active) return "disconnect";
+  if(fly.phase === "connecting") return "disabled";   /* one session at a time */
+  return "connect";                                    /* while streaming it switches the session */
+}
+
+function flyRenderRows(){
+  FLY_DEVS.forEach(function(d){
+    var row = document.getElementById(d.row);
+    row.classList.toggle("sel", fly.sel === d.id);
+    var b = document.getElementById(d.btn);
+    var a = flyActionFor(d);
+    b.disabled = a === "disabled";
+    b.className = "faction " + (a === "cancel" ? "ctl" : a === "disconnect" ? "strong" : a === "disabled" ? "dimmed" : "accent");
+    b.innerHTML = FLY_ICONS[a === "cancel" ? "close" : a === "disconnect" ? "unlink" : "link"] +
+      "<span>" + t(a === "cancel" ? "取消" : a === "disconnect" ? "断开连接" : "连接") + "</span>";
+  });
+}
+function flyRenderFooter(){
+  flyPanel.classList.toggle("streaming", fly.phase === "streaming");
+  flyPanel.classList.toggle("connecting", fly.phase === "connecting");
+  var face = "face-idle";
+  if(fly.phase === "streaming") face = media.playing ? "face-stream" : "face-smile";   /* faceOf: AudioIdle → the plain smile */
+  else if(fly.phase === "connecting") face = "face-connect";
+  fFaceUse.setAttribute("href", "#" + face);
+  fFootState.textContent = flyStatusText();
+}
+function flyRenderNote(){
+  fNoteEl.textContent = flyNoteText();
+  fLatSpin.hidden = !fly.applying;
+}
+/* --- the media surfaces: the tray card and the bento card render one session --- */
+var PLAY_D = "M8 5v14l11-7L8 5Z", PAUSE_D = "M7 5h3.4v14H7zM13.6 5H17v14h-3.4z";
+var fPoster = fMediaEl.querySelector(".fposter");
+var fTitle = fMediaEl.querySelector(".fmedcopy b"), fArtist = fMediaEl.querySelector(".fmedcopy span");
+var fApp = fMediaEl.querySelector(".fapp");
+var bmCard = document.getElementById("bmMedia");
+var bmPoster = bmCard.querySelector(".fposter");
+var bmTitle = bmCard.querySelector(".fmedcopy b"), bmArtist = bmCard.querySelector(".fmedcopy span");
+var bmApp = bmCard.querySelector(".fapp");
+var bmFill = bmCard.querySelector(".ffill"), bmThumb = bmCard.querySelector(".fthumb");
+var bmClocks = bmCard.querySelectorAll(".fclock");
+var bmMeter = bmCard.querySelector(".fmeter");
+var bmPlayPath = document.getElementById("bmPlayBtn").querySelector("path");
+
+function mixHex(a, b, k){
+  var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  var f = function(x, y){ return Math.round(x + (y - x) * k); };
+  return "rgb(" + f((pa>>16)&255, (pb>>16)&255) + "," + f((pa>>8)&255, (pb>>8)&255) + "," + f(pa&255, pb&255) + ")";
+}
+function posterGradient(cols){ return "linear-gradient(135deg," + cols[0] + "," + cols[1] + " 55%," + cols[2] + ")"; }
+function renderMeterTint(meter, cols){
+  /* each bar interpolates the poster palette left→right; track 0 clears the
+     inline style so the shipped CSS gradient stays pixel-identical */
+  var bars = meter.querySelectorAll("i");
+  for(var k = 0; k < bars.length; k++){
+    if(media.i === 0){ bars[k].style.background = ""; continue; }
+    var f = k / (bars.length - 1);
+    bars[k].style.background = "linear-gradient(180deg," + mixHex(cols[0], cols[1], f) + "," + mixHex(cols[1], cols[2], f) + ")";
+  }
+}
+function renderMediaProgress(){
+  var dur = MEDIA[media.i].dur;
+  var frac = Math.min(1, media.pos / dur);
+  var pct = (frac * 100).toFixed(1) + "%";
+  fFill.style.width = pct;
+  fThumb.style.left = "calc(" + pct + " - 4.5px)";
+  bmFill.style.width = pct;
+  bmThumb.style.left = "calc(" + pct + " - 4.5px)";
+  fClocks[0].textContent = flyClock(media.pos);
+  fClocks[1].textContent = "-" + flyClock(dur - media.pos);
+  bmClocks[0].textContent = flyClock(media.pos);
+  bmClocks[1].textContent = "-" + flyClock(dur - media.pos);
+}
+function mediaRenderAll(){
+  var tr = MEDIA[media.i];
+  fPlayPath.setAttribute("d", media.playing ? PAUSE_D : PLAY_D);
+  bmPlayPath.setAttribute("d", media.playing ? PAUSE_D : PLAY_D);
+  fMeter.classList.toggle("off", !media.playing);   /* the meter reads the media session, flat while paused */
+  bmMeter.classList.toggle("off", !media.playing);
+  fPoster.style.background = posterGradient(tr.cols);
+  bmPoster.style.background = posterGradient(tr.cols);
+  fTitle.textContent = LANG === "en" ? tr.et : tr.t;
+  fArtist.textContent = LANG === "en" ? tr.ear : tr.ar;
+  fApp.textContent = LANG === "en" ? (tr.eapp || tr.app) : tr.app;
+  bmTitle.textContent = LANG === "en" ? tr.et : tr.t;
+  bmArtist.textContent = LANG === "en" ? tr.ear : tr.ar;
+  bmApp.textContent = LANG === "en" ? (tr.eapp || tr.app) : tr.app;
+  renderMeterTint(fMeter, tr.cols);
+  renderMeterTint(bmMeter, tr.cols);
+  renderMediaProgress();
+}
+function toggleMediaPlay(){
+  media.playing = !media.playing;
+  if(media.playing) fly.standby = false;         /* sound wakes it */
+  mediaRenderAll();
+  flyRenderFooter();
+  lampRender();                                   /* the standby chip lives on the lamp card */
+  flyRearmStandby();
+}
+function mediaSwitch(i){
+  if(i === media.i){ media.pos = 0; renderMediaProgress(); return; }   /* same track: restart */
+  media.i = i;
+  media.pos = 0;
+  if(!media.playing) media.playing = true;        /* skipping wakes playback */
+  fly.standby = false;
+  mediaRenderAll();
+  flyRenderFooter();
+  lampRender();                                   /* cover mode: the light follows the new artwork */
+  flyRearmStandby();
+}
+function mediaPrev(){
+  if(media.pos > 3){ media.pos = 0; renderMediaProgress(); return; }   /* past 3 s: restart first, like the players do */
+  mediaSwitch((media.i + MEDIA.length - 1) % MEDIA.length);
+}
+function mediaNext(){ mediaSwitch((media.i + 1) % MEDIA.length); }
+function flyBuildGrid(grid){
+  grid.innerHTML = "";
+  Object.keys(AMB_TPLS).forEach(function(id){
+    var tpl = AMB_TPLS[id];
+    var sw = document.createElement("button");
+    sw.type = "button";
+    sw.className = "flampswatch";
+    sw.dataset.tpl = id;
+    sw.style.background = "radial-gradient(circle at 30% 28%, " + tpl.c[0] + " 0%, transparent 62%)" +
+      ",radial-gradient(circle at 72% 38%, " + tpl.c[1] + " 0%, transparent 60%)" +
+      ",radial-gradient(circle at 50% 82%, " + tpl.c[2] + " 0%, transparent 64%)," + tpl.c[0];
+    sw.addEventListener("click", function(){ flyPickPreset(id); });
+    grid.appendChild(sw);
+  });
+}
+function flyRender(){ flyRenderRows(); flyRenderFooter(); flyRenderNote(); mediaRenderAll(); lampRender(); }
+
+/* connectDevice(): connect, or switch the session to another receiver in place */
+function flyConnect(id){
+  flyClearTimer("apply");
+  fly.applying = false;
+  fly.sel = id;
+  fly.active = id;
+  fly.phase = "connecting";
+  fly.standby = false;
+  fly.ptp = false;
+  fly.pairing = !fly.paired[id];
+  flyClearTimer("connect");
+  flyClearTimer("standby");
+  flyClearTimer("ptp");
+  flySetTimer("connect", function(){
+    if(fly.pairing){
+      fly.pairing = false;                     /* HAP pairing happens once */
+      flyRender();
+      flySetTimer("connect", function(){ flyEnterStream(id); }, 700);
+    } else {
+      flyEnterStream(id);
+    }
+  }, fly.pairing ? 650 : 950);
+  flyRender();
+}
+function flyEnterStream(id){
+  fly.phase = "streaming";
+  fly.paired[id] = true;
+  flyRender();
+  flySetTimer("ptp", function(){ if(fly.phase === "streaming" && fly.active === id){ fly.ptp = true; flyRenderNote(); } }, 1400);
+  flyRearmStandby();
+}
+function flyDisconnect(){
+  flyClearTimer("connect"); flyClearTimer("ptp"); flyClearTimer("standby"); flyClearTimer("apply");
+  fly.phase = "idle";
+  fly.active = null;
+  fly.pairing = false;
+  fly.standby = false;
+  fly.ptp = false;
+  fly.applying = false;
+  flyRender();
+}
+/* standby: streaming but silent for a while — "wakes when sound plays" */
+function flyRearmStandby(){
+  flyClearTimer("standby");
+  if(fly.phase === "streaming" && !media.playing){
+    flySetTimer("standby", function(){
+      fly.standby = true;
+      flyRender();
+    }, 6000);
+  }
+}
+/* lamp handlers mirror lamp.go: off ignores the segment, picking is deliberate */
+function flyPickPreset(id){
+  if(lamp.off) return;
+  setLamp({tpl:id});
+}
+function flySetLampCover(on){
+  if(lamp.off) return;
+  lampUI.expanded = false;
+  setLamp({cover:on});
+}
+function flyToggleLampExpand(){
+  if(lamp.cover) return;                    /* only template priority expands */
+  lampUI.expanded = !lampUI.expanded;
+  lampRender();
+}
+function flyToggleLampPower(){
+  if(fly.standby && !lamp.off){ lampRender(); return; }   /* standby is automatic; the press just holds it on */
+  setLamp({off: !lamp.off});
+}
+
+FLY_DEVS.forEach(function(d){
+  var row = document.getElementById(d.row);
+  row.addEventListener("click", function(e){
+    if(e.target.closest(".faction")) return;
+    fly.sel = d.id;                            /* the row body only selects */
+    flyRenderRows();
+  });
+  row.addEventListener("keydown", function(e){
+    if(e.target.closest(".faction")) return;
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fly.sel = d.id; flyRenderRows(); }
+  });
+  document.getElementById(d.btn).addEventListener("click", function(){
+    var a = flyActionFor(d);
+    if(a === "cancel") flyDisconnect();
+    else if(a === "connect") flyConnect(d.id);
+    else if(a === "disconnect") flyDisconnect();
+  });
+});
+document.querySelectorAll("#flyPlayback .fseg button").forEach(function(b){
+  b.addEventListener("click", function(){ setLatency(b.dataset.lat); });
+});
+/* the filled rail follows --fly-vol, mirroring the real slider's ink fill;
+   one setter for the drag listener and the demo ramp alike */
+function setVolume(v){
+  fVolEl.value = String(v);
+  fVolEl.style.setProperty("--fly-vol", v + "%");
+  fVolPct.textContent = v + "%";
+}
+setVolume(fVolEl.value);
+fVolEl.addEventListener("input", function(){ setVolume(fVolEl.value); });
+fPlayBtn.addEventListener("click", toggleMediaPlay);
+(function(){
+  var tbtns = document.querySelectorAll("#flyPlayback .ftransport button");
+  tbtns[0].addEventListener("click", mediaPrev);
+  tbtns[2].addEventListener("click", mediaNext);
+})();
+(function(){
+  var bbtns = bmCard.querySelectorAll(".ftransport button");
+  bbtns[0].addEventListener("click", mediaPrev);
+  bbtns[1].addEventListener("click", toggleMediaPlay);
+  bbtns[2].addEventListener("click", mediaNext);
+})();
+document.getElementById("fRefresh").addEventListener("click", function(){
+  flyPanel.classList.add("scanning");          /* the browse drops the rows, then they return */
+  flySetTimer("scan", function(){ flyPanel.classList.remove("scanning"); }, 1100);
+});
+document.getElementById("fLampPower").addEventListener("click", flyToggleLampPower);
+document.getElementById("fLampCover").addEventListener("click", function(){ flySetLampCover(true); });
+document.getElementById("fLampTpl").addEventListener("click", function(){ flySetLampCover(false); });
+document.getElementById("fLampArrow").addEventListener("click", flyToggleLampExpand);
+document.querySelector("#flyPanel .lamp-pick").addEventListener("click", function(){
+  if(!lamp.cover) flyToggleLampExpand();    /* the pick row expands, template priority only */
+});
+setInterval(function(){
+  if(!media.playing) return;
+  media.pos += 1;
+  if(media.pos >= MEDIA[media.i].dur){ mediaNext(); return; }   /* the track ended: advance like a player does */
+  renderMediaProgress();
+}, 1000);
+
+flyRender();
+
+/* ---------- hero demo: one scripted pass through the real flow ----------
+   The page opens on a live session — glow up, media paused, volume low. When
+   the panel sits comfortably in view the demo walks the same handlers a user
+   would: play → latency → volume → next track (the cover palette crossfade is
+   the finale). Any touch on the panel or the lamp controls hands control back
+   to the visitor; ?demo=0 skips the run. */
+var demo = { run:false, cancelled:false, timers:[] };
+function demoAfter(ms, fn){ demo.timers.push(setTimeout(fn, ms)); }
+function demoCancel(){
+  demo.timers.forEach(clearTimeout);
+  demo.timers = [];
+  demo.cancelled = true;
+}
+function demoVolume(from, to, ms){
+  var t0 = performance.now();
+  (function step(now){
+    if(demo.cancelled) return;
+    var k = Math.min(1, (now - t0) / ms);
+    k = 1 - (1 - k) * (1 - k) * (1 - k);          /* easeOutCubic */
+    setVolume(Math.round(from + (to - from) * k));
+    if(k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+function demoRun(){
+  if(demo.run || demo.cancelled) return;
+  demo.run = true;
+  var steps = [                                                  /* each gap waits out the previous action */
+    [function(){ if(!media.playing) toggleMediaPlay(); }, RM ? 500 : 900],   /* 播放：电平条起 */
+    [function(){ setLatency("1500"); },    RM ? 500 : 1700],     /* the apply spinner runs under it */
+    [function(){ demoVolume(30, 68, RM ? 1 : 1100); }, RM ? 500 : 1600],
+    [function(){ mediaNext(); },           RM ? 500 : 1600]      /* 下一首 → 封面换色收尾 */
+  ];
+  var t = 0;
+  steps.forEach(function(s){ t += s[1]; demoAfter(t, s[0]); });
+}
+(function(){
+  if(new URLSearchParams(location.search).get("demo") === "0") return;
+  var target = document.querySelector(".hero-visual");
+  if(target && "IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(e.isIntersecting){ io.disconnect(); demoAfter(650, demoRun); }   /* let the entrance settle first */
+      });
+    }, {threshold:.35});
+    io.observe(target);
+  } else {
+    demoAfter(900, demoRun);     /* no observer (headless fallback): still run */
+  }
+  /* a visitor's hand takes over: any press on the panel or the lamp controls cancels */
+  ["flyPanel", "ambStage"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener("pointerdown", demoCancel, {capture:true});
+  });
+  var ctl = document.querySelector(".amb-controls");
+  if(ctl) ctl.addEventListener("pointerdown", demoCancel, {capture:true});
+})();
+
+/* ---------- init preferences (lang/theme before first paint of dynamic copy) ---------- */
+var qs = new URLSearchParams(location.search);
+var ql = qs.get("lang"), qt = qs.get("theme"), qa = qs.get("amb");
+if(qt === "dark" || qt === "light"){
+  document.documentElement.dataset.theme = qt;
+  try{ localStorage.setItem("saundo-theme", qt); }catch(e){}
+}
+var savedLang = null;
+try{ savedLang = localStorage.getItem("saundo-lang"); }catch(e){}
+var initLang = ql === "en" || ql === "zh" ? ql
+  : (savedLang === "en" || savedLang === "zh" ? savedLang
+  : (navigator.language && navigator.language.indexOf("zh") === 0 ? "zh" : "en"));
+applyLang(initLang);
+if(qa === "off"){ setLamp({off:true}); }
+if(qa === "tpl"){ setLamp({tpl:'dune', on:true}); }
+})();
+</script>
+</body>
+</html>

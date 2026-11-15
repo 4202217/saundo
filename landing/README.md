@@ -1,0 +1,153 @@
+# saundo landing page
+
+A static, bilingual landing page for saundo: one HTML file, self-hosted
+fonts, no framework, no bundler, no analytics. It is a marketing surface, not
+part of the app build.
+
+## Run it
+
+Serve the folder. Do not open `index.html` from `file://`: the self-hosted
+Geist fonts are blocked by the file origin's CORS rules, and the page would
+silently fall back to a system font.
+
+```bash
+python3 -m http.server 8000 --directory landing
+```
+
+Then open <http://localhost:8000>.
+
+The page follows the system language (Simplified Chinese or English) and the
+system appearance. The header switches both; the choice is kept in
+`localStorage`. Nothing else is stored or sent.
+
+## What is here
+
+`index.html` carries the markup, CSS, JavaScript, and the inline SVG symbols.
+`assets/` carries only what the page loads: the app icon, the two
+ambient-light WebP images, the two Geist fonts, and the JPG social card.
+`assets/src/` carries the working sources, the PNG base images plus the
+`og.png`/`og.jpeg` exports. The page never requests anything from `assets/src/`.
+
+`landing/.audit/` holds local screenshots and probe scripts, and
+`landing/motion-lab.html` is a local design lab. Both are ignored by git and
+are not part of the published page.
+
+The fonts are Geist and Geist Mono by Vercel, under the SIL Open Font
+License 1.1. The license text is in `LICENSES/OFL-1.1-Geist.txt` and the
+attribution is in `NOTICE`.
+
+## Design notes
+
+The hero is the tray flyout, not a screenshot. It opens on a live session —
+glow already up, media paused, volume low — and when the panel sits in view
+it runs one scripted pass (play → Standard → volume → next track); any touch
+on the panel or the lamp controls hands control back, and `?demo=0` skips the
+run. It still answers the visitor: connects or disconnects a receiver, changes
+volume and latency, plays or pauses the media card, and switches the lamp.
+The tray media card and the bento media card render one shared media
+session: skipping tracks on either card updates both, and in cover mode the
+lamp palette follows the new artwork (five demo tracks, each with its own
+poster palette). The glow is gated on lamp × session — turning the lamp off
+or disconnecting the receiver fades it, and it returns with the state. The
+latency mode is one state behind the tray segment and
+the bento rail — either surface switches, both follow, and the ALAC line
+updates at once. The whole visual renders at `zoom: .85` on `.hero-visual` — panel, glow
+and caption scale as one object, and the layout height shrinks with it
+(`transform: scale` would strand empty space below). The real HomePod photograph belongs only to the ambient-light section:
+it is the render target, and the pod itself is a click target that cycles
+the light. On desktop the pod sits on the left; the right column carries the
+copy, the current name and source chip, the power switch, and seven swatches
+(Cover plus the six templates). The copy starts level with the top of the pod,
+not centred against it.
+
+`amb-base*.webp` carries an 11% transparent border on every side, so a 480px
+pod shows a 374px speaker. On desktop the pod is pulled up into that border
+(`margin: calc(var(--pod) * -0.1104)`), which takes the dead band out of the
+section; below 1021px the layout stacks, the border is left in place as
+breathing room, and the copy comes first with the controls under the pod.
+
+The copy block is centred in the space right of the pod
+(`justify-self: center`, `max-width: min(460px, 100%)`). Left-aligned it
+stranded ~180px of empty width on the right — far more than the sections above
+leave — because the copy is only ~380px of ink wide. Pod size and that right
+margin trade off directly: a smaller pod means a wider right margin, so the
+pod stays at 480px unless the section layout changes.
+
+The ambient light uses the same three colors and template seeds as
+`internal/lamp/presets.go`. The left-hand picker, current name/chip, and
+visible swatches follow the earlier design exploration.
+The pod keeps the page's original translucent glow layer, and a soft aura
+outside the pod carries the current palette.
+
+The page mixes card sections (steps) with a bento feature grid, a flat trust
+section, and the FAQ, so it does not read as a pile of rounded boxes. The
+trust section sits right after the device strip — identity first, then how-to
+steps. The
+feature block is four cards: ambient light, the media card, latency, and
+receivers/pairing. Each card carries one small motion; the latency rail is the
+only interactive one. The clock-sync claim lives on the latency card as a
+small `PTP 时钟同步` chip under the rail — there is no separate sync section.
+
+Each claim has one owner, and the sections that follow do not restate it. The
+feature cards carry the claims; the ambient section is the demo, so it is a
+heading, the controls, and one line for the HomePod-only requirement. The
+first-launch and platform limits live only in the FAQ ("第一次打开被系统拦
+下来，怎么办", "为什么接收器列表是空的", "哪些设备能连"); the hero note deep
+links to the first one (`#install` on the details element) and a small script
+opens the hashed entry, so keep that id on it. The hero proves the platform
+list once; the trust section does not repeat it. When adding a section, check
+whether the sentence already exists elsewhere before writing it again.
+
+Device and receiver names render in English on both pages ("Living Room
+HomePod", "Stereo pair", "Mac receiver"); do not add them back to the i18n
+dictionary or the zh page will translate them again. The marquee's edge fade
+is two static gradients, not `mask-image`: a mask on the container of an
+animated track is re-composited every frame and flickers on phones while
+scrolling. The container has no `gap`; each track's own `padding-right` is the
+inter-track spacing. A track holds one copy of the list, and the script appends
+tracks until `(count - 1) * trackWidth` covers the viewport, at least two. Do
+not double the content inside a track. Two copies make a 2261 px track, 6783
+device px at DPR 3, and on iPhone the strip flickers while scrolling and paints
+incompletely at rest. One copy per track is 1131 px, 3393 device px, and renders
+correctly (device test 2026-11-15).
+
+Chinese is the source copy; English is a parallel rewrite, not a literal
+translation. Image alt text and ARIA labels are translated too. Reduced
+motion is honoured; the FAQ uses native `details`.
+
+## Before publishing
+
+The `og:image` tag points at
+`https://raw.githubusercontent.com/4202217/saundo/main/landing/assets/og.jpg`.
+Change it to the final host if the page is served somewhere else.
+
+Confirm the provenance and license of `assets/src/amb-base*.png` and
+`assets/amb-base*.webp` before publishing. They are project visual assets and
+are not covered by the repository's GPL notice. The Geist fonts are covered by
+`LICENSES/OFL-1.1-Geist.txt`; the Apple product names are covered by the
+trademark disclaimer in the footer.
+
+The page links to the public releases page; no installer is bundled. The
+landing page adds no network calls of its own. The Windows build checks
+GitHub for signed updates; the macOS build does the same from its signed
+feed.
+
+## Checks
+
+Rendered at 1440 and 1024 px in both themes and both languages, and at 390
+and 320 px in both languages. The console is clean when served over HTTP.
+There is no horizontal overflow at those widths; at 320 the long English
+`System Settings → Privacy & Security` label wraps instead of pushing the page
+wide. The English and Chinese titles, descriptions, OG tags, alt text, and
+ARIA labels switch together, and no visible string stays Chinese on the
+English page except the wordmark and the language toggle.
+
+The marquee was probed at 390, 1024, 1440, 1920, and 2560 px. The script
+emits 2, 2, 3, 3, and 4 tracks, every sampled animation position covers the
+viewport, and WebKit screenshots at the loop boundary show no seam
+(`.audit/probe-marquee.mjs`, a local script that is ignored by git).
+
+Clicked through in a headless browser: receiver connect, play and pause, the
+four latency modes, a template swatch, the lamp power, and an FAQ entry. The
+mobile menu opens with its download action visible and returns focus to its
+button when closed. A `#install` deep link opens the hashed FAQ entry.

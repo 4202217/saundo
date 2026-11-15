@@ -5,6 +5,7 @@
 
 # Local design and audit scratch
 /.audit/
+/.zcode/
 /icon-check.png
 
 # Update signing key (never commit)
@@ -21,3 +22,7 @@ cmd/saundo/resources/darwin-arm64/adapter/
 
 # The vendored adapter's CMake build output.
 native/mediaremote-adapter/build/
+
+# Landing page local audit artifacts and design lab
+/landing/.audit/
+/landing/motion-lab.html
