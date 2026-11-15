@@ -44,7 +44,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
   its next-probe seed.
 - When both members carry `igl=1`, the collapse sorts leaders first and then
   by name, so it still produces one stable leader-first group.
-- One AP2 session per member with `groupUUID = tsid`; SETPEERS is skipped on every PTP session, and each member's follower activates from its RECORD reply; **the sender is the PTP grandmaster** (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
+- One AP2 session per member with `groupUUID = tsid`; SETPEERS is skipped on every PTP session, the master starts with the session, and each member's stream SETUP waits for that member's master readiness (protocol.md §7–8) — the opposite of the standalone HomePod's follower role.
 - Capture fans out to one ring per member; both sessions must reach streaming before the group launches.
 - Verified (2026-10-31): both member sessions streamed through the sender-supplied master, a system tone caused zero drops, the flyout showed the streaming footer (then `正在播放到 HomePods`, now `正在通过 HomePods 播放`), and a 60 s silence suspend kept both sessions up and resumed audibly.
 - Ambient light on the pair (2026-11-07): `updateMRPlaybackState` reaches both members and state `2` darkens both. A state `1` on the follower can leave its renderer white; a new session restores it. The sender assumes playing on a fresh session (no redundant state `1`) and resends the artwork after a resume's state `1`; after a disconnect/reconnect and a resume, both members were normal. If a follower is already stuck white, reconnect.
@@ -89,8 +89,8 @@ Tested on a Redmi TV, 2026-11-01.
 
 - Added on the settings 接收器 page with a name, one of three types, and a
   bare IP or hostname. The port defaults to 5000 for AirPort Express and
-  AirPlay 1 and 7000 for AirPlay 2. The row keys by `m:<uuid>`; editing
-  keeps the key and updates the fields.
+  AirPlay 1 and 7000 for AirPlay 2. The row keys by `m:` plus 16 hex
+  characters; editing keeps the key and updates the fields.
 - There is no advertisement, so there are no feature bits and no `model`.
   A manual row therefore always runs NTP. A receiver that requires PTP
   (HomePod software 27, macOS) must be discovered; the finalized add dialog
@@ -103,7 +103,7 @@ Tested on a Redmi TV, 2026-11-01.
   generic HAP key and latency profile, which is the HomePod rule. A Mac with
   Require Password must be discovered so its `Mac` model selects the Mac
   profile.
-- The password is stored in the OS secret store under the `password:m:<uuid>` namespace,
+- The password is stored in the OS secret store under the `password:m:<key>` namespace,
   never in `settings.json` or the log. An unreadable stored password is
   treated as absent: the engine prompts again instead of attempting the
   permissive path.

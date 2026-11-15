@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-13 -->
+<!-- reviewed-through: 2026-11-14 -->
 
 # AirPlay 2 wire protocol
 
@@ -89,7 +89,7 @@ After `pair-verify`, switch the control channel to ChaCha20-Poly1305 immediately
 Order (a wrong order usually produces "connected but silent" or a drop after 30 seconds):
 
 1. `GET /info` on the encrypted control channel.
-2. `SETUP rtsp://host/sessionId` with a binary plist body: `deviceID`, `sessionUUID`, `timingPort`, `timingProtocol` (`NTP` or `PTP`), `isMultiSelectAirPlay`, `groupContainsGroupLeader`, `macAddress`, `model`, `name`, `osBuildVersion`, `osName`, `osVersion`, `senderSupportsRelay`, `sourceVersion`, `statsCollectionEnabled`.
+2. `SETUP rtsp://<sender-address>/<sessionId>` with a binary plist body: `deviceID`, `sessionUUID`, `timingPort`, `timingProtocol` (`NTP` or `PTP`), `isMultiSelectAirPlay`, `groupContainsGroupLeader`, `macAddress`, `model`, `name`, `osBuildVersion`, `osName`, `osVersion`, `senderSupportsRelay`, `sourceVersion`, `statsCollectionEnabled`.
 3. The response contains `eventPort`.
 4. Connect the event channel (§5); the receiver initiates the reverse connection.
 5. `RECORD` with an empty body and standard RTSP headers; it goes after session SETUP and before stream SETUP.
@@ -110,8 +110,8 @@ Stream SETUP fields:
 | `controlPort` | Local control UDP port |
 | `ct` | `2`, ALAC |
 | `isMedia` | `true` |
-| `latencyMax` | `88200` macOS; `8820` HomePod; the configured latency otherwise |
-| `latencyMin` | `11025` macOS; `8820` HomePod; the configured latency otherwise |
+| `latencyMax` | `88200` macOS; the configured latency otherwise |
+| `latencyMin` | `11025` macOS; the configured latency otherwise |
 | `shk` | 32-byte audio key (§2.5) |
 | `spf` | `352` |
 | `sr` | `44100` |
@@ -165,7 +165,7 @@ The realtime stream sends uncompressed ALAC frames, MSB-first:
 pad to a byte boundary
 ```
 
-RTP header, 12 bytes: `0x80, 0xE0` on the first packet (marker set), `0x60` afterwards, seq (be16), timestamp (be32), `ssrc` (be32, the session id). AP2 encryption: AAD is RTP header bytes 4–11 (seq, timestamp, ssrc); the nonce is an 8-byte little-endian counter whose last 8 bytes are appended after the ciphertext.
+RTP header, 12 bytes: `0x80, 0xE0` on the first packet (marker set), `0x60` afterwards, seq (be16), timestamp (be32), `ssrc` (be32, the session id). AP2 encryption: AAD is RTP header bytes 4–11 (timestamp, ssrc); the nonce is an 8-byte little-endian counter whose last 8 bytes are appended after the ciphertext.
 
 Pacing uses a token bucket at 44100 frames per second, about one tick per 8 ms. While a stream is active, push silence when the ring is empty. Keep a recent packet backlog for `0x55` retransmit requests; a retransmit is answered with the original packet.
 
@@ -185,7 +185,7 @@ HomePod software 27 and macOS receivers keep their own PTP grandmaster and silen
 
 - Session SETUP carries `timingProtocol: PTP`, `timingPeerInfo`, and `timingPeerList` with the sender's clock ID.
 - After RECORD, activate the follower without a SETPEERS round trip; the stream SETUP waits until the clock is ready.
-- The follower binds UDP 319 and 320, subscribes to Announce/Sync/Follow_Up/Delay_Resp, answers peer-delay requests, and estimates the offset from Sync/Follow_Up pairs plus Delay_Resp. Readiness requires three exchanges over at least 250 ms with a fresh offset. If the ports are firewall-blocked, the session fails before the stream SETUP with a firewall hint.
+- The follower binds UDP 319 and 320, subscribes to Sync, Delay_Resp, and Announce (Follow_Up arrives paired with Sync without its own grant), answers peer-delay requests, and estimates the offset from Sync/Follow_Up pairs plus Delay_Resp. Readiness requires three exchanges over at least 250 ms with a fresh offset. If the ports are firewall-blocked, the session fails before the stream SETUP with a firewall hint.
 - The receiver's PTP clock is boot-relative, not Unix epoch; only the measured offset matters.
 - The handshake deadline extends to 30 seconds while waiting for the clock: after a 30-minute session the receiver needed more than 10 seconds to re-establish PTP.
 
@@ -207,7 +207,7 @@ A HomePod stereo pair is not one session:
 
 - Group members share `tsid`; `igl=1` marks the leader (`gcgl` only says the group contains its leader). Discovery collapses the members into one logical target, `stereo:<tsid>`, named from `gpn` (decode its RFC 1035 `\DDD` escapes first), leader first; the group is online only when both members are online.
 - Open one AP2 session **per member**; each session SETUP carries `groupUUID = tsid`.
-- SETPEERS is skipped on every PTP session (single and pair); each member's follower activates from its RECORD reply.
+- SETPEERS is skipped on every PTP session (single and pair); on a single receiver the follower activates at the RECORD reply, and on a pair the sender's master runs from session start with its per-member readiness gating each stream SETUP (§7).
 - Capture fans out into one ring per member (`ring.Fanout`); the group reports streaming only when every member's session launched.
 
 ## 9. Session lifecycle and start gate
@@ -235,7 +235,7 @@ HomePod software 27.2 renders the current Now Playing cover on its top display o
 The top display renders the artwork already attached to the Now Playing item. One `SET_PARAMETER` with `Content-Type: image/jpeg` and the raw JPEG body on the encrypted control channel, with the same `Session` and `RTP-Info` headers as track metadata, makes the image the Now Playing cover and repaints the top display:
 
 ```
-SET_PARAMETER rtsp://<receiver>/<session> RTSP/1.0
+SET_PARAMETER rtsp://<sender-address>/<session> RTSP/1.0
 Session: <session>
 RTP-Info: seq=<n>;rtptime=<ts>
 Content-Type: image/jpeg
@@ -245,7 +245,7 @@ Content-Length: <n>
 ```
 
 - When the sender has no track metadata, it first sends a minimal DMAP item (`mlit` containing `minm` = `saundo`) so the cover has a Now Playing item to attach to.
-- The image is a 600×600 sRGB JPEG at quality ~0.9; the receiver downscales and softens it for the top display.
+- The image is a 600×600 sRGB JPEG at quality 88; the receiver downscales and softens it for the top display.
 - The ambient light has a permanent card, a power action, and a 封面/模板 priority segment. Cover priority (the default) hands the artwork slot to the media cover; template priority chooses one of six rendered carriers, pushed on choice change and on stream start; each carrier is three flat color fields, and the receiver's k-means reduces it to the three colors that drive the light. The manual 关灯 sends the paused playback state, and the top display goes dark; no image is involved. A media pause keeps the current light; a new cover (a track change) updates it. With cover priority on and no media cover, the sender sends no image and the receiver keeps its last light; a fresh session with no artwork shows the device's white-center placeholder. In the flyout, cover priority hides the chevron and the template list; template priority shows the chevron and expands the list only on click. The sender has no artwork-clear command.
 - A true LED-off is a playback-state command, not an image. `POST /command` on the encrypted control channel with a binary plist body sets MediaRemote's playback state:
 
