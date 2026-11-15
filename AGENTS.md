@@ -58,7 +58,7 @@ gofmt -l .
 
 If `go` is not on PATH, add its `bin` directory to PATH. Passing `GO=` alone is not enough for `check`: the gofmt gate and mygo's internal `go` calls resolve from PATH, so pair it with `GOFMT=` or, preferably, add the directory to PATH. On Windows the usual path is `C:\Program Files\Go\bin`.
 
-Run `mingw32-make check` (or all six commands) before declaring a milestone complete. A compiling binary is not a completed feature.
+Run `mingw32-make check` (or all the commands listed above) before declaring a milestone complete. A compiling binary is not a completed feature.
 
 ## Architecture rules
 

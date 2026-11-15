@@ -121,6 +121,8 @@ grep -q '"changelog"[[:space:]]*:[[:space:]]*"../../CHANGELOG.md"' cmd/saundo/my
 grep -Fq 'tags: ["v*"]' .github/workflows/release.yml || fail "release.yml is not tag-triggered"
 grep -q 'MYGO_UPDATER_PRIVATE_KEY' .github/workflows/release.yml || fail "release.yml does not read MYGO_UPDATER_PRIVATE_KEY"
 grep -q 'check-verify-map' .github/workflows/release.yml || fail "release.yml lacks the verification-map gate"
+grep -q 'check-arch' .github/workflows/release.yml || fail "release.yml lacks the architecture gate"
+grep -q 'check-size' .github/workflows/release.yml || fail "release.yml lacks the size gate"
 grep -q 'gofmt' .github/workflows/release.yml || fail "release.yml lacks the format gate"
 grep -q 'merge-base --is-ancestor' .github/workflows/release.yml || fail "release.yml does not verify the tag is on main"
 if ! awk 'BEGIN{p=0} /^permissions:/{p=1;next} p&&/^[^ ]/{exit} p{print}' .github/workflows/release.yml | grep -q 'contents: read'; then

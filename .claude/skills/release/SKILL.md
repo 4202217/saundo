@@ -38,7 +38,7 @@ Use the version from the release request as `v<version>`. Without one, pick the 
 
 Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release commit.
 
-- `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, and `docs/architecture.md`: the code and behavior they describe.
+- `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, `docs/architecture.md`, and `docs/platforms.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
 - `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `App.Locale` starts with `zh`.
@@ -74,7 +74,7 @@ Run the acceptance gate:
 mingw32-make check
 ```
 
-If mingw32-make is absent, run the four commands in `AGENTS.md`.
+If mingw32-make is absent, run the commands in `AGENTS.md`.
 
 Build the release candidate:
 
