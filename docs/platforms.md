@@ -168,8 +168,9 @@ Core Audio property codes stay inside the leaf packages.
 - **Either host**: `scripts/check-arch` enforces the import seams, bans `go`
   statements and `time.AfterFunc` in the sans-i/o packages, bans `time.After`
   and `time.Tick` in product code, and requires an explicit capacity on a
-  data channel, whether its type is written out or named in the same package.
-  `scripts/check-size` holds the line budget: files grandfathered in
+  data channel, whether its type is written out or named in the same package,
+  and rejects a direct dependency outside its allowlist. `scripts/check-size`
+  holds the line budget: files grandfathered in
   `scripts/check-size/baseline.txt` may not grow or shrink without updating
   the baseline, and new non-test files stay at or below 800 lines. Generated
   files are exempt. `make check` runs both, and CI runs them as the

@@ -5,7 +5,8 @@
 // data channel made without a visible capacity, whether its type is written
 // out or named anywhere in the same package. A struct{} signal channel is
 // allowed, and a channel type imported from another package is beyond what a
-// parser-only check can see.
+// parser-only check can see. It also rejects a direct dependency that is not
+// on the allowlist, so a stale library cannot enter just because it compiles.
 package main
 
 import (
@@ -20,12 +21,28 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"golang.org/x/mod/modfile"
 )
 
 type importRule struct {
 	path  string
 	allow []string
 	why   string
+}
+
+// allowedModules are the modules product code may require directly. A new
+// dependency must be added here on purpose, so a stale library cannot enter
+// just because it compiles; go-wca and grandcat/zeroconf are absent by
+// construction.
+var allowedModules = map[string]bool{
+	"github.com/ebitengine/purego": true,
+	"github.com/egoist/mygo":       true,
+	"github.com/hashicorp/mdns":    true,
+	"github.com/miekg/dns":         true,
+	"golang.org/x/crypto":          true,
+	"golang.org/x/mod":             true,
+	"golang.org/x/sys":             true,
 }
 
 var importRules = []importRule{
@@ -86,10 +103,13 @@ type productFile struct {
 // type declarations are collected per package before the files are checked, so
 // a make in one file sees a type named in another.
 func run(root string) error {
-	var violations []string
+	violations, err := checkModules(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return err
+	}
 	var product []productFile
 	fset := token.NewFileSet()
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -145,6 +165,29 @@ func run(root string) error {
 	}
 	fmt.Println("check-arch: architecture seams hold")
 	return nil
+}
+
+// checkModules fails closed on a direct dependency that is not on the
+// allowlist. Indirect modules follow their parents and are not judged here.
+func checkModules(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("go.mod: %w", err)
+	}
+	f, err := modfile.Parse(path, data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("go.mod: %w", err)
+	}
+	var out []string
+	for _, req := range f.Require {
+		if req.Indirect || allowedModules[req.Mod.Path] {
+			continue
+		}
+		out = append(out, fmt.Sprintf(
+			"go.mod requires %s directly; add it to check-arch's allowlist if it belongs on the critical path",
+			req.Mod.Path))
+	}
+	return out, nil
 }
 
 func checkImports(rel string, f *ast.File) []string {

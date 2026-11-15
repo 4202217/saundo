@@ -38,7 +38,7 @@ mingw32-make test   # go test ./...
 mingw32-make race   # go test -race ./... (needs a C toolchain for the race detector)
 mingw32-make vet    # go vet ./...
 mingw32-make uivet  # go tool mygo vet . (native UI lifetime checks)
-mingw32-make arch   # scripts/check-arch: import seams, sans-I/O goroutines, time.After/time.Tick, channel capacity
+mingw32-make arch   # scripts/check-arch: import seams, sans-I/O goroutines, time.After/time.Tick, channel capacity, dependency allowlist
 mingw32-make size   # scripts/check-size: grandfathered files may not grow, new non-test files stay at or below 800 lines
 mingw32-make fmt    # gofmt -w .
 mingw32-make build  # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe, so a commit past a release sorts below it and the updater still offers that release; scripts/build.sh then stops the running app and starts the new build
@@ -64,9 +64,9 @@ Run `mingw32-make check` (or all the commands listed above) before declaring a m
 
 Several of these rules are gates, not review notes. `scripts/check-arch` owns
 the import seams, the sans-i/o goroutine rule, the `time.After` and
-`time.Tick` ban, and the capacity rule for data channels, whether the channel
-type is written out or named in the same package. `scripts/check-size` owns
-the line budget. `device.Features` and
+`time.Tick` ban, the capacity rule for data channels, whether the channel
+type is written out or named in the same package, and the direct-dependency
+allowlist. `scripts/check-size` owns the line budget. `device.Features` and
 `creds.Secret` put two fail-closed rules in the type system. A rule added
 here without a gate is judgment-only.
 
@@ -81,7 +81,7 @@ here without a gate is judgment-only.
   in the session SETUP, send SETPEERS, wait for the clock to be ready, and use
   the 28-byte PTP sync packet. Keep timing behind the sender's `PTPClock`
   interface.
-- Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI and Core Audio bindings yourself. Now Playing on macOS reads through the vendored MediaRemote adapter (`native/mediaremote-adapter`), never from a third-party process directly.
+- Do not use stale critical-path libraries such as `go-wca` or `grandcat/zeroconf`. Use `hashicorp/mdns` for discovery and write the WASAPI and Core Audio bindings yourself. Now Playing on macOS reads through the vendored MediaRemote adapter (`native/mediaremote-adapter`), never from a third-party process directly. A new direct dependency must be added to `scripts/check-arch`'s allowlist on purpose.
 - Store credentials with the OS secret store: DPAPI on Windows, the login-Keychain master key with AES-256-GCM on macOS (`internal/darwin`). Never log PINs, long-term keys, or session keys. `LTSK` is `creds.Secret`; every format verb prints `[redacted]`.
 
 ## Code standards

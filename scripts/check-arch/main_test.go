@@ -212,3 +212,38 @@ func TestTestFilesKeepTheImportRule(t *testing.T) {
 		t.Fatal("an engine test importing app passed; the seam applies to tests too")
 	}
 }
+
+func TestDirectModuleMustBeAllowed(t *testing.T) {
+	root := seed(t, nil)
+	write(t, root, "go.mod", "module saundo\n\ngo 1.27.3\n\nrequire github.com/grandcat/zeroconf v1.0.0\n")
+	err := run(root)
+	if err == nil || !strings.Contains(err.Error(), "github.com/grandcat/zeroconf") {
+		t.Fatalf("unlisted direct dependency = %v, want a module violation", err)
+	}
+}
+
+func TestAllowedDirectModulePasses(t *testing.T) {
+	root := seed(t, nil)
+	write(t, root, "go.mod", "module saundo\n\ngo 1.27.3\n\nrequire github.com/hashicorp/mdns v1.0.7\n")
+	if err := run(root); err != nil {
+		t.Fatalf("allowed direct dependency: %v", err)
+	}
+}
+
+func TestIndirectModuleNeedsNoAllowlist(t *testing.T) {
+	root := seed(t, nil)
+	write(t, root, "go.mod", "module saundo\n\ngo 1.27.3\n\nrequire github.com/grandcat/zeroconf v1.0.0 // indirect\n")
+	if err := run(root); err != nil {
+		t.Fatalf("indirect dependency: %v", err)
+	}
+}
+
+func TestMissingGoModFailsClosed(t *testing.T) {
+	root := seed(t, nil)
+	if err := os.Remove(filepath.Join(root, "go.mod")); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(root); err == nil {
+		t.Fatal("a missing go.mod passed; the dependency gate must fail closed")
+	}
+}
