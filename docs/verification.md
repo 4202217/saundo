@@ -299,999 +299,43 @@ on the private network, as it must for mDNS replies and NTP timing. The app
 cannot synchronize the clock and will not start the stream if those packets are
 blocked; the UI reports a PTP timeout with this hint.
 
-## Tray flyout (2026-10-31)
-
-- **Form change.** The ordinary 480x720 main window is gone. The full control
-  panel is now a `mygo.NewFlyout` anchored to the tray icon: frameless,
-  shadowed, 480x720 DIPs, with the full device list, volume, Now Playing,
-  capture sources, settings, and logs. Its root paints `Theme.Background`,
-  because a flyout is transparent by default. Normal launch opens it; login
-  launch and `--tray` stay hidden in the tray.
-- **Tray behavior.** A left click toggles the panel, a click outside or Escape
-  dismisses it, and a right click opens the tray menu (show panel,
-  connect/disconnect, quit). The tray menu is installed only for the duration
-  of the right-click popup, so the primary click reaches `OnClick`.
-- **Live window.** The running app reported window class `MyGoFlyoutShadow` at
-  physical `710,2292..1670,3732`, directly above the taskbar at y=3744. A
-  `PrintWindow` capture showed the full panel and its background, including
-  the HomePods group row and the Now Playing line.
-- **Toggle verified.** Clicking outside set the process's main window handle to
-  zero (panel hidden). The app icon was in the notification-area overflow in
-  this session; invoking its `saundo` button through UI Automation hid the
-  panel, and invoking it again showed the panel with handle `18222904` and the
-  same `MyGoFlyoutShadow` class. The right-click menu was not separately
-  exercised.
-- `gofmt -l .` and `go vet ./...` printed nothing; `go test -count=1 ./...`
-  passed every package.
-
-## Receiver migration and launch auto-connect (2026-11-04)
-
-Built `bin/saundo.exe` from this tree and relaunched it twice on the
-development PC with a real HomePod stereo pair on the LAN.
-
-- **Migration ran in `Run()`.** The first launch of the new build logged
-  `receiver migration: 0 passwords moved, 0 kept (DPAPI unavailable),
-  auto-connect seeded=true`. The legacy `settings.json` carried
-  `autoConnect=true` and a `lastDeviceId` naming the stereo pair; the
-  migration put that flag on the pair's `stereo:<tsid>` registry entry,
-  cleared the legacy flag, and wrote `receivers.json`.
-- **The registry drove the next launch.** On the second launch
-  `settings.json` had `autoConnect=false`, and the engine still
-  auto-connected the same pair from its registry entry. No user action
-  preceded either connection.
-- **Discovered target waited for presence.** The pair appeared in discovery
-  about four seconds after launch; the engine then opened both member
-  sessions. Both SETPEERS replies were 200, the sender-supplied PTP clock
-  synchronized, and both members reached encrypted RTP streaming at
-  44100 Hz (`state: streaming`, `stereo group "HomePods": streaming to 2
-  members`). The group row and its PTP session behaved as on the last
-  verified build.
-- **Evidence.** `%APPDATA%\saundo\saundo.log`, the 2026-11-04 01:31 and
-  01:36 startup blocks; `receivers.json` after the first launch.
-- **Not verified live.** Manual add/edit/remove, hide/show filtering, the
-  per-receiver delay restart, receiver-password save and clear, and a manual
-  receiver with no mDNS advertisement. Those paths are pinned by the
-  `internal/receivers`, `internal/engine`, and `internal/app` tests, and
-  their states render in the `settings-receivers-*` and
-  `dialog-receiver-*` previews.
-
-## Release 0.4.2 pre-release check (2026-11-04)
-
-- **Maintainer smoke test.** The maintainer tested the build from this tree
-  on their own PC before requesting the 0.4.2 release. The release request
-  is the confirmation for the release gate, so no second local install and
-  no clean-machine run were recorded.
-- **Not covered here.** The live update page states, a live update from the
-  previous release, and a clean Windows install remain in `Currently
-  pending`.
-- **Draft check.** The release workflow's check, draft, and build jobs
-  passed (run 41758834319). The draft carried the installer, the update
-  archive, the 0.4.1 delta, `install.ps1`, `SHA256SUMS`, and the manifest;
-  `sha256sum -c SHA256SUMS` passed every listed file. The manifest is
-  version 0.4.2 with a signature and the English notes. The installer is
-  unsigned, so SmartScreen warns.
-- **Public feed.** After publishing, the latest manifest returned 200 with
-  version 0.4.2 and a signature, and the installer download returned 200.
-
-## Ambient light, phase 1 (2026-11-05)
-
-- **What landed.** `internal/lamp` renders the six presets (ember, dune, moss,
-  tide, orchid, moon) as deterministic 600×600 sRGB JPEGs at quality 0.88 and
-  caches each one lazily. `settings.Lamp` stores the global enabled flag and
-  preset; an old file loads off + dune and an unknown preset normalizes to
-  dune. Discovery parses `osvers`; `device.TopDisplayCapable` requires the
-  HomePod family at software 27.2 or later and fails closed on an unknown
-  model or version; the 5,1 runs returned 200 OK for both `SET_PARAMETER`
-  and `POST /artwork/command` but displayed nothing, so it stays excluded.
-  The engine's
-  `SetLamp` saves the choice, renders off the sender's tick path, and reapplies
-  it when a session starts streaming. The sender's `SetLampArtwork` sends the
-  image over the existing `SET_PARAMETER` artwork path without touching DMAP
-  text, waits for streaming, and deduplicates identical bytes. A stereo group
-  fans the image out per capable member. The 氛围灯 settings page and the
-  flyout's always-visible ambient card read one snapshot; neither gates on
-  connection, and the tray menu gained no item.
-- **Pinned by.** `TestPresetsMatchCatalog`, `TestGeneratedJPEGsAre600Square`,
-  `TestGeneratorCachesPerPreset`,
-  `TestNormalizeUnknownAndEmpty`, `TestLampDefaultsOnAndCover`,
-  `TestLampOldFileLoadsDefaults`, `TestLampUnknownPresetNormalizesToCover`,
-  `TestLampOldMediaPresetTurnsCoverOn`, `TestLampOldTemplatePresetTurnsCoverOff`,
-  `TestLampRoundTrips`, `TestCoverPresetClustersTheCover`,
-  `TestCoverPresetRejectsEmptyImages`, `TestCoverPresetIsDeterministic`,
-  `TestTopDisplayCapable`, `TestParseOSVersionTXT`,
-  `TestMergeKeepsOSVersion`, `TestSetLampArtworkSendsCover`,
-  `TestSetLampArtworkWaitsForStreaming`, `TestSetLampArtworkDuplicateIsNoOp`,
-  `TestSetLampArtworkDoesNotTouchDMAPText`, `TestSetLampArtworkClearSendsNothing`,
-  `TestLampOffOnAppliesAndPersists`, `TestLampAppliedWhenStreamingStarts`,
-  `TestLampUnknownPresetFallsBackToDefault`,
-  `TestLampCoverKeepsPlayingOnPause`, `TestLampSkipsIncapableReceivers`,
-  `TestLampTogglingTwiceLogsTheSkipOnce`,
-  `TestGroupArtworkFansOutToBothCapableMembers`,
-  `TestGroupArtworkSkipsIncapableMember`, `TestSettingsLampPrioritySegmentTurnsCoverOn`,
-  `TestSettingsLampPrioritySegmentTurnsCoverOff`, `TestFlyoutLampCoverHidesTheGrid`,
-  `TestFlyoutCloseCollapsesLampList`, `TestFlyoutLampOffRequiresTurningOn`,
-  `TestLampOffIgnoresPriorityAndPreset`,
-  `TestSettingsLampPageOffRequiresTurningOn`,
-  `TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff`, and the app lamp
-  tests named in ui.md.
-- **Live on AudioAccessory5,1.** A temporary gate allowed the user's 5,1
-  stereo pair. After Sound Glow was enabled in the HomePod settings, the same
-  pair displayed the lagoon and dawn lights. The working request is the HTTP
-  `/artwork/command` binary plist with a data URL over one keep-alive
-  connection and the session headers; `SET_PARAMETER` and the RTSP artwork
-  POST rendered nothing. 5,1 joined `TopDisplayCapable`.
-- **Not verified live.** Still unverified: off/return-to-native, the 6,1
-  artwork channel, the stereo pair's simultaneous rendering, and
-  reconnect/takeover behavior.
-
-## Ambient light preview and session following (2026-11-08)
-
-- **The card follows the system's current session.** Reported live: a new
-  media started playing, the top display's cover-following light moved to it,
-  but the flyout card stayed on the old session. `setNowSnapshot` adopted a
-  session only when the old one disappeared. It now follows the SMTC current
-  session on every read; the switch arrow sets a pin that survives polls
-  until a different session becomes current. `TestNowPlayingFollowsTheCurrentSession`
-  pins the follow, the pin, and the takeover by a newly current session.
-- **The light preview follows the push, not the card.** Reported live:
-  switching the card to a paused session with the arrow changed the ambient
-  preview while the HomePod kept the playing session's cover. The preview
-  was derived from the card's selected session. `refreshNowLamp` now reads
-  the session the engine pushes (`snapIndex`), and the card's own cover no
-  longer feeds it. `TestLampPreviewFollowsThePushedSessionNotTheCard` pins a
-  manual switch that leaves the preview on the pushed cover. The live app
-  was not driven with two playing sessions in this unit; the HomePod
-  observation above was user-reported.
-
-## Release 0.5.0 pre-release check (2026-11-07)
-
-- **Draft for real-device testing.** The maintainer requested a 0.5.0 draft
-  and tests it on real devices before publishing. The release request is the
-  local smoke-test confirmation; the draft's real-device test is the publish
-  gate.
-- **Draft assets (2026-11-07).** The release workflow's check, draft, and
-  build jobs passed (run 42264388577). The draft carried the installer, the
-  0.5.0 archive, the 0.4.2 and 0.4.1 deltas, `install.ps1`, `SHA256SUMS`, and
-  the manifest; `sha256sum -c SHA256SUMS` passed every listed file. The
-  manifest is version 0.5.0 with a signature and the English notes. The
-  installer is unsigned, so SmartScreen warns.
-- **Rebuilt draft assets (2026-11-07).** The mygo 0.8.0 rebuild's check,
-  draft, and build jobs passed (run 42314253794). The draft carried the
-  installer, the 0.5.0 archive, the 0.4.2 and 0.4.1 deltas, `install.ps1`,
-  `SHA256SUMS`, and the manifest; `sha256sum -c SHA256SUMS` passed every
-  listed file. The manifest is version 0.5.0 with a signature, the English
-  notes, and the mygo 0.8.0 line. The installer is unsigned, so SmartScreen
-  warns. This supersedes run 42264388577 and its assets.
-- **Defaults (2026-11-07).** The local-output mute and ambient light default
-  on; the receiver track info is always pushed and has no switch.
-  `TestDefaultsEnableLocalMute`, `TestLampDefaultsOnAndCover`, and
-  `TestLampOldFileLoadsDefaults` pin this.
-- **CI gate and final draft (2026-11-07).** The defaults release commit
-  `d1f6e76`'s workflow passed check, draft, and build (run 42339224999);
-  the CI check job is the release gate because this machine's engine test
-  binary fails its settings save with an impossible `json.SyntaxError`.
-  The draft carried the installer, the 0.5.0 archive, the 0.4.2 and 0.4.1
-  deltas, `install.ps1`, `SHA256SUMS`, and the manifest; `sha256sum -c
-  SHA256SUMS` passed every listed file. The manifest is version 0.5.0 with
-  a signature, the English notes, and the defaults and mygo 0.8.0 lines.
-  The installer is unsigned, so SmartScreen warns.
-- **Publish gate.** The maintainer's real-device test of the draft is still
-  pending; publishing is not authorized yet.
-
-## Failure modes and meanings
-
-| Symptom | Likely cause |
-|---|---|
-| Connected, but silence | ALAC frame layout, audio key, or event-channel reply headers are wrong. Confirm the exact minimal 200 OK and the ALAC byte order. |
-| Redmi/Xiaomi AppleTV3,2 cannot play audio | It requires Apple FairPlay audio, which this sender does not implement. The app fails fast with a FairPlay message; use an AirPlay 2 audio receiver. |
-| Drops after 25 to 30 seconds | Event channel is not opened, not decrypted, not answered, or `/feedback` is not `RTSP/1.0`. |
-| Pairing 403 | Receiver access control. A password-protected Mac must pair as `AuthHAPPassword`; a 401 on the AP2 SETUP is its Digest challenge. On an Apple TV set Allow Access to Anyone on the Same Network; set up a HomePod in the Home app. |
-| Mac session SETUP OK, stream SETUP never answers | The Mac advertises PTP bit 41 and ignores an NTP-timed stream. Run the PTP follower. |
-| Pairing 470 | The receiver wants a PIN but did not show one. The app falls back from transient to on-screen PIN once. |
-| No audio after reconnect | Stored credentials were missing or unreadable. An unreadable file is moved to `credentials.dat.corrupt-<UTC time>`, the app pairs afresh, and the next connect logs the quarantined path. The receiver may still hold the old pairing; pair it again or reset it. The tray panel shows a 保存的配对已重置 notice; its dialog offers 不再提示 and 重新配对. |
-| Timing requests unanswered | Windows Firewall blocks inbound UDP to the app. Allow the app on private networks. |
-| Discovery empty | mDNS blocked, wrong network profile, VPN, or AP/client isolation. A receiver that answers directed queries but not multicast is found from the ARP neighbor table; one absent from both stays undiscovered. |
-
-## Evidence to capture before changing protocol code
-
-When behavior differs from this document, capture:
-
-1. The diagnostics log from the app (诊断日志).
-2. A packet capture filtered to the receiver's address.
-3. Whether the receiver answered each RTSP method, and with which status.
-4. Whether the event channel received and answered requests.
-
-Then update [devices.md](devices.md) or [protocol.md](protocol.md) with the
-finding — whichever describes the behavior — before changing the
-protocol order or keys.
-
-## Connection recovery and discovery names (2026-11-08)
-
-- **Sticky failure after a dead member.** A stereo-group member closed the
-  control channel during setup (`session failed: HomePod L：Connection closed
-  by the device`, `saundo.log` 21:19:58 and 21:44:04). The engine kept
-  `lastError` and `selectedID` after the attempt, so the flyout stayed in
-  `phaseError`: the failed row offered 重试 and every other online row
-  rendered a faint 连接 with no handler. `cmdDisconnect` and `connect` now
-  clear the error when an attempt ends, and `actionFor` keeps other online
-  receivers connectable in the error phase. Pinned by
-  `TestUserDisconnectClearsConnectionError`,
-  `TestConnectClearsPreviousError`, and
-  `TestRowActionKeepsOtherReceiversConnectable`.
-- **Cancel showed the previous failure.** `phaseOf` reports the reconnect
-  wait before the error, so the stale banner was hidden until a cancel
-  returned the state to idle. The cancel now clears the error before
-  publishing the idle snapshot; the UI returns to 未连接. The headless error
-  frame is `flyout-error-zh.png` in the session evidence.
-- **Service name leaked into the display name.** hashicorp/mdns reports
-  SRV/TXT/A records from both AirPlay services to either browse. Parsing an
-  `_airplay` entry under the `_raop` label kept `._airplay._tcp` in the name,
-  seen live as `"HomePod R._airplay._tcp"` at `saundo.log` 21:01:05 and
-  21:01:07. `parseEntry` now derives the service from the instance suffix
-  before trimming, so both directions resolve to the friendly name. Pinned
-  by `TestParseEntryUsesTheAdvertisedService`.
-
-## 2026-11-08 — the macOS port
-
-darwin/arm64 ships from the same tree, `CGO_ENABLED=0`. Machine: a MacBook
-Air on macOS 27.3 (build 26C5035r); the operator streamed to a HomePod mini.
-The working notes live in the git-ignored `.audit/mac-port-feasibility.md`
-and `.audit/mac-experiments.md`; what survives here is the durable state.
-
-- **Build and gate.** `bash scripts/build.sh` produces a dev-signed
-  `bin/saundo.app` (14.4 MB) plus a dmg; the full gate (gofmt, catalog
-  check, `go vet`, `go tool mygo vet .`, `go test ./...`) is green — 21
-  packages, `internal/app` headless on darwin included.
-- **Live streaming.** Discovery, connect, and audio to the HomePod mini
-  verified by the operator with the darwin capture path (2026-11-07).
-- **Capture.** The Core Audio process tap aggregated with the default
-  output device feeds the ring: a probe read 337,408 frames of speech
-  (48 kHz stereo) over 8 s with zero errors, following the format the tap
-  reports. A tap-only aggregate refuses to start
-  (`kAudioHardwareIllegalOperationError`); the output device must be the
-  sub-device and clock master, with the tap in the aggregate's tap list.
-- **Now Playing.** MediaRemote returns empty data to third-party processes
-  on 27.3 — callbacks fire with media playing, payload empty (measured) —
-  so the session reads through the vendored adapter loaded inside
-  `/usr/bin/perl`, a platform binary MediaRemote still accepts. Title,
-  artist, album, position, duration, playing state, and artwork (110–196 KB
-  JPEG, base64 in the JSONL stream) all arrive; send 0/1/4/5 and seek
-  control the source app. One session only: no enumeration symbol exists
-  (13 candidates probed at runtime) — the system widget's multi-source list
-  rides mediaserverd's private XPC, so the card follows the current source
-  and the switcher hides. The perl loader rejects relative framework paths,
-  and takes the function and its parameter as separate argv entries.
-- **Session identity.** LaunchServices resolves the localized app name
-  ("Music"); `NSBundle localizedName` does not exist on this OS —
-  `NSFileManager displayNameAtPath:` is the working call. Icons render via
-  `NSWorkspace iconForFile:` and an ImageIO 128 px thumbnail to PNG.
-- **Credentials.** The Keychain master key + AES-256-GCM round-trips. A
-  rebuilt ad-hoc binary triggers one keychain ACL prompt per item; the
-  dev-signed build (a stable identity from `SAUNDO_MAC_SIGN_IDENTITY`)
-  ends them. Parallel test binaries hit the same
-  ACL; headless runs set `SAUNDO_CREDS_MASTER_KEY` and the creds package
-  decides keys from the environment instead.
-- **Signing and distribution.** Ad-hoc builds are Gatekeeper-rejected when
-  quarantined; recovery is System Settings → Privacy & Security → Open
-  Anyway, once per build cdhash (measured; the right-click Open bypass is
-  gone since Sequoia). `spctl -a` keeps printing `rejected` after the user
-  allows it. Locally built copies carry build provenance and never see the
-  flow. Signing the nested adapter framework prompts for the certificate
-  key once, separately from the credentials key.
-
-## 2026-11-09 — Windows side of the darwin port
-
-Live run on Windows 11 Pro for Workstations (build 26300),
-`bin/saundo.exe` 0.5.0 built from the merged tree, streaming to a HomePods
-stereo pair. This covers the Windows half of the multi-platform review
-above.
-
-- **Gate and build.** `mingw32-make check` passes end to end: gofmt clean,
-  315 catalog messages, `go vet`, `go tool mygo vet .`, `go test ./...`
-  (all packages ok), the verify-map scan, and `check-platforms`
-  (windows/amd64 and darwin/arm64 build and vet, and platform imports stay
-  behind their tags). A second `go test -count=1` over `nowplaying`,
-  `capture`, `app`, `engine`, and `discovery` passed without cache.
-  `mingw32-make build` produced `saundo.exe` and the 0.5.0 installer; the
-  app relaunched and rejoined its session.
-- **Shell app identity.** `TestSMTCLiveSessions` read `MyGo Music.exe` as
-  MyGo Music with a 4,614-byte 64×64 PNG icon in 0.28 s, the Start-menu
-  enumeration included; `TestSMTCInfoLive` read "Snow" by 露崎春女. The
-  headless `TestNowPlayingHeadShowsAppIconWhenAvailable` pins the card's
-  icon slot.
-- **Flyout.** A DPI-aware PrintWindow capture shows the Windows 11 flyout
-  with its system shadow and rounded corners, no macOS popover. The window
-  was `MyGoFlyoutShadow|Saundo` and the settings window
-  `MyGoWindow|Settings · Saundo`; after the settings language selector
-  stored follow-system, the flyout title changed to 声渡 at once, and the
-  same `onLocaleChanged` sets the settings title. `capture-window.ps1` is
-  DPI-unaware on this 1.75× display: it returns the top-left 420×625 DIP
-  region of the 735×1094 physical window, which reads as a clipped
-  screenshot, not a layout defect. Use a DPI-aware capture for evidence.
-- **Not driven live.** The Now Playing card's icon drawing (the media
-  session ended before a clean capture of the card), the settings page's
-  new layout, per-app capture, the tray animation, and tray focus. Audible
-  output was not confirmed; the log shows an active RTSP session with
-  `audio resumed`/`audio idle` across the run.
-- **Maintainer pre-release test (2026-11-09).** The v0.6.0-beta.1 release
-  request is the maintainer's confirmation that the build was tested on
-  their own PC.
-- **UI review (2026-11-09).** The release gate rendered the 196-frame matrix
-  (zh-CN and en, light and dark) at
-  `.audit/ui-review-0.6.0-beta.1/frames/` and fixed 15 findings: three
-  English subtitles that ellipsized at the 720 default window, the compact
-  lamp segment's second English name for Template, bare panel in the tray
-  menu and the remove dialog, Flyout/浮窗 in the macOS-only style setting,
-  the Chinese audio-level term, two Chinese descriptions that kept clauses
-  the English dropped, the signature and backoff wording, the About license
-  label, a stale catalog allowlist entry, and the macOS popover subtitle's
-  length. The catalog gates now ban the old strings. Two independent
-  reviewers on different model families checked the fixes; the second
-  verdict is clean. The macOS-only General row is not renderable on
-  Windows; the reviewer measured the shortened subtitle at 354.5 DIP
-  against the 415-DIP column at the 720 default. It still ellipsizes at the
-  640 minimum, like other single-line settings subtitles.
-- **Draft verification (2026-11-09).** The release workflow (run
-  42506672553) passed `check`, `check-macos`, `draft`, `build`, and
-  `build-macos`. The draft carried `install.ps1`, the Windows installer,
-  the update archive, the three deltas, `update-windows-amd64.json`, the
-  arm64 dmg, and `SHA256SUMS`; `sha256sum -c` passed for all six
-  checksummed files. The manifest names 0.6.0-beta.1, is signed, and
-  carries the ASCII English notes. The release is published as a
-  prerelease: `releases/latest` still serves the signed 0.5.0 stable feed,
-  `releases/download/v0.6.0-beta.1/update-windows-amd64.json` serves
-  0.6.0-beta.1, and the beta installer URL returns 200. The beta channel
-  resolves the prerelease through `ResolvePrereleaseFeed`; stable builds
-  skip it.
-- **Verification map (2026-11-09).** All six feature pages were audited
-  from source after the port and corrected in their own commit: the update
-  page is Windows-only, offline receivers are dropped rather than shown,
-  the flyout ALAC line carries latency rather than the stereo tag, the
-  media switch only hides the flyout card, the ambient off state ignores
-  the segment and templates, the tray menu and window titles use the new
-  copy, and the settings capture path is class plus pid. The live pass
-  covered the doctor, the mDNS browse (HomePods and MacBook Air found with
-  clean names), the fake-receiver protocol suite, and a live flyout
-  capture. Connect/disconnect, settings switches, ambient-light actions,
-  and update install were not driven because the operator's session was
-  streaming; the headless matrix and protocol tests cover those paths.
-
-## 2026-11-09 — 0.6.0 stable release
-
-The stable release is the 0.6.0-beta.1 UI plus four changes: the engine
-snapshot carries the flyout style, the macOS aggregate liveness false
-positives are gone, the release copy review's blocking findings are fixed,
-and the verification map is corrected.
-
-- **Maintainer pre-release test (2026-11-09).** The 0.6.0 release request is
-  the maintainer's confirmation. The running app streamed to the HomePods
-  stereo pair through the audit; the rebuilt app (19:30) logged no further
-  "aggregate device stopped" lines through 19:49.
-- **UI review (2026-11-09).** The 196-frame matrix rendered at
-  `/tmp/saundo-ui-review` (zh-CN/en, light/dark). An independent reviewer on
-  a different model found two P0 truncations (the capture description and
-  the receiver port hint), four P1 terminology issues (the Chinese receiver
-  term, PC in the macOS build, the raw update error, the launch chip), and
-  P2 polish. The P0/P1 and the terminology P2s are fixed in `0789520` and
-  pinned; the flagged frames were re-rendered and read back. The pure-polish
-  P2s (latency unit copy, update date label, mute "or quit", quotes, one
-  Chinese full stop, What's new case, the plural hidden hint, redundant
-  subtitles) are a follow-up.
-- **Verification map (2026-11-09).** All six feature pages were audited from
-  source and corrected in `b3e4eaa`; `go run ./scripts/verify-map` passes.
-  The live pass was not re-driven because the app was streaming; the beta's
-  live audit and the maintainer's test cover the same surfaces.
-- **Candidate builds (2026-11-09).** `mygo build -platform windows/amd64
-  -skip-installer` produced a 0.6.0 exe; `mygo build -platform darwin/arm64
-  -skip-build-command -sign -` produced the app and dmg with the adapter at
-  `Contents/Resources/adapter` and Info.plist 0.6.0. The local update
-  manifests are unsigned because the update key is on the Windows PC; the
-  CI draft signs with the repository secret and is verified in the draft
-  verification commit.
-
-- **Draft verification (2026-11-09).** The release workflow (run
-  42615271600) passed `check`, `check-macos`, `draft`, `build`, and
-  `build-macos`. The draft carried `install.ps1`, the 0.6.0 installer, the
-  update archive, the three deltas, `update-windows-amd64.json`, the arm64
-  dmg, and `SHA256SUMS`; `sha256sum -c` passed for all six checksummed
-  files. The manifest names 0.6.0, is signed, and carries the ASCII English
-  notes. The tag stays on `14f27cc`; publishing is the remaining gate.
-
-- **Publish (2026-11-09).** `gh release edit v0.6.0 --draft=false`
-  published the stable release. The public feed serves the signed 0.6.0
-  manifest; the installer and dmg URLs follow to 200. A live update from an
-  installed 0.5.0 build is still owed.
-
-## 2026-11-11 — 0.6.1 UI mockup templates
-
-- **Templates.** Both assets under `.claude/skills/ui-mockup/assets/` now
-  describe the shipped interface. The settings template carries the current
-  language and delay subtitles, no terminal periods on row hints, the
-  shipped mute caveat, and the 150x28 select as its sample language row. The
-  flyout template drops the footer's diagnostic-log button (the log is on the
-  settings About page), adds the idle-standby state (待机 chip, Standby
-  footer), and matches the catalog copy. The height rule is unchanged: 459
-  base, 150 media card, 44 latency row, 90 ambient section, 48 error bar, 53
-  for the expanded grid.
-- **Renders.** 44 frames at `.audit/release-0.6.1/mockups/`: the settings
-  target, normal, and edge states and the flyout idle, streaming, standby,
-  empty, and error states, in zh-CN and English, light and dark, plus the
-  media card and the ambient cover, template, and expanded states. Every
-  frame was inspected for clipping, overflow, and wrapped copy; none was
-  found.
-
-## 2026-11-11 — 0.6.1 release audit
-
-- **Docs audit.** The five live docs were checked against the tree. Corrected:
-  the HomePod latency floor and the Mac model-identifier table (devices.md);
-  the SETPEERS skip on PTP, the prefill and duplicate policy, the
-  idle-standby wire behavior, and the OS secret-store wording (protocol.md);
-  PTP for macOS, the directed discovery fallback, and the fourth concurrency
-  role (architecture.md); the settings write ownership, cached auto-connect,
-  the quiet mDNS logger, the Mac model table, the diagnostics sync fields,
-  and `SetTrayAnimation` (implementation.md); the password row rule, the
-  log-dialog motion, the static connect icon, and three stale test names
-  (ui.md). Links resolve and every cited test name exists. The verification
-  log compressed from 2050 to 937 lines: 31 dated batches graduated with
-  their pins, the pending list corrected, and `go run ./scripts/verify-map`
-  prints "map ok".
-- **UI review (2026-11-11).** The 242-image matrix rendered at
-  `.audit/release-0.6.1/previews` in zh-CN and English, light and dark:
-  every settings page and flyout state, the local receiver row, the takeover
-  state, and the 640 DIP lamp page. One P0: the English standby subtitle
-  truncated at 640 DIP; it is shortened and the scrolled 640 previews pin
-  it. One P2: the standby subtitles carried terminal periods; the
-  punctuation gate lists both keys. An independent reviewer on a different
-  model family confirmed both; it found the 许可/许可证 split (fixed) and
-  the missing takeover render (added). No P0 or terminology finding remains.
-- **Verification skill audit (2026-11-11).** Six feature pages were read
-  from source and corrected in `51312ab`; `go run ./scripts/verify-map`
-  prints "map ok".
-- **Live pass (2026-11-11).** The 0.6.1 build (pid 62152, version 0.6.1)
-  was launched in the tray and driven through UI Automation. Observed: the
-  tray button's live accessible name, the flyout opening and Escape
-  dismissal, the streaming flyout with the HomePods stereo pair, the filled
-  glyph, volume, the 200 ms latency row, the 无媒体 chip, and the footer;
-  the settings window at its 640 DIP minimum on 通用, 连接, 接收器, 音频,
-  氛围灯, 关于, and 更新; the connection health card live (接收器处理
-  最高 69 ms, 稳定性 良好, 本次会话); the diagnostic log dialog with its
-  200 lines and 复制/关闭; the ambient standby row at 640 (10 分钟, the
-  copy fits); and 更新 reading 0.6.1 · 稳定版 ✓ 已是最新. A 断开连接 then
-  连接 cycle stopped both members and restored both streams. Not driven:
-  the pairing dialogs, volume and latency changes, the update install, the
-  standby dark state, takeover, the tray menu, and language switching.
-  Evidence: `.audit/release-0.6.1/live/` (`doctor.txt`, the flyout and page
-  PNGs, `log.txt`).
-- **Harness fixes (2026-11-11).** The live pass exposed three verification
-  harness defects, fixed and re-run here: the doctor matched the settings
-  window by an English title and missed `设置 · 声渡` (now by class); the
-  capture script was DPI-virtualized and cropped a flyout at monitor scale
-  (now DPI-aware, 1050x1048 px from a 420 DIP panel); and the tray page
-  described an exact brand accessible name, while the button's name is the
-  brand plus the live tooltip (now matched by class and prefix).
-- **Maintainer pre-release test (2026-11-11).** The 0.6.1 release request is
-  the maintainer's confirmation that the build was tested on their own PC.
-- **Draft verification (2026-11-11).** The release workflow (run
-  42854757255) passed `check`, `check-macos`, `draft`, `build`, and
-  `build-macos`. The draft carries `install.ps1`, the installer, the update
-  archive, three deltas, `update-windows-amd64.json`, the arm64 dmg, and
-  `SHA256SUMS`; `sha256sum -c` passed for all six checksummed files. The
-  manifest names 0.6.1, is signed, and carries the ASCII English notes. The
-  tag stays on `abe977b`; publishing is the remaining gate.
-- **Publish (2026-11-11).** `gh release edit v0.6.1 --draft=false` published
-  the stable release. The public feed serves the signed 0.6.1 manifest with
-  the English notes, and the installer and update archive URLs return 200. A
-  live update from an installed 0.6.0 build is still owed.
-
-## 2026-11-11 — macOS in-app updates enabled
-
-- **Build and gate.** `make check` passed (gofmt, catalogs, vet, UI vet,
-  tests, verify map, and the windows/amd64 plus darwin/arm64 platform
-  gate). `make build` produced a 0.6.1 bundle signed with the local Apple
-  Development identity and relaunched it. The CI release signs ad-hoc
-  unless the runner has the `MACOS_SIGN_IDENTITY` identity.
-- **Update check.** The running app's log records `update: check failed:
-  ... update-darwin-arm64.json: 404 Not Found` after launch, so the mac
-  build now enters the updater path and requests its own manifest. The 404
-  is expected until the first release whose mac job uploads the darwin
-  feed.
-- **Local harness.** `make test-mac-update` (`scripts/test-mac-update.sh`)
-  passed. In a temporary tree it built 0.6.1 with the `updateharness`
-  source and 0.6.2 with a throwaway key, then drove 0.6.1 through
-  available, install, quit, and the bundle swap. The swapped bundle is
-  0.6.2, `codesign --verify --deep --strict` passes, its only extended
-  attribute is `com.apple.provenance`, and the helper left no work
-  directory. The harness uses its own bundle identifier and HOME, so it
-  does not measure TCC or Keychain prompts.
-- **Not verified.** A live install from the published GitHub feed, the
-  in-app 立即重启 button, and whether TCC audio capture and Keychain access
-  survive the new ad-hoc cdhash. The pending list keeps the live update.
-
-## 2026-11-11 — macOS audio IO realtime safety
-
-- **Lock-free capture path.** The Core Audio IOProc takes no lock and
-  allocates nothing. It finds its stream through one atomic pointer,
-  converts into a scratch sized at open, and counts frames and pre-ring
-  drops with atomics. `internal/audio/ring` is a lock-free SPSC ring with
-  atomic sample slots and an atomic sink snapshot in the fanout; its Push
-  and Pop allocate nothing.
-- **Level analysis off the audio thread.** The silence meter pushes each
-  block into a 100 ms level-feed ring; `levelLoop` pops it and runs the
-  analyzer, whose mutex and history append must not run in the IOProc.
-- **Pins.** `TestIOProcPushDoesNotAllocate`,
-  `TestIOProcOversizedBufferIsDropped`, and
-  `TestIOProcPushAndStatsRace`; `TestSilenceMeterPushDoesNotAllocate` and
-  `TestLevelPumpFeedsTheMeter`; `TestPushPopDoNotAllocate`,
-  `TestOverwritePushDoesNotAllocate`, and `TestFanoutPushDoesNotAllocate`.
-  The ring, capture, and engine packages pass under `-race`.
-- **Live.** The rebuilt 0.6.1 app opened Core Audio capture, and quit and
-  relaunched cleanly; the log has no `fatal:` and no level-pump stop
-  timeout.
-- **Known gap.** `go test -race ./...` still trips a test-only race in
-  `TestMuteGuardRecoversAfterCrash` between the mute worker's startup
-  recovery and the test's injected muter. The production mute fields are
-  set once; this is unrelated to the IOProc path and stays for a separate
-  fix.
-
-## 2026-11-11 — macOS output mute scope
-
-- **Finding.** The macOS local output mute failed on every connect with
-  `capture: set mute: coreaudio: AudioObjectSetPropertyData failed (OSStatus
-  2003332927 'who?')`. The same line is in the log from 2026-11-09, before
-  the in-app updater and the IOProc work, so it is a port bug, not a
-  regression. `ScopeOutput` was `'out '` (0x6f757420) instead of `'outp'`
-  (0x6f757470), so the mute property address was unknown.
-- **Fix.** The scope is `'outp'`; `DeviceHasOutput` now sees output streams
-  too. `TestCoreAudioOutputScope` fails on the old value.
-  `TestDarwinEndpointMute` (build tag `muteprobe`) mutes, reads, and
-  restores the default output on real hardware.
-- **Live.** `go test -tags muteprobe ./internal/capture -run
-  TestDarwinEndpointMute -v` passed; the rebuilt app launched, and the user
-  confirmed a HomePod connection now mutes the local output.
-
-## 2026-11-11 — macOS per-app capture
-
-- **Finding.** A Core Audio process tap can name the processes it mixes, so
-  macOS per-app capture is the same aggregate-device flow as the global tap
-  with `initStereoMixdownOfProcesses:` in place of
-  `initStereoGlobalTapButExcludeProcesses:`. The HAL lists client processes
-  through `kAudioHardwarePropertyProcessObjectList`, and each object carries
-  its PID (`ppid`) and bundle (`pbid`).
-- **Selection.** The picker offers every regular app plus any process
-  currently rendering output. Audio helpers fold into the app whose bundle
-  ID prefixes theirs (`com.google.Chrome.helper` belongs to
-  `com.google.Chrome`); a process with no regular owner, such as WebKit's
-  Graphics and Media helper, keeps its own entry and captures only itself.
-  Two live processes of one app, as a browser relaunch leaves behind, are
-  one row keyed by bundle ID. The tap uses the default output as the clock
-  master and ignores `EndpointID`; the engine mutes the default output for
-  per-app sessions.
-- **Pins.** `TestBuildAppListGroupsHelpers`, `TestBuildAppListSkipsSelf`,
-  `TestBuildAppListNamesUnattributedProcess`,
-  `TestAppFamilyFollowsBundlePrefix`,
-  `TestAppFamilyUnknownRootFallsBackToPID`, `TestOwnerApp`,
-  `TestBuildAppListMergesDuplicateBundle`,
-  `TestAudioApplicationsReadsLiveLists`, and
-  `TestMixdownTapDescriptionBuilds`. The zero-root fallback was a real bug
-  the live test caught: a CLI process LaunchServices does not list matched
-  PID 0.
-- **Live.** The rebuilt app opened `capture open: 音乐 (48000 Hz)` with the
-  saved pid, and the gated
-  `SAUNDO_LIVE_APP_TAP=1 go test -run TestPerAppCaptureLive ./internal/capture`
-  played a local tone through `afplay` and delivered 32,256 frames at
-  48 kHz from that process alone. The user then chose Google Chrome from
-  the new icon picker in the settings window; the log records
-  `capture open: Google Chrome (48000 Hz)`, which exercises the picker and
-  the helper family in one run, and switching back to Music reopened its
-  tap. Audible HomePod output for the per-app tap was not confirmed by the
-  operator in this pass.
-- **Icons.** The picker field and its menu rows carry the app's icon, from
-  NSWorkspace through the same cache the Now Playing card uses.
-  `TestAppIconLive` renders Finder's icon through the bundle and path entry
-  points; `TestAppCapturePickerChoosesAnApp` opens the menu and chooses
-  Spotify in the headless settings render. A headless render with the live
-  app list showed the real icons, the selected field, and the scrolled menu,
-  and the user chose Chrome through the same picker in the live app. Windows
-  keeps the text-only picker; the parity table records it.
-- **Known gaps.** The app list is built once at launch, so an app launched
-  later needs a saundo restart to appear. A tap fixes its process list at
-  creation; a helper that joins the app family later is not followed. An app
-  with no HAL process object fails the open and is retried with the normal
-  backoff, which picks it up once it starts audio.
-
-## 2026-11-12 — 0.6.2 UI mockup templates
-
-- **Templates.** Both assets under `.claude/skills/ui-mockup/assets/` describe
-  the 0.6.2 interface. The flyout template adds the credential-recovery state:
-  its copy, the warning and warning-soft tokens from `theme.go`, the 48 DIP
-  bar under the device card, and the +48 height rule. The settings template's
-  sample copy matches the shipped catalog: the 启动时 / At launch chip, the
-  add-receiver hint without a terminal period, and Saundo as the sender name.
-- **Renders.** 44 frames at `.audit/release-0.6.2/mockups/`: the settings
-  target, normal, and edge states and the flyout idle, streaming (with and
-  without the media card), empty, error, and credential states, plus the
-  ambient cover, template, and expanded states, in zh-CN and English, light
-  and dark. The credential state, one render of each settings state, and the
-  flyout idle, error, and expanded-lamp states were inspected for clipping,
-  overflow, and wrapped copy; the remaining states share the same shell.
-
-## 2026-11-12 — 0.6.2 release audit
-
-- **Docs audit.** The live docs were checked against HEAD 1621e7d. Corrected:
-  the custom latency range (20 to 2000 ms; the effective value clamps to 20
-  to 4000 ms) in protocol.md; the macOS update location rule (a writable
-  .app bundle, not /Applications) in platforms.md; the mygo version date in
-  architecture.md; the engine's mute and level workers in architecture.md
-  and implementation.md; the whole-second LatencyText rule in ui-copy.md.
-  The touched docs carry reviewed-through 2026-11-12 and their links resolve.
-  No dated batch newly qualified for graduation; the 0.6.1 audit had already
-  compressed the log.
-- **UI review (2026-11-12).** The 250-image matrix rendered at
-  `.audit/release-0.6.2/previews` in zh-CN and English, light and dark. One
-  P1: the three new engine errors called a receiver a device (设备) in both
-  catalogs; fixed in cf8882d, and the banned-terms gate now carries the five
-  past strings. One P2: the all-hidden hint used a singular pronoun under a
-  plural heading; fixed in the same commit. No P0 remains. An independent
-  reviewer on a different model family confirmed every finding and found
-  none missed; the decisions are in `.audit/ui-review-0.6.2.tsv`.
-- **Verification skill audit (2026-11-12).** Six feature pages were read from
-  source and driven live against build 0.6.1-57-g525dd81; the corrections
-  landed in 9ccd102 and `scripts/check-verify-map.sh` prints "map ok". Live:
-  connect, stream, local mute and restore, disconnect, the localized update
-  history, and the diagnostic log dialog. Not driven: volume, latency,
-  ambient actions, the receiver dialogs, and the pairing dialogs. Evidence
-  in `.audit/release-0.6.2/live/`. The 23:57 run's fail-closed receiver-save
-  guard cleared on the next launch: the 00:38 restart wrote its registry with
-  no save error.
-- **Candidate manifest (2026-11-12).** The Windows candidate built with the
-  release key names 0.6.2, carries the ASCII English notes, a signature, and
-  deltas from 0.6.1, 0.6.0, and 0.5.0.
-- **Maintainer pre-release test (2026-11-12).** The 0.6.2 release request is
-  the maintainer's confirmation that the build was tested on their own PC.
-- **Draft verification (2026-11-12).** The release workflow (run 43060976433)
-  passed `check`, `check-macos`, `draft`, `build`, and `build-macos`. The
-  draft carries `install.ps1`, `install.sh`, the installer, both update
-  archives, three Windows deltas, the arm64 dmg, both signed manifests, and
-  `SHA256SUMS`; `sha256sum -c` passed for every checksummed file. Both
-  manifests name 0.6.2, are signed, and carry the ASCII English notes. The
-  tag stays on `b71e96d`; publishing is the remaining gate.
-- **Publish (2026-11-12).** `gh release edit v0.6.2 --draft=false` published
-  the stable release. The public feed serves the signed 0.6.2 Windows and
-  darwin manifests, and the installer, the dmg, and both update archives
-  return 200. A live update from an installed 0.6.1 build and the first
-  macOS live update across the ad-hoc cdhash are still owed; the pending
-  list keeps both.
-
-## 2026-11-12 — per-app local mute
-
-- **Finding.** The output-device mute silences every app, so per-app capture
-  cannot use it: the selected app or apps reach the receiver and every other
-  app goes silent. Core Audio's tap mute behavior is the right control.
-- **Mechanism.** A per-app tap fixes its local-output behavior at creation.
-  The capture loop builds it with `CATapUnmuted`, rebuilds it with
-  `CATapMuted` when a session streams, and rebuilds it unmuted on disconnect,
-  when the setting turns off, or when the selection changes. The engine
-  routes that state through `capture.ProcessMuteSupported` and
-  `capture.SetProcessMuted` and leaves the endpoint mute to system capture.
-  Setting a live tap's description was tried first and returned
-  `kAudioDevicePermissionsError` (`'!hog'`), so the rebuild is the supported
-  path.
-- **Pins.** `TestMuteLocalProcessCaptureMutesTheSelectedApp`,
-  `TestMuteLocalProcessFailureIsVisible`, `TestMuteLocalProcessOffRestores`,
-  `TestMuteLocalProcessCaptureUsesDefaultEndpoint` (the Windows fallback),
-  `TestMixdownTapMuteBehavior`, and `TestPerAppCaptureLive`. The live test
-  captured an `afplay` tone with tap 122 muted and tap 127 unmuted and still
-  received frames from the muted tap.
-- **Live.** The rebuilt app opened the unmuted Music tap
-  (`capture open: 音乐 (48000 Hz)`). The operator then connected to the
-  HomePods with Music selected; the log records `captured app muted locally`
-  at 00:26:55 and `captured app restored locally` at 00:28:38, and the
-  operator confirmed the split: Music on the receiver, other apps still on
-  the Mac. With several apps selected, the same tap mute covers the whole
-  selection. Windows keeps the whole-output mute for per-app capture until
-  its rework; the UI note says so.
-
-## 2026-11-12 — multi-app capture and bundle-ID persistence
-
-- **Selection.** The macOS picker checks several apps and applies live after
-  a 250 ms pause, with a header showing the live count. The engine stores
-  `captureAppIds` and `captureAppNames`; the darwin leaf
-  resolves bundle IDs to process families, unions them into one mixdown tap,
-  and skips an app that is not running. `pid:<n>` covers a process without a
-  bundle.
-- **Migration.** A saved `captureProcessPid` becomes the app's bundle ID once
-  the running-app list loads. The live app did this on its first launch after
-  the change; the settings show `captureAppIds: ["com.apple.Music"]` and a
-  cleared `captureProcessPid`.
-- **Pins.** `TestAppsTapIDs`,
-  `TestCaptureAppsCommandPersistsAndStartsTheSelection`,
-  `TestAppCapturePickerChoosesMultipleApps`, `TestMigrateLegacyAppSelection`,
-  `TestMuteLocalAppSelectionMutesTheApps`, and the updated
-  `TestPerAppCaptureLive` (which starts capture by `pid:<n>`).
-- **Status.** A multi-app selection reads as “2 个应用” in the capture-status
-  row, with the app names in the tooltip, and the rate is a separate suffix
-  so a long name cannot ellipsize it. A selection the tap could only partly
-  include reads as “2/3 个应用” with a warning dot, and the tooltip marks the
-  missing app “未采集”. A selection with no capturable process at all reads
-  as “等待所选应用” with a warning dot, not a capture error, and keeps
-  retrying; a real capture failure stays red and keeps its detail in the
-  tooltip. `TestCaptureStatusCountsMultipleApps`,
-  `TestCaptureStatusShowsPartialSelection`, `TestCaptureStatusWaitsForTheApp`,
-  `TestCaptureNoAppProcessWaits`, and the updated
-  `TestCaptureStatusRowKeepsItsTitle` pin the row.
-- **Live.** The old Music PID migrated to `com.apple.Music`; a temporary
-  selection of Music and Chrome produced
-  `capture open: 音乐 + Google Chrome (48000 Hz)`. The demo selection was
-  restored to Music only after the check.
-- **Known gaps.** The app list is built once at launch, so an app launched
-  later is not offered until saundo restarts. A selected app that is not
-  running is skipped when the tap opens and is only added when the tap is
-  rebuilt for another reason. A process selected as `pid:<n>` has no stable
-  identity across restarts.
-
-## 2026-11-12 — Windows per-app capture withdrawn
-
-- **Decision.** Windows offers system capture only. The settings capture page
-  hides the per-app picker, a saved app or process selection is dropped at
-  load (`dropUnsupportedAppSelection`), and the capture leaf refuses a
-  process-loopback start. macOS is unchanged.
-- **Finding.** The acceptance standard is "the selected app goes to the
-  receiver and every other app stays on the local output". Windows process
-  loopback copies the app's audio but does not stop it playing locally; it
-  has no per-app mute. Muting the app's audio session also silences the
-  capture (measured RMS 0.1735 before the session mute, 0.0000 after), and
-  the render-endpoint mute silences every app. The split is therefore not
-  achievable without a virtual audio driver, which is outside a pure-Go,
-  no-driver app. macOS's per-app tap mutes only the captured app, so it
-  keeps the feature.
-- **Pins.** `TestAppCaptureNotOffered` (Windows),
-  `TestUnsupportedPlatformDropsAppSelection`, and
-  `TestCapturePageHidesPerAppWhenUnsupported`. `TestAudioApplicationsLive`
-  skips on Windows.
-- **Known gap.** The Windows process-loopback leaf and its development
-  probes remain in the tree for a future capture path; they are not exposed.
-
-## 2026-11-12 — Windows loopback carries endpoint volume
-
-- **Finding.** On the default render endpoint (Realtek Digital Output,
-  Realtek(R) Audio, 51 volume steps), a 440 Hz tone captured through the
-  WASAPI loopback leaf measured RMS 0.0706 at step 50, 0.0227 at step 25,
-  0.0030 at step 5, and 0.0001 at step 0. The 0%/100% ratio is 0.001, so the
-  captured PCM carries the endpoint's volume and a quiet PC attenuates the
-  receiver's output by the same amount. The same device's endpoint mute did
-  not reach the tap (0.1679 before, 0.1768 while muted), so volume and mute
-  sit on opposite sides of the loopback tap on this driver.
-- **Status.** The manual volume probes were removed with the endpoint-volume
-  takeover on 2026-11-13. The measurement stays as the explanation for why a
-  Windows PC volume change scales the stream; saundo leaves the endpoint
-  volume alone. The macOS process tap is expected to sit before the output
-  device's volume; it has not been measured on a Mac.
-
-## 2026-11-13 — Windows endpoint-volume takeover removed
-
-- **Decision.** The connection mute no longer changes the render endpoint's
-  volume. It still mutes the endpoint while a session streams and restores it
-  afterwards. On Windows the HomePod level is multiplied by the PC volume
-  again; set the Windows volume to 100% when you want the HomePod level to be
-  independent, and lower it after the session.
-- **Why.** The takeover owned a system-wide setting for the whole session,
-  re-applied it every second, overrode the Windows volume keys, needed a crash
-  guard, and depended on driver and APO behavior. It was implicit under the
-  mute switch and too invasive for the convenience it added. User feedback
-  after a live test decided the removal.
-- **Kept.** The connection mute and its guard, the loopback measurement above,
-  and the AP2 first-connect volume rule below. The takeover code, re-assert
-  ticker, guard volume field, tests, and capture volume leaves were removed.
-  An old guard's volume field is ignored, and the next launch releases the
-  mute.
-
-## 2026-11-13 — AP2 first-connect volume fail-closed
-
-- **Root cause.** `beginPlayback` turned every unknown or muted handshake
-  `initialVolume` into `volume: 0.000000` (0 dB, full scale). The handshake
-  accepted any present key and ran it through `plistInt`, so a bool or string
-  became 0 and counted as known; the 1 Hz poll shared the same type
-  confusion. On windows/amd64 a NaN became `MinInt64` and still read as
-  known.
-- **Rule.** Only a finite numeric `initialVolume` in `[-144, 0]` is known.
-  `0` dB is full scale and `-144` is the mute sentinel. An unknown value
-  (absent, malformed plist, non-dictionary, bool, string, nil, NaN/Inf, or
-  positive) sends no `SET_PARAMETER volume`, so the receiver keeps its own
-  level. A value below `-144` clamps to `-144`. The handshake and the poll
-  share `plistRealOK` and `volumeDBInRange`; `InitialVolumePercent` uses the
-  poll's percent conversion.
-- **Pins that fail without the fix.**
-  `TestFirstConnectUnknownVolumeSendsNoRequest` (absent, string, bool,
-  malformed, non-dictionary, positive), `TestFirstConnectMuteSentinelStaysMuted`,
-  `TestFirstConnectBelowMuteClampsToMute`,
-  `TestFirstConnectRealVolumeKeepsFraction`,
-  `TestVolumePollRealVolumeMatchesTheHandshake`,
-  `TestVolumePollKeepsTheStoredVolumeOnUnknownField` (the bool and positive
-  subtests fail pre-fix; malformed is a guard), `TestPlistRealOK`, and
-  `TestVolumeDBInRange`. Engine-invariant guards:
-  `TestFirstLaunchAdoptsMuteSentinel`,
-  `TestFirstLaunchKeepsConfiguredVolumeWhenUnknown`,
-  `TestFirstLaunchKeepsRememberedVolume`,
-  `TestReceiverVolumeEventUpdatesPerDevice`, and
-  `TestFirstConnectKnownZeroSendsFullVolume`.
-- **Tradeoff.** An AP2 receiver with no usable `initialVolume` and a quiet or
-  muted knob stays as it is; the UI keeps the configured value until the
-  first poll reports the receiver. This is the fail-closed choice, not a
-  regression to hide. The C++ reference force-pushes 0 dB; saundo
-  deliberately does not.
-- **Live.** No HomePod, Apple TV, or Mac run in this entry. The fake receiver
-  covers the wire branches; the existing poll and live tests are unaffected.
-
-## 2026-11-13 — tray menu quick actions
-
-- **Shape.** The tray menu lists one radio row per visible receiver, checked
-  for the current target. Clicking a row connects through the flyout's
-  `connectDevice`. An offline row keeps the 离线 subtitle and stays
-  clickable, because the engine reaches a remembered endpoint. When no row
-  is checked, a 连接上次接收器 fallback follows the rows, disabled without a
-  remembered receiver. 断开连接 shows while the session is not idle, then a
-  静音本机输出 checkbox bound to `MuteLocalOnConnect`, then 显示托盘面板,
-  设置…, 检查更新…, and 退出声渡. The model is `trayMenuModel`; the cached
-  menu rebuilds only when `trayMenuModel.key()` changes, which covers the
-  locale, session phase, current target, mute preference, and each row's ID,
-  name, and reachability. Pause is phase 2: the engine has no public pause
-  command yet, so the row is not drawn.
-- **Live run.** The app was built from this tree and relaunched. Its tray
-  icon sat in the notification-area overflow; opening 显示隐藏的图标 put the
-  button (`声渡 …`) in the UI Automation tree, a right-click at its rectangle
-  opened the native menu, and a screen capture showed `HomePods` checked,
-  断开连接, 静音本机输出 checked, 显示托盘面板, 设置…, 检查更新…, and
-  退出声渡 in that order while streaming to HomePods; Escape dismissed it.
-  The capture lives outside the repository (session temp); this entry is the
-  durable record.
-- **Environment finding.** At capture time the default endpoint read
-  `Mi Monitor (NVIDIA High Definition Audio): 已静音`, and the menu's mute
-  checkbox was checked. The local-output mute from a connected session
-  explains why `TestLoopbackReceivesSamples` fails on this machine (peak 90
-  against a rendered tone). The same failure reproduces at base commit
-  37352a4 in a clean worktree, so it is environmental, not a regression from
-  this change. Every other package passed.
-- **Pins.** `TestTrayMenuShapeSelected`,
-  `TestTrayMenuDisconnectWhileStreaming`, `TestTrayMenuFallbackWithNoDevices`,
-  `TestTrayMenuFallbackForHiddenTarget`, `TestTrayMenuMuteCheckbox`,
-  `TestTrayMenuKey`, `TestTrayMenuDeviceSubtitle`.
-
-## 2026-11-13 — tray menu icon refinement
-
-- **Defect.** The quick-action menu's first live render had two icon columns:
-  the receiver rows used `mygo.MenuItemRadio` and the mute row
-  `mygo.MenuItemCheckbox`, and the Windows backend reserves a check column
-  when any item uses either (`mygo@v0.9.0/internal/windows/menu.go:107`), so
-  the radio dot sat left of the action icons instead of aligning with them.
-- **Decision.** No item uses a radio, a checkbox, or `Checked`, so every row
-  draws in one icon column. A receiver row shows its `deviceIconKey` family
-  glyph: the current target (`SelectedID` else the remembered `selID`) draws
-  the glyph in the palette accent (`#4f46e5` light, `#a5b4fc` dark) and the
-  other rows draw it as a menu template tinted with the text color. The
-  colored copies replace `currentColor` in the stored SF source and load with
-  `ui.ParseSVG` plus `NewMenuIconSVG(..., false)`, because that constructor
-  tints only template images. The mute row is a normal item with `bell` off
-  and `bellOff` on, and a click toggles the preference. The menu's order,
-  labels, fallback row, and 离线 subtitle stay as the earlier entry records.
-- **Live run.** The binary from this tree was relaunched, its tray icon
-  opened through the overflow, and the right-click menu captured while
-  streaming to HomePods. Every glyph sat in one column. The HomePods row
-  drew the HomePod glyph in the dark accent (`#a5b4fc`), the MacBook Air row
-  and the REDMI display row drew the same family glyphs as menu templates,
-  and the mute row drew `bellOff` because `MuteLocalOnConnect` was on. The
-  capture lives outside the repository; this entry is the durable record.
-  The run's menu copy was English because the shared settings file carried
-  `"language": "en"` at the time, set outside this session.
-- **Pins.** `TestTrayMenuShapeSelected`,
-  `TestTrayMenuDisconnectWhileStreaming`, `TestTrayMenuFallbackWithNoDevices`,
-  `TestTrayMenuFallbackForHiddenTarget`, `TestTrayMenuMuteIcon`
-  (the renamed `TestTrayMenuMuteCheckbox`), `TestTrayMenuKey`, and
-  `TestTrayMenuDeviceSubtitle`. They assert icon keys through
-  `trayMenuModel.deviceIcon`/`muteIcon`, because `loadMenuIcons` needs a
-  running mygo app.
-
-## 2026-11-13 — tray menu rows simplified
-
-- **Decision.** Every receiver row now draws its family glyph as a menu
-  template in the text color, so the glyphs stay white (or the menu's ink)
-  and the colored accent variants are gone. The menu drops the 断开连接 row;
-  the flyout's active receiver row still offers it. A 关灯 or 开灯 row joins
-  the toggles under 静音本机输出, its label bound to `Snapshot.LampOff` and
-  its click calling `setLampOff(!off)`. The cached-menu key now carries
-  `lampOff`, so the label and glyph follow the light. The connected target
-  currently has no visible marker; the way to show it beside the name is an
-  open design question.
-- **Live run.** The binary from this tree was relaunched and its menu
-  captured while streaming to HomePods. The HomePods and MacBook Air rows
-  both drew white template glyphs in one column, no 断开连接 row appeared,
-  静音本机输出 drew the slashed bell, and 关灯 sat directly under it with the
-  lamp glyph. The capture lives outside the repository; this entry is the
-  durable record.
-- **Pins.** `TestTrayMenuShapeSelected`, `TestTrayMenuHasNoDisconnectRow`,
-  `TestTrayMenuLampRow`, `TestTrayMenuMuteIcon`, `TestTrayMenuKey`,
-  `TestTrayMenuFallbackWithNoDevices`, `TestTrayMenuFallbackForHiddenTarget`,
-  and `TestTrayMenuDeviceSubtitle`.
-
-## 2026-11-13 — tray menu connected color
-
-- **Decision.** With no right-side icon slot in mygo menus, the device glyph
-  carries the session state. The receiver named by `Snapshot.SelectedID`
-  while the session is not idle draws its family glyph in the palette accent
-  (`#4f46e5` light, `#a5b4fc` dark); every other row keeps the template glyph
-  in the text color. A device that is only selected while idle stays
-  template, so color means connected rather than chosen. The colored copies
-  are non-template images built from the SF source with `currentColor`
-  replaced, and the menu key carries the connected ID and the appearance, so
-  both a session change and a theme change rebuild it.
-- **Pins.** `TestTrayMenuDeviceIconFollowsSession`,
-  `TestTrayMenuShapeSelected`, `TestTrayMenuKey`.
-
-## 2026-11-13 — tray menu lamp icon state
-
-- **Decision.** The ambient-light row now matches the mute row's convention:
-  its glyph carries the state as well as the label. The light on draws
-  `lamp` with the label 关灯; the light off draws `lampOff`, the same glyph
-  with a diagonal slash, with the label 开灯. `trayMenuModel.lampIcon` derives
-  the key from `Snapshot.LampOff`, and the menu key already carries `lampOff`,
-  so the icon and label flip together.
-- **Pins.** `TestTrayMenuLampRow`.
-
-## 2026-11-13 — ambient-light copy names its object
-
-- **Decision.** The lamp action now reads 关闭氛围灯 when the light is lit and
-  开启氛围灯 when it is dark, replacing the bare 关灯 and 开灯. The English
-  copy follows: `Turn off ambient light` and `Turn on ambient light`. The
-  shared `lampTurnOff`/`lampTurnOn` keys feed both surfaces, so the tray
-  menu's row and the flyout power button's accessible label change together;
-  the flyout button stays icon-only and its layout is unchanged. The 已关灯
-  chip and 自动关闭氛围灯 setting keep their own copy.
-- **Pins.** `TestTrayMenuLampRow`, plus the catalog gates that reject a dead
-  key, a banned term, and a duplicate value.
-
-## 2026-11-13 — tray menu connected dot
-
-- **Decision.** The in-session receiver's row appends a bullet (`•`, preceded
-  by a space) to its name, so the connected state reads even where the
-  accent-colored glyph is hard to distinguish. `trayMenuModel.deviceLabel`
-  adds it only when the row's ID equals `connected`, the same condition the
-  colored glyph uses; a selected but idle device keeps its bare name. The
-  label is part of the menu key through `connected`, so the mark follows the
-  session.
-- **Pins.** `TestTrayMenuDeviceIconFollowsSession`.
-
-## 2026-11-13 — tray menu connected check mark
-
-- **Decision.** The bullet was too small to read as a state, so the
-  in-session receiver's label now appends a check mark (`✓`, preceded by a
-  space) instead. The condition is unchanged: `trayMenuModel.deviceLabel`
-  adds it only when the row's ID equals `connected`, and a selected but idle
-  device keeps its bare name.
-- **Pins.** `TestTrayMenuDeviceIconFollowsSession`.
-
-## 2026-11-13 — tray menu connected glyph
-
-- **Decision.** The text marks (dot, then check mark) are retired. The
-  in-session receiver's row now draws the connection glyph (`connect`,
-  `iconLink`) in place of its receiver-family glyph, so the state is a shape
-  rather than punctuation. Every other row keeps its receiver glyph, and a
-  device that is only selected while idle keeps it too. The accent-colored
-  variant machinery and the appearance-driven menu rebuilds are removed with
-  the color rule; the menu key still carries `connected`, so the glyph
-  follows the session.
-- **Pins.** `TestTrayMenuDeviceIconFollowsSession`, `TestTrayMenuShapeSelected`.
-
-## 2026-11-13 — connected mark settled on the icon color
-
-- **Decision.** The punctuation marks and the connection-glyph swap were both
-  tried and reverted. The in-session receiver keeps its receiver-family glyph
-  and draws it in the palette accent (`#4f46e5` light, `#a5b4fc` dark); every
-  other row draws the template in the text color, and a device that is only
-  selected while idle stays template, because color means connected, not
-  chosen. The name carries no mark. The accent variants and the
-  appearance-driven rebuild are back; the menu key carries `connected` and
-  `dark`.
-- **Pins.** `TestTrayMenuDeviceIconFollowsSession`, `TestTrayMenuShapeSelected`,
-  `TestTrayMenuKey`.
+## 2026-11-14 — release 0.6.3 UI review
+
+The 250-image preview matrix (`.audit/release-0.6.3/previews`, zh-CN and
+English, light and dark) was rendered, fixed, and re-rendered. P0 fixes: the
+English flyout latency segment truncated to "Low late…", now the single word
+Low (`TestFlyoutLatencyLowFitsItsSegment` fails on the old label); the
+capture page said "a single app" where macOS ships multi-select, now
+"System audio, or one or more apps."; the tray mute row now reads Unmute
+local output while the preference is on
+(`TestTrayMenuMuteLabelFollowsThePreference`). English per-app copy is
+plural-neutral. The Windows per-app mute caveat and its Windows-only test
+were removed: the engine drops an unsupported app selection at load, so the
+state could not occur and the test manufactured it. Both mockup templates
+already described the shipped interface: the flyout height rule is 439
+base, -62 for the removed Now Playing row, +90 ambient, +150 media, +44
+latency, +48 error, +48 credential, +53 expanded, with latency labels Low,
+Standard, Stable, Custom; 44 renders in `.audit/release-0.6.3/mockups/`.
+Two independent reviewers on different model families checked the findings
+and the fixes. The verification skill corrected all six feature pages from
+source, in their own commit before the release commit. The release
+candidate was built with the updater key and launched against the HomePods
+pair; the live flyout capture is
+`.audit/release-0.6.3/live/flyout-0.6.3.png`.
+
+## 2026-11-14 — 0.6.3 release
+
+The release workflow (run 43468834016) first failed `check-macos` on a
+test-only `fatal error: concurrent map writes` in
+`TestMuteGuardRecoversAfterCrash`: the harness's mute worker raced the
+test's direct `recoverMuteGuard` call. The job passed on re-run,
+`build-macos` passed, and the flake fix landed as `acd63dc` on main after
+the tag (`2f14bc5`). The draft carried `install.ps1`, `install.sh`, the
+Windows installer, both update archives, four deltas, both signed
+manifests, the arm64 dmg, and `SHA256SUMS`; `sha256sum -c` passed all ten
+checksummed files. Published 2026-11-13T17:23Z with bilingual notes; both
+feed manifests serve 0.6.3 with signatures. A live update from 0.6.2 is
+still owed and stays on the pending list.
 
 ## Graduated
 
@@ -1533,95 +577,256 @@ surviving conclusion, and the pin.
   underruns, and whether larger, compressed blocks would move the floor
   below 200 ms.
 
-## 2026-11-14 — release 0.6.3 UI review
+Compressed 2026-11-14, mid-cycle, per the 800-line rule above: every dated
+section from 2026-10-31 through 2026-11-13 moved here, one entry per batch.
+The 0.6.1 audit's compression took the file from 2050 to 937 lines; this
+one took it from 1627.
 
-- **Matrix.** `SAUNDO_PREVIEW_DIR=.audit/release-0.6.3/previews go test
-  ./internal/app -run TestRenderPreviews -count=1` rendered 250 PNGs in
-  English and Simplified Chinese, light and dark, including the flyout's
-  stream, connecting, empty, error, ambient, and media states and every
-  settings page. The matrix was re-rendered after the fixes and inspected
-  again.
-- **P0 findings fixed.** The English flyout latency segment truncated to
-  "Low late…" in every state with the row (`ui_kit.go` leading 8-DIP padding
-  plus the 14-DIP glyph); the English label is now Low, and the settings tile
-  keeps its 200 ms value and description. The capture page description said
-  "a single app" on macOS, where the release ships multi-select; it now reads
-  "System audio, or one or more apps." The tray mute row read "Mute local
-  output" while its click unmuted; it now reads Unmute local output while the
-  preference is on (`muteLabel`), matching the bell slash.
-- **P1 fixed.** English per-app copy is plural-neutral like the Chinese copy.
-  **P2 fixed.** The Windows per-app mute caveat and its Windows-only test were
-  removed: the engine drops an unsupported app selection at load, so the
-  state could not occur and the test manufactured it.
-- **Live run.** The UI review itself did not drive the app: the copy and
-  geometry changes were checked in the native preview matrix, the tray menu
-  copy has no native preview and is pinned by
-  `TestTrayMenuMuteLabelFollowsThePreference`, and the English segment is
-  checked in `flyout-stream-light-en.png` and pinned by
-  `TestFlyoutLatencyLowFitsItsSegment`, which fails with the old two-word
-  label. The verification skill's live pass
-  below drove the built app.
-- **Mockup templates.** Both templates already describe the shipped
-  interface: the flyout height rule (439 base, -62 for the old Now Playing row,
-  +90 ambient, +150 media, +44 latency, +48 error, +48 credential, +53
-  expanded), the palette tokens, the card order, and the latency labels
-  (Low, Standard, Stable, Custom) match `flyout.go`, `theme.go`, and
-  `ui_kit.go`; the settings samples match the shipped cards. Rendered 44 PNGs
-  into `.audit/release-0.6.3/mockups/` — settings target, normal, and edge;
-  flyout idle, streaming, empty, error, media, latency, and ambient states;
-  both locales and themes — and inspected them for clipping, overflow, and
-  wrapped copy. No template file changed.
-- **Independent review.** A fresh reviewer on a different model family read
-  the findings, the decision trail (`.audit/release-0.6.3/ui-review-trail.tsv`),
-  and the diff; a second fresh reviewer checked the fixes.
-- **Verification skill.** Outcome: changed. The source pass covered all six
-  feature pages, and every page needed at least one correction: stale refs,
-  the missing per-app states and mute copy, the fallback's disabled state,
-  and the updates disabled and folded-history behavior. The corrections
-  landed as their own commit before the release commit. No product defect.
-  The live pass is below; per-app capture and audible Mac checks are
-  unreachable on this Windows host, and the native tray menu and settings
-  window were not re-driven.
-- **Release candidate.** `go tool mygo build -platform windows/amd64` with
-  `MYGO_UPDATER_PRIVATE_KEY` and `MYGO_LDFLAGS=-X
-  saundo/internal/app.Version=0.6.3` produced `saundo-setup-0.6.3-amd64.exe`,
-  the update archive, the deltas, and `update-windows-amd64.json`: version
-  0.6.3, the English 0.6.3 notes, and an 88-character signature. The
-  maintainer's release request stands as the pre-release test; the same run
-  launched the build and streamed to the HomePods pair.
-- **Live pass (verification skill).** The 0.6.3 build launched from the
-  release worktree and auto-connected to the HomePods stereo pair. The log
-  records `control channel now encrypted`, `session SETUP ok`, `streaming to
-  "HomePod L"` and `"HomePod R"` at 44100 Hz encrypted, SET_PARAMETER 200s,
-  and `update: 0.6.2 available` (correct for a build past the 0.6.2 tag: the
-  git-describe stamp sorts below it). The flyout capture shows the receiver
-  row, the media-latency-volume playback card, the volume percent, the
-  ambient card, and the update chip:
-  `.audit/release-0.6.3/live/flyout-0.6.3.png`. Windows is this host, so the
-  per-app picker is correctly absent and the Capture page reads System audio.
-  Not re-driven live: the native tray menu (its only 0.6.3 delta is the mute
-  label, pinned by `TestTrayMenuMuteLabelFollowsThePreference`; the menu was
-  driven live on 2026-11-13), the settings window (the preview matrix is the
-  full visual record), and audible output on a Mac.
-
-## 2026-11-14 — 0.6.3 release
-
-- **Draft verification.** The release workflow (run 43468834016) first failed
-  `check-macos` with a test-only `fatal error: concurrent map writes` in
-  `TestMuteGuardRecoversAfterCrash`: the harness's mute worker ran its first
-  `recoverMuteGuard` while the test called it directly, and both wrote the
-  fake muter's map. The failed job was re-run on the same tag and passed;
-  `build-macos` then ran and passed. The draft carried `install.ps1`,
-  `install.sh`, the Windows installer, both update archives, the four deltas,
-  both signed manifests, the arm64 dmg, and `SHA256SUMS`; `sha256sum -c`
-  passed for all ten checksummed files. Both manifests name 0.6.3, carry the
-  English 0.6.3 notes, and have an 88-character signature.
-- **Flake fix.** The two guard tests stop the mute worker before their direct
-  `recoverMuteGuard` call (`acd63dc`, on main after the tag; the tag stays at
-  the release commit `2f14bc5`). The UI review, mockup renders, live pass,
-  and candidate build are in the entry above.
-- **Publish and feed.** The release is published with the bilingual notes
-  (2026-11-13T17:23Z). `releases/latest/download/update-windows-amd64.json`
-  and `update-darwin-arm64.json` serve 0.6.3 with signatures, and the
-  installer and dmg downloads return 200. A live update from 0.6.2 is still
-  owed and stays on the pending list.
+- 2026-10-31, tray flyout: The control panel is a `mygo.NewFlyout` anchored
+  to the tray icon, frameless and shadowed at 480x720 DIPs, its root
+  painting `Theme.Background`; left click toggles, outside or Escape
+  dismisses, right click opens the menu, and login or `--tray` launches
+  stay hidden. The menu installs only for the right-click popup's
+  duration, so the primary click reaches `OnClick`. Both toggle directions
+  verified on the live `MyGoFlyoutShadow` window. Pins:
+  `internal/app/flyout.go`, ui.md.
+- 2026-11-04, receiver migration and launch auto-connect: `Run()` migrates
+  the legacy `autoConnect` and `lastDeviceId` from `settings.json` onto the
+  stereo pair's `stereo:<tsid>` registry entry, clears the legacy flag,
+  and writes `receivers.json`; the registry then drives the next launch
+  with `autoConnect=false`, and a discovered target waits for presence
+  before the engine opens both member sessions. Live on the HomePods
+  pair. The receiver-management paths not driven live are the
+  `Currently pending` entry. Pins: the `internal/receivers`,
+  `internal/engine`, and `internal/app` tests and the
+  `settings-receivers-*` / `dialog-receiver-*` previews.
+- 2026-11-04, release 0.4.2: the draft assets passed `sha256sum -c` with a
+  signed manifest (run 41758834319), and the published feed returned 200
+  for the manifest and the installer. The installer is unsigned, so
+  SmartScreen warns. The maintainer's smoke test is the release request.
+- 2026-11-05, ambient light phase 1: `internal/lamp` renders the six
+  presets as deterministic 600x600 sRGB JPEGs (quality 0.88), lazily
+  cached; `settings.Lamp` stores the enabled flag and preset, an old file
+  loads off + dune, and an unknown preset normalizes to dune.
+  `device.TopDisplayCapable` requires the HomePod family at software 27.2
+  or later and fails closed on an unknown model or version. The engine
+  renders off the sender's tick path and reapplies when a session starts
+  streaming; the sender deduplicates identical bytes and fans out per
+  capable member. Live: the 5,1 pair displayed the lagoon and dawn lights
+  once Sound Glow was enabled; the `/artwork/command` channel that worked
+  then was superseded by `SET_PARAMETER` on 2026-11-06. Pins: the
+  `internal/lamp`, `internal/device`, `internal/engine`, and app lamp
+  tests; keystone `TestPresetsMatchCatalog` and `TestTopDisplayCapable`.
+- 2026-11-07, release 0.5.0 defaults: local-output mute and ambient light
+  default on; the receiver track-info push is unconditional and has no
+  switch. Pins: `TestDefaultsEnableLocalMute`,
+  `TestLampDefaultsOnAndCover`, `TestLampOldFileLoadsDefaults`. The draft
+  runs 42264388577, 42314253794 (the mygo 0.8.0 rebuild), and 42339224999
+  (the defaults commit `d1f6e76`, the CI check being the release gate
+  after a local `json.SyntaxError` failure) passed checksum and signature
+  checks; the release published and `releases/latest` served the 0.5.0
+  stable feed.
+- 2026-11-08, ambient preview and session following: the Now Playing card
+  follows the SMTC current session on every read, and the switch arrow
+  sets a pin that survives polls until another session becomes current
+  (`TestNowPlayingFollowsTheCurrentSession`); the lamp preview follows the
+  session the engine pushes, not the card's selection
+  (`TestLampPreviewFollowsThePushedSessionNotTheCard`). The
+  two-playing-sessions live drive stays in `Currently pending`.
+- 2026-11-08, connection recovery and discovery names: `cmdDisconnect` and
+  `connect` clear `lastError` when an attempt ends, cancel clears it
+  before the idle snapshot, and `actionFor` keeps other online rows
+  connectable in the error phase; `parseEntry` derives the service from
+  the instance suffix, fixing the `._airplay._tcp` leak into display
+  names. Pins: `TestUserDisconnectClearsConnectionError`,
+  `TestConnectClearsPreviousError`,
+  `TestRowActionKeepsOtherReceiversConnectable`,
+  `TestParseEntryUsesTheAdvertisedService`.
+- 2026-11-08, the macOS port: Core Audio capture aggregates a process tap
+  with the default output, and the output device must be the aggregate's
+  sub-device and clock master (a tap-only aggregate refuses with
+  `kAudioHardwareIllegalOperationError`); MediaRemote returns empty
+  payloads to third-party processes on 27.3, so Now Playing reads through
+  the vendored adapter loaded inside `/usr/bin/perl` (the perl loader
+  rejects relative framework paths and takes the function and its
+  parameter as separate argv entries), one session only, no enumeration
+  symbol, and send 0/1/4/5 and seek control the source app; icons render
+  via `NSWorkspace iconForFile:` and an ImageIO thumbnail;
+  LaunchServices resolves the localized app name and
+  `NSFileManager displayNameAtPath:` replaces the missing
+  `NSBundle localizedName`; the Keychain master key with AES-256-GCM
+  round-trips, a rebuilt ad-hoc binary prompts once per item while a
+  stable signing identity ends the prompts, and headless runs take
+  `SAUNDO_CREDS_MASTER_KEY`; quarantined ad-hoc builds need Open Anyway
+  once per cdhash. Discovery, connect, and audio to a HomePod mini were
+  verified live on 2026-11-07. Pins: platforms.md, implementation.md.
+- 2026-11-09, Windows side of the darwin port: the full gate green on
+  Windows for the merged tree; live shell identity through
+  `TestSMTCLiveSessions`; the flyout window is `MyGoFlyoutShadow|Saundo`
+  and settings `MyGoWindow|Settings · Saundo`; `capture-window.ps1` is
+  DPI-unaware on a 1.75x display, so evidence captures must be DPI-aware.
+  The verification map was audited from source and corrected in its own
+  commit. The 0.6.0-beta.1 release mechanics are in the 0.6.0 entry below.
+- 2026-11-09, release 0.6.0 with 0.6.0-beta.1: the 196-frame UI review
+  fixed two P0 truncations and four P1 terminology issues in `0789520`;
+  the verification map was corrected in `b3e4eaa`; the beta draft (run
+  42506672553) and the stable draft (run 42615271600) passed checksum and
+  signature checks; the stable release published and the feed serves the
+  signed 0.6.0 manifest.
+- 2026-11-11, 0.6.1 UI mockup templates: both templates matched the
+  shipped interface, including the idle-standby state and the height rule
+  (459 base, 150 media, 44 latency, 90 ambient, 48 error, 53 expanded);
+  superseded by the 0.6.2 and 0.6.3 template entries.
+- 2026-11-11, 0.6.1 release audit: the docs audit corrected five live
+  docs (devices.md, protocol.md, architecture.md, implementation.md,
+  ui.md) and compressed this log from 2050 to 937 lines; the 242-image UI
+  review fixed one P0 (the English standby subtitle truncated at 640 DIP)
+  and one P2 (terminal periods, now in the punctuation gate); the live
+  pass drove the built app through flyout, settings, health card, log
+  dialog, standby row, and a disconnect/reconnect cycle
+  (`.audit/release-0.6.1/live/`); harness fixes: the doctor matches the
+  settings window by class, the capture script is DPI-aware, and the tray
+  page matches by class and prefix. Draft run 42854757255 verified and
+  the release published; the feed serves the signed 0.6.1 manifest.
+- 2026-11-11, macOS in-app updates enabled: the mac build enters the
+  updater path and requests `update-darwin-arm64.json`, expected 404
+  until the first darwin feed; `make test-mac-update`
+  (`scripts/test-mac-update.sh`) drives 0.6.1 through available, install,
+  quit, and the bundle swap with signature and quarantine checks in a
+  temporary tree that uses its own bundle ID and HOME, so it measures no
+  TCC or Keychain prompts. The live update, the restart button, and
+  cdhash-survival of TCC and Keychain stay in `Currently pending`.
+- 2026-11-11, macOS audio IO realtime safety: the IOProc takes no lock
+  and allocates nothing (one atomic stream pointer, scratch sized at
+  open, atomic stats); the silence meter feeds a 100 ms level ring and
+  the analyzer runs off the audio thread; `internal/audio/ring` is a
+  lock-free SPSC ring. Pins: `TestIOProcPushDoesNotAllocate`,
+  `TestIOProcOversizedBufferIsDropped`, `TestIOProcPushAndStatsRace`,
+  `TestSilenceMeterPushDoesNotAllocate`, `TestLevelPumpFeedsTheMeter`,
+  `TestPushPopDoNotAllocate`, `TestOverwritePushDoesNotAllocate`,
+  `TestFanoutPushDoesNotAllocate`; the ring, capture, and engine
+  packages pass `-race`. The `TestMuteGuardRecoversAfterCrash`
+  test-only race noted here was fixed on 2026-11-14 (`acd63dc`).
+- 2026-11-11, macOS output mute scope: the mute failed with OSStatus
+  2003332927 ('who?') because `ScopeOutput` was `'out '` instead of
+  `'outp'`; fixed, `DeviceHasOutput` sees output streams,
+  `TestCoreAudioOutputScope` fails on the old value, the muteprobe-tagged
+  `TestDarwinEndpointMute` passed on real hardware, and the user
+  confirmed a HomePod connection mutes the local output.
+- 2026-11-12, 0.6.2 release audit: the docs audit corrected the custom
+  latency range (20 to 2000 ms, clamped to 20 to 4000) in protocol.md,
+  the macOS update location rule in platforms.md, the mygo version date
+  in architecture.md, the engine mute and level workers in
+  architecture.md and implementation.md, and the whole-second
+  LatencyText rule in ui-copy.md; the 250-image UI review fixed one P1
+  (设备 misnamed a receiver in the three new engine errors, `cf8882d`,
+  and the banned-terms gate now carries five past strings) and one P2;
+  the live pass evidence is `.audit/release-0.6.2/live/`; draft run
+  43060976433 verified and the release published, both manifests
+  serving 0.6.2. The mockup templates gained the credential-recovery
+  state and its +48 height rule.
+- 2026-11-12, macOS per-app capture: a process tap mixes named processes
+  (`initStereoMixdownOfProcesses:`), the HAL lists clients through
+  `kAudioHardwarePropertyProcessObjectList` carrying `ppid`/`pbid`;
+  helpers fold into the app whose bundle ID prefixes theirs, two live
+  processes of one app are one row, a tap uses the default output as
+  clock master and ignores `EndpointID`, and the engine mutes the
+  default output for per-app sessions. The PID-0 zero-root fallback was
+  a real bug caught live. The picker carries NSWorkspace icons. Live: an
+  `afplay` tone delivered 32,256 frames from that process alone, and the
+  user picked Chrome through the icon picker. Known gaps: the app list
+  is built once at launch, a tap fixes its process list at creation, and
+  an app with no HAL process object fails the open and retries with the
+  backoff. Pins: `TestBuildAppListGroupsHelpers`,
+  `TestBuildAppListSkipsSelf`, `TestAppFamilyFollowsBundlePrefix`,
+  `TestOwnerApp`, `TestBuildAppListMergesDuplicateBundle`,
+  `TestAudioApplicationsReadsLiveLists`, `TestMixdownTapDescriptionBuilds`,
+  `TestAppIconLive`, `TestAppCapturePickerChoosesMultipleApps`.
+- 2026-11-12, per-app local mute: a per-app tap fixes its local-output
+  behavior at creation, so the capture loop rebuilds it `CATapMuted`
+  while a session streams and unmuted on disconnect, setting off, or
+  selection change (setting a live tap's description fails
+  `kAudioDevicePermissionsError` `'!hog'`); Windows keeps the
+  whole-output mute and the UI note says so. The operator confirmed the
+  split live: Music on the receiver, other apps on the Mac. Pins:
+  `TestMuteLocalProcessCaptureMutesTheSelectedApp`,
+  `TestMuteLocalProcessFailureIsVisible`,
+  `TestMuteLocalProcessOffRestores`,
+  `TestMuteLocalProcessCaptureUsesDefaultEndpoint`,
+  `TestMixdownTapMuteBehavior`, `TestPerAppCaptureLive`.
+- 2026-11-12, multi-app capture and bundle-ID persistence: the engine
+  stores `captureAppIds` and `captureAppNames`, the darwin leaf unions
+  the bundle families into one mixdown tap and skips apps that are not
+  running, `pid:<n>` covers a process without a bundle, and a saved
+  `captureProcessPid` migrates to the bundle ID once the app list
+  loads. The status row reads "N 个应用", "N/M 个应用" with a warning
+  dot, or 等待所选应用; a real capture failure stays red with its detail
+  in the tooltip. Pins: `TestAppsTapIDs`,
+  `TestCaptureAppsCommandPersistsAndStartsTheSelection`,
+  `TestAppCapturePickerChoosesMultipleApps`,
+  `TestMigrateLegacyAppSelection`,
+  `TestMuteLocalAppSelectionMutesTheApps`,
+  `TestCaptureStatusCountsMultipleApps`,
+  `TestCaptureStatusShowsPartialSelection`,
+  `TestCaptureStatusWaitsForTheApp`, `TestCaptureNoAppProcessWaits`.
+- 2026-11-12, Windows per-app capture withdrawn: Windows offers system
+  capture only. The process loopback copies the app's audio without
+  stopping local playback, muting the app's session also silences the
+  capture (RMS 0.1735 before, 0.0000 after), and the endpoint mute
+  silences every app; the split needs a virtual audio driver, outside a
+  pure-Go no-driver app. The process-loopback leaf stays in the tree,
+  unexposed. Pins: `TestAppCaptureNotOffered`,
+  `TestUnsupportedPlatformDropsAppSelection`,
+  `TestCapturePageHidesPerAppWhenUnsupported`.
+- 2026-11-12, Windows loopback carries endpoint volume: on Realtek
+  Digital Output the captured PCM carries the endpoint volume (RMS
+  0.0706 at step 50 down to 0.0001 at 0; the 0%/100% ratio is 0.001) and
+  the endpoint mute does not reach the tap (0.1679 before, 0.1768
+  muted); a quiet PC attenuates the receiver by the same amount, and
+  saundo leaves the endpoint volume alone. The macOS process tap is
+  expected to sit before the output volume; unmeasured on a Mac.
+- 2026-11-13, Windows endpoint-volume takeover removed: the connection
+  mute no longer changes the render endpoint's volume; it still mutes
+  the endpoint while a session streams and restores it afterwards.
+  Removed after user feedback: the takeover owned a system-wide setting
+  for the session, re-applied it every second, overrode the Windows
+  volume keys, and needed a crash guard. An old guard's volume field is
+  ignored, and the next launch releases the mute.
+- 2026-11-13, AP2 first-connect volume fail-closed: only a finite
+  numeric `initialVolume` in [-144, 0] counts as known (`plistRealOK`,
+  `volumeDBInRange`); an unknown value sends no `SET_PARAMETER volume`
+  so the receiver keeps its own level, and below -144 clamps to -144.
+  The C++ reference force-pushes 0 dB; saundo deliberately does not.
+  Pins: `TestFirstConnectUnknownVolumeSendsNoRequest` and
+  `TestVolumePollKeepsTheStoredVolumeOnUnknownField` fail without the
+  fix; the remaining `TestFirstConnect*` and `TestVolumePoll*` guards
+  pin the invariants.
+- 2026-11-13, tray menu: one row per visible receiver, each drawing its
+  `deviceIconKey` family glyph as a menu template in the text color; the
+  in-session receiver keeps its family glyph in the palette accent
+  (#4f46e5 light, #a5b4fc dark). A bullet, a check mark, and a
+  connection-glyph swap were each tried and reverted for the connected
+  mark; color means connected, not chosen. There is no 断开连接 row (the
+  flyout's active row offers it); the mute row draws bell/bellOff and
+  toggles `MuteLocalOnConnect`; the lamp row reads 关闭氛围灯 or
+  开启氛围灯 with lamp/lampOff glyphs bound to `Snapshot.LampOff`; a
+  连接上次接收器 fallback, disabled without a remembered receiver,
+  precedes 显示托盘面板, 设置…, 检查更新…, and 退出声渡; pause has no row
+  because the engine has no public pause command. Offline rows stay
+  clickable through the remembered endpoint. The cached menu rebuilds
+  when `trayMenuModel.key()` changes: locale, session phase, target,
+  mute, lamp, connected, and dark. Live runs on 2026-11-13 confirmed the
+  shape while streaming to HomePods. Environment finding: the session's
+  local-output mute explains `TestLoopbackReceivesSamples` failing on
+  this machine (it reproduces at 37352a4), so the failure is
+  environmental, not a regression. Pins: `TestTrayMenuShapeSelected`,
+  `TestTrayMenuHasNoDisconnectRow`, `TestTrayMenuLampRow`,
+  `TestTrayMenuMuteIcon`, `TestTrayMenuDeviceIconFollowsSession`,
+  `TestTrayMenuKey`, `TestTrayMenuDeviceSubtitle`,
+  `TestTrayMenuFallbackWithNoDevices`,
+  `TestTrayMenuFallbackForHiddenTarget`.
+- 2026-11-13, ambient-light copy names its object: the shared
+  `lampTurnOff`/`lampTurnOn` keys feed the tray row and the flyout power
+  button's accessible label (关闭氛围灯 / 开启氛围灯, Turn off / Turn on
+  ambient light); the 已关灯 chip and 自动关闭氛围灯 setting keep their
+  own copy. Pins: `TestTrayMenuLampRow` and the catalog gates.
