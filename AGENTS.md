@@ -64,8 +64,9 @@ Run `mingw32-make check` (or all the commands listed above) before declaring a m
 
 Several of these rules are gates, not review notes. `scripts/check-arch` owns
 the import seams, the sans-i/o goroutine rule, the `time.After` and
-`time.Tick` ban, and the capacity rule for data channels made with a literal
-channel type. `scripts/check-size` owns the line budget. `device.Features` and
+`time.Tick` ban, and the capacity rule for data channels, whether the channel
+type is written out or named in the same package. `scripts/check-size` owns
+the line budget. `device.Features` and
 `creds.Secret` put two fail-closed rules in the type system. A rule added
 here without a gate is judgment-only.
 

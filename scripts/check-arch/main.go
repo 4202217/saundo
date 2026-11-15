@@ -2,9 +2,10 @@
 // It parses the tree once and reports every violated import seam and the
 // concurrency shapes it can see: a go statement or time.AfterFunc in a listed
 // sans-I/O package, time.After or time.Tick anywhere in product code, and a
-// data channel made with a literal channel type and no capacity. A struct{}
-// signal channel is allowed, and a channel type declared in another file is
-// beyond what a parser-only check can see.
+// data channel made without a visible capacity, whether its type is written
+// out or named anywhere in the same package. A struct{} signal channel is
+// allowed, and a channel type imported from another package is beyond what a
+// parser-only check can see.
 package main
 
 import (
@@ -14,6 +15,7 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -73,11 +75,21 @@ func main() {
 	}
 }
 
+// productFile is one parsed file the concurrency rules apply to.
+type productFile struct {
+	rel  string
+	file *ast.File
+}
+
 // run checks every Go file under root and returns the violations together, so
-// one pass reports the whole seam break instead of the first line.
+// one pass reports the whole seam break instead of the first line. Channel
+// type declarations are collected per package before the files are checked, so
+// a make in one file sees a type named in another.
 func run(root string) error {
 	var violations []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	var product []productFile
+	fset := token.NewFileSet()
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -90,32 +102,42 @@ func run(root string) error {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") {
+		if !strings.HasSuffix(p, ".go") {
 			return nil
 		}
-		rel, err := filepath.Rel(root, path)
+		rel, err := filepath.Rel(root, p)
 		if err != nil {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+		f, err := parser.ParseFile(fset, p, nil, parser.SkipObjectResolution)
 		if err != nil {
 			return fmt.Errorf("%s: %w", rel, err)
 		}
 		violations = append(violations, checkImports(rel, f)...)
 		if isProduct(rel) && !strings.HasSuffix(rel, "_test.go") {
-			violations = append(violations,
-				checkGoroutines(rel, fset, f)...)
-			violations = append(violations,
-				checkTimers(rel, fset, f)...)
-			violations = append(violations,
-				checkChannels(rel, fset, f)...)
+			product = append(product, productFile{rel: rel, file: f})
 		}
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	byDir := map[string][]productFile{}
+	for _, pf := range product {
+		dir := path.Dir(pf.rel)
+		byDir[dir] = append(byDir[dir], pf)
+	}
+	for _, files := range byDir {
+		channelTypes := channelTypeNames(files)
+		for _, pf := range files {
+			violations = append(violations,
+				checkGoroutines(pf.rel, fset, pf.file)...)
+			violations = append(violations,
+				checkTimers(pf.rel, fset, pf.file)...)
+			violations = append(violations,
+				checkChannels(pf.rel, fset, pf.file, channelTypes)...)
+		}
 	}
 	sort.Strings(violations)
 	if len(violations) > 0 {
@@ -231,11 +253,11 @@ func timeNames(f *ast.File) map[string]bool {
 }
 
 // checkChannels requires an explicit capacity on a data channel made with a
-// literal channel type. A struct{} channel is a signal with no payload, so an
-// unbuffered one is the intended shape. A channel type declared in another
-// file remains a blind spot for a parser-only check.
-func checkChannels(rel string, fset *token.FileSet, f *ast.File) []string {
-	aliases := channelTypeNames(f)
+// literal or named channel type. The named set spans the package, so its
+// declaration may live in another file; a type imported from another package
+// remains a blind spot for a parser-only check. A struct{} channel is a
+// signal with no payload, so an unbuffered one is the intended shape.
+func checkChannels(rel string, fset *token.FileSet, f *ast.File, aliases map[string]bool) []string {
 	var out []string
 	ast.Inspect(f, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -256,7 +278,7 @@ func checkChannels(rel string, fset *token.FileSet, f *ast.File) []string {
 		}
 		if alias, ok := call.Args[0].(*ast.Ident); ok && aliases[alias.Name] {
 			out = append(out, fmt.Sprintf(
-				"%s makes a channel through the type alias %s; write make(chan T, n) so the gate can see the capacity",
+				"%s makes a channel through the named channel type %s; write make(chan T, n) so the gate can see the capacity",
 				at(rel, fset, call.Pos()), alias.Name))
 		}
 		return true
@@ -264,20 +286,25 @@ func checkChannels(rel string, fset *token.FileSet, f *ast.File) []string {
 	return out
 }
 
-func channelTypeNames(f *ast.File) map[string]bool {
+// channelTypeNames collects the channel types declared anywhere in one
+// package, so a make in one file is checked against a type declared in
+// another.
+func channelTypeNames(files []productFile) map[string]bool {
 	names := map[string]bool{}
-	for _, decl := range f.Decls {
-		gd, ok := decl.(*ast.GenDecl)
-		if !ok || gd.Tok != token.TYPE {
-			continue
-		}
-		for _, spec := range gd.Specs {
-			ts, ok := spec.(*ast.TypeSpec)
-			if !ok {
+	for _, pf := range files {
+		for _, decl := range pf.file.Decls {
+			gd, ok := decl.(*ast.GenDecl)
+			if !ok || gd.Tok != token.TYPE {
 				continue
 			}
-			if _, ok := ts.Type.(*ast.ChanType); ok {
-				names[ts.Name.Name] = true
+			for _, spec := range gd.Specs {
+				ts, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				if _, ok := ts.Type.(*ast.ChanType); ok {
+					names[ts.Name.Name] = true
+				}
 			}
 		}
 	}

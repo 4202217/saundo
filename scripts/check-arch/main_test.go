@@ -92,8 +92,39 @@ func TestChannelTypeAliasBanned(t *testing.T) {
 		"internal/engine/engine.go": "package engine\ntype events chan int\nfunc Run() { ch := make(events); _ = ch }\n",
 	})
 	err := run(root)
-	if err == nil || !strings.Contains(err.Error(), "through the type alias events") {
+	if err == nil || !strings.Contains(err.Error(), "through the named channel type events") {
 		t.Fatalf("channel alias = %v, want a channel violation", err)
+	}
+}
+
+func TestChannelTypeAliasInAnotherFileBanned(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/engine/types.go": "package engine\ntype events chan int\n",
+		"internal/engine/run.go":   "package engine\nfunc Run() { ch := make(events); _ = ch }\n",
+	})
+	err := run(root)
+	if err == nil || !strings.Contains(err.Error(), "through the named channel type events") {
+		t.Fatalf("cross-file channel alias = %v, want a channel violation", err)
+	}
+}
+
+func TestChannelTypeAliasInAnotherFileWithCapacityAllowed(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/engine/types.go": "package engine\ntype events chan int\n",
+		"internal/engine/run.go":   "package engine\nfunc Run() { ch := make(events, 8); _ = ch }\n",
+	})
+	if err := run(root); err != nil {
+		t.Fatalf("cross-file alias with capacity: %v", err)
+	}
+}
+
+func TestChannelTypeNamesStayInTheirPackage(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/engine/types.go":     "package engine\ntype events chan int\n",
+		"internal/airplay/sender/s.go": "package sender\ntype events map[string]int\nfunc Run() { ch := make(events); _ = ch }\n",
+	})
+	if err := run(root); err != nil {
+		t.Fatalf("a channel type in another package leaked into this one: %v", err)
 	}
 }
 
