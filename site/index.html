@@ -1880,10 +1880,13 @@ function vnoise(x, y){
 }
 function fbmPre(x3, y3, n1x, n1y, n2x, n2y){
   /* vnoise inlined twice: the background loop calls this for every pixel, and
-     the function-call and closure overhead showed up in the long-frame trace. */
+     the function-call and closure overhead showed up in the long-frame trace.
+     The cell index must floor, not truncate: the second sample's drift crosses
+     zero about 24 s after load, and x|0 on a negative coordinate leaves xf
+     negative, so the smoothstep weight and the lattice lookup both break. */
   var p = noisePerm, val = noiseVal;
   var x = x3 + n1x, y = y3 + n1y;
-  var xf0 = x|0, yf0 = y|0;
+  var xf0 = Math.floor(x), yf0 = Math.floor(y);
   var xi = xf0 & 255, yi = yf0 & 255;
   var xf = x - xf0, yf = y - yf0;
   var u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
@@ -1893,7 +1896,7 @@ function fbmPre(x3, y3, n1x, n1y, n2x, n2y){
   var c = val[p[(pxi + y1) & 255]], d = val[p[(px1 + y1) & 255]];
   var n1 = a + (b-a)*u + (c-a)*v + (a-b-c+d)*u*v;
   x = x3 + n2x; y = y3 + n2y;
-  xf0 = x|0; yf0 = y|0;
+  xf0 = Math.floor(x); yf0 = Math.floor(y);
   xi = xf0 & 255; yi = yf0 & 255;
   xf = x - xf0; yf = y - yf0;
   u = xf*xf*(3-2*xf); v = yf*yf*(3-2*yf);
