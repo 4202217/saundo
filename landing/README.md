@@ -115,6 +115,47 @@ Chinese is the source copy; English is a parallel rewrite, not a literal
 translation. Image alt text and ARIA labels are translated too. Reduced
 motion is honoured; the FAQ uses native `details`.
 
+## Modern web behavior
+
+The document declares `color-scheme` and a `theme-color` that follows the
+header toggle, and sets the light/dark palette on the root element before
+first paint. Scroll reveals are opt-in through a `js` class: if a script
+throws, the class is removed and the copy stays visible; `<noscript>` covers
+a disabled script. While the mobile menu is open, `main`, the footer, and the
+skip link are `inert`; the closed dialog is inert too, and a viewport change
+back to the desktop layout closes it. Tray and lamp segments, the swatch
+grid, and the lamp disclosure expose `aria-pressed`/`aria-expanded`; the
+language button's accessible name contains its visible text.
+
+The flyout's muted labels are below WCAG AA in the shipped light palette
+(3.1–3.7:1 on the panel). Changing that palette would change the tray design,
+so it is left for a design decision; `prefers-contrast: more` darkens the
+muted tokens for visitors who ask for more contrast.
+
+The mobile menu stays a custom dialog rather than a native `<dialog>`: its
+visible nav button doubles as the close control, and a native modal would
+make that button inert. It uses a focus trap plus `inert` on the page. The
+receiver marquee pauses on hover and stops under reduced motion, but has no
+visible pause control; WCAG 2.2.2 would require one, and the current header
+and strip design has no slot for it.
+
+## Performance
+
+The ambient glow renders one 2D canvas per frame. Its ring lookup table
+(distance, angle, falloff, phase, amplitude) is rebuilt only when the canvas
+size changes, the noise offsets and palette interpolation reuse the same
+`ImageData`, and the per-pixel noise is inlined. The renderer produces the
+same pixels as the first version: a fixed 90-frame run at DPR 2 hashes to
+the same value before and after the change. The canvas stops drawing through
+an `IntersectionObserver` when the ambient section leaves the viewport, and
+the media clock does not advance while the tab is hidden.
+
+Measured on the development machine with 4x CPU throttling, glow visible, and
+`?demo=0`: 10.5 FPS before and 59.5 FPS after at DPR 1; 10–12 FPS before and
+34–41 FPS after at DPR 2. On a warm local server at normal CPU, FCP is 192 ms,
+LCP is 208 ms, CLS is 0, and the page makes three subresource requests (two
+fonts and the icon).
+
 ## Before publishing
 
 The `og:image` tag points at
@@ -151,3 +192,19 @@ Clicked through in a headless browser: receiver connect, play and pause, the
 four latency modes, a template swatch, the lamp power, and an FAQ entry. The
 mobile menu opens with its download action visible and returns focus to its
 button when closed. A `#install` deep link opens the hashed FAQ entry.
+
+Lighthouse on the local server (`?demo=0&theme=light&lang=en`): desktop
+accessibility 92, best practices 100, SEO 100, agentic browsing 100; mobile
+accessibility 96, best practices 100, SEO 100. The desktop failures are the
+flyout's muted-text contrast (see above) and the transport buttons' measured
+20.4 px boxes. Those buttons carry transparent `::after` hot zones that
+extend the target to 36 px before the 0.85 zoom (30.6 px after), and mobile
+passes target size, so the 20.4 px reading is a tooling limit.
+`prefers-contrast: more` was checked to darken the muted flyout tokens.
+
+With `prefers-reduced-motion: reduce`, the ambient canvas draws one static
+frame, the lamp switch clears it, and the hero pass is cancelled by pointer
+or keyboard focus. The mobile menu was checked open, close, Escape, link
+navigation, and the resize back to the desktop layout; `main`, the footer,
+and the skip link follow the `inert` state and the body scroll lock is
+restored.
