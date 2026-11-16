@@ -116,7 +116,7 @@ go test -run 'TestLampDefaultsOnAndCover|TestLampOldFileLoadsDefaults|TestLampLe
 Sender and engine:
 
 ```bash
-go test -run 'TestSetLampArtworkSendsCover|TestSetLampArtworkWaitsForStreaming|TestSetLampArtworkDuplicateIsNoOp|TestSetLampArtworkDoesNotTouchDMAPText|TestSetLampArtworkClearSendsNothing|TestSetPlaybackStateSendsCommand|TestSetPlaybackStateWaitsForStreaming|TestSetPlaybackStateAssumesPlayingOnSessionStart|TestSetPlaybackStateResumesWithTheCover|TestMediaCoverWinsWhenLampIsOff|TestLampCoverWinsWhileOn' -v ./internal/airplay/sender/
+go test -run 'TestSetLampArtworkSendsCover|TestSetLampArtworkWaitsForStreaming|TestSetLampArtworkDuplicateIsNoOp|TestSetLampArtworkDoesNotTouchDMAPText|TestSetLampArtworkClearSendsNothing|TestFirstCoverResendsOnceOnAPair|TestFirstCoverRetrySendsTheCurrentCover|TestFirstCoverRetrySkipsAStandalone|TestFirstCoverRetryStopsWithTheSession|TestPairSessionSendsPlayingStateBeforeTheFirstCover|TestPairSessionKeepsAPreStartPause|TestStandaloneSessionStillAssumesPlaying|TestSetPlaybackStateSendsCommand|TestSetPlaybackStateWaitsForStreaming|TestSetPlaybackStateAssumesPlayingOnSessionStart|TestSetPlaybackStateResumesWithTheCover|TestMediaCoverWinsWhenLampIsOff|TestLampCoverWinsWhileOn' -v ./internal/airplay/sender/
 go test -run 'TestLampOffOnAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToDefault|TestLampCoverKeepsPlayingOnPause|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestGroupArtworkFansOutToBothCapableMembers|TestGroupArtworkSkipsIncapableMember|TestStandbyDarkensAtThresholdAndResumesOnSound|TestLastPushTracksTheStreamNotSilence' -v ./internal/engine/
 ```
 
@@ -142,6 +142,10 @@ Live, with a HomePod at software 27.2 or later and Sound Glow on:
    priority becomes template.
 8. Restart the app while the light is off. It stays off; 开启氛围灯 restores it.
 9. Repeat with a stereo pair: each capable member repaints and goes dark.
+   On the first connect, both members log `playback state: 1` before the
+   first cover and `cover: first-light retry` about 2 s later; the
+   follower's top should not stay dark or white. Verified 2026-11-16: R
+   lights on the first connect without tapping.
 
 Both probes need the app stopped: they bind PTP UDP 319/320, which a running
 instance owns. Do not run them while it streams.
@@ -225,6 +229,11 @@ and the off state survive a settings-window close/reopen and an app restart.
 - A stereo pair's simultaneous repaint is not yet verified; the image is
   skipped for a member that is not top-display capable, while the playback
   state still reaches every member.
-- A state `1` on a stereo follower can leave its renderer white; a new
-  session restores it. The sender avoids a redundant state `1` and resends
-  the artwork after a resume's state `1`; if it sticks, reconnect.
+- A stereo follower's top follows the pair's HomeKit/tightSync media-system
+  sync, not its own session's artwork stream. The session's first light is a
+  one-shot race; a pair member re-sends it 2 s later (`coverRetry`, log line
+  `cover: first-light retry`). A pair member also sends an explicit state `1`
+  at stream start, before the first cover, because the follower does not
+  assume playing (log line `playback state: 1`). SETPEERS is a no-op on a PTP
+  session in the HomePod firmware, so it is not the display-sync seed. If a
+  follower is already stuck white, reconnect.

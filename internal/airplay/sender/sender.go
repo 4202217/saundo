@@ -154,43 +154,6 @@ func defaultIdentity() Identity {
 	}
 }
 
-type header struct{ key, value string }
-
-type timer struct {
-	interval  time.Duration
-	repeating bool
-	active    bool
-	due       time.Time
-}
-
-func (t *timer) arm(now time.Time) {
-	t.due = now.Add(t.interval)
-	t.active = true
-}
-
-func (t *timer) disarm() { t.active = false }
-
-type pendingReq struct {
-	method string
-	// label names the request in the reply log: a POST path, content type,
-	// and body size. Pairing requests leave it empty.
-	label string
-	http  bool
-	// replay resends the identical AP2 request with a fresh CSeq after a 401
-	// digest challenge.
-	replay func()
-	// authRetry marks a request sent in answer to a challenge; a second 401
-	// fails instead of looping.
-	authRetry bool
-}
-
-func (p pendingReq) describe() string {
-	if p.label != "" {
-		return p.label
-	}
-	return p.method
-}
-
 type pairStage uint8
 
 const (
@@ -343,6 +306,9 @@ type Sender struct {
 	pinTimer   timer
 	feedback   timer
 	volumePoll timer
+	coverRetry timer
+	// coverRetryDone marks the one first-light retry a pair session gets.
+	coverRetryDone bool
 
 	// Pacer health: how far the last tick left the stream behind the
 	// wall-clock target, and the consecutive-late-tick streak. A streak is
@@ -463,6 +429,7 @@ func New(io raopio.IO, events Events, log Logger) *Sender {
 	s.feedback.repeating = true
 	s.volumePoll.interval = volumePollInterval
 	s.volumePoll.repeating = true
+	s.coverRetry.interval = firstCoverRetry
 	s.latencyMS = 200
 	s.receiverVol = -1
 	s.latency = defaultLatency
@@ -653,10 +620,21 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.port = port
 	s.sentCover = s.sentCover[:0]
 	s.sentCoverMIME = ""
+	s.coverRetry.disarm()
+	s.coverRetryDone = false
 	// A new session starts playing; a paused state is sent explicitly. This
 	// keeps the old image-only path for the first light and avoids a state 1
-	// command that some receivers answer by dropping the artwork.
-	s.playbackStateSent = playbackPlaying
+	// command that some receivers answer by dropping the artwork. A stereo
+	// follower does not assume playing, so a pair member gets an explicit
+	// state 1 before the first cover.
+	if s.groupUUID != "" {
+		if s.playbackState == 0 {
+			s.playbackState = playbackPlaying
+		}
+		s.playbackStateSent = 0
+	} else {
+		s.playbackStateSent = playbackPlaying
+	}
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
@@ -834,6 +812,7 @@ func (s *Sender) stopTimers() {
 	s.pinTimer.disarm()
 	s.feedback.disarm()
 	s.volumePoll.disarm()
+	s.coverRetry.disarm()
 }
 
 // HandleEvent feeds one host notification into the sender.
@@ -1032,6 +1011,9 @@ func (s *Sender) Tick() {
 	if due(&s.volumePoll) {
 		s.onVolumePoll()
 	}
+	if due(&s.coverRetry) {
+		s.onCoverRetry()
+	}
 	if due(&s.sync) {
 		s.sendSyncPacket(false)
 	}
@@ -1050,7 +1032,7 @@ func (s *Sender) Tick() {
 // without a timer of its own.
 func (s *Sender) NextDeadline() time.Time {
 	var best time.Time
-	for _, t := range []*timer{&s.pacer, &s.sync, &s.timeout, &s.pinTimer, &s.feedback, &s.volumePoll} {
+	for _, t := range []*timer{&s.pacer, &s.sync, &s.timeout, &s.pinTimer, &s.feedback, &s.volumePoll, &s.coverRetry} {
 		if !t.active {
 			continue
 		}
