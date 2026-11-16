@@ -125,8 +125,33 @@ receiver's remembered volume):
 SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
 ```
 
-Live app: open via the flyout's gear (and once via the tray menu — the
-设置… entry is a separate path), confirm the window class is `MyGoWindow`,
+E2E UI drives this window from the e2e build: launch it as SKILL.md's e2e
+launch block shows, press the flyout's gear (设置) to raise the window, and
+act on the refs a snapshot prints:
+
+```bash
+bin/mygo-automation.exe open --socket "$(cygpath -w /tmp/saundo-e2e.sock)"
+bin/mygo-automation.exe snapshot -i              # the flyout; find the gear by its 设置 label
+bin/mygo-automation.exe press @e4 --settle       # refs are examples: take them from the snapshot
+bin/mygo-automation.exe windows                  # w2 "设置 · 声渡" now reports visible
+bin/mygo-automation.exe snapshot -i --window 2   # sidebar pages, cards, rows
+bin/mygo-automation.exe press @e9 --settle       # a sidebar page: the ref beside 连接
+bin/mygo-automation.exe screenshot /tmp/saundo-verify/settings.png --window 2
+```
+
+Take refs from the latest snapshot; a control keeps its ref while the
+window shows it, and the labels beside the refs are what to match.
+`--window 2` is the `设置 · 声渡` entry in `windows`, created hidden at
+startup. The PNG is evidence only while that window is visible; a hidden
+window captures the frame it would draw. On macOS the commands drop the
+`.exe` suffix and cygpath, and `--socket` belongs to `open` only. The e2e
+build shares the single-instance lock with the release app, so stop that
+instance first; the Windows `--settle` timeout on the hidden flyout is in
+tray-and-flyout.md.
+
+Live app (for what the window tree cannot show): open via the flyout's
+gear (and once via the tray menu — the 设置… entry is a separate path),
+confirm the window class is `MyGoWindow`,
 the sidebar order is 通用/连接/接收器/音频/氛围灯/采集/正在播放/更新/关于, and the
 window is ~720 DIP wide. Open 正在播放, turn 托盘面板中显示 off: the flyout
 (reopened) has no media card and is shorter, while the preview stays live

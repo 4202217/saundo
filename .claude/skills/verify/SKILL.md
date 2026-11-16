@@ -197,8 +197,8 @@ evidence. Advance animations with `tt.Advance(d)`.
 go test -v ./internal/airplay/sender/
 ```
 
-**e2e UI.** The socket answers the accessibility tree, so labels and `Key`
-names are the selectors:
+**e2e UI.** The socket answers the accessibility tree, so the refs a
+snapshot prints are the selectors (`key=` where the app sets one):
 
 ```bash
 bin/mygo-automation.exe open --socket "$(cygpath -w /tmp/saundo-e2e.sock)"

@@ -172,9 +172,10 @@ captured; the menu-bar click path is outside the protocol and unproven.
 - A hidden flyout still answers `act`, so a press can change state while the
   screenshot shows a built frame. Raise the settings window when the proof
   needs an on-screen draw.
-- On Windows, `press 设置 --settle` can time out on the first try because
-  the hidden flyout keeps requesting frames. Press it again without
-  `--settle`; the window then reports `visible:true` in `windows --json`.
+- On Windows, the first press of the flyout's gear with `--settle` can time
+  out because the hidden flyout keeps requesting frames. Press it again
+  without `--settle`; the window then reports `visible:true` in
+  `windows --json`.
   The macOS run settled immediately and printed `(no changes)`.
 - On macOS the e2e binary is a plain executable, not an `.app` bundle, and
   still starts a full UI app with the flyout and settings windows; do not
