@@ -79,6 +79,19 @@ visible swatches follow the earlier design exploration.
 The pod keeps the page's original translucent glow layer, and a soft aura
 outside the pod carries the current palette.
 
+The disc geometry is measured off the base photos, not the device: the glass
+surface ends at 40.3% of the pod box in light and 40.7% in dark, the glass's
+own rim shadow runs out to 42.7%, and the mesh starts there. The 43% display
+therefore lands on the mesh boundary, so the glow's edge and the glass's edge
+are the same circle. What made them read apart was `.amb-pod::after`: a
+near-black vignette whose darkest stop (46%) sits on that rim, which on the
+white glass reads as a grey backing disc and darkens the rim it covers by
+about 20 levels. Light mode now skips the vignette entirely and lets the
+glow's own falloff end on the glass; dark mode keeps it, where it is
+invisible on the dark fabric and still grounds the light. The display mask
+starts at 88% instead of 58%, so the mask no longer cuts the outer glow
+before the canvas falloff has finished.
+
 The page mixes card sections (steps) with a bento feature grid, a flat trust
 section, and the FAQ, so it does not read as a pile of rounded boxes. The
 trust section sits right after the device strip — identity first, then how-to
