@@ -22,14 +22,14 @@ Pick by what the proof needs. Cheapest that proves the claim wins.
 2. **Protocol** (no device): `go test ./internal/airplay/sender/` drives the
    full AP2 handshake against the in-process fake receiver. Use for pairing,
    crypto, RTSP, timing, and stream behavior.
-3. **e2e UI** (real exe, no receiver): `mingw32-make e2e-build` links the
+3. **e2e UI** (test build, no receiver): `mingw32-make e2e-build` links the
    mygo automation plugin into `bin/saundo-e2e.exe` on Windows and
    `bin/saundo-e2e` on macOS, and `mygo-automation` drives it over a Unix
    socket. It lists windows, reads the same element
    tree screen readers see, presses and types, waits for the UI to settle,
    and saves PNGs. Use for window and control behavior, real-DPI layout, and
    evidence captures. The tray icon and its menu are outside the protocol.
-4. **Live app** (real exe, optionally real receiver): the running instance
+4. **Live app** (real app, optionally real receiver): the running instance
    observed through its log, windows, and tray; env-gated device tests for
    real hardware. Use when the claim is about WASAPI, mDNS, PTP, the tray, or
    end-to-end behavior. Audible output is always confirmed by the user, never
@@ -109,7 +109,8 @@ HOME=/tmp/saundo-e2e-home MYGO_AUTOMATION=/tmp/saundo-e2e.sock \
 ```
 
 The plugin is linked only under the e2e build tag; release builds strip it,
-so `bin/saundo.exe` cannot be driven this way. The redirected data dir keeps
+so the release binaries (`bin/saundo.exe` on Windows, `bin/saundo.app` on
+macOS) cannot be driven this way. The redirected data dir keeps
 the run away from the user's settings and credentials — `APPDATA` on
 Windows, `HOME` on macOS, where the log is then
 `$HOME/Library/Application Support/saundo/saundo.log`. Readiness is the
