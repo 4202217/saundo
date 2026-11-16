@@ -33,7 +33,7 @@ func (a *App) credentialDialog(c *ui.Context, p palette) {
 	if !a.credentialOpen {
 		return
 	}
-	modal := ui.DialogBase(c, &a.credentialOpen, func(back, panel ui.Element) {
+	modal := ui.DialogBase(c.Key("credential-dialog"), &a.credentialOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
 		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))

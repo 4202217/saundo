@@ -27,7 +27,7 @@ func (a *App) updateNotesDialog(c *ui.Context, p palette) {
 	if !a.notesOpen {
 		return
 	}
-	modal := ui.DialogBase(c, &a.notesOpen, func(back, panel ui.Element) {
+	modal := ui.DialogBase(c.Key("notes-dialog"), &a.notesOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
 		panel.Width(600).Padding(18, 20, 18, 20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
@@ -38,7 +38,7 @@ func (a *App) updateNotesDialog(c *ui.Context, p palette) {
 				choice = locales.UpdateRangeLatest()
 			}
 			options := []string{locales.UpdateRangeSince(), locales.UpdateRangeLatest()}
-			sel := ui.Select(c, &choice, options).Height(26).Radius(7).Padding(0, 8).FontSize(11.5).
+			sel := ui.Select(c.Key("notes-range"), &choice, options).Height(26).Radius(7).Padding(0, 8).FontSize(11.5).
 				Label(locales.UpdateRangeSince())
 			if sel.Changed() {
 				a.notesRange = choice == locales.UpdateRangeSince()
@@ -95,7 +95,12 @@ func (a *App) notesLoading() bool {
 // notesHistory renders the offered version in full, then one folded row per
 // older version, newest first.
 func (a *App) notesHistory(c *ui.Context, p palette) {
-	a.md.Theme = notesTheme(p)
+	// The view runs every frame; the dialog's Markdown theme depends only
+	// on the appearance and is kept across frames.
+	if a.mdTheme == nil || a.mdThemeDark != p.dark {
+		a.mdTheme, a.mdThemeDark = notesTheme(p), p.dark
+	}
+	a.md.Theme = a.mdTheme
 	entries := a.notesEntries()
 	pending := a.notesLoading()
 	a.notesHeading(c, p, entries[0])

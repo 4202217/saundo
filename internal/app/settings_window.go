@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
@@ -65,71 +64,9 @@ func pageTitle(page settingsPage) string {
 	return locales.SettingsNavGeneral()
 }
 
-// showSettings opens the configuration window. The flyout keeps the playback
-// controls, so it hides while the user works in this window.
-func (a *App) showSettings() {
-	if a.settingsWin == nil {
-		return
-	}
-	if a.win != nil {
-		a.win.Hide()
-	}
-	if a.settingsWin.IsMinimized() {
-		a.settingsWin.Restore()
-	}
-	a.appMenuOpen = false
-	a.settingsWin.Show()
-	a.settingsWin.Focus()
-	mygo.App.Focus()
-}
-
-// hideSettings hides the settings window; the app stays in the tray.
-func (a *App) hideSettings() {
-	if a.settingsWin != nil {
-		a.settingsWin.Hide()
-	}
-}
-
-// newSettingsWindow builds the configuration window hidden; showSettings
-// reveals it. Closing it hides it, and the app keeps running in the tray.
-func (a *App) newSettingsWindow() *mygo.Window {
-	w := mygo.NewWindow(mygo.WindowOptions{
-		Title: locales.SettingsWindowTitle(),
-		// The design's 720×500 is the page area the view lays out in; the
-		// window frame adds a few DIPs around it. The layout's narrow branch
-		// reads that area, not the window, so the two must agree.
-		Width:          720,
-		Height:         500,
-		UseContentSize: true,
-		MinWidth:       640,
-		MinHeight:      420,
-		Hidden:         true,
-		StateKey:       "settings",
-		// Fills the window before the first frame paints, so a dark window
-		// does not flash white as it opens.
-		BackgroundColor: "light-dark(#f4f4f6, #1a1a1e)",
-		// The view draws the title bar so it blends with the window's
-		// background; the system keeps its buttons over it.
-		TitleBarStyle: mygo.TitleBarHidden,
-		Content:       ui.View(a.settingsView),
-	})
-	w.OnClose(func(e *mygo.CloseEvent) {
-		if a.quitting {
-			return
-		}
-		e.PreventDefault()
-		w.Hide()
-	})
-	// The log dialog belongs to this window; a reopened window starts without it.
-	w.OnShow(func() {
-		a.settingsEntered = false
-		a.showLog = false
-	})
-	return w
-}
-
 func (a *App) settingsView(c *ui.Context) {
 	p := design(c)
+	a.adoptTextScale(p.scale, a.settingsWin)
 	c.OnShortcut(ui.Cmd, ui.KeyW, a.hideSettings)
 	ui.Column(c).Fill().Background(p.bg).Children(func() {
 		a.settingsTitleBar(c, p)
@@ -189,6 +126,7 @@ func (a *App) sidebarItem(c *ui.Context, p palette, page settingsPage, icon *ui.
 		e.Background(p.card)
 		e.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
 	case e.Hovered():
+		// The sidebar's selection fade shares the row's 140 ms transition.
 		e.Background(p.pill)
 	}
 	e.OnClick(func() { a.page = page })
@@ -235,7 +173,7 @@ func (a *App) settingsBody(c *ui.Context, p palette) {
 		// The page body scrolls under the fixed title and divider so a short
 		// window (the 420 DIP minimum) reaches the whole latency card and the
 		// read-only rows.
-		ui.Scroll(c).Grow(1).Padding(4, 20, 0, 0).Children(func() {
+		ui.Scroll(c.Key(a.page)).Grow(1).Padding(4, 20, 0, 0).Children(func() {
 			content := ui.Column(c).Key(a.page).Shrink(0).WidthPercent(100).
 				MaxWidth(settingsColumnWidth).Margin(0, ui.Auto).Transition(ui.ElementTransition{
 				Duration: 160 * time.Millisecond,
@@ -1045,16 +983,25 @@ func (a *App) applyCaptureEndpoint() {
 // appMultiSelect is the macOS picker: a field showing the selection, and a
 // menu whose checked rows apply live after a short pause.
 func (a *App) appMultiSelect(c *ui.Context, p palette) ui.Element {
-	m := ui.MenuBase(c, &a.appMenuOpen)
-	bg := p.pill
-	if m.Trigger.Hovered() {
-		bg = p.pillHover
-	}
-	if m.Trigger.Pressed() {
-		bg = p.line
-	}
+	m := ui.MenuBase(c.Key("capture-apps"), &a.appMenuOpen)
 	trigger := m.Trigger.Width(captureSelectWidth).Height(28).Radius(7).Padding(0, 9).
-		Background(bg).Border(1, p.line).Label(locales.SettingsAppCapture())
+		Background(p.pill).Border(1, p.line).Label(locales.SettingsAppCapture())
+	trigger.Draw(func(pt *ui.Painter, r ui.Rect) {
+		bg := ui.Color{}
+		switch {
+		case trigger.Pressed():
+			bg = p.line
+		case trigger.Hovered():
+			bg = p.pillHover
+		}
+		if bg.A == 0 {
+			return
+		}
+		r = ui.Rect{X: r.X + 1, Y: r.Y + 1, W: r.W - 2, H: r.H - 2}
+		if r.W > 0 && r.H > 0 {
+			pt.Fill(r, bg, 6)
+		}
+	})
 	trigger.Children(func() {
 		ui.Row(c).Grow(1).Gap(6).AlignItems(ui.Center).Children(func() {
 			if icon := a.selectionBitmap(); icon != nil {
