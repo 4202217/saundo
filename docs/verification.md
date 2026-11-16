@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-15 -->
+<!-- reviewed-through: 2026-11-16 -->
 
 # Verification
 
@@ -385,6 +385,64 @@ remains open. Pins: `TestCachedDeviceGroupKeepsTopDisplayCapability`,
 `TestMergeKeepsCachedGroupMembers`,
 `TestRememberedStereoPairKeepsTopDisplayCapability`,
 `TestSenderLogTagsTheReceiver`, `TestPendingRequestLabelNamesTheArtwork`.
+
+## 2026-11-16 — stereo first light is re-sent after the pair sync
+
+A first connect to the stereo pair occasionally left one HomePod's top
+display on its white placeholder until a manual disconnect and reconnect.
+The 18:44:25 first light was delivered to both members and both answered
+`200 OK` to `SET_PARAMETER image/jpeg (11108 B)`, so the RTSP layer did not
+drop it. The follower's top follows the pair's HomeKit/tightSync
+media-system sync, not its own session's artwork stream; the session's
+first light is the one image it takes from its own session, and it is sent
+at the earliest instant the session streams. When the sync has not yet
+established the Now Playing item, the image is acknowledged without
+reaching the LED renderer, and artwork-only pushes later in the same
+session do not recover it (2026-11-15 experiments below). A new session
+does, which is why the reconnect worked.
+
+The 2026-11-15 SETPEERS attribution does not survive later evidence:
+`receiver` returns early when the
+session's `timingProtocol` is `PTP` (observed in
+live-session logs),
+so SETPEERS cannot seed the display sync. The 2026-11-15 live success came
+from the freshly power-cycled pair, as the commit body already noted.
+
+Fix as shipped: a pair member re-sends the session's first effective cover
+2 s after the first cover send (`internal/airplay/sender` `coverRetry`),
+which gives the follower's media-system sync time to attach the item. The
+retry is one-shot per session, follows a template change made inside the
+window, and is skipped on a standalone receiver. Pins:
+`TestFirstCoverResendsOnceOnAPair`,
+`TestFirstCoverRetrySendsTheCurrentCover`,
+`TestFirstCoverRetrySkipsAStandalone`,
+`TestFirstCoverRetryStopsWithTheSession`.
+
+Live sender run 2026-11-16 20:03 on the pair: the first light at
+20:03:25.403 and the retry at 20:03:27.403 each answered `200 OK` on both
+members; the real track metadata arrived at 20:03:26.936, inside the
+window, the same race as the 18:44 failure. The LED observation is the
+user's and stays open. The 2 s delay is the first attempt; if a follower
+still stays white, the next step is to gate the first light on each
+member's first event-channel `updateInfo` instead of a fixed delay.
+
+Follow-up 2026-11-16 20:14: the retry did not change the symptom because
+the follower was dark, not missing the retry. On a cold start R stayed
+off while L showed the template; tapping R's glass woke it with the
+template colors, then it turned white, and later template changes did not
+follow. The sender assumed playing and sent no state `1` on either
+member (`playback state: 1 unchanged, not sent`). A pair follower does
+not assume playing, so a pair member now sends an explicit state `1` at
+stream start, before the first cover (`sender.Start`; `beginPlayback`
+sends the state before the metadata and cover). A standalone receiver
+keeps the image-only first light. Pins:
+`TestPairSessionSendsPlayingStateBeforeTheFirstCover`,
+`TestPairSessionKeepsAPreStartPause`,
+`TestStandaloneSessionStillAssumesPlaying`. Live sender run 2026-11-16
+20:30 on the pair: `playback state: 1` precedes the cover on both
+members, both answered `200 OK` to the state command and the image, and
+the 2 s retry followed. The user confirmed R lights on the first connect
+without tapping the glass.
 
 ## Graduated
 

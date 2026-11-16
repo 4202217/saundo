@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"saundo/internal/airplay/device"
 )
@@ -53,6 +54,103 @@ func TestSetLampArtworkWaitsForStreaming(t *testing.T) {
 	r.start()
 	if got := coverRequests(r); len(got) != 1 {
 		t.Fatalf("cover on streaming start = %d, want 1", len(got))
+	}
+}
+
+// TestFirstCoverResendsOnceOnAPair pins the follower's first-light recovery.
+// A pair member re-sends the session's first cover after the media-system sync
+// has had time to establish the Now Playing item, and only once.
+func TestFirstCoverResendsOnceOnAPair(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.sender.SetGroupUUID("1602DA4F-8C8F-58E4-A360-F9F2D0480FC5")
+	r.start()
+	r.rx.setParams = nil
+	image := []byte{0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0xff, 0xd9}
+
+	r.sender.SetLampArtwork(image, "image/jpeg", true)
+	r.step()
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("first cover = %d, want 1", len(got))
+	}
+
+	r.advance(firstCoverRetry + 100*time.Millisecond)
+	got := coverRequests(r)
+	if len(got) != 2 {
+		t.Fatalf("first-light retry = %d covers, want 2", len(got))
+	}
+	if !bytes.Equal([]byte(got[1]), image) {
+		t.Fatalf("retry cover = % x, want % x", got[1], image)
+	}
+
+	r.advance(firstCoverRetry + 100*time.Millisecond)
+	if got := coverRequests(r); len(got) != 2 {
+		t.Fatalf("second retry = %d covers, want 2", len(got))
+	}
+}
+
+// TestFirstCoverRetrySendsTheCurrentCover pins that the retry follows a
+// template change made inside the retry window.
+func TestFirstCoverRetrySendsTheCurrentCover(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.sender.SetGroupUUID("1602DA4F-8C8F-58E4-A360-F9F2D0480FC5")
+	r.start()
+	r.rx.setParams = nil
+	first := []byte{0xff, 0xd8, 0xff, 0xe0, 0x01, 0xff, 0xd9}
+	second := []byte{0xff, 0xd8, 0xff, 0xe0, 0x02, 0xff, 0xd9}
+
+	r.sender.SetLampArtwork(first, "image/jpeg", true)
+	r.step()
+	r.sender.SetLampArtwork(second, "image/jpeg", true)
+	r.step()
+	if got := coverRequests(r); len(got) != 2 {
+		t.Fatalf("covers before retry = %d, want 2", len(got))
+	}
+
+	r.advance(firstCoverRetry + 100*time.Millisecond)
+	got := coverRequests(r)
+	if len(got) != 3 {
+		t.Fatalf("covers after retry = %d, want 3", len(got))
+	}
+	if !bytes.Equal([]byte(got[2]), second) {
+		t.Fatalf("retry cover = % x, want the current image % x", got[2], second)
+	}
+}
+
+// TestFirstCoverRetrySkipsAStandalone pins the scope: a single receiver does
+// not get the pair's extra send.
+func TestFirstCoverRetrySkipsAStandalone(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.start()
+	r.rx.setParams = nil
+	image := []byte{0xff, 0xd8, 0xff, 0xe0, 0x03, 0xff, 0xd9}
+
+	r.sender.SetLampArtwork(image, "image/jpeg", true)
+	r.step()
+	r.advance(firstCoverRetry + 100*time.Millisecond)
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("standalone covers = %d, want 1", len(got))
+	}
+}
+
+// TestFirstCoverRetryStopsWithTheSession pins that a retry armed in one
+// session cannot fire after the session ends.
+func TestFirstCoverRetryStopsWithTheSession(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	r.sender.SetGroupUUID("1602DA4F-8C8F-58E4-A360-F9F2D0480FC5")
+	r.start()
+	r.rx.setParams = nil
+	image := []byte{0xff, 0xd8, 0xff, 0xe0, 0x04, 0xff, 0xd9}
+
+	r.sender.SetLampArtwork(image, "image/jpeg", true)
+	r.step()
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("first cover = %d, want 1", len(got))
+	}
+	r.sender.Stop()
+	r.step()
+	r.advance(firstCoverRetry + 100*time.Millisecond)
+	if got := coverRequests(r); len(got) != 1 {
+		t.Fatalf("covers after stop = %d, want 1", len(got))
 	}
 }
 
