@@ -36,11 +36,28 @@
   "settingsWindowTitle": "Settings · Saundo",
   "trayShowPanel": "Show tray panel",
   "traySettings": "Settings…",
-  "trayConnectLast": "Connect to last receiver",
-  "trayMuteLocal": "Mute local output",
-  "trayUnmuteLocal": "Unmute local output",
   "trayQuit": "Quit Saundo",
   "trayTooltip": "Saundo",
+  "trayMenuCancelConnect": "Cancel connection",
+  "trayMenuRetry": "Retry connection",
+  "trayMenuMore": "More receivers…",
+  "trayMenuLastUsed": "Last used",
+  "trayMenuDownload": "Download update {version}",
+  "@trayMenuDownload": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "trayMenuInstall": "Restart and install {version}",
+  "@trayMenuInstall": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "statusReconnecting": "Reconnecting…",
   "statusTakenOver": "Taken over by another device",
   "statusConnecting": "Connecting…",
@@ -551,7 +568,6 @@
       }
     }
   },
-  "trayCheckUpdates": "Check for updates…",
   "updateCheckingShort": "Checking…",
   "updateUpToDateShort": "Up to date",
   "updateNotesTitle": "{version} What's New",

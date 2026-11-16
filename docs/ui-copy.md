@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-14 -->
+<!-- reviewed-through: 2026-11-16 -->
 
 # UI copy standard
 
@@ -21,7 +21,7 @@ The receiver is the product concept. The flyout section head and the settings pa
 
 The ambient light is turned off with 关闭氛围灯 and on with 开启氛围灯. Do not use 熄灯.
 
-The tray menu's mute row names its action the same way: 静音本机输出 while the preference is off, 取消静音本机输出 while it is on.
+The tray menu's receiver rows keep the flyout's 离线 status. The session action row uses 取消连接, 断开连接, and 重试连接. The ambient submenu uses 关闭氛围灯 or 开启氛围灯, 封面, and the template names. The choices are disabled while the light is off; 开启氛围灯 turns it on first. While lit, the current choice is disabled, greyed, and its label ends in a single-color ✔; while off, the stored choice carries 上次 / Last used.
 
 ## Latency and stability
 

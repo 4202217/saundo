@@ -51,7 +51,7 @@
 - Takeover is terminal: a clean control close during streaming stops the
   reconnect (`engine.go:1781-1798`; `sender.go:917`), the status reads
   已被其他设备接管, and the active row offers 重新连接
-  (`flyout.go:281-283`; `app.go:1341-1344`). A close carrying an error stays
+  (`flyout.go:281-283`; `app.go:1125-1128`). A close carrying an error stays
   retryable.
 - A failed attempt clears its error on the next connect or disconnect
   (`engine.go:1189`, `:1430`), and other online rows stay connectable in the

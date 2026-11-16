@@ -9,23 +9,33 @@
   wave); eyes static.
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
-- Right click opens the menu: one row per visible receiver, each with its
-  receiver-family glyph in one icon column. The connecting or streaming
-  receiver draws that glyph in the accent color; every other row, including a
-  device merely selected while idle, draws the template in the text color. An
-  unreachable row keeps the 离线 subtitle. Clicking the row that carries the
-  session ends it; clicking any other row connects or switches to it; a
-  failed session's row retries. The 连接上次接收器
-  fallback follows when no row is the target, disabled when no receiver is
-  remembered. Then the mute row, 静音本机输出 while the preference is off and
-  取消静音本机输出 while it is on (bell
-  glyph, slashed while the preference is on), 关闭氛围灯 or 开启氛围灯 for the ambient
-  light, 显示托盘面板, 设置…, 检查更新…, and 退出声渡. The menu has no
-  separate 断开连接 row; the in-session row's click carries it, as the
-  flyout's active row does. No row uses a radio or
-  checkbox mark. The lamp glyph gains a slash while the light is off, as the
-  bell does for the mute row. The menu is installed only
-  for the duration of the popup.
+- Right click opens the menu: one row per visible receiver, up to six, each
+  with its receiver-family glyph in one icon column. The in-session receiver
+  draws that glyph in the accent color; an unreachable row keeps the 离线
+  subtitle and stays clickable. Clicking a row connects or switches to it; the
+  in-session row is not a second connect target. While connecting every row is
+  disabled. The row under the list is the session action: 取消连接, 断开连接,
+  or 重试连接, and it is absent while idle. The playback group follows when the
+  system media session has controls: previous, 暂停 or 播放 with the track and
+  artist as its subtitle, and next. It is absent when playback controls are
+  off or no controllable session exists. Then the ambient-light submenu:
+  关闭氛围灯 or 开启氛围灯, the 封面 choice, and the six template choices, each
+  with a round color preview. The choices are disabled while the light is off; the
+  power row turns the light on, then a choice can be picked, matching the
+  flyout and settings. No row uses a check column; the current ambient choice is disabled while lit and
+  its label ends in a single-color ✔; every choice is disabled while off, where the
+  stored choice carries 上次.
+  While the light is on, the parent row's icon is the current preview; off
+  uses the lamp-off glyph. Then 显示托盘面板, 设置…, a stateful update row (下载更新, 正在下载,
+  重启并安装) only while an update waits, and 退出声渡. When more than six
+  receivers exist, 更多接收器… opens the receivers page; when none is visible,
+  重新搜索 with 暂无接收器 sits first. The menu is installed only for the
+  duration of the popup and is rebuilt on every right click. Pinned by
+  `TestTrayMenuShape`, `TestTrayMenuSessionRow`,
+  `TestTrayMenuMediaRowsFollowSession`, `TestTrayMenuMediaControlSendsAction`,
+  `TestTrayMenuLampSubmenu`, `TestTrayMenuLampOffDisablesChoices`,
+  `TestTrayMenuUpdateRow`, `TestTrayMenuMoreReceivers`, and
+  `TestTrayMenuEmptyState`.
 - Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
   height from the device rows (56 each, 141 empty state), the latency row
   (44, while 托盘面板中显示 is on), the Now Playing card (150 while a session exists and
@@ -158,9 +168,10 @@ captured; the menu-bar click path is outside the protocol and unproven.
 - Credential recovery is unreachable from the UI: stop the app, corrupt
   `%APPDATA%\saundo\credentials.dat` (it is quarantined as
   `credentials.dat.corrupt-<UTC>`), and relaunch.
-- The disabled 连接上次接收器 row needs `selID == ""`; nothing in the app
-  clears it and `syncSelection` fills it from a visible receiver, so use a
-  fresh profile with nothing discovered.
+- The empty menu's 重新搜索 row appears when no receiver is visible; it calls
+  the engine refresh. The old 连接上次接收器 fallback is gone. The cached menu
+  is rebuilt on every right click, so media, lamp, and update rows are current
+  even when no snapshot arrived.
 - Reduce Motion (Windows animation effects off) holds the static face even
   with the switch on — that is required behavior, not a broken toggle.
 - Device churn while the panel is open (rows appearing, height growing

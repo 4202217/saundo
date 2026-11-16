@@ -36,11 +36,28 @@
   "settingsWindowTitle": "设置 · 声渡",
   "trayShowPanel": "显示托盘面板",
   "traySettings": "设置…",
-  "trayConnectLast": "连接上次接收器",
-  "trayMuteLocal": "静音本机输出",
-  "trayUnmuteLocal": "取消静音本机输出",
   "trayQuit": "退出声渡",
   "trayTooltip": "声渡",
+  "trayMenuCancelConnect": "取消连接",
+  "trayMenuRetry": "重试连接",
+  "trayMenuMore": "更多接收器…",
+  "trayMenuLastUsed": "上次",
+  "trayMenuDownload": "下载更新 {version}",
+  "@trayMenuDownload": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "trayMenuInstall": "重启并安装 {version}",
+  "@trayMenuInstall": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "statusReconnecting": "正在重连…",
   "statusTakenOver": "已被其他设备接管",
   "statusConnecting": "正在连接…",
@@ -415,7 +432,6 @@
       }
     }
   },
-  "trayCheckUpdates": "检查更新…",
   "updateCheckingShort": "检查中…",
   "updateUpToDateShort": "已是最新",
   "updateNotesTitle": "{version} 更新内容",
