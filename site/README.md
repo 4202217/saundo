@@ -146,9 +146,12 @@ The ambient glow renders one 2D canvas per frame. Its ring lookup table
 size changes, the noise offsets and palette interpolation reuse the same
 `ImageData`, and the per-pixel noise is inlined. The renderer produces the
 same pixels as the first version: a fixed 90-frame run at DPR 2 hashes to
-the same value before and after the change. The canvas stops drawing through
-an `IntersectionObserver` when the ambient section leaves the viewport, and
-the media clock does not advance while the tab is hidden.
+the same value before and after the change. The inlined noise floors its cell
+index rather than truncating it: the second sample's drift crosses zero about
+24 s after load, and truncation painted hard radial facets from then on. The
+canvas stops drawing through an `IntersectionObserver` when the ambient
+section leaves the viewport, and the media clock does not advance while the
+tab is hidden.
 
 Measured on the development machine with 4x CPU throttling, glow visible, and
 `?demo=0`: 10.5 FPS before and 59.5 FPS after at DPR 1; 10–12 FPS before and
