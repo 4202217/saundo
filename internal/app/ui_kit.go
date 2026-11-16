@@ -91,9 +91,7 @@ func sectionHead(c *ui.Context, p palette, label, note string, busy bool, action
 func iconButton(c *ui.Context, p palette, icon *ui.SVG, label string, size float32, fn func()) {
 	b := ui.ButtonBase(c).Size(26, 26).Radius(7).Center().Cursor(ui.CursorPointer).Label(label)
 	b.OnClick(fn)
-	if b.Hovered() {
-		b.Background(p.pill)
-	}
+	hoverFill(b, p.pill, 7, 0)
 	b.Children(func() {
 		ui.Icon(c, icon).Size(size, size).TextColor(p.muted)
 	})
@@ -114,9 +112,7 @@ func rowAction(c *ui.Context, p palette, key, label string, icon *ui.SVG, color 
 	b := ui.ButtonBase(c.Key(key)).Height(26).Gap(5).Padding(0, 8).Radius(13).Shrink(0).
 		Cursor(ui.CursorPointer).Label(label)
 	b.OnClick(fn)
-	if b.Hovered() {
-		b.Background(p.pill)
-	}
+	hoverFill(b, p.pill, 13, 0)
 	b.Children(content)
 	return b
 }
@@ -130,9 +126,7 @@ func textButton(c *ui.Context, p palette, label string, icon *ui.SVG, color ui.C
 func chipButton(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(28).Radius(14).Padding(0, 10).Center().Cursor(ui.CursorPointer).Label(label)
 	b.Background(p.card).Border(1, p.line)
-	if b.Hovered() {
-		b.Background(p.pill)
-	}
+	hoverFill(b, p.pill, 13, 1)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(11.5).TextColor(p.fg2).SingleLine()
@@ -145,9 +139,7 @@ var dialogScrim = ui.RGBA(20, 22, 30, 0.22)
 // linkButton is a short text action inside a card, in the color it is given.
 func linkButton(c *ui.Context, p palette, label string, color ui.Color, fn func()) {
 	b := ui.ButtonBase(c).Height(30).Radius(15).Padding(0, 8).Center().Cursor(ui.CursorPointer).Label(label)
-	if b.Hovered() {
-		b.Background(p.pill)
-	}
+	hoverFill(b, p.pill, 15, 0)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(color).SingleLine()
@@ -158,9 +150,7 @@ func linkButton(c *ui.Context, p palette, label string, color ui.Color, fn func(
 func primaryButton(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 16).Center().Cursor(ui.CursorPointer).Label(label)
 	b.Background(p.fg)
-	if b.Hovered() {
-		b.Background(p.fg.Mix(p.bg, 0.12))
-	}
+	hoverFill(b, p.fg.Mix(p.bg, 0.12), 17, 0)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(13).FontWeight(500).TextColor(p.bg).SingleLine()
@@ -170,9 +160,7 @@ func primaryButton(c *ui.Context, p palette, label string, fn func()) {
 // quietButton is a dialog's cancel action, text only.
 func quietButton(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 12).Center().Cursor(ui.CursorPointer).Label(label)
-	if b.Hovered() {
-		b.Background(p.pill)
-	}
+	hoverFill(b, p.pill, 17, 0)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(13).TextColor(p.muted).SingleLine()
@@ -244,9 +232,7 @@ func countBadge(c *ui.Context, p palette, n int) {
 func cardAction(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(30).Radius(15).Padding(0, 14).Center().Cursor(ui.CursorPointer).Label(label)
 	b.Background(p.fg)
-	if b.Hovered() {
-		b.Background(p.fg.Mix(p.bg, 0.12))
-	}
+	hoverFill(b, p.fg.Mix(p.bg, 0.12), 15, 0)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(12.5).FontWeight(500).TextColor(p.bg).SingleLine()
@@ -289,7 +275,7 @@ const (
 // segmented is the shared 30-DIP segmented control. width 0 fills the parent.
 // dimmed greys every label and disables the track.
 func segmented(c *ui.Context, p palette, seg *int, items []segmentItem, width float32, dimmed bool, align segmentAlign, label string) ui.Element {
-	parts := ui.SegmentedBase(c, seg, len(items))
+	parts := ui.SegmentedBase(c.Key(label), seg, len(items))
 	track := parts.Track.Height(30).Radius(8).Background(p.pill).Padding(2).Gap(2).
 		Label(label).Disabled(dimmed)
 	if width > 0 {
@@ -394,7 +380,7 @@ func toggle(c *ui.Context, p palette, on *bool, label string, changed func(bool)
 // slider is the design's slider: a hairline rail, ink below the knob and a
 // white knob.
 func slider(c *ui.Context, p palette, value *float64, lo, hi float64, label string, changed func(float64)) ui.Element {
-	s := ui.SliderBase(c, value, lo, hi).Label(label).Height(20).PaddingX(8)
+	s := ui.SliderBase(c.Key(label), value, lo, hi).Label(label).Height(20).PaddingX(8)
 	frac := float32(0)
 	if hi > lo {
 		frac = float32((*value - lo) / (hi - lo))
@@ -443,14 +429,29 @@ func rowLine(c *ui.Context, p palette) {
 	ui.Box(c).Height(1).Background(p.line2)
 }
 
+// hoverFill paints a control's hover look in its Draw phase, so the pointer
+// entering or leaving repaints instead of rebuilding the view. inset keeps a
+// border's pixels clear; radius is the fill's corner radius.
+func hoverFill(e ui.Element, c ui.Color, radius, inset float32) {
+	e.Draw(func(pt *ui.Painter, r ui.Rect) {
+		if !e.Hovered() || c.A == 0 {
+			return
+		}
+		r = ui.Rect{X: r.X + inset, Y: r.Y + inset, W: r.W - 2*inset, H: r.H - 2*inset}
+		if r.W > 0 && r.H > 0 {
+			pt.Fill(r, c, radius)
+		}
+	})
+}
+
 // fieldInput is the 28px pill field of the settings pages.
 func fieldInput(c *ui.Context, p palette, value *string, placeholder, label string) ui.Element {
-	return ui.TextInput(c, value).Width(150).Height(28).Radius(7).PaddingX(9).FontSize(12.5).
+	return ui.TextInput(c.Key(label), value).Width(150).Height(28).Radius(7).PaddingX(9).FontSize(12.5).
 		Placeholder(placeholder).Label(label).Border(1, p.pill)
 }
 
 func fieldSelect(c *ui.Context, p palette, value *string, options []string, label string) ui.Element {
-	return ui.Select(c, value, options).Width(150).Height(28).Radius(7).Padding(0, 9).FontSize(12.5).Label(label)
+	return ui.Select(c.Key(label), value, options).Width(150).Height(28).Radius(7).Padding(0, 9).FontSize(12.5).Label(label)
 }
 
 // staticText is a read-only value at the end of a settings row.
