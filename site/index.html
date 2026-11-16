@@ -889,16 +889,20 @@ html[data-theme="dark"] .amb-aura{opacity:.7}
 html[data-theme="dark"] .amb-base-light{opacity:0}
 html[data-theme="dark"] .amb-base-dark{opacity:1}
 /* 暗角：压在 display 之上。中心透明→盘缘最暗→轻微外溢羽化；阴影走 --amb-shadow（黑+主光色相），与光同色系；灯关时隐去 */
-/* 盘径对齐真机实测（真机玻璃盘=机身径 0.56）：43% pod ≈ 机身 0.551，盘缘落在底图网罩边界（0.52 机身径）上 */
+/* 盘径对齐底图实测：玻璃面到 40.3%（亮）/40.7%（暗），玻璃自己的盘缘阴影到 42.7%，再外是网罩；43% pod 正好压在网罩边界上 */
 .amb-pod::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44.5%;aspect-ratio:1;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle, transparent 0%, transparent 30%, color-mix(in srgb, var(--amb-shadow) 8%, transparent) 50%, color-mix(in srgb, var(--amb-shadow) 28%, transparent) 72%, color-mix(in srgb, var(--amb-shadow) 46%, transparent) 88%, color-mix(in srgb, var(--amb-shadow) 30%, transparent) 96%, transparent 100%);
   transition:opacity .7s var(--ease)}
 .amb-stage.off .amb-pod::after{opacity:0}
+/* 亮模式不画暗角：白玻璃上这层最深处 46% 的近黑会读成一圈黑灰底盘（盘缘被压暗约 20 个色阶）；
+   暗模式保留，给光垫出暗部。 */
+html[data-theme="light"] .amb-pod::after{opacity:0}
+/* 遮罩从 58% 推到 88%：发光层自己的半径衰减仍在玻璃里走完，遮罩不再提前切掉外圈的光 */
 .amb-display{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:43%;aspect-ratio:1;border-radius:50%;overflow:hidden;
   box-shadow:0 0 14px color-mix(in srgb, var(--amb-1) 42%, transparent), 0 0 60px color-mix(in srgb, var(--amb-1) 16%, transparent);
   transition:box-shadow .7s var(--ease);
-  -webkit-mask-image:radial-gradient(circle, #000 0%, #000 58%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.18) 92%, transparent 100%);
-  mask-image:radial-gradient(circle, #000 0%, #000 58%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.18) 92%, transparent 100%)}
+  -webkit-mask-image:radial-gradient(circle, #000 0%, #000 88%, rgba(0,0,0,.55) 96%, transparent 100%);
+  mask-image:radial-gradient(circle, #000 0%, #000 88%, rgba(0,0,0,.55) 96%, transparent 100%)}
 /* 面玻璃：半透明白，露出底图的 +/− 触控符号；灯关时它就是待机屏 */
 
 .amb-blobs{position:absolute;inset:0;border-radius:50%;transition:opacity .7s var(--ease);mix-blend-mode:multiply}
