@@ -16,6 +16,7 @@ Two, and no more. Treat the release request as the maintainer's confirmation tha
 Stop and report when any of these is true:
 
 - The working tree is dirty.
+- A commit in the release range is neither in the changelogs nor classified as internal.
 - The docs audit has an open item.
 - The verification skill audit reports a product defect.
 - The UI review skill reports an unresolved P0 or terminology finding.
@@ -33,6 +34,17 @@ Do not tag, push, or publish around a failed check. Do not rotate `MYGO_UPDATER_
 ## 1. Version and range
 
 Use the version from the release request as `v<version>`. Without one, pick the next semver from the unreleased changelog (features minor, fixes patch), state it in your first line, and proceed. The range is every commit since the last release tag. The version in `cmd/saundo/mygo.json` must match the tag. A beta uses `0.4.2-beta.1`. A stable release uses `0.4.2`.
+
+Review the range before the docs audit:
+
+```bash
+last="$(git tag --sort=-v:refname | head -n 1)"
+git log --oneline "$last"..HEAD
+```
+
+Classify every commit as user-visible or internal. Read the diff when the subject alone does not place a commit. A user-visible commit changes behavior a user can see. Both changelogs describe it, and the docs audit reviews the docs it touches. An internal commit changes tests, docs, tooling, or structure with no visible behavior. It needs no changelog line. A merge commit has no content of its own, so classify the commits it brings in. Stop and report when a commit fits neither class, or when you cannot name its change.
+
+Record the review in `docs/verification.md` in a dated section whose heading ends with `<version> commit range review`. The record names the range's oldest commit, its tip, and the count. It then lists every commit with its class and, for a user-visible commit, the changelog line that describes it. Leave the record uncommitted with the other release edits.
 
 ## 2. Docs audit, UI review, mockup templates, and changelogs
 
@@ -90,7 +102,7 @@ Check `build/windows-amd64/update-windows-amd64.json`. It must carry the version
 
 ## 6. Release commit and preflight
 
-Commit the version, both changelogs, both READMEs, the docs audit, and the maintainer's test record under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
+Commit the version, both changelogs, both READMEs, the docs audit, the commit range review, and the maintainer's test record under `build: release <version>`. End the commit body with the `AGENTS.md` fields. The `Docs:` field names the files.
 
 Then run:
 
@@ -98,7 +110,7 @@ Then run:
 bash scripts/release-check.sh
 ```
 
-The script checks the clean tree, the release commit subject, the version, the tag, the English changelog, the Chinese changelog, the docs files, links and screenshots, the public repository, the update secret, the release workflow, and the current update feed. Stop on any failure.
+The script checks the clean tree, the release commit subject, the version, the tag, the English changelog, the Chinese changelog, the commit range review, the docs files, links and screenshots, the public repository, the update secret, the release workflow, and the current update feed. Stop on any failure.
 
 ## 7. Tag the release commit
 
@@ -176,4 +188,4 @@ For rollback, signing, and GPL compliance, follow `docs/releasing.md`. Do not ro
 
 ## Report
 
-State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, and the mockup template refresh (changed, already current, or the recorded gap) with its render directory. If you stopped, name the failing gate and the file or command that proves it.
+State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the commit range review (the range, its count, and the user-visible commits), the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, and the mockup template refresh (changed, already current, or the recorded gap) with its render directory. If you stopped, name the failing gate and the file or command that proves it.

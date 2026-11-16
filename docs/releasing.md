@@ -20,6 +20,19 @@ The agent runbook is [.claude/skills/release/SKILL.md](../.claude/skills/release
 gh secret set MYGO_UPDATER_PRIVATE_KEY < "C:\Users\<you>\AppData\Roaming\mygo\update-keys\mygo-update.key"
 ```
 
+## Commit range review
+
+Review every commit since the last release tag before the docs audit. List the range:
+
+```bash
+last="$(git tag --sort=-v:refname | head -n 1)"
+git log --oneline "$last"..HEAD
+```
+
+Classify each commit as user-visible or internal. Read the diff when the subject alone does not place a commit. A user-visible commit changes behavior a user can see. Both changelogs describe it, and the docs audit reviews the docs it touches. An internal commit changes tests, docs, tooling, or structure with no visible behavior. It needs no changelog line. A merge commit has no content of its own, so classify the commits it brings in. Stop when a commit fits neither class, or when you cannot name its change.
+
+Record the review in `docs/verification.md` in a dated section whose heading ends with `<version> commit range review`. The record names the range's oldest commit, its tip, and the count. It then lists every commit with its class and, for a user-visible commit, the changelog line that describes it. The release commit carries the record.
+
 ## Docs audit
 
 Audit the docs against the tree before the release commit. Fix drift in the same commit.
@@ -68,14 +81,15 @@ VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd
 ```
 
 1. Bump `version` in `cmd/saundo/mygo.json`.
-2. Run `/ui-review` and land its P0 and terminology fixes as their own commit.
-3. Refresh the UI mockup templates against the shipped interface and land them as their own commit.
-4. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
-5. Update `README.md` and `README.zh-CN.md` with the release's user-visible changes.
-6. Run `/pstack:maintain-verification-skill` and land its proven corrections.
-7. Build the candidate, check its update manifest, and record the maintainer's pre-release test in `docs/verification.md`.
-8. Commit the version, both changelogs, both READMEs, the docs audit, and the maintainer's test record as `build: release <version>`.
-9. Run the preflight, then tag that release commit. Do not add a commit between the release commit and the tag.
+2. Review every commit since the last release tag and record the classification in `docs/verification.md`.
+3. Run `/ui-review` and land its P0 and terminology fixes as their own commit.
+4. Refresh the UI mockup templates against the shipped interface and land them as their own commit.
+5. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
+6. Update `README.md` and `README.zh-CN.md` with the release's user-visible changes.
+7. Run `/pstack:maintain-verification-skill` and land its proven corrections.
+8. Build the candidate, check its update manifest, and record the maintainer's pre-release test in `docs/verification.md`.
+9. Commit the version, both changelogs, both READMEs, the docs audit, the commit range review, and the maintainer's test record as `build: release <version>`.
+10. Run the preflight, then tag that release commit. Do not add a commit between the release commit and the tag.
 
 ## Local gate
 
@@ -114,7 +128,7 @@ After the release commit, run the preflight:
 bash scripts/release-check.sh
 ```
 
-The script checks the clean tree, the release commit subject, the version, the tag, the English and Chinese changelogs, the docs files, links and screenshots, the public repository, the update secret, the release workflow, and the current update feed. Stop on a failure.
+The script checks the clean tree, the release commit subject, the version, the tag, the English and Chinese changelogs, the commit range review, the docs files, links and screenshots, the public repository, the update secret, the release workflow, and the current update feed. Stop on a failure.
 
 ## Tag and push
 
