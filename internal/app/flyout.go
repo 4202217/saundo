@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"strings"
 	"time"
 
@@ -88,6 +87,7 @@ func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampCover, lampExp
 
 func (a *App) view(c *ui.Context) {
 	p := design(c)
+	a.adoptTextScale(p.scale, a.win)
 	ui.Column(c).Fill().Background(p.panel).Children(func() {
 		content := ui.Column(c).Fill()
 		enterPose(c, content, &a.flyoutEntered)
@@ -170,9 +170,7 @@ func (a *App) emptyDevices(c *ui.Context, p palette) {
 		emptyCopy(c, p, locales.FlyoutSearching(), locales.FlyoutSearchHint(), true)
 		b := ui.ButtonBase(c).Padding(2, 6).Radius(6).Cursor(ui.CursorPointer).Label(locales.FlyoutSearchAgain())
 		b.OnClick(func() { a.eng.Refresh() })
-		if b.Hovered() {
-			b.Background(p.pill)
-		}
+		hoverFill(b, p.pill, 6, 0)
 		b.Children(func() {
 			ui.Text(c, locales.FlyoutSearchAgain()).FontSize(12.5).TextColor(p.accent).SingleLine()
 		})
@@ -189,6 +187,8 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 	if divider {
 		row.BorderWidth(0, 0, 1, 0).BorderColor(p.line2)
 	}
+	// The row's 140 ms color transition needs the background in the build;
+	// a hover drawn in Paint would snap.
 	switch {
 	case selected:
 		row.Background(p.sel)
@@ -415,59 +415,6 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 	})
 }
 
-// nowPlayingPreview is the settings page's card. It shows the live session,
-// or a sample card when nothing plays, so the preview never disappears. The
-// display switch only hides the flyout card; the preview stays live.
-func (a *App) nowPlayingPreview(c *ui.Context, p palette) {
-	s, ok := a.nowSession()
-	var art *ui.Bitmap
-	var light, dark *image.RGBA
-	level := func() analyze.Frame { return analyze.Frame{} }
-	if ok {
-		art, light, dark = a.nowArt, a.nowFieldLight, a.nowFieldDark
-		delay := time.Duration(a.latencyMS()) * time.Millisecond
-		level = func() analyze.Frame {
-			if a.levelFrame != nil {
-				return a.levelFrame(delay)
-			}
-			return analyze.Frame{}
-		}
-	} else {
-		s, art, light, dark, level = previewSession()
-	}
-	field := light
-	if p.dark {
-		field = dark
-	}
-	a.nowPlayingCardBody(c, p, s, true, previewMeterAnimates(ok), art, field, level, true)
-}
-
-// previewSession is the settings page's sample card when nothing plays.
-func previewSession() (nowplaying.Session, *ui.Bitmap, *image.RGBA, *image.RGBA, func() analyze.Frame) {
-	sample := image.NewRGBA(image.Rect(0, 0, 64, 64))
-	for y := 0; y < 64; y++ {
-		for x := 0; x < 64; x++ {
-			t := float64(x+y) / 126
-			sample.SetRGBA(x, y, color.RGBA{
-				R: uint8(135 + (47-135)*t),
-				G: uint8(121 + (142-121)*t),
-				B: uint8(221 + (154-221)*t),
-				A: 255,
-			})
-		}
-	}
-	s := nowplaying.Session{
-		AUMID: "settings.preview", AppName: locales.SettingsNowPlayingSampleApp(),
-		Title:  locales.SettingsNowPlayingSampleTitle(),
-		Artist: locales.SettingsNowPlayingSampleArtist(),
-		Status: nowplaying.StatusPlaying, Playing: true,
-		CanPlay: true, CanPause: true, CanPrev: true, CanNext: true,
-		Position: 128 * time.Second, Duration: 244 * time.Second,
-	}
-	frame := analyze.Frame{Bands: [analyze.BandCount]float32{0.35, 0.6, 0.85, 0.55, 0.4}}
-	return s, ui.NewBitmap(sample), coverField(sample, false), coverField(sample, true), func() analyze.Frame { return frame }
-}
-
 // nowPlayingPoster keeps the cover's own aspect ratio around a fixed height,
 // so switching sessions never changes the card's height: a 16:9 cover gets a
 // wider poster, not a taller one.
@@ -519,9 +466,7 @@ func (a *App) nowTransport(c *ui.Context, p palette, s nowplaying.Session, previ
 func (a *App) nowTransportButton(c *ui.Context, p palette, icon *ui.SVG, label string, action nowplaying.Action, aumid string, preview bool) {
 	btn := ui.ButtonBase(c).Size(24, 24).Radius(12).Center().
 		Cursor(ui.CursorPointer).Label(label).Disabled(preview)
-	if btn.Hovered() {
-		btn.Background(p.card)
-	}
+	hoverFill(btn, p.card, 12, 0)
 	btn.OnClick(func() {
 		if a.controlNow != nil {
 			a.controlNow(aumid, action)
@@ -635,6 +580,14 @@ func (a *App) nowPlayingProgress(c *ui.Context, p palette, s nowplaying.Session,
 			pt.Stroke(thumb, p.line, 4.5, 1)
 		})
 		ui.Text(c, "-"+formatClock(s.Duration-pos)).FontSize(10.5).TextColor(p.muted).FontFeatures("tnum").SingleLine()
+		if s.Playing && !preview {
+			// The clock advances by itself while it plays, without waiting
+			// for the two-second media poll. After coalesces, so a frame
+			// that also animates the meter adds no timer.
+			if d := time.Second - pos%time.Second; d > 0 {
+				c.After(d)
+			}
+		}
 	})
 }
 
@@ -684,9 +637,7 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 			chip := ui.ButtonBase(c).Height(22).Radius(11).Padding(0, 9).Center().Shrink(0).
 				Cursor(ui.CursorPointer).Label(a.updateChipLabel())
 			chip.Background(p.accentSoft)
-			if chip.Hovered() {
-				chip.Background(p.accentSoft.Mix(p.accent, 0.1))
-			}
+			hoverFill(chip, p.accentSoft.Mix(p.accent, 0.1), 11, 0)
 			chip.OnClick(func() {
 				a.page = pageUpdate
 				a.showSettings()
@@ -766,7 +717,7 @@ func (a *App) pinDialog(c *ui.Context, p palette) {
 	if !a.snap.PinRequired && !a.pinOpen {
 		return
 	}
-	modal := ui.DialogBase(c, &a.pinOpen, func(back, panel ui.Element) {
+	modal := ui.DialogBase(c.Key("pin-dialog"), &a.pinOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
 		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
@@ -774,7 +725,7 @@ func (a *App) pinDialog(c *ui.Context, p palette) {
 		dialogHead(c, p, iconKey, locales.PinTitle(),
 			locales.PinInstruction(deviceNameOr(a.snap.PinDevice, locales.PinFallbackDevice())), false, nil)
 		ui.Text(c, locales.PinLabel()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted).Margin(16, 0, 6, 0)
-		submitted := ui.TextInput(c, &a.pinCode).Height(46).Radius(8).PaddingX(12).FontSize(13).
+		submitted := ui.TextInput(c.Key("pin-code"), &a.pinCode).Height(46).Radius(8).PaddingX(12).FontSize(13).
 			Label(locales.PinLabel()).AutoFocus().Submitted()
 		ui.Text(c, locales.PinHint()).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 0, 0)
 		ui.Row(c).Justify(ui.End).Gap(8).Margin(20, 0, 0, 0).Children(func() {
@@ -794,7 +745,7 @@ func (a *App) passwordDialog(c *ui.Context, p palette) {
 	if !a.snap.PasswordRequired && !a.passwordOpen {
 		return
 	}
-	modal := ui.DialogBase(c, &a.passwordOpen, func(back, panel ui.Element) {
+	modal := ui.DialogBase(c.Key("password-dialog"), &a.passwordOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
 		panel.Width(380).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
@@ -802,7 +753,7 @@ func (a *App) passwordDialog(c *ui.Context, p palette) {
 		dialogHead(c, p, iconKey, locales.PasswordTitle(),
 			locales.PasswordInstruction(deviceNameOr(a.snap.PasswordDevice, locales.PasswordFallbackDevice())), false, nil)
 		ui.Text(c, locales.PasswordLabel()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted).Margin(16, 0, 6, 0)
-		submitted := ui.TextInput(c, &a.passwordPrompt).Height(46).Radius(8).PaddingX(12).FontSize(13).
+		submitted := ui.TextInput(c.Key("password-input"), &a.passwordPrompt).Height(46).Radius(8).PaddingX(12).FontSize(13).
 			Label(locales.PasswordLabel()).Password().AutoFocus().Submitted()
 		ui.Text(c, locales.PasswordHint()).FontSize(11.5).TextColor(p.muted).Margin(6, 0, 0, 0)
 		ui.Row(c).Justify(ui.End).Gap(8).Margin(20, 0, 0, 0).Children(func() {

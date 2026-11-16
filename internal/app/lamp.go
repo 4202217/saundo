@@ -234,9 +234,7 @@ func (a *App) lampPowerButton(c *ui.Context, p palette) {
 		}
 		a.setLampOff(!a.lampOff)
 	})
-	if btn.Hovered() {
-		btn.Background(p.pill)
-	}
+	hoverFill(btn, p.pill, 7, 0)
 	color := p.fg
 	if dark {
 		color = p.accent
@@ -288,9 +286,7 @@ func (a *App) lampSection(c *ui.Context, p palette) {
 				arrow := ui.ButtonBase(c).Size(26, 26).Radius(7).Center().Shrink(0).
 					Cursor(ui.CursorPointer).Label(a.lampArrowLabel())
 				arrow.OnClick(a.toggleLampExpanded)
-				if arrow.Hovered() {
-					arrow.Background(p.pill)
-				}
+				hoverFill(arrow, p.pill, 7, 0)
 				arrow.Children(func() {
 					rot := arrow.Animate("lamp-open", boolFlag(a.lampExpanded), 160*time.Millisecond)
 					ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted).Rotate(180 * rot)

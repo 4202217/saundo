@@ -131,7 +131,7 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 
 	if len(hidden) > 0 {
 		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
-			parts := ui.CollapsibleBase(c, &a.receiverHiddenOpen)
+			parts := ui.CollapsibleBase(c.Key("receivers-hidden"), &a.receiverHiddenOpen)
 			trigger := parts.Trigger.Height(28).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
 				Label(locales.ReceiverGroupHidden())
@@ -140,9 +140,11 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 				// full-width trigger, so the empty right side stays flat.
 				cluster := ui.Row(c).Height(28).Radius(7).Padding(0, 8, 0, 4).Gap(6).
 					AlignItems(ui.Center).Shrink(0)
-				if trigger.Hovered() {
-					cluster.Background(p.pill)
-				}
+				cluster.Draw(func(pt *ui.Painter, r ui.Rect) {
+					if trigger.Hovered() {
+						pt.Fill(r, p.pill, 7)
+					}
+				})
 				cluster.Children(func() {
 					chev := ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted)
 					chev.Rotate((1 - parts.Progress()) * -90)
@@ -173,18 +175,17 @@ func (a *App) receiverAddRow(c *ui.Context, p palette) {
 		Label(locales.ReceiverAddTitle()).Border(1, p.line.Mix(p.muted, 0.2)).
 		BorderStyle(ui.BorderDashed)
 	row.Background(ui.Transparent)
-	hovered := row.Hovered()
-	if hovered {
-		row.Background(p.pill)
-	}
+	hoverFill(row, p.pill, 11, 1)
 	row.OnClick(func() {
 		a.openAddReceiver()
 	})
 	row.Children(func() {
 		tile := ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.accentSoft)
-		if hovered {
-			tile.Background(p.accentSoft.Mix(p.accent, 0.2))
-		}
+		tile.Draw(func(pt *ui.Painter, r ui.Rect) {
+			if row.Hovered() {
+				pt.Fill(r, p.accentSoft.Mix(p.accent, 0.2), 12)
+			}
+		})
 		tile.Children(func() {
 			ui.Icon(c, iconPlus).Size(12, 12).TextColor(p.accent)
 		})
@@ -233,8 +234,8 @@ func (a *App) receiverRowHead(c *ui.Context, p palette, v receivers.View, open, 
 		head.Background(p.sel)
 	case open && hiddenGroup:
 		head.Background(p.pill)
-	case head.Hovered():
-		head.Background(p.cardHover)
+	default:
+		hoverFill(head, p.cardHover, 0, 0)
 	}
 	head.OnClick(func() {
 		if a.receiverOpen == nil {

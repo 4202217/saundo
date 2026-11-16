@@ -129,9 +129,7 @@ func aboutLinkRow(c *ui.Context, p palette, title, sub, url string) {
 func aboutRow(c *ui.Context, p palette, title, sub string, glyph *ui.SVG, onClick func()) {
 	row := ui.ButtonBase(c).MinHeight(50).Padding(7, 14).Gap(12).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Label(title)
-	if row.Hovered() {
-		row.Background(p.pill)
-	}
+	hoverFill(row, p.pill, 0, 0)
 	row.OnClick(onClick)
 	row.Children(func() {
 		ui.Column(c).Grow(1).Gap(2).Children(func() {
