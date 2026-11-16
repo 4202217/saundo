@@ -13,8 +13,9 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO ?= go
 GOFMT ?= gofmt
+EXE := $(if $(filter windows,$(shell $(GO) env GOOS)),.exe,)
 
-.PHONY: build build-fast test race vet uivet i18n fmt arch size check platforms test-mac-update
+.PHONY: build build-fast e2e-build test race vet uivet i18n fmt arch size check platforms test-mac-update
 
 build:
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh
@@ -22,6 +23,12 @@ build:
 # The same binary without the NSIS installer, for the development loop.
 build-fast:
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh --fast
+
+# A non-installing build that links the mygo automation plugin, so the verify
+# skill can drive the app over MYGO_AUTOMATION. Never shipped, and it leaves
+# bin/saundo.exe and the running app alone.
+e2e-build:
+	$(GO) build -tags e2e -o bin/saundo-e2e$(EXE) ./cmd/saundo
 
 test:
 	$(GO) test ./...
@@ -71,4 +78,4 @@ check:
 	@command -v "$(GOFMT)" >/dev/null 2>&1 || { echo "gofmt not found; set GOFMT=... or put Go on PATH"; exit 1; }
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) vet -tags e2e ./cmd/saundo && $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms

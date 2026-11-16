@@ -11,7 +11,7 @@ evidence behind. The per-feature journeys live in [features/](features/);
 docs/verification.md holds the acceptance history and the "Currently pending"
 list this skill exists to fill.
 
-## The three harnesses
+## The four harnesses
 
 Pick by what the proof needs. Cheapest that proves the claim wins.
 
@@ -22,7 +22,14 @@ Pick by what the proof needs. Cheapest that proves the claim wins.
 2. **Protocol** (no device): `go test ./internal/airplay/sender/` drives the
    full AP2 handshake against the in-process fake receiver. Use for pairing,
    crypto, RTSP, timing, and stream behavior.
-3. **Live app** (real exe, optionally real receiver): the running instance
+3. **e2e UI** (test build, no receiver): `mingw32-make e2e-build` links the
+   mygo automation plugin into `bin/saundo-e2e.exe` on Windows and
+   `bin/saundo-e2e` on macOS, and `mygo-automation` drives it over a Unix
+   socket. It lists windows, reads the same element
+   tree screen readers see, presses and types, waits for the UI to settle,
+   and saves PNGs. Use for window and control behavior, real-DPI layout, and
+   evidence captures. The tray icon and its menu are outside the protocol.
+4. **Live app** (real app, optionally real receiver): the running instance
    observed through its log, windows, and tray; env-gated device tests for
    real hardware. Use when the claim is about WASAPI, mDNS, PTP, the tray, or
    end-to-end behavior. Audible output is always confirmed by the user, never
@@ -35,7 +42,8 @@ Stop and report when any of these is true:
 - `mingw32-make check` fails — fix or report before driving anything live.
 - A saundo instance is running and the proof needs a fresh launch: the
   single-instance lock means you cannot run two, and the running one may be
-  the user's streaming session. Ask before stopping it.
+  the user's streaming session. Ask before stopping it. The e2e build shares
+  the same lock.
 - The journey would stream the user's real desktop audio to a real receiver
   (tone tests, capture tests) without the user having agreed to sound in the
   room.
@@ -79,7 +87,46 @@ bin/saundo.exe --tray
 `mingw32-make build` kills saundo.exe by image name — that is its job, but it means
 the user's instance dies with it. Say so before running it.
 
-Readiness — all three, in order:
+**e2e launch** (for the e2e UI harness; nothing is installed):
+
+```bash
+mingw32-make e2e-build
+go build -o bin/mygo-automation.exe github.com/egoist/mygo/plugins/automation/cmd/mygo-automation
+mkdir -p /tmp/saundo-e2e-data
+APPDATA="$(cygpath -w /tmp/saundo-e2e-data)" \
+MYGO_AUTOMATION="$(cygpath -w /tmp/saundo-e2e.sock)" \
+  cmd //c start "" "$(cygpath -w bin/saundo-e2e.exe)"
+```
+
+On macOS:
+
+```bash
+make e2e-build
+go build -o bin/mygo-automation github.com/egoist/mygo/plugins/automation/cmd/mygo-automation
+mkdir -p /tmp/saundo-e2e-home
+HOME=/tmp/saundo-e2e-home MYGO_AUTOMATION=/tmp/saundo-e2e.sock \
+  ./bin/saundo-e2e > /tmp/saundo-e2e.log 2>&1 &
+```
+
+The plugin is linked only under the e2e build tag; release builds strip it,
+so the release binaries (`bin/saundo.exe` on Windows, `bin/saundo.app` on
+macOS) cannot be driven this way. The redirected data dir keeps
+the run away from the user's settings and credentials — `APPDATA` on
+Windows, `HOME` on macOS, where the log is then
+`$HOME/Library/Application Support/saundo/saundo.log`. Readiness is the
+socket file appearing plus the usual log line. The e2e binary shares the
+single-instance lock with the release app.
+
+Both platform flows are proven. The macOS run on 2026-11-16 (Darwin 27.3.0
+arm64, commit 1326401) launched the plain `bin/saundo-e2e` executable — no
+`.app` bundle — and both windows existed: the flyout hidden, and
+`设置 · 声渡` reporting `visible:true` after the flyout's 设置 press. Both
+element trees read, presses changed the tree, and both screenshots
+rendered. The macOS differences are the binary names (no `.exe`), `HOME`
+instead of `APPDATA` for the data dir, and `--socket` on `open` only —
+later commands reuse the session.
+
+Readiness for the normal launch — all three, in order:
 
 1. `%APPDATA%\saundo\saundo.log` gains a `saundo <version>` line (the first
    line every run writes).
@@ -150,6 +197,31 @@ evidence. Advance animations with `tt.Advance(d)`.
 go test -v ./internal/airplay/sender/
 ```
 
+**e2e UI.** The socket answers the accessibility tree, so labels and `Key`
+names are the selectors:
+
+```bash
+bin/mygo-automation.exe open --socket "$(cygpath -w /tmp/saundo-e2e.sock)"
+bin/mygo-automation.exe windows
+bin/mygo-automation.exe snapshot -i
+bin/mygo-automation.exe press @e2 --settle
+bin/mygo-automation.exe screenshot "$EV/flyout.png"
+```
+
+On macOS the same commands drop the `.exe` suffix and cygpath:
+`bin/mygo-automation open --socket /tmp/saundo-e2e.sock`, then the rest as
+written; `--socket` belongs to `open`, and later commands reuse the
+session.
+
+Run `mygo-automation skills` for the installed version's command guide. The
+loop is snapshot, act with `--settle`, read the diff. The flyout usually
+starts hidden because its tray icon sits in the hidden-icons overflow.
+Hidden windows still answer tree, act, and capture, but the PNG is then the
+frame the window would draw, not proof it drew on screen. Press the flyout's
+设置 button to raise the settings window when the evidence needs a visible
+window. Animated windows may never settle; use `wait <selector>` or
+`wait --text` instead of `--settle`.
+
 **Live app.** Observe, then act, then observe again:
 
 - Observe: the doctor; `tail -f %APPDATA%\saundo\saundo.log`; capture the
@@ -201,7 +273,8 @@ Capture, into `$EV`:
   secrets are not evidence.
 - Headless frames: the PNG the test wrote; name them by state
   (`flyout-before.png`, `flyout-after-click.png`).
-- Live window captures via capture-window.ps1.
+- e2e window captures via `mygo-automation screenshot`; capture-window.ps1
+  stays for the release instance and for windows the plugin cannot drive.
 
 Proof standards:
 
@@ -219,6 +292,8 @@ Proof standards:
 - Kill only PIDs this run started: `powershell -c "Stop-Process -Id <pid>"`.
   Never `taskkill //IM saundo.exe` from verification — that is build.sh's
   move and it takes the user's instance too.
+- End an automation session with `mygo-automation close` first; it only
+  forgets refs and leaves the app running, so stop the e2e PID next.
 - A redirected-APPDATA instance: stop it, then delete its scratch dir (it
   holds the run's DPAPI blobs — still scratch). Copy evidence out first.
 - Never touch `%APPDATA%\saundo\*` — the user's real credentials, settings,

@@ -41,8 +41,9 @@ var (
 	symbolShape = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{3,}$`)
 	uppercase   = regexp.MustCompile(`^[A-Z0-9_]+$`)
 	// Spans that name things outside this tree on purpose: framework window
-	// classes (pinned live by the doctor) and external tools.
-	allowlist  = regexp.MustCompile(`^(MyGoFlyoutShadow|MyGoWindow|gofmt|taskkill|curl|powershell|mygo)$`)
+	// classes (pinned live by the doctor), external tools, and the automation
+	// plugin's command and socket variable.
+	allowlist  = regexp.MustCompile(`^(MyGoFlyoutShadow|MyGoWindow|gofmt|taskkill|curl|powershell|mygo|mygo-automation|MYGO_AUTOMATION)$`)
 	funcDecl   = regexp.MustCompile(`func\s+([A-Za-z_][A-Za-z0-9_]*)\(`)
 	identifier = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
 	envGate    = regexp.MustCompile(`SAUNDO_[A-Z0-9_]+`)

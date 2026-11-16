@@ -66,19 +66,45 @@
 
 ## How to get to it (user POV)
 
-Everything lives behind the tray icon — possibly in the hidden-icons
-overflow (chevron ^ in the taskbar corner).
+Everything lives behind the tray icon (Windows; possibly in the hidden-icons
+overflow, chevron ^ in the taskbar corner) or the menu-bar icon (macOS).
 
 ## Driving it
 
-Live app only — there is no headless harness for the tray:
+The tray icon and its menu are outside the automation protocol; on Windows
+drive them through UI Automation and the doctor, on macOS through the
+menu-bar icon. The flyout and the settings window it opens are drivable
+through the e2e harness's element tree on both platforms.
 
 ```bash
 powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/doctor.ps1   # process, windows
-powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
+mingw32-make e2e-build
+bin/mygo-automation.exe open --socket "$(cygpath -w /tmp/saundo-e2e.sock)"
+bin/mygo-automation.exe windows
+bin/mygo-automation.exe snapshot -i
+bin/mygo-automation.exe press @e4 --settle   # 设置 raises the settings window
+bin/mygo-automation.exe screenshot /tmp/saundo-verify/settings.png --window 2
 ```
 
-Find the icon through UI Automation: the tray button's class is
+On macOS the same commands drop the `.exe` suffix and cygpath, and the
+build starts under a redirected `HOME`:
+
+```bash
+make e2e-build
+go build -o bin/mygo-automation github.com/egoist/mygo/plugins/automation/cmd/mygo-automation
+mkdir -p /tmp/saundo-e2e-home
+HOME=/tmp/saundo-e2e-home MYGO_AUTOMATION=/tmp/saundo-e2e.sock ./bin/saundo-e2e >/tmp/saundo-e2e.log 2>&1 &
+bin/mygo-automation open --socket /tmp/saundo-e2e.sock
+bin/mygo-automation press @e4 --settle   # 设置 raises the settings window
+```
+
+Start the e2e build with a redirected data dir (`APPDATA` on Windows, `HOME`
+on macOS) and the automation socket variable, as SKILL.md step 2 shows. The
+flyout starts hidden when its tray icon is in the overflow; hidden windows
+still answer tree, act, and capture, but the PNG is the frame the window
+would draw. The settings window gives a visible capture.
+
+For the tray itself, find the icon through UI Automation: the tray button's class is
 `SystemTray.NormalButton` and its accessible name is the localized brand
 followed by the live tooltip (`声渡 声渡 · 正在通过 HomePods 播放` under
 zh-CN, `Saundo ...` under en), so match the class and a name prefix, not an
@@ -92,14 +118,20 @@ the 12 frames or their assets); the app toggle by
 `TestTrayAnimationCommandUpdatesSnapshotOnly`, and the store default by
 `TestTrayAnimationDefaultsOnAndRoundTrips`.
 
-The commands and the `MyGoFlyoutShadow`/`saundo.exe` paths above are
-Windows-only. On macOS use the menu-bar icon, `screencapture -x`, and the
-log at `~/Library/Application Support/saundo/saundo.log`.
+The tray-specific commands and the `MyGoFlyoutShadow`/`saundo.exe` paths
+above are Windows-only. On macOS the e2e commands work as written above; the
+tray icon itself is the menu bar, outside the automation protocol, so
+capture it with `screencapture -x` and read the log at
+`~/Library/Application Support/saundo/saundo.log`.
 
-Proven end state: click toggles the panel (handle 0 ⇄ nonzero), Escape
-dismisses it, the tooltip carries the live status, and exactly one
+Proven end state on Windows: click toggles the panel (handle 0 ⇄ nonzero),
+Escape dismisses it, the tooltip carries the live status, and exactly one
 saundo.exe process exists throughout. The recorded live run covered an
-outside click and a UIA invoke, not an Escape press.
+outside click and a UIA invoke, not an Escape press. The e2e path covers the
+panel's controls and the settings window; the tray click path stays UIA. On
+macOS the e2e path is proven (2026-11-16): both windows listed, both trees
+read, 设置 and the settings 连接 sidebar button pressed, and both windows
+captured; the menu-bar click path is outside the protocol and unproven.
 
 ## Gotchas
 
@@ -134,3 +166,17 @@ outside click and a UIA invoke, not an Escape press.
 - Device churn while the panel is open (rows appearing, height growing
   upward) is on the docs/verification.md pending list; a run that covers it
   should say so explicitly.
+- The e2e build shares the single-instance lock with the release app. Stop
+  the release instance first, and do not expect a second launch to be
+  drivable.
+- A hidden flyout still answers `act`, so a press can change state while the
+  screenshot shows a built frame. Raise the settings window when the proof
+  needs an on-screen draw.
+- On Windows, `press 设置 --settle` can time out on the first try because
+  the hidden flyout keeps requesting frames. Press it again without
+  `--settle`; the window then reports `visible:true` in `windows --json`.
+  The macOS run settled immediately and printed `(no changes)`.
+- On macOS the e2e binary is a plain executable, not an `.app` bundle, and
+  still starts a full UI app with the flyout and settings windows; do not
+  wrap it in a bundle just to drive it. The binaries are `bin/saundo-e2e`
+  and `bin/mygo-automation`, with no `.exe` suffix.
