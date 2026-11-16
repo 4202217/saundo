@@ -107,7 +107,7 @@ func (a *App) receiverDialogs(c *ui.Context, p palette) {
 	if a.receiverDialog.kind == receiverDialogNone {
 		return
 	}
-	ui.DialogBase(c, &a.receiverDialogOpen, func(back, panel ui.Element) {
+	ui.DialogBase(c.Key("receiver-dialog"), &a.receiverDialogOpen, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
 		panel.Width(430).MaxHeight(460).Padding(20).Radius(14).Background(p.card).
 			Border(1, p.line).Shadow(0, 22, 54, 0, ui.RGBA(20, 22, 30, 0.26))
@@ -172,7 +172,7 @@ func fieldLabel(c *ui.Context, p palette, label, hint string) {
 
 // dialogInput is the dialog's 32-DIP text field.
 func dialogInput(c *ui.Context, p palette, value *string, placeholder, label string) ui.Element {
-	in := ui.TextInput(c, value).FillWidth().Height(32).Radius(8).PaddingX(10).
+	in := ui.TextInput(c.Key(label), value).FillWidth().Height(32).Radius(8).PaddingX(10).
 		FontSize(12.5).Label(label).Border(1, p.pill).Background(p.pill)
 	if placeholder != "" {
 		in.Placeholder(placeholder)
@@ -412,9 +412,7 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 // quietDangerButton is the dialog's red text action.
 func quietDangerButton(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 12).Gap(5).Center().Cursor(ui.CursorPointer).Label(label)
-	if b.Hovered() {
-		b.Background(p.redSoft)
-	}
+	hoverFill(b, p.redSoft, 17, 0)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Icon(c, iconSlash).Size(13, 13).TextColor(p.red)
@@ -426,9 +424,7 @@ func quietDangerButton(c *ui.Context, p palette, label string, fn func()) {
 func primaryDangerButton(c *ui.Context, p palette, label string, fn func()) {
 	b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 16).Center().Cursor(ui.CursorPointer).Label(label)
 	b.Background(p.red)
-	if b.Hovered() {
-		b.Background(p.red.Mix(p.bg, 0.12))
-	}
+	hoverFill(b, p.red.Mix(p.bg, 0.12), 17, 0)
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(13).FontWeight(500).TextColor(p.bg).SingleLine()

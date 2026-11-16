@@ -34,17 +34,20 @@ func (a *App) bindWindowLifecycle() {
 // needs set explicitly (Windows 11 rounds its own). Run on the main thread.
 func (a *App) createFlyout() {
 	a.flyoutH = flyoutHeightFor(0, a.showLatencySwitch, false)
+	scale := a.textScale()
+	a.flyoutScale = scale
+	w, h := scaledSize(flyoutWidth, a.flyoutH, scale)
 	opts := mygo.FlyoutOptions{
 		Tray:      a.tray,
 		Placement: mygo.PlacementBottom,
-		Gap:       6,
-		Width:     flyoutWidth,
-		Height:    a.flyoutH,
+		Gap:       scaled(6, scale),
+		Width:     w,
+		Height:    h,
 		Focusable: true,
 		Hidden:    true,
 		Content:   ui.View(a.view),
 	}
-	opts.CornerRadius = 12
+	opts.CornerRadius = scaled(12, scale)
 	opts.Shadow = true // macOS follows the corners; Windows keeps its system shadow
 	a.win = mygo.NewFlyout(opts)
 	// A flyout names no title of its own; give it the app's, so window

@@ -52,7 +52,13 @@ type App struct {
 	menuIcons           map[string]*mygo.MenuIcon
 	quitting            bool
 	power               powerHold
-	flyoutH             int
+	// flyoutH is the content height the design asks for; flyoutScale is the
+	// text scale the window was last sized at.
+	flyoutH     int
+	flyoutScale float32
+	// scale is the desktop's text scale, carried by each window's content
+	// zoom.
+	scale float32
 	// resizeWindow replaces the flyout window resize in tests; production
 	// uses win.SetSize.
 	resizeWindow func(width, height int)
@@ -63,6 +69,8 @@ type App struct {
 	autoDownload  bool
 	quit          chan struct{}
 	md            markdown.Options
+	mdTheme       *markdown.Theme
+	mdThemeDark   bool
 	notesOpen     bool
 	notesEntered  bool
 	notesRange    bool
@@ -137,18 +145,28 @@ type App struct {
 	nowIconKey     string
 	nowFieldLight  *image.RGBA
 	nowFieldDark   *image.RGBA
-	nowLamp        lamp.Preset
-	nowLampOK      bool
-	nowLampKey     string
-	nowPinned      bool
-	nowCurrent     string
-	levelFrame     func(delay time.Duration) analyze.Frame
-	controlNow     func(aumid string, action nowplaying.Action)
-	nowTrack       nowplaying.Track
-	nowOK          bool
-	nowErr         string
-	nowSent        string
-	lastStreaming  bool
+	// The settings preview's sample card is a constant per language: the
+	// view rebuilds every frame, so its bitmap and color fields are made
+	// once.
+	sampleReady      bool
+	sampleLocale     string
+	sampleSession    nowplaying.Session
+	sampleArt        *ui.Bitmap
+	sampleFieldLight *image.RGBA
+	sampleFieldDark  *image.RGBA
+	sampleLevel      func() analyze.Frame
+	nowLamp          lamp.Preset
+	nowLampOK        bool
+	nowLampKey       string
+	nowPinned        bool
+	nowCurrent       string
+	levelFrame       func(delay time.Duration) analyze.Frame
+	controlNow       func(aumid string, action nowplaying.Action)
+	nowTrack         nowplaying.Track
+	nowOK            bool
+	nowErr           string
+	nowSent          string
+	lastStreaming    bool
 
 	nameDraft           string
 	strict              bool
@@ -319,6 +337,9 @@ func Run() error {
 }
 
 func (a *App) ready() {
+	// The windows are created at the desktop's text scale, so the first
+	// frame already has the room its content needs.
+	a.scale = normalizeScale(mygo.Theme.Preferences().TextScale)
 	// Started at login stays quietly in the tray; the user opens the panel
 	// from there. --tray forces the same behavior for manual testing.
 	silent := mygo.App.WasOpenedAtLogin() || hasArg("--tray")
@@ -351,12 +372,14 @@ func (a *App) ready() {
 		a.win.SetTitle(locales.AppName())
 	} else {
 		// Without a tray icon the app still needs a reachable window.
+		w, h := scaledSize(flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false), a.textScale())
+		minW, minH := scaledSize(380, 460, a.textScale())
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:     locales.AppName(),
-			Width:     flyoutWidth,
-			Height:    flyoutHeightFor(0, a.showLatencySwitch, false),
-			MinWidth:  380,
-			MinHeight: 460,
+			Width:     w,
+			Height:    h,
+			MinWidth:  minW,
+			MinHeight: minH,
 			Hidden:    false,
 			Content:   ui.View(a.view),
 		})
@@ -820,27 +843,6 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.fitFlyout()
 }
 
-// fitFlyout sizes the tray flyout to the visible device rows and the current
-// media state. The device card and the playback card touch directly, and the
-// media card adds its height only while a session exists. The flyout is
-// anchored to the tray icon by its bottom edge, so a resize grows or shrinks
-// it upward. Main thread only.
-func (a *App) fitFlyout() {
-	if a.win == nil && a.resizeWindow == nil {
-		return
-	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
-	if h == a.flyoutH {
-		return
-	}
-	a.flyoutH = h
-	if a.resizeWindow != nil {
-		a.resizeWindow(flyoutWidth, h)
-		return
-	}
-	a.win.SetSize(flyoutWidth, h)
-}
-
 // hasNowMedia reports whether the media card has a session to draw.
 func (a *App) hasNowMedia() bool {
 	if !a.cfg.ShowNowPlayingPanel {
@@ -1046,31 +1048,6 @@ func (a *App) syncSelection() {
 	if len(a.snap.Devices) > 0 {
 		a.selID = a.snap.Devices[0].ID
 	}
-}
-
-func (a *App) showWindow() {
-	if a.win == nil {
-		return
-	}
-	if a.win.IsMinimized() {
-		a.win.Restore()
-	}
-	a.win.Show()
-	a.win.Focus()
-	focusAppOnShow()
-}
-
-// toggleWindow is the tray icon's primary click: the panel opens next to the
-// icon, and a second click closes it.
-func (a *App) toggleWindow() {
-	if a.win == nil {
-		return
-	}
-	if a.win.IsVisible() {
-		a.win.Hide()
-		return
-	}
-	a.showWindow()
 }
 
 // trayMenuModel is everything the tray menu shows, derived from one snapshot.

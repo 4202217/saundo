@@ -171,6 +171,28 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 			t.Fatal(err)
 		}
 	}
+	// saveScaled writes a state at a desktop text scale, in the window DIPs
+	// the content zoom asks for, so the whole design is checked for clipping.
+	saveScaled := func(name string, view func(*ui.Context), w, h int, dark bool, scale float32) {
+		if !wanted(name) {
+			return
+		}
+		ww, hh := scaledSize(w, h, scale)
+		tt := ui.NewTesterWith(view, ww, hh, ui.TesterOptions{Preferences: ui.Preferences{TextScale: scale}})
+		tt.SetScale(2)
+		tt.SetLocale(locale)
+		tt.SetDark(dark)
+		tt.Advance(400 * time.Millisecond)
+		tt.Frame()
+		f, err := os.Create(filepath.Join(dir, name+"-"+suffix+".png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	// saveScrolled shows the page scrolled with the pointer over it, so the
 	// scrollbar and the fixed title divider are visible.
 	saveScrolled := func(name string, view func(*ui.Context), w, h int, dark bool, dy float32) {
@@ -246,6 +268,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 
 	save("flyout-stream-light", stream.view, flyoutWidth, visibleFlyoutHeight(stream), false)
 	save("flyout-stream-dark", stream.view, flyoutWidth, visibleFlyoutHeight(stream), true)
+	saveScaled("flyout-stream-large-text", stream.view, flyoutWidth, visibleFlyoutHeight(stream), false, 1.25)
 
 	// The unknown-app, no-timeline card: the third SMTC state the mockup
 	// covered. It has no artwork and no duration, so the note tile and the
@@ -357,6 +380,11 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		}
 		save(pageNames[page]+"-light", a.settingsView, 720, 500, false)
 	}
+	// The connection page at the desktop's 125% text size: the window grows
+	// and the content keeps its design area.
+	bigSettings := fixture()
+	bigSettings.page = pageConnection
+	saveScaled("settings-connection-large-text", bigSettings.settingsView, settingsContentWidth, settingsContentHeight, false, 1.25)
 	// The connection page with the local-output mute on: the target state the
 	// mockup settled, plus the waiting state a disconnected user sees.
 	muteSettings := fixture()

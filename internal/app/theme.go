@@ -1,6 +1,8 @@
 package app
 
 import (
+	"math"
+
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
@@ -11,6 +13,10 @@ import (
 // It follows the system's appearance, as the theme does.
 type palette struct {
 	dark bool
+	// scale is the desktop's text scale, carried by the window's content
+	// zoom so text, icons and spacing grow together without clipping the
+	// design's fixed rows.
+	scale float32
 
 	bg, panel, card, cardHover   ui.Color
 	pill, pillHover              ui.Color
@@ -78,10 +84,44 @@ func paletteFor(dark bool) palette {
 	}
 }
 
-// theme turns the platform theme into the design's, keeping the
-// preferences the platform chose (contrast, text scale, reduced motion).
-func (p palette) theme(base *ui.Theme) *ui.Theme {
+// normalizeScale clamps the desktop's text scale for the window's content
+// zoom. The platform reports 0 where it has no setting.
+func normalizeScale(s float64) float32 {
+	if s > 0 {
+		return float32(min(max(s, 0.5), 3))
+	}
+	return 1
+}
+
+func scaleFor(prefs ui.Preferences) float32 {
+	return normalizeScale(float64(prefs.TextScale))
+}
+
+// withPreferences carries the desktop's contrast setting into the design's
+// own colors, as the theme does for the stock widgets.
+func (p palette) withPreferences(prefs ui.Preferences) palette {
+	if prefs.HighContrast {
+		p.line = p.line.Mix(p.fg, 0.45)
+		p.line2 = p.line2.Mix(p.fg, 0.35)
+		p.muted = p.muted.Mix(p.fg, 0.4)
+		p.faint = p.faint.Mix(p.fg, 0.4)
+	}
+	return p
+}
+
+// theme turns the platform theme into the design's. The window's content
+// zoom carries the desktop's text scale, so the theme's own copy stays
+// neutral and text is not scaled twice. The palette already carries the
+// contrast setting, so the theme does not follow it again.
+func (p palette) theme(base *ui.Theme, prefs ui.Preferences) *ui.Theme {
 	t := *base
+	// Undo the previous frame's follow first, then lay the design's values
+	// on top. Following the contrast again here would mix colors that
+	// withPreferences already mixed.
+	followed := prefs
+	followed.TextScale = 1
+	followed.HighContrast = false
+	t = *t.WithPreferences(followed)
 	t.Background = p.bg
 	t.Surface = p.pill
 	t.SurfaceHover = p.pillHover
@@ -103,6 +143,9 @@ func (p palette) theme(base *ui.Theme) *ui.Theme {
 	t.Focus = p.accent
 	t.Radius = 7
 	t.FontSize = 13
+	if prefs.HighContrast {
+		t.Focus.A = 255
+	}
 	return &t
 }
 
@@ -117,9 +160,23 @@ func appearanceSource(mode settings.ThemeMode) mygo.ThemeSource {
 	return mygo.ThemeSystem
 }
 
-// design applies the saundo theme to this frame and returns its palette.
+// design applies the saundo theme and the desktop's text scale to this frame
+// and returns the palette.
 func design(c *ui.Context) palette {
-	p := paletteFor(c.Theme().Dark)
-	c.SetTheme(p.theme(c.Theme()))
+	prefs := c.Preferences()
+	p := paletteFor(c.Theme().Dark).withPreferences(prefs)
+	p.scale = scaleFor(prefs)
+	c.SetZoom(p.scale)
+	c.SetTheme(p.theme(c.Theme(), prefs))
 	return p
+}
+
+// scaled rounds a design size to the window DIPs the content zoom needs: the
+// view keeps laying out at the design's size.
+func scaled(px int, scale float32) int {
+	return int(math.Round(float64(px) * float64(scale)))
+}
+
+func scaledSize(w, h int, scale float32) (int, int) {
+	return scaled(w, scale), scaled(h, scale)
 }

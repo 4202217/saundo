@@ -16,7 +16,7 @@ func (a *App) logDialog(c *ui.Context, p palette) {
 	if len(lines) > 200 {
 		lines = lines[len(lines)-200:]
 	}
-	ui.DialogBase(c, &a.showLog, func(back, panel ui.Element) {
+	ui.DialogBase(c.Key("log-dialog"), &a.showLog, func(back, panel ui.Element) {
 		back.Background(dialogScrim)
 		panel.Width(430).Padding(20).Radius(14).Background(p.card).Border(1, p.line).
 			Shadow(0, 24, 60, 0, ui.RGBA(20, 22, 30, 0.28))
