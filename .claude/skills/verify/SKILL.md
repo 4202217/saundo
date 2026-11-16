@@ -23,8 +23,9 @@ Pick by what the proof needs. Cheapest that proves the claim wins.
    full AP2 handshake against the in-process fake receiver. Use for pairing,
    crypto, RTSP, timing, and stream behavior.
 3. **e2e UI** (real exe, no receiver): `mingw32-make e2e-build` links the
-   mygo automation plugin into `bin/saundo-e2e.exe`, and `mygo-automation`
-   drives it over a Unix socket. It lists windows, reads the same element
+   mygo automation plugin into `bin/saundo-e2e.exe` on Windows and
+   `bin/saundo-e2e` on macOS, and `mygo-automation` drives it over a Unix
+   socket. It lists windows, reads the same element
    tree screen readers see, presses and types, waits for the UI to settle,
    and saves PNGs. Use for window and control behavior, real-DPI layout, and
    evidence captures. The tray icon and its menu are outside the protocol.
@@ -97,12 +98,32 @@ MYGO_AUTOMATION="$(cygpath -w /tmp/saundo-e2e.sock)" \
   cmd //c start "" "$(cygpath -w bin/saundo-e2e.exe)"
 ```
 
+On macOS:
+
+```bash
+make e2e-build
+go build -o bin/mygo-automation github.com/egoist/mygo/plugins/automation/cmd/mygo-automation
+mkdir -p /tmp/saundo-e2e-home
+HOME=/tmp/saundo-e2e-home MYGO_AUTOMATION=/tmp/saundo-e2e.sock \
+  ./bin/saundo-e2e > /tmp/saundo-e2e.log 2>&1 &
+```
+
 The plugin is linked only under the e2e build tag; release builds strip it,
 so `bin/saundo.exe` cannot be driven this way. The redirected data dir keeps
-the run away from the user's settings and credentials. Readiness is the
+the run away from the user's settings and credentials — `APPDATA` on
+Windows, `HOME` on macOS, where the log is then
+`$HOME/Library/Application Support/saundo/saundo.log`. Readiness is the
 socket file appearing plus the usual log line. The e2e binary shares the
-single-instance lock with the release app. On macOS the same target builds
-`bin/saundo-e2e`, but only the Windows flow is proven.
+single-instance lock with the release app.
+
+Both platform flows are proven. The macOS run on 2026-11-16 (Darwin 27.3.0
+arm64, commit 1326401) launched the plain `bin/saundo-e2e` executable — no
+`.app` bundle — and both windows existed: the flyout hidden, and
+`设置 · 声渡` reporting `visible:true` after the flyout's 设置 press. Both
+element trees read, presses changed the tree, and both screenshots
+rendered. The macOS differences are the binary names (no `.exe`), `HOME`
+instead of `APPDATA` for the data dir, and `--socket` on `open` only —
+later commands reuse the session.
 
 Readiness for the normal launch — all three, in order:
 
@@ -185,6 +206,11 @@ bin/mygo-automation.exe snapshot -i
 bin/mygo-automation.exe press @e2 --settle
 bin/mygo-automation.exe screenshot "$EV/flyout.png"
 ```
+
+On macOS the same commands drop the `.exe` suffix and cygpath:
+`bin/mygo-automation open --socket /tmp/saundo-e2e.sock`, then the rest as
+written; `--socket` belongs to `open`, and later commands reuse the
+session.
 
 Run `mygo-automation skills` for the installed version's command guide. The
 loop is snapshot, act with `--settle`, read the diff. The flyout usually
