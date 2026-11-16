@@ -226,7 +226,12 @@ reported at launch.
    a template owns it or cover priority hands it to the media cover; off is a
    playback state independent of the slot. It resends the effective cover
    and state at every stream start, so a reconnect does not lose the top
-   display. The cover leaves as a Now Playing image on the encrypted control
+   display. On a stereo pair member it sends an explicit state 1 at stream
+   start, before the first cover, because the follower does not assume
+   playing, and re-sends the session's first cover 2 s after that first send,
+   because the follower's media-system sync can still be establishing the
+   Now Playing item when the first light arrives. The cover leaves as a Now
+   Playing image on the encrypted control
    channel (`SET_PARAMETER image/jpeg`); there is no separate artwork HTTP
    connection.
 
