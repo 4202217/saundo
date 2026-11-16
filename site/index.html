@@ -1760,11 +1760,11 @@ var ambHit = document.getElementById('ambHit');
 function mulberry32(a){ return function(){ a+=0x6D2B79F5; var t=a; t=(t^(t>>15))*(t|1); t^=t+(t^(t>>7))*(t|61); return ((t^(t>>14))>>>0)/4294967296; }; }
 function hexA(h, a){ var n=parseInt(h.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a.toFixed(3)+')'; }
 function dimHex(h, k){ var n=parseInt(h.slice(1),16), f=function(v){return Math.round(v*k);}; return 'rgb('+f((n>>16)&255)+','+f((n>>8)&255)+','+f(n&255)+')'; }
-/* ---------- SoundGlowRenderer (per session notes §3.5) ----------
+/* ---------- SoundGlowRenderer ----------
    双图层：NoiseMap 背景底纹（mediaColors 色标，tz 时间滚动，intensity 音频驱动）
          + Blob 前景光斑（主色，radius/alpha 由 low/mid/high 包络驱动）
    包络链：band → preGain(1/2/4) → threshold 0.1 → postGain(10/7/7) → 高斯平滑 0.4s
-   亮度曲线：0...0.7 → 0...0.2 + 0.015 底亮（官方压暗）
+   亮度曲线：0...0.7 → 0...0.2 + 0.015 底亮
    色标归一化：1/max(min(rgb),1e-4)，防止深色封面把灯效变黑 */
 var ambCanvas = document.createElement('canvas');
 ambCanvas.className = 'amb-canvas';

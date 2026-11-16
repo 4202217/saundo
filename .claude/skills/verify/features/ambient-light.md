@@ -235,5 +235,5 @@ and the off state survive a settings-window close/reopen and an app restart.
   `cover: first-light retry`). A pair member also sends an explicit state `1`
   at stream start, before the first cover, because the follower does not
   assume playing (log line `playback state: 1`). SETPEERS is a no-op on a PTP
-  session on the receiver, so it is not the display-sync seed. If a
+  session, so it is not the display-sync seed. If a
   follower is already stuck white, reconnect.

@@ -401,12 +401,10 @@ reaching the LED renderer, and artwork-only pushes later in the same
 session do not recover it (2026-11-15 experiments below). A new session
 does, which is why the reconnect worked.
 
-The 2026-11-15 SETPEERS attribution does not survive later evidence:
-`receiver` returns early when the
-session's `timingProtocol` is `PTP` (observed in
-live-session logs),
-so SETPEERS cannot seed the display sync. The 2026-11-15 live success came
-from the freshly power-cycled pair, as the commit body already noted.
+The 2026-11-15 SETPEERS attribution does not survive later evidence: a
+PTP session makes SETPEERS a no-op on the receiver, so it cannot seed the
+display sync. The 2026-11-15 live success came from the freshly
+power-cycled pair, as the commit body already noted.
 
 Fix as shipped: a pair member re-sends the session's first effective cover
 2 s after the first cover send (`internal/airplay/sender` `coverRetry`),
@@ -972,9 +970,8 @@ one took it from 1627.
   pair member's PTP session (gated on non-empty timing peers, keeping
   the standalone shortcut; the reply gates the stream SETUP on clock
   readiness and the round trip hides inside the PTP wait), and the
-  control plane reverted to per-member fan-out. another app reference: one
-  aggregated artwork TCP write per lamp switch on the same pair (rea
-  doc,  §10). Same day, interleave observations with an iPhone
+  control plane reverted to per-member fan-out. Same day, interleave
+  observations with an iPhone
   pushing to the pair: transient pair-setup failed with TLV error 2
   (`Pairing PIN was not accepted`) across five backoff attempts
   20:38–20:50 after the previous app was killed mid-stream, then
