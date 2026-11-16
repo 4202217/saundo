@@ -43,6 +43,7 @@ mingw32-make size   # scripts/check-size: grandfathered files may not grow, new 
 mingw32-make fmt    # gofmt -w .
 mingw32-make build  # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe, so a commit past a release sorts below it and the updater still offers that release; scripts/build.sh then stops the running app and starts the new build
 mingw32-make build-fast  # the same build without the NSIS installer, for the development loop
+mingw32-make e2e-build  # non-installing build with the mygo automation plugin, for the verify skill's UI driving
 ```
 
 Without mingw32-make, run the commands directly:
