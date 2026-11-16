@@ -115,6 +115,7 @@ func (a *App) setLampOff(off bool) {
 	if a.eng != nil {
 		a.eng.SetLamp(off, a.lampCover, a.lampPreset)
 	}
+	a.rebuildTray()
 	a.fitFlyout()
 }
 
@@ -134,6 +135,7 @@ func (a *App) setLampCover(on bool) {
 	if a.eng != nil {
 		a.eng.SetLamp(false, on, a.lampPreset)
 	}
+	a.rebuildTray()
 	a.fitFlyout()
 }
 
@@ -154,6 +156,7 @@ func (a *App) chooseLampPreset(id string) {
 	if a.eng != nil {
 		a.eng.SetLamp(false, false, a.lampPreset)
 	}
+	a.rebuildTray()
 	a.fitFlyout()
 }
 

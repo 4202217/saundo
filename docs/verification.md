@@ -352,6 +352,43 @@ still owed and stays on the pending list.
   which would stream this Mac's desktop audio to the HomePods pair; the last
   live tray run (2026-11-13) stands for the menu shape.
 - **Pins.** `TestTrayRowActionTogglesTheSession`.
+- **Superseded 2026-11-16.** Receiver rows connect or switch only; the
+  session action row carries the cancel, disconnect, and retry actions.
+
+## 2026-11-16 — tray menu around quick actions
+
+- **Decision.** This supersedes the 2026-11-13 flat menu and the 2026-11-14
+  row-toggle decision. The menu keeps one flat row per visible receiver, up to
+  six, and every row connects or switches; the in-session row is disabled and the
+  session action row below the list carries 取消连接, 断开连接, or 重试连接.
+  The media group follows when the system media session has controls and
+  `PlaybackControls` is on: 上一首, 暂停 or 播放, and 下一首; the menu shows no
+track title.
+  The ambient light is one submenu row: the power
+  action, the 封面 choice, and the six template choices, each with a round
+  color preview. The ambient choices are disabled while the light is off; the
+  power row turns the light on, then a choice can be picked, matching the
+  flyout and settings. The stored choice carries 上次 while off; the current
+  choice is disabled while lit and its label ends in a single-color ✔. The update row is stateful (下载更新, 正在下载, 重启并安装);
+  更多接收器… opens the receivers page past six; with no visible receiver,
+  重新搜索 with 暂无接收器 sits first. No row uses a check column; the current ambient choice is
+  disabled and greyed while lit.
+  While the light is on, the parent row's icon is the current preview; off uses
+  the lamp-off glyph.
+- **Evidence.** The mockup at `.audit/mockups/tray-menu/mockup.html` established the layout;
+  the final live menu drops the track title and uses the current preview as
+  the ambient parent icon. The menu is cached and rebuilt on every right
+  click so media, lamp, and update rows are current.
+- **Not run live.** The native menu visuals still need a live right-click on
+  Windows and macOS; the unit tests pin the model, item order, labels, the current
+  suffix, and preview PNGs.
+- **Pins.** `TestTrayMenuShape`, `TestTrayMenuSessionRow`,
+  `TestTrayMenuMediaRowsFollowSession`, `TestTrayMenuMediaControlSendsAction`,
+  `TestTrayMenuLampSubmenu`, `TestTrayMenuLampOffDisablesChoices`,
+  `TestTrayMenuUpdateRow`, `TestTrayMenuMoreReceivers`,
+  `TestTrayMenuEmptyState`, `TestTrayMenuLampPresetOrder`,
+  `TestTrayMenuDeviceSubtitle`, `TestTrayMenuKey`, `TestMenuPreviewPNG`, and
+  `TestCoverPreviewColors`.
 
 ## 2026-11-15 — cold-start stereo ambient light
 
@@ -936,7 +973,9 @@ one took it from 1627.
   `lampTurnOff`/`lampTurnOn` keys feed the tray row and the flyout power
   button's accessible label (关闭氛围灯 / 开启氛围灯, Turn off / Turn on
   ambient light); the 已关灯 chip and 自动关闭氛围灯 setting keep their
-  own copy. Pins: `TestTrayMenuLampRow` and the catalog gates.
+  own copy. Pins: `TestTrayMenuLampRow` and the catalog gates. Superseded
+  2026-11-16: the tray lamp row is the ambient submenu; pins moved to
+  `TestTrayMenuLampSubmenu` and `TestTrayMenuLampOffDisablesChoices`.
 - 2026-11-15, a stereo pair follower never takes mid-session artwork from
   its own session: HomePod L (the group row's host, the leader) followed
   every template change while HomePod R (`AudioAccessory5,1`, software

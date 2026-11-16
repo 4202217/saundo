@@ -50,6 +50,7 @@ type App struct {
 	trayTip             string
 	menuKey             trayMenuKey
 	menuIcons           map[string]*mygo.MenuIcon
+	menuCoverKey        string
 	quitting            bool
 	power               powerHold
 	// flyoutH is the content height the design asks for; flyoutScale is the
@@ -358,6 +359,10 @@ func (a *App) ready() {
 			if a.win != nil {
 				a.win.Hide()
 			}
+			// The menu is cached between popups. Refresh it first so the
+			// media, lamp, and update rows are current even when no snapshot
+			// arrived since the last open.
+			a.rebuildTray()
 			if a.trayMenu != nil {
 				a.tray.SetMenu(a.trayMenu)
 				defer a.tray.SetMenu(nil)
@@ -590,6 +595,7 @@ func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
 	a.refreshNowArtwork()
 	a.refreshNowAppIcon()
 	a.refreshNowLamp()
+	a.rebuildTray()
 	a.fitFlyout()
 }
 
@@ -1048,229 +1054,6 @@ func (a *App) syncSelection() {
 	if len(a.snap.Devices) > 0 {
 		a.selID = a.snap.Devices[0].ID
 	}
-}
-
-// trayMenuModel is everything the tray menu shows, derived from one snapshot.
-// Rebuilding compares the model, so an unchanged model keeps the cached menu.
-type trayMenuModel struct {
-	locale     string
-	dark       bool
-	connecting bool
-	selected   string
-	connected  string
-	muteOn     bool
-	lampOff    bool
-	devices    []trayMenuDevice
-}
-
-// trayMenuDevice is one receiver row.
-type trayMenuDevice struct {
-	id     string
-	name   string
-	family string
-	online bool
-}
-
-// trayMenuKey is what the tray menu's shape depends on. The tooltip follows
-// more of the snapshot and is compared on its own.
-type trayMenuKey struct {
-	locale     string
-	dark       bool
-	connecting bool
-	selected   string
-	connected  string
-	muteOn     bool
-	lampOff    bool
-	devices    string
-}
-
-func (a *App) trayModel(locale string, dark bool) trayMenuModel {
-	m := trayMenuModel{
-		locale:     locale,
-		dark:       dark,
-		connecting: a.snap.State != sender.StateIdle,
-		selected:   a.snap.SelectedID,
-		muteOn:     a.cfg.MuteLocalOnConnect,
-		lampOff:    a.snap.LampOff,
-		devices:    make([]trayMenuDevice, len(a.snap.Devices)),
-	}
-	if m.connecting {
-		m.connected = a.snap.SelectedID
-	}
-	if m.selected == "" {
-		m.selected = a.selID
-	}
-	for i, d := range a.snap.Devices {
-		m.devices[i] = trayMenuDevice{id: d.ID, name: d.Name, family: deviceIconKey(d.Model, d.IsStereoGroup()), online: d.Online}
-	}
-	return m
-}
-
-func (m trayMenuModel) key() trayMenuKey {
-	var b strings.Builder
-	for _, d := range m.devices {
-		fmt.Fprintf(&b, "%d:%s|%d:%s|%s|%t\n", len(d.id), d.id, len(d.name), d.name, d.family, d.online)
-	}
-	return trayMenuKey{
-		locale:     m.locale,
-		dark:       m.dark,
-		connecting: m.connecting,
-		selected:   m.selected,
-		connected:  m.connected,
-		muteOn:     m.muteOn,
-		lampOff:    m.lampOff,
-		devices:    b.String(),
-	}
-}
-
-// deviceIcon is the key of the receiver's glyph: the device in session takes
-// the accent-colored variant for the appearance, the other rows the template
-// in the menu's text color.
-func (m trayMenuModel) deviceIcon(d trayMenuDevice) string {
-	if d.id != m.connected {
-		return "dev:" + d.family
-	}
-	if m.dark {
-		return "devond:" + d.family
-	}
-	return "devon:" + d.family
-}
-
-func (m trayMenuModel) muteIcon() string {
-	if m.muteOn {
-		return "bellOff"
-	}
-	return "bell"
-}
-
-// muteLabel names the mute row's action: unmuting while the preference is on.
-func (m trayMenuModel) muteLabel() string {
-	if m.muteOn {
-		return locales.TrayUnmuteLocal()
-	}
-	return locales.TrayMuteLocal()
-}
-
-// lampLabel names the ambient light's action: turning off while it is lit.
-func (m trayMenuModel) lampLabel() string {
-	if m.lampOff {
-		return locales.LampTurnOn()
-	}
-	return locales.LampTurnOff()
-}
-
-// lampIcon matches the light's state, as the bell does for the mute row.
-func (m trayMenuModel) lampIcon() string {
-	if m.lampOff {
-		return "lampOff"
-	}
-	return "lamp"
-}
-
-func (a *App) trayMenuItems(m trayMenuModel) []*mygo.MenuItem {
-	items := make([]*mygo.MenuItem, 0, len(m.devices)+10)
-	targeted := false
-	for _, d := range m.devices {
-		item := &mygo.MenuItem{
-			Label: d.name,
-			Icon:  a.menuIcons[m.deviceIcon(d)],
-			Click: func(*mygo.MenuItem, *mygo.Window) { a.trayDeviceClick(d.id) },
-		}
-		if !d.online {
-			item.Subtitle = locales.ActionOffline()
-		}
-		targeted = targeted || d.id == m.selected
-		items = append(items, item)
-	}
-	// No targeted row means the current target is not among the visible
-	// receivers, so offer the remembered one instead.
-	if !targeted {
-		items = append(items, &mygo.MenuItem{
-			Label:    locales.TrayConnectLast(),
-			Icon:     a.menuIcons["connect"],
-			Disabled: a.selID == "",
-			Click:    func(*mygo.MenuItem, *mygo.Window) { a.connectSelected() },
-		})
-	}
-	items = append(items, mygo.Separator())
-	items = append(items,
-		&mygo.MenuItem{Label: m.muteLabel(), Icon: a.menuIcons[m.muteIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
-			a.setMuteLocal(!m.muteOn)
-		}},
-		&mygo.MenuItem{Label: m.lampLabel(), Icon: a.menuIcons[m.lampIcon()], Click: func(*mygo.MenuItem, *mygo.Window) {
-			a.setLampOff(!m.lampOff)
-		}},
-		mygo.Separator(),
-		&mygo.MenuItem{Label: locales.TrayShowPanel(), Icon: a.menuIcons["open"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
-		&mygo.MenuItem{Label: locales.TraySettings(), Icon: a.menuIcons["settings"], Click: func(*mygo.MenuItem, *mygo.Window) { a.showSettings() }},
-		mygo.Separator(),
-		&mygo.MenuItem{Label: locales.TrayCheckUpdates(), Icon: a.menuIcons["update"], Click: func(*mygo.MenuItem, *mygo.Window) { a.openUpdateCheck() }},
-		&mygo.MenuItem{Role: mygo.RoleQuit, Label: locales.TrayQuit(), Icon: a.menuIcons["quit"]},
-	)
-	return items
-}
-
-// trayDeviceClick toggles the receiver row's session: the row that carries it
-// ends it, and every other row becomes the new target. A failed row retries.
-func (a *App) trayDeviceClick(id string) {
-	switch trayRowAction(phaseOf(a.snap), id == a.snap.SelectedID) {
-	case actionCancel, actionDisconnect:
-		a.disconnect()
-	default:
-		a.connectDevice(id)
-	}
-}
-
-// trayRowAction is what clicking a receiver row does, in the flyout's action
-// vocabulary: a streaming row disconnects, a connecting row cancels, and any
-// other row starts a connection.
-func trayRowAction(ph phase, active bool) rowActionKind {
-	switch {
-	case active && ph == phaseConnecting:
-		return actionCancel
-	case active && ph == phaseStreaming:
-		return actionDisconnect
-	}
-	return actionConnect
-}
-
-func (a *App) rebuildTray() {
-	if a.tray == nil {
-		return
-	}
-	if a.menuIcons == nil {
-		a.menuIcons = loadMenuIcons()
-	}
-	m := a.trayModel(mygo.App.Locale(), mygo.Theme.IsDark())
-	key := m.key()
-	if a.trayMenu == nil || key != a.menuKey {
-		a.menuKey = key
-		a.trayMenu = mygo.NewMenu(a.trayMenuItems(m))
-	}
-	connecting := a.snap.State != sender.StateIdle
-	tip := locales.TrayTooltip()
-	if connecting {
-		tip = locales.TrayTooltip() + " · " + a.statusText()
-	}
-	if a.updateChipVisible() {
-		if a.upd.phase == updateReady {
-			tip += " · " + locales.UpdateReadyShort()
-		} else {
-			tip += " · " + locales.FlyoutUpdateAvailable(a.upd.version)
-		}
-	}
-	if tip != a.trayTip {
-		a.trayTip = tip
-		a.tray.SetToolTip(tip)
-	}
-	a.refreshTrayIcon()
-}
-
-func (a *App) connectSelected() {
-	if a.selID == "" {
-		return
-	}
-	a.eng.Connect(a.selID)
 }
 
 // setLaunchAtStart persists the toggle and asks the system to start the app

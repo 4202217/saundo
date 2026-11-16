@@ -47,7 +47,7 @@ flag is in memory only.
   `:683-696`) shares state with the settings page; clicking it opens the
   更新 page. A waiting update also draws a dot on the 更新 sidebar item, and
   the tray tooltip and menu carry the check action and the available version
-  (`settings_window.go:203-206`; `app.go:1230,1254-1258`; docs/ui.md).
+  (`settings_window.go:203-206`; `tray_menu.go:388-418, tray_menu.go:446-451`; docs/ui.md).
 
 ## How to get to it (user POV)
 

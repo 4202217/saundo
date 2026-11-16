@@ -226,36 +226,6 @@ func (msgs Messages) TraySettings() string {
 	return Catalog.Format(msgs.locale, "traySettings", nil)
 }
 
-// TrayConnectLast says "Connect to last receiver"
-// in the language the app shows.
-func TrayConnectLast() string { return In(i18n.Locale()).TrayConnectLast() }
-
-// TrayConnectLast says "Connect to last receiver"
-// in the language of msgs.
-func (msgs Messages) TrayConnectLast() string {
-	return Catalog.Format(msgs.locale, "trayConnectLast", nil)
-}
-
-// TrayMuteLocal says "Mute local output"
-// in the language the app shows.
-func TrayMuteLocal() string { return In(i18n.Locale()).TrayMuteLocal() }
-
-// TrayMuteLocal says "Mute local output"
-// in the language of msgs.
-func (msgs Messages) TrayMuteLocal() string {
-	return Catalog.Format(msgs.locale, "trayMuteLocal", nil)
-}
-
-// TrayUnmuteLocal says "Unmute local output"
-// in the language the app shows.
-func TrayUnmuteLocal() string { return In(i18n.Locale()).TrayUnmuteLocal() }
-
-// TrayUnmuteLocal says "Unmute local output"
-// in the language of msgs.
-func (msgs Messages) TrayUnmuteLocal() string {
-	return Catalog.Format(msgs.locale, "trayUnmuteLocal", nil)
-}
-
 // TrayQuit says "Quit Saundo"
 // in the language the app shows.
 func TrayQuit() string { return In(i18n.Locale()).TrayQuit() }
@@ -274,6 +244,66 @@ func TrayTooltip() string { return In(i18n.Locale()).TrayTooltip() }
 // in the language of msgs.
 func (msgs Messages) TrayTooltip() string {
 	return Catalog.Format(msgs.locale, "trayTooltip", nil)
+}
+
+// TrayMenuCancelConnect says "Cancel connection"
+// in the language the app shows.
+func TrayMenuCancelConnect() string { return In(i18n.Locale()).TrayMenuCancelConnect() }
+
+// TrayMenuCancelConnect says "Cancel connection"
+// in the language of msgs.
+func (msgs Messages) TrayMenuCancelConnect() string {
+	return Catalog.Format(msgs.locale, "trayMenuCancelConnect", nil)
+}
+
+// TrayMenuRetry says "Retry connection"
+// in the language the app shows.
+func TrayMenuRetry() string { return In(i18n.Locale()).TrayMenuRetry() }
+
+// TrayMenuRetry says "Retry connection"
+// in the language of msgs.
+func (msgs Messages) TrayMenuRetry() string {
+	return Catalog.Format(msgs.locale, "trayMenuRetry", nil)
+}
+
+// TrayMenuMore says "More receivers…"
+// in the language the app shows.
+func TrayMenuMore() string { return In(i18n.Locale()).TrayMenuMore() }
+
+// TrayMenuMore says "More receivers…"
+// in the language of msgs.
+func (msgs Messages) TrayMenuMore() string {
+	return Catalog.Format(msgs.locale, "trayMenuMore", nil)
+}
+
+// TrayMenuLastUsed says "Last used"
+// in the language the app shows.
+func TrayMenuLastUsed() string { return In(i18n.Locale()).TrayMenuLastUsed() }
+
+// TrayMenuLastUsed says "Last used"
+// in the language of msgs.
+func (msgs Messages) TrayMenuLastUsed() string {
+	return Catalog.Format(msgs.locale, "trayMenuLastUsed", nil)
+}
+
+// TrayMenuDownload says "Download update {version}"
+// in the language the app shows.
+func TrayMenuDownload(version string) string { return In(i18n.Locale()).TrayMenuDownload(version) }
+
+// TrayMenuDownload says "Download update {version}"
+// in the language of msgs.
+func (msgs Messages) TrayMenuDownload(version string) string {
+	return Catalog.Format(msgs.locale, "trayMenuDownload", map[string]any{"version": version})
+}
+
+// TrayMenuInstall says "Restart and install {version}"
+// in the language the app shows.
+func TrayMenuInstall(version string) string { return In(i18n.Locale()).TrayMenuInstall(version) }
+
+// TrayMenuInstall says "Restart and install {version}"
+// in the language of msgs.
+func (msgs Messages) TrayMenuInstall(version string) string {
+	return Catalog.Format(msgs.locale, "trayMenuInstall", map[string]any{"version": version})
 }
 
 // StatusReconnecting says "Reconnecting…"
@@ -3192,16 +3222,6 @@ func FlyoutUpdateDownloading(percent int) string {
 // in the language of msgs.
 func (msgs Messages) FlyoutUpdateDownloading(percent int) string {
 	return Catalog.Format(msgs.locale, "flyoutUpdateDownloading", map[string]any{"percent": percent})
-}
-
-// TrayCheckUpdates says "Check for updates…"
-// in the language the app shows.
-func TrayCheckUpdates() string { return In(i18n.Locale()).TrayCheckUpdates() }
-
-// TrayCheckUpdates says "Check for updates…"
-// in the language of msgs.
-func (msgs Messages) TrayCheckUpdates() string {
-	return Catalog.Format(msgs.locale, "trayCheckUpdates", nil)
 }
 
 // UpdateCheckingShort says "Checking…"
