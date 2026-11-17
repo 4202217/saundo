@@ -1,0 +1,7 @@
+{
+  "name": "saundo-preview",
+  "identifier": "com.saundo.preview",
+  "version": "0.0.0",
+  "slug": "saundo-preview",
+  "out": "build"
+}
