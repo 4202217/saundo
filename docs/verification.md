@@ -566,6 +566,9 @@ content of its own, so the commits it brings in are classified here.
 - `0672dd1` engine: mute worker stopped in the guard tests — internal
   (test).
 
+Code review: subset ran (7 commits) -> fixed in `12c6fdf` and `844e475`;
+the result entry is below.
+
 ## 2026-11-17 — release 0.6.4 UI review
 
 The copy inventory (`cmd/saundo/locales/en.json`, `zh-CN.json`) and the
@@ -663,6 +666,16 @@ the notes-theme cache was not named in a commit body and now carries
 `app.go` baseline lowered to 1259). The candidate build was not rebuilt:
 it would no longer match `v0.6.4`. The tag stays on `04fdd96`; the two
 fixes are after it and nothing is pushed.
+
+## 2026-11-17 — 0.6.4 re-cut
+
+The first `v0.6.4` tag (`04fdd96`) was pushed and its release workflow was
+canceled before any release was created; the tag was deleted locally and
+remotely, and the release commit was re-cut on top of the critical-path
+fixes (`12c6fdf`, `844e475`). The version, both changelogs, and both READMEs
+are unchanged; the tag now includes the fixes, and the range review carries
+the `Code review:` line the new preflight requires. The candidate built from
+the first cut is stale; CI builds the published assets from the new tag.
 
 ## Graduated
 
