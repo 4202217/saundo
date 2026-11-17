@@ -177,12 +177,11 @@ func (s *Sender) onPairingResponse(code int, headers map[string]string, body str
 		if s.ptpClock != nil {
 			if len(s.timingPeers) > 0 {
 				// A pair member still announces its peers on a PTP session.
-				// Timing comes from the sender's master, but the member sync
-				// that carries Now Playing between the two top displays keys
-				// off the SETPEERS list; skipping it left the follower's top
-				// display stuck on its first light (2026-11-15). The round
-				// trip hides inside the PTP wait, and the reply gates the
-				// stream SETUP on the clock's readiness.
+				// The 2026-11-16 run corrected the 2026-11-15 attribution:
+				// the receiver ignores SETPEERS for the top-display sync, so
+				// this is not a sync seed. The send stays because its reply
+				// releases the stream SETUP while the PTP clock becomes
+				// ready, and the round trip hides inside the PTP wait.
 				s.sendSetPeers()
 				return
 			}
