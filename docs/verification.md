@@ -677,6 +677,23 @@ are unchanged; the tag now includes the fixes, and the range review carries
 the `Code review:` line the new preflight requires. The candidate built from
 the first cut is stale; CI builds the published assets from the new tag.
 
+## 2026-11-17 — 0.6.4 draft and publish
+
+Workflow `44022602002` succeeded on tag `v0.6.4` (`117508a`): `check`,
+`check-macos`, `draft`, `build`, and `build-macos` all green. The draft
+carried the Windows installer, both update archives, both signed manifests,
+`install.ps1`, `install.sh`, the dmg, `SHA256SUMS`, and the deltas from
+0.6.1-0.6.3. `gh release download` plus `sha256sum -c SHA256SUMS` passed for
+every asset. Both manifests carry version 0.6.4, the English 0.6.4 notes,
+and an 88-character signature. The bilingual release notes were set from
+`scripts/release-notes.sh`, and the release was published at
+2026-11-17T05:21:56Z. The public feed serves `update-windows-amd64.json` and
+`update-darwin-arm64.json` at version 0.6.4 with signatures; the installer
+and dmg return 200. A live update from 0.6.3 was not run, and the
+maintainer's pre-release test of the candidate remains unrecorded. The first
+`v0.6.4` tag (`04fdd96`) was canceled before any release existed; this
+release is the re-cut at `117508a`, which includes the code review fixes.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
