@@ -12,7 +12,11 @@
   parse and merge path. It finds HomePods that miss multicast. Windows only:
   macOS has no ARP neighbor table (`neighbors_other.go`), so the directed
   pass probes remembered hosts only.
-- A discovered row stores its last host, port, and `lastSeen`; an inactive
+- A discovered row stores its last host, port, `lastSeen`, and the OS
+  version, and each stereo member keeps its own (the offline projection is
+  `CachedDevice`); that cache lets a remembered pair auto-connect and light
+  both tops before mDNS answers (`TestRememberedStereoPairKeepsTopDisplayCapability`).
+  An inactive
   `stereo:<tsid>` unseen for 24 h is pruned with its auto-connect flag, while
   a group without `lastSeen` gets the full grace. The active/reconnect target
   is force-added and is not pruned while the engine owns it.
@@ -20,7 +24,7 @@
   which is about 17 s at the default 3 s interval, and pruning after 90 s.
   Neither
   surface lists an inactive offline remembered row: `Manageable`
-  (`receivers/merge.go:180-188`) drops it, and its saved settings return when
+  (`receivers/merge.go:187-195`) drops it, and its saved settings return when
   it is seen again. The active session's row stays while the engine owns it:
   settings shows `离线`, the flyout shows the disconnect/retry action. The
   offline action is reachable only in the auto-reconnect-off, device-closed
@@ -34,9 +38,9 @@
   group with its auto-connect flag cleared (`merge.go:82-88`), drawn with
   the 本机 chip and no switch or expander (`receivers_page.go:217-230,335-336`),
   and never listed in the flyout. The engine refuses to connect it
-  (`engine.go:1414-1423`), the launch auto-connect skips it
-  (`engine.go:2133-2139`), and the sender stops a session whose socket local
-  and peer addresses match (`sender.go:866-872`). A sender and its own
+  (`engine.go:1418-1427`), the launch auto-connect skips it
+  (`engine.go:2147-2153`), and the sender stops a session whose socket local
+  and peer addresses match (`sender.go:860-864`). A sender and its own
   receiver would share one audio path and loop.
 - Connect paths by auth kind: HAP transient (fixed PIN `3939`, stops at M4),
   on-screen PIN (配对码 dialog, Apple TV), receiver password (masked dialog on
@@ -44,24 +48,31 @@
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  failed connect attempts, then 自动重连 5 次后停止 (`engine.go:320-324`,
-  budget at `:291-292`, give-up message at `:1555-1559`). A key absent from
-  the list is retried every 5 s without consuming the budget; a receiver that
-  merely goes offline keeps its cached endpoint and each attempt counts.
+  failed connect attempts, then 自动重连 {count} 次后停止 (`engine.go:320-324`,
+  budget at `:291-292`, `planReconnect` at `:1559-1572`, give-up message at
+  `:1563`). A key absent from the list is retried every 5 s without consuming
+  the budget; a receiver that merely goes offline keeps its cached endpoint
+  and each attempt counts. A user connect resets the budget (`cmdConnect`,
+  `engine.go:1170-1173`), so 重试, 重新连接, and the tray's 重试连接 start a
+  fresh 1/2/5/10/15 s cycle after a give-up
+  (`TestUserRetryAfterGiveUpResumesReconnect`).
 - Takeover is terminal: a clean control close during streaming stops the
-  reconnect (`engine.go:1781-1798`; `sender.go:917`), the status reads
+  reconnect (`engine.go:1785-1802`; `sender.go:906`), the status reads
   已被其他设备接管, and the active row offers 重新连接
   (`flyout.go:281-283`; `app.go:1125-1128`). A close carrying an error stays
   retryable.
 - A failed attempt clears its error on the next connect or disconnect
-  (`engine.go:1189`, `:1430`), and other online rows stay connectable in the
+  (`engine.go:1193`, `:1434`), and other online rows stay connectable in the
   error phase (`flyout.go:244-286`; `TestRowActionKeepsOtherReceiversConnectable`).
 
 ## How to get to it (user POV)
 
 Launch the app; the flyout lists receivers on the LAN (about ten seconds).
 Click a row, click 连接. On a PIN receiver the 配对码 dialog opens; on a
-password receiver a masked prompt opens on first connect.
+password receiver a masked prompt opens on first connect. The tray menu's
+receiver rows are the second entry point: a click connects or switches (the
+in-session row is disabled), and its session row carries 取消连接 /
+断开连接 / 重试连接; see [tray-and-flyout.md](tray-and-flyout.md).
 
 ## Driving it
 
@@ -89,7 +100,7 @@ by 断开连接 and confirm `session stopped` plus the row returning to 连接.
 
 Proven end state: the flyout shows 正在通过 `<name>` 播放 with the
 `ALAC · 44.1 kHz · PTP · 已同步 · 延迟 N ms` line (PTP on HomePod/Mac), and
-the log shows `reply "RTSP/1.0 200 OK" for FEEDBACK` every 2 s on AP2 (AP1
+the log shows `reply "RTSP/1.0 200 OK" for POST /feedback` every 2 s on AP2 (AP1
 uses one probe then 25 s). The 已连接 chip is the settings connection page and
 sidebar, not a flyout row.
 

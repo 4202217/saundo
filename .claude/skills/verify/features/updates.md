@@ -22,7 +22,7 @@ flag is in memory only.
   and download toggles, a check-now action, the primary action button
   (Install / Restart now / Retry by state), a Cancel link button, and the
   S1 card's What's New, Skip this version, and Remind me later links in the
-  row above the byte and percent progress row (`settings_window.go:463-482`).
+  row above the byte and percent progress row (`settings_window.go:400-411`).
 - Release-notes dialog: the offered version's notes plus, when fetchable,
   the history of every version since the running build — from `CHANGELOG.md`
   in English and `CHANGELOG.zh-CN.md` when the app language starts with
@@ -33,7 +33,7 @@ flag is in memory only.
   the cache key); a dialog already open keeps the language it loaded. The
   head's range select switches between the history since this build and the
   latest version only, and the older entries render as folded rows; a failed
-  history fetch adds a releases link (`update_dialog.go:36-45,120-131`). The fetch starts when the
+  history fetch adds a releases link (`update_dialog.go:36-45,132-137`). The fetch starts when the
   update is found
   (`TestFoundUpdatePrefetchesTheLocalizedNotes`), and a non-English dialog
   shows the loading row rather than flashing English
@@ -43,11 +43,14 @@ flag is in memory only.
   installer process runs). On macOS it stages the new bundle and a helper
   swaps it after the app quits, so the Dock keeps one tile. A separate
   立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:677-699`, chip at
-  `:683-696`) shares state with the settings page; clicking it opens the
-  更新 page. A waiting update also draws a dot on the 更新 sidebar item, and
-  the tray tooltip and menu carry the check action and the available version
-  (`settings_window.go:203-206`; `tray_menu.go:388-418, tray_menu.go:446-451`; docs/ui.md).
+- Update chip in the flyout **footer** (`flyout.go:633-649`, chip at
+  `:636-648`) shares state with the settings page; clicking it opens the
+  更新 page. A waiting update also draws a dot on the 更新 sidebar item
+  (`settings_window.go:143-146`). The tray has no check action: its stateful
+  row appears only while an update is available, downloading, or ready and
+  unskipped — download, disabled progress, or restart-and-install
+  (`tray_menu.go:376-398`) — and the tooltip appends the version or the
+  ready state (`tray_menu.go:414-424`; docs/ui.md).
 
 ## How to get to it (user POV)
 

@@ -15,9 +15,14 @@ per receiver.
   row carries the compact 封面/模板 priority
   segment left of the chevron. The settings page puts a 颜色来源 row
   (封面 / 模板) at its right, under the 72-DIP preview and its name, and its
-  head keeps the HomePod 专属 tag. The tray menu carries the same lamp row
-  under the mute row (关闭氛围灯 when lit, 开启氛围灯 when dark), toggling the
-  one global choice.
+  head keeps the HomePod 专属 tag. The tray menu carries a 氛围灯 submenu
+  (`tray_menu.go:248-253`): its parent row subtitles 已关灯 when off,
+  otherwise 封面 or the template name, and its icon is the current preview or
+  the lamp-off glyph. The submenu (`tray_menu.go:318-348`) holds the
+  关闭氛围灯 / 开启氛围灯 power row, the 封面 choice, and the six templates,
+  each with a round preview; the current choice is disabled and ends in a
+  single-color ✔, every choice is disabled while off, and the stored choice
+  then carries 上次 / Last used.
 - Choices: the media cover (default) plus six templates: 暖烬, 沙丘, 苔庭,
   潮汐, 兰夜, 月白. `internal/lamp` renders each palette as a deterministic
   600×600 carrier of three flat color fields and caches it; the receiver's
@@ -52,8 +57,10 @@ per receiver.
   manual 关闭氛围灯 action and the idle standby are the two ways to darken the
   display; a media pause itself does not.
 - 关闭氛围灯 posts the updateMRPlaybackState command with `mrPlaybackState` 2;
-  开启氛围灯 posts state 1 and then resends the current cover. A new session
-  assumes playing and does not send a redundant state 1. The state is
+  开启氛围灯 posts state 1 and then resends the current cover. A new
+  standalone session assumes playing and does not send a redundant state 1; a
+  pair member does send one explicit state 1 before its first cover, because
+  the follower does not assume playing. The state is
   persisted as `lamp.off`; the light is on by default, and an old
   `lamp.enabled: false` migrates to off.
 - Cover priority is persisted as `lamp.cover`. An old `preset: "media"` or
@@ -102,7 +109,7 @@ collapsed until it is clicked.
 Headless UI:
 
 ```bash
-go test -run 'TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish|TestLampTemplateTilesKeepTheirSize|TestLampPreviewFollowsThePushedSessionNotTheCard|TestSettingsLampStandbySelect|TestFlyoutLampShowsStandby' -v ./internal/app/
+go test -run 'TestTrayMenuLampSubmenu|TestTrayMenuLampOffDisablesChoices|TestTrayMenuLampPresetOrder|TestMenuPreviewPNG|TestFlyoutLampCardStaysWhenOff|TestFlyoutLampExpandsAndChoosesPreset|TestFlyoutLampOffRequiresTurningOn|TestLampOffIgnoresPriorityAndPreset|TestFlyoutLampCoverHidesTheGrid|TestFlyoutCloseCollapsesLampList|TestSettingsLampPrioritySegmentTurnsCoverOn|TestSettingsLampPrioritySegmentTurnsCoverOff|TestSettingsLampPickingPresetWhileCoverOnTurnsCoverOff|TestSettingsLampPowerTurnsTheLightOff|TestSettingsLampPageChoosesPreset|TestSettingsLampPageOffRequiresTurningOn|TestLampSurfacesInEnglish|TestLampTemplateTilesKeepTheirSize|TestLampPreviewFollowsThePushedSessionNotTheCard|TestSettingsLampStandbySelect|TestFlyoutLampShowsStandby' -v ./internal/app/
 ```
 
 Renderer, cover palette, and settings:
@@ -226,14 +233,18 @@ and the off state survive a settings-window close/reopen and an app restart.
 - `TopDisplayCapable` accepts any `AudioAccessory*` at 27.2 or later,
   including 6,1; there is no model whitelist. An unknown model or version
   stays off.
-- A stereo pair's simultaneous repaint is not yet verified; the image is
-  skipped for a member that is not top-display capable, while the playback
-  state still reaches every member.
+- A stereo pair's simultaneous mid-session repaint is not yet verified; the
+  image is skipped for a member that is not top-display capable, while the
+  playback state still reaches every member. A remembered pair's cold-start
+  light is pinned by `TestRememberedStereoPairKeepsTopDisplayCapability`
+  (`internal/engine/receivers_test.go`): relaunch with the pair remembered
+  and check both tops light before mDNS answers.
 - A stereo follower's top follows the pair's HomeKit/tightSync media-system
   sync, not its own session's artwork stream. The session's first light is a
   one-shot race; a pair member re-sends it 2 s later (`coverRetry`, log line
   `cover: first-light retry`). A pair member also sends an explicit state `1`
   at stream start, before the first cover, because the follower does not
-  assume playing (log line `playback state: 1`). SETPEERS is a no-op on a PTP
-  session, so it is not the display-sync seed. If a
+  assume playing (log line `playback state: 1`). The receiver ignores SETPEERS
+  on a PTP session, so it is not the display-sync seed; a pair member still
+  sends it to gate the stream SETUP. If a
   follower is already stuck white, reconnect.

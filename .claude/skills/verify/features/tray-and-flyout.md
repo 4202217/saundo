@@ -15,10 +15,14 @@
   subtitle and stays clickable. Clicking a row connects or switches to it; the
   in-session row is not a second connect target. While connecting every row is
   disabled. The row under the list is the session action: 取消连接, 断开连接,
-  or 重试连接, and it is absent while idle. The playback group follows when the
-  system media session has controls: previous, 暂停 or 播放 with the track and
-  artist as its subtitle, and next. It is absent when playback controls are
-  off or no controllable session exists. Then the ambient-light submenu:
+  or 重试连接, and it is absent while idle; with more than six receivers the
+  更多接收器… row sits between the sixth receiver row and the session action,
+  and 重试连接 is disabled when no receiver is selected. The playback group
+  follows when the system media session has controls: previous, 暂停 or 播放,
+  and next, with no track title or subtitle. Each control row appears only
+  when the session has that capability, so the group is not always three rows.
+  It is absent when playback controls are off or no controllable session
+  exists. Then the ambient-light submenu:
   关闭氛围灯 or 开启氛围灯, the 封面 choice, and the six template choices, each
   with a round color preview. The choices are disabled while the light is off; the
   power row turns the light on, then a choice can be picked, matching the
@@ -27,7 +31,7 @@
   stored choice carries 上次.
   While the light is on, the parent row's icon is the current preview; off
   uses the lamp-off glyph. Then 显示托盘面板, 设置…, a stateful update row (下载更新, 正在下载,
-  重启并安装) only while an update waits, and 退出声渡. When more than six
+  重启并安装) only while an update waits (disabled while downloading), and 退出声渡. When more than six
   receivers exist, 更多接收器… opens the receivers page; when none is visible,
   重新搜索 with 暂无接收器 sits first. The menu is installed only for the
   duration of the popup and is rebuilt on every right click. Pinned by
@@ -43,9 +47,12 @@
   53 when its preset grid expands). The base constant is 439, but the
   function subtracts the old 62-DIP media row and adds the 90-DIP lamp
   section, so three device rows with no media measure 467. There is no
-  flexible spacer; the playback card follows the device card. The resize
-  grows the flyout upward from the tray anchor (`fitFlyout`,
-  `app.go:828-842`), pinned by `TestFlyoutHeightForDeviceRows`,
+  flexible spacer; the playback card follows the device card. Both windows
+  carry the desktop text scale as a content zoom, so the flyout and settings
+  sizes are multiplied by the scale when sized and shown
+  (`window_scale.go`); a 125% scale makes every captured window 1.25x wider.
+  The resize grows the flyout upward from the tray anchor (`fitFlyout`,
+  `window_scale.go:15-31`), pinned by `TestFlyoutHeightForDeviceRows`,
   `TestFlyoutKeepsPlaybackGap`, and `TestFlyoutTargetHeightFitsPlayback`.
 - Ambient light card: a permanent 44-DIP row under the playback card, with
   a 32-DIP preview, the source name (or the preset name), a 待机 chip while
@@ -150,9 +157,10 @@ captured; the menu-bar click path is outside the protocol and unproven.
 - The flyout is frameless and transparent: a WS_POPUP/WS_EX_TOOLWINDOW
   window drawn through DirectComposition, not WS_EX_LAYERED. A plain
   screen grab can miss it; use PrintWindow (capture-window.ps1), and expect
-  class `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:26`); the
+  class `MyGoFlyoutShadow`. The panel is 420 DIP wide (`flyout.go:25`); the
   script is DPI-aware, so it captures the full window at the monitor scale
-  (1050 px at 250%), not a cropped DIP-sized bitmap. 480 was an old design
+  (1050 px at 250% with 100% text scale; a higher text scale multiplies the
+  width), not a cropped DIP-sized bitmap. 480 was an old design
   value. On macOS the
   rounded flyout is a nonactivating panel, so an open settings window does
   not come forward (`focus_darwin.go:5-8`).

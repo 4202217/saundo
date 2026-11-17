@@ -2,7 +2,7 @@
 # flyout, which a plain screen grab misses when overlapped).
 # Usage from the repo root:
 #   powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/flyout.png
-#   ... -Class MyGoWindow -TitleLike "saundo"   # the settings window
+#   ... -Class MyGoWindow -TitleLike "Settings · Saundo"   # the settings window
 #   ... -ProcId 12345                           # restrict to one process
 # Exit code 0 = PNG written; 1 = no matching window.
 param(

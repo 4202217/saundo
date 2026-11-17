@@ -1,15 +1,18 @@
 # Settings window
 
-A separate `mygo.NewWindow` (`settings_window.go:95`): a 720×500 page
+A separate `mygo.NewWindow` (`settings_window_create.go:48`): a 720×500 page
 area (the window frame adds a few DIPs; min 640×420), hidden title bar,
-created hidden at startup before the engine starts. The title, cards, and
+created hidden at startup before the engine starts. The desktop text scale
+multiplies the content size (`scaledSize`; 125% gives 900×625 and an 800×525
+minimum) while the view carries the same scale as its content zoom, so the
+layout stays 720 DIP wide. The title, cards, and
 notes share one content column capped at 720 DIP and centered on a wider
 window; the scroll gutter stays at the window edge. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · Saundo` under en — match windows by class `MyGoWindow` + pid;
 `-TitleLike` is case-sensitive and the old `"saundo"` matches neither
 locale.
 Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音频,
-氛围灯, 采集, 正在播放, 更新, 关于; each page body scrolls in the gutter at the window edge.
+氛围灯, 采集, 正在播放, 更新, 关于; each page body scrolls in the gutter at the window edge, and a page switch starts that page at the top (`TestSettingsPageSwitchStartsAtTop`).
 
 ## Sub-features
 
@@ -107,7 +110,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Settings defaults:
