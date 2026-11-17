@@ -631,6 +631,39 @@ The critical-path code review rule landed after `v0.6.4` was tagged. The
 is pushed. Code review: not run -> the rule did not exist when the release
 commit was cut. The next release's range review carries the line.
 
+## 2026-11-17 — 0.6.4 critical-path code review result
+
+`/code-review` ran on `v0.6.3...v0.6.4`, restricted to `internal/airplay`,
+`internal/engine`, `internal/capture`, `internal/app/update*.go`, and
+`internal/app/migrate.go`: 7 commits, 25 files. Code review: subset ran
+(7 commits) -> fixed in `12c6fdf` and `844e475`.
+
+Standards findings. Hard: the sender comment and two test comments still
+taught the refuted SETPEERS display-sync mechanism that `d4ffc31` corrected
+in the docs (fixed in `12c6fdf`); commit `6735e3d` mixes the OSVersion cache
+fix with reply-label diagnostics, which cannot be split after the tag and is
+recorded as a history exception. Judgement: the update notes dialog cached
+its Markdown theme on the appearance only, so high contrast left stale
+hairlines, muted copy, and headings (fixed in `844e475`); the 2 s
+stop-with-timeout select is duplicated in `mute.go` and `silence.go` (kept:
+two call sites); `onCoverRetry` logs `cover: first-light retry` even when
+`sendCover` skipped an empty image (kept: the retry is armed only after a
+cover and the line is diagnostics); `Features.Persisted` travels as a pair
+into the receiver cache (kept: that pair is the store's shape).
+
+Spec findings. The high-contrast notes theme (c1) and the SETPEERS comments
+(c2) are the fixes above. Partial: `6735e3d` said every RTSP reply carries
+the method, content type, and byte count, but only `sendRequest` labels the
+request, so AP2 and pairing replies log the method alone (kept as a
+diagnostics gap; extend the label at the next attribution run). Scope:
+the notes-theme cache was not named in a commit body and now carries
+`844e475`.
+
+`mingw32-make check` is green after the fixes (`check-size` 120 files,
+`app.go` baseline lowered to 1259). The candidate build was not rebuilt:
+it would no longer match `v0.6.4`. The tag stays on `04fdd96`; the two
+fixes are after it and nothing is pushed.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
