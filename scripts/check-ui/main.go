@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -62,6 +63,8 @@ func run(root string, args []string) error {
 		return runRender(root, args[1:])
 	case "catalog":
 		return runCatalog(root)
+	case "wasm":
+		return runWasm(root)
 	case "baseline":
 		return runBaseline(args[1:])
 	case "rebaseline":
@@ -74,21 +77,61 @@ func run(root string, args []string) error {
 }
 
 func usage() error {
-	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui wasm | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+}
+
+// runWasm builds the browser preview with the preview tag into a temp file.
+// It proves the harness compiles for js/wasm and keeps the result out of any
+// shipped path.
+func runWasm(root string) error {
+	f, err := os.CreateTemp("", "saundo-preview-*.wasm")
+	if err != nil {
+		return err
+	}
+	path := f.Name()
+	if err := f.Close(); err != nil {
+		os.Remove(path)
+		return err
+	}
+	defer os.Remove(path)
+	cmd := exec.Command("go", "build", "-tags", "preview", "-o", path, "./cmd/saundo/preview")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+	start := time.Now()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("wasm: %w\n%s", err, output)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("check-ui: wasm built, %d bytes in %s\n", info.Size(), time.Since(start).Round(time.Millisecond))
+	return nil
 }
 
 // runCatalog validates the scenario table through its test. The catalog
-// carries the preview tag, so the check runs under that tag.
+// carries the preview tag, so the check runs under that tag. A run that finds
+// no matching test exits 0, so the pass line is what proves the test ran.
 func runCatalog(root string) error {
-	cmd := exec.Command("go", "test", "-tags", "preview", "./internal/app", "-run", "TestCatalog", "-count=1")
+	cmd := exec.Command("go", "test", "-tags", "preview", "./internal/app", "-run", "^TestCatalog$", "-count=1", "-v")
 	cmd.Dir = root
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("catalog: %w\n%s", err, output)
 	}
+	if !catalogPassed(output) {
+		return fmt.Errorf("catalog: TestCatalog did not run\n%s", output)
+	}
 	fmt.Printf("%s", output)
 	fmt.Println("check-ui: catalog ok")
 	return nil
+}
+
+// catalogPassed reports whether the test output carries TestCatalog's own
+// pass line. The trailing space keeps TestCatalogFoo from matching.
+func catalogPassed(output []byte) bool {
+	return bytes.Contains(output, []byte("--- PASS: TestCatalog "))
 }
 
 func runRender(root string, args []string) error {

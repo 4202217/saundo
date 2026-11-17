@@ -10,7 +10,7 @@ import (
 )
 
 func TestPreviewConnectReachesStreaming(t *testing.T) {
-	a := PreviewApp()
+	a := Fixture(previewLocale)
 	oldAfter, oldOnMain := previewAfter, previewOnMain
 	defer func() { previewAfter, previewOnMain = oldAfter, oldOnMain }()
 
@@ -21,7 +21,7 @@ func TestPreviewConnectReachesStreaming(t *testing.T) {
 	}
 	previewOnMain = func(fn func()) { fn() }
 
-	if !previewReduce(a, "connect", "AA:BB:CC:DD:EE:02") {
+	if !a.previewAction(ActionConnect, "AA:BB:CC:DD:EE:02") {
 		t.Fatal("connect was not handled")
 	}
 	if a.snap.State != sender.StateHandshake {
@@ -35,7 +35,7 @@ func TestPreviewConnectReachesStreaming(t *testing.T) {
 		t.Fatalf("state = %v, name = %q", a.snap.State, a.snap.ConnectedName)
 	}
 
-	previewReduce(a, "disconnect", nil)
+	a.previewAction(ActionDisconnect, nil)
 	transition()
 	if a.snap.State != sender.StateIdle {
 		t.Fatalf("stale transition revived %v", a.snap.State)

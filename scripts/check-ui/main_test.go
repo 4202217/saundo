@@ -9,6 +9,21 @@ import (
 	"testing"
 )
 
+func TestCatalogPassed(t *testing.T) {
+	run := []byte("=== RUN   TestCatalog\n--- PASS: TestCatalog (0.00s)\nPASS\nok  \tsaundo/internal/app\t0.031s\n")
+	if !catalogPassed(run) {
+		t.Fatal("catalogPassed rejected a real pass line")
+	}
+	none := []byte("ok  \tsaundo/internal/app\t0.035s [no tests to run]\n")
+	if catalogPassed(none) {
+		t.Fatal("catalogPassed accepted a run with no matching test")
+	}
+	other := []byte("--- PASS: TestCatalogSomething (0.00s)\n")
+	if catalogPassed(other) {
+		t.Fatal("catalogPassed accepted another test's pass line")
+	}
+}
+
 func TestRecordFileHashesAndSizes(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.png")

@@ -25,39 +25,39 @@ type receiverPasswordArg struct {
 }
 
 func (a *App) actReceiverAdd(spec receivers.Spec) {
-	a.act("receiver-add", spec, func() { a.eng.AddReceiver(spec) })
+	a.act(ActionReceiverAdd, spec, func() { a.eng.AddReceiver(spec) })
 }
 
 func (a *App) actReceiverUpdate(key string, patch receivers.Patch) {
-	a.act("receiver-update", receiverUpdateArg{key: key, patch: patch}, func() {
+	a.act(ActionReceiverUpdate, receiverUpdateArg{key: key, patch: patch}, func() {
 		a.eng.UpdateReceiver(key, patch)
 	})
 }
 
 func (a *App) actReceiverRemove(key string) {
-	a.act("receiver-remove", key, func() { a.eng.RemoveReceiver(key) })
+	a.act(ActionReceiverRemove, key, func() { a.eng.RemoveReceiver(key) })
 }
 
 func (a *App) actReceiverPassword(key, password string) {
-	a.act("receiver-password", receiverPasswordArg{key: key, password: password}, func() {
+	a.act(ActionReceiverPassword, receiverPasswordArg{key: key, password: password}, func() {
 		a.eng.SetReceiverPassword(key, password)
 	})
 }
 
 func (a *App) actReceiverHidden(key string, on bool) {
-	a.act("receiver-hidden", receiverBoolArg{key: key, on: on}, func() {
+	a.act(ActionReceiverHidden, receiverBoolArg{key: key, on: on}, func() {
 		a.eng.SetReceiverHidden(key, on)
 	})
 }
 
 func (a *App) actReceiverAuto(key string, on bool) {
-	a.act("receiver-auto", receiverBoolArg{key: key, on: on}, func() {
+	a.act(ActionReceiverAuto, receiverBoolArg{key: key, on: on}, func() {
 		a.eng.SetReceiverAutoConnect(key, on)
 	})
 }
 
 func (a *App) actReceiverDelay(key string, ms int) {
-	a.act("receiver-delay", receiverDelayArg{key: key, ms: ms}, func() {
+	a.act(ActionReceiverDelay, receiverDelayArg{key: key, ms: ms}, func() {
 		a.eng.SetReceiverDelay(key, ms)
 	})
 }

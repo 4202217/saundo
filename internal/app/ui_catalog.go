@@ -71,6 +71,20 @@ func Catalog() []Scenario {
 	return all
 }
 
+// PreviewScenarios is the catalog subset the wasm preview can show: every
+// surface with a real view. A tray menu state needs its own panel and stays
+// out until it has one.
+func PreviewScenarios() []Scenario {
+	var out []Scenario
+	for _, sc := range Catalog() {
+		switch sc.Surface {
+		case SurfaceFlyout, SurfaceSettings, SurfaceDialog:
+			out = append(out, sc)
+		}
+	}
+	return out
+}
+
 // view returns the one view a scenario renders. A dialog renders inside its
 // host view.
 func (s Scenario) view(a *App) func(*ui.Context) {

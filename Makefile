@@ -48,9 +48,11 @@ vet:
 	$(GO) vet ./...
 
 # mygo's native UI checks: a ui.Element or ui.Context must not outlive the
-# build pass that made it, or be captured by a goroutine.
+# build pass that made it, or be captured by a goroutine. The preview views
+# only compile under the preview tag, so they need their own pass.
 uivet:
 	$(GO) tool mygo vet .
+	GOFLAGS=-tags=preview $(GO) tool mygo vet .
 
 # The catalogs must agree on every message and its placeholders.
 i18n:
@@ -84,4 +86,4 @@ check:
 	@command -v "$(GOFMT)" >/dev/null 2>&1 || { echo "gofmt not found; set GOFMT=... or put Go on PATH"; exit 1; }
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) vet -tags e2e ./cmd/saundo && $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags preview ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) vet -tags e2e ./cmd/saundo && $(GO) tool mygo vet . && GOFLAGS=-tags=preview $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) test -tags preview ./internal/app -count=1 && $(GO) run ./scripts/check-ui catalog && $(GO) run ./scripts/check-ui wasm && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms

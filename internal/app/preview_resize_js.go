@@ -11,5 +11,5 @@ func previewResize(a *App) {
 	if fn.Type() != js.TypeFunction {
 		return
 	}
-	fn.Invoke(flyoutWidth, previewHeight(a))
+	fn.Invoke(flyoutWidth, visibleFlyoutHeight(a))
 }

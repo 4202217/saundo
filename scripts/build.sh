@@ -10,14 +10,11 @@
 # development loop.
 set -u
 
+cd "$(dirname "$0")/.."
+
 # The preview harness is a separate command. A preview tag in GOFLAGS would
 # pull the catalog and the fictional fixture into the production binary.
-case " ${GOFLAGS:-} " in
-	*preview*)
-		echo "build: GOFLAGS must not carry the preview tag" >&2
-		exit 2
-		;;
-esac
+bash scripts/check-goflags.sh
 
 fast=0
 case "${1:-}" in
@@ -25,8 +22,6 @@ case "${1:-}" in
 	"") ;;
 	*) echo "usage: $0 [--fast]" >&2; exit 2 ;;
 esac
-
-cd "$(dirname "$0")/.."
 
 # A local build carries git describe, so a commit past a release sorts below
 # that release and the updater still offers it. Set VERSION to stamp another

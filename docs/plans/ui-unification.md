@@ -240,16 +240,18 @@ Changes.
 - Replace `PreviewStates` and `PreviewApp` with the catalog and the fixture.
 - Replace string action names with typed `Action` constants and a handler registry. In preview mode, an unhandled action panics. A test enumerates every action and asserts a handler exists.
 - Remove the `i18n.SetLocaleFunc` call from `init`. The driver sets the locale per state, and the test entry point sets the test locale.
-- Add settings, receivers, and tray menu scenarios to the catalog. Add the size hook the browser page needs, or document the viewport sizing.
+- Add settings and receiver scenarios to the catalog. Keep the tray menu panel outside the catalog until its view takes locale and theme from the app, not from package globals. Add the size hook the browser page needs, or document the viewport sizing.
 - Make `TestPreviewRender` a catalog driver for the flyout, then for the other surfaces.
 - Add `go vet -tags preview ./...`, `go test -tags preview ./internal/app`, and `check-ui wasm` to `make check` and CI.
 - Add the `GOFLAGS` guard to the build paths.
 
 Files. `cmd/saundo/preview/*`, `internal/app/preview_*`, `internal/app/act.go`, `internal/app/*_actions.go`, `internal/app/ui_catalog*.go`, `Makefile`, `.github/workflows/ci.yml`, `.claude/skills/ui-mockup/SKILL.md`.
 
-Acceptance. The wasm build succeeds. The preview tests pass. A seeded unknown action panics in preview and fails the test. The flyout scenarios render through both PNG drivers. The settings window and the tray menu open at their intended sizes.
+Acceptance. The wasm build succeeds. The preview tests pass. A seeded unknown action panics in preview and fails the test. The flyout scenarios render through both PNG drivers. The settings window renders the catalog's page, and the tray menu panel still opens.
 
-Evidence. The wasm build log, the platform PNGs, and a click-through note for each surface.
+Result. The catalog is the only preview state source. All 18 action call sites use typed actions, and an unhandled action panics instead of running the real closure. The wasm builds at 26,417,305 bytes. The platform driver wrote 108 non-blank PNGs from 85 preview scenarios. The CPU matrix still matches 243 stable files. The preview gates run in `make check`, both CI jobs, and both release check jobs, and the release build rejects a `GOFLAGS` preview tag. The review found 23 defects, and all are fixed with regression tests. The tray menu panel still opens and its clicks use the typed actions, but it has no catalog scenario: its view reads package globals and `mygo.App.Locale()`/`Theme.IsDark()`, so a catalog entry would render in the host locale and theme. That entry moves to Phase 5.
+
+Evidence. The wasm build log, the 108 platform PNGs with their non-blank assertion, the 243-file matrix diff, and the full gate output.
 
 Risk. The branch's fixture and reducer assumptions conflict with the catalog. Port the behavior, not the file layout. The wasm sizing hook may need a custom page.
 

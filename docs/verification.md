@@ -1044,3 +1044,18 @@ one took it from 1627.
   `TestStandalonePTPSessionSkipsSetPeers`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`.
+- 2026-11-17, one preview source and a fail-closed action seam: `Catalog()` is
+  the only preview state source. `PreviewScenarios()` selects the flyout,
+  settings, and dialog states for the wasm selector, `RunPreview` and every
+  preview test build `Fixture()`, and the duplicate preview fixture and media
+  filler are gone. Actions are typed `Action` constants with a handler
+  registry; in preview an unhandled action or a wrong argument type panics and
+  never runs the real closure (`TestEveryActionHasAHandler`,
+  `TestEveryHandlerIsAKnownAction`, `TestActionCallSitesAreRegistered`,
+  `TestMissingHandlerPanics`, `TestUnknownActionPanics`,
+  `TestWrongArgumentPanics`). `check-ui wasm` built the js/wasm preview
+  (26,389,374 bytes), `TestPreviewScenariosApplyEveryState` applied every
+  selectable scenario, and `TestPreviewRender` wrote 108 platform PNGs from
+  the catalog. The CPU matrix is unchanged: 243 files match the baseline.
+  Pins: `TestPreviewScenariosApplyEveryState`, `TestPreviewRender`,
+  `.claude/skills/ui-mockup/SKILL.md`.

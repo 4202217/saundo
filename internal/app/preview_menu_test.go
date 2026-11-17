@@ -9,7 +9,7 @@ import (
 )
 
 func TestPreviewMenuLampSubmenuHeight(t *testing.T) {
-	a := PreviewApp()
+	a := Fixture(previewLocale)
 	items := a.trayMenuItems(a.trayModel("zh-CN", true))
 	previewMenuLampOpen = false
 	defer func() { previewMenuLampOpen = false }()

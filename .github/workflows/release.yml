@@ -33,9 +33,15 @@ jobs:
         run: go tool mygo i18n check cmd/saundo
       - name: Vet
         run: go vet ./...
+      - name: Preview vet
+        run: go vet -tags preview ./...
       - name: Vet the update harness
         run: go vet -tags updateharness ./cmd/saundo
       - name: UI vet
+        run: go tool mygo vet .
+      - name: UI vet (preview)
+        env:
+          GOFLAGS: -tags=preview
         run: go tool mygo vet .
       - name: Architecture
         run: go run ./scripts/check-arch
@@ -43,6 +49,12 @@ jobs:
         run: go run ./scripts/check-size
       - name: Tests
         run: go test -short ./...
+      - name: Preview tests
+        run: go test -tags preview ./internal/app -count=1
+      - name: Preview catalog
+        run: go run ./scripts/check-ui catalog
+      - name: Preview wasm
+        run: go run ./scripts/check-ui wasm
       - name: Verify map
         shell: bash
         run: scripts/check-verify-map.sh
@@ -97,6 +109,9 @@ jobs:
         run: |
           $version = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
           "MYGO_LDFLAGS=-X saundo/internal/app.Version=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Reject the preview tag
+        shell: bash
+        run: bash scripts/check-goflags.sh
       - name: Build and upload
         working-directory: cmd/saundo
         env:
@@ -127,7 +142,13 @@ jobs:
         run: go tool mygo i18n check cmd/saundo
       - name: Vet
         run: go vet ./...
+      - name: Preview vet
+        run: go vet -tags preview ./...
       - name: UI vet
+        run: go tool mygo vet .
+      - name: UI vet (preview)
+        env:
+          GOFLAGS: -tags=preview
         run: go tool mygo vet .
       - name: Architecture
         run: go run ./scripts/check-arch
@@ -137,6 +158,12 @@ jobs:
         env:
           SAUNDO_CREDS_MASTER_KEY: "6b65797320617265206e6f7420736563726574732e2074657374206f6e6c792e"
         run: go test -short ./...
+      - name: Preview tests
+        run: go test -tags preview ./internal/app -count=1
+      - name: Preview catalog
+        run: go run ./scripts/check-ui catalog
+      - name: Preview wasm
+        run: go run ./scripts/check-ui wasm
       - name: Verify map
         run: bash scripts/check-verify-map.sh
 
@@ -162,6 +189,8 @@ jobs:
           echo "MYGO_LDFLAGS=-X saundo/internal/app.Version=$version" >> "$GITHUB_ENV"
       - name: Adapter
         run: bash scripts/build-adapter.sh
+      - name: Reject the preview tag
+        run: bash scripts/check-goflags.sh
       - name: Build and upload
         working-directory: cmd/saundo
         env:

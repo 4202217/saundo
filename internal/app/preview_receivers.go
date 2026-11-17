@@ -41,20 +41,18 @@ func previewReceiverAdd(a *App, spec receivers.Spec) {
 		Address:     spec.Host + ":" + strconv.Itoa(int(spec.Port)),
 		Model:       model,
 		Online:      true,
-		AutoConnect: true,
 		PasswordSet: spec.Password != "",
 		Device:      d,
 		Entry: receivers.Entry{
-			Key:         key,
-			Kind:        receivers.KindManual,
-			Type:        spec.Type,
-			Name:        spec.Name,
-			Host:        spec.Host,
-			Port:        spec.Port,
-			Model:       model,
-			AirPlay2:    spec.Type == receivers.TypeAirPlay2,
-			Auth:        auth,
-			AutoConnect: true,
+			Key:      key,
+			Kind:     receivers.KindManual,
+			Type:     spec.Type,
+			Name:     spec.Name,
+			Host:     spec.Host,
+			Port:     spec.Port,
+			Model:    model,
+			AirPlay2: spec.Type == receivers.TypeAirPlay2,
+			Auth:     auth,
 		},
 	}
 	a.snap.Receivers = append(a.snap.Receivers, v)
@@ -115,6 +113,9 @@ func previewReceiverUpdate(a *App, key string, patch receivers.Patch) {
 	}
 	v.Address = v.Device.Host + ":" + strconv.Itoa(int(v.Device.Port))
 	previewReceiverSync(a, key, *v)
+	if patch.Hidden != nil {
+		previewReceiverVisible(a)
+	}
 }
 
 func previewReceiverRemove(a *App, key string) {
@@ -161,16 +162,42 @@ func previewReceiverPassword(a *App, key, password string) {
 }
 
 func previewReceiverHidden(a *App, key string, on bool) {
-	if v := previewReceiverFind(a, key); v != nil {
-		v.Hidden = on
-		v.Entry.Hidden = on
+	v := previewReceiverFind(a, key)
+	if v == nil {
+		return
 	}
+	v.Hidden = on
+	v.Entry.Hidden = on
+	previewReceiverVisible(a)
 }
 
+// previewReceiverVisible rebuilds the flyout's list the way the engine's
+// receivers.Visible does: a hidden row leaves it unless it is the active
+// session's receiver.
+func previewReceiverVisible(a *App) {
+	devices := make([]device.Device, 0, len(a.snap.Receivers))
+	for _, v := range a.snap.Receivers {
+		if v.Key != a.snap.SelectedID && v.Hidden {
+			continue
+		}
+		devices = append(devices, v.Device)
+	}
+	a.snap.Devices = devices
+}
+
+// previewReceiverAuto mirrors Registry.SingleAutoConnect: one target only, so
+// enabling a row clears every other one.
 func previewReceiverAuto(a *App, key string, on bool) {
-	if v := previewReceiverFind(a, key); v != nil {
-		v.AutoConnect = on
-		v.Entry.AutoConnect = on
+	for i := range a.snap.Receivers {
+		v := &a.snap.Receivers[i]
+		switch {
+		case v.Key == key:
+			v.AutoConnect = on
+			v.Entry.AutoConnect = on
+		case on:
+			v.AutoConnect = false
+			v.Entry.AutoConnect = false
+		}
 	}
 }
 

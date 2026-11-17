@@ -195,9 +195,9 @@ func previewMenuGlyph(icon *mygo.MenuIcon) *ui.Bitmap {
 	return bmp
 }
 
-// previewMenuChoose maps the top-level labels to the fake reducer or opens
-// the submenu. The item's real Click reaches the engine for the rows the
-// preview does not fake.
+// previewMenuChoose maps the top-level labels to the typed preview actions or
+// opens the submenu. The item's real Click reaches the engine for the rows
+// the preview does not fake.
 func (a *App) previewMenuChoose(item *mygo.MenuItem) {
 	if len(item.Submenu) > 0 {
 		previewMenuLampOpen = !previewMenuLampOpen
@@ -210,7 +210,7 @@ func (a *App) previewMenuChoose(item *mygo.MenuItem) {
 	for _, d := range a.snap.Devices {
 		if d.Name == item.Label && d.Online {
 			a.closePreviewMenu()
-			previewReduce(a, "connect", d.ID)
+			a.act(ActionConnect, d.ID, nil)
 			a.showPreviewFlyout()
 			return
 		}
@@ -218,7 +218,7 @@ func (a *App) previewMenuChoose(item *mygo.MenuItem) {
 	switch item.Label {
 	case locales.ActionDisconnect(), locales.TrayMenuCancelConnect():
 		a.closePreviewMenu()
-		previewReduce(a, "disconnect", nil)
+		a.act(ActionDisconnect, nil, nil)
 		a.showPreviewFlyout()
 	case locales.TrayMenuRetry():
 		id := a.snap.SelectedID
@@ -227,7 +227,7 @@ func (a *App) previewMenuChoose(item *mygo.MenuItem) {
 		}
 		if id != "" {
 			a.closePreviewMenu()
-			previewReduce(a, "connect", id)
+			a.act(ActionConnect, id, nil)
 			a.showPreviewFlyout()
 		}
 	case locales.TraySettings():
