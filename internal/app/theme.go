@@ -13,6 +13,10 @@ import (
 // It follows the system's appearance, as the theme does.
 type palette struct {
 	dark bool
+	// contrast records the desktop's high-contrast setting: it recolors
+	// hairlines and secondary text without changing the appearance, so
+	// anything that caches a palette-derived theme must key on it too.
+	contrast bool
 	// scale is the desktop's text scale, carried by the window's content
 	// zoom so text, icons and spacing grow together without clipping the
 	// design's fixed rows.
@@ -101,6 +105,7 @@ func scaleFor(prefs ui.Preferences) float32 {
 // own colors, as the theme does for the stock widgets.
 func (p palette) withPreferences(prefs ui.Preferences) palette {
 	if prefs.HighContrast {
+		p.contrast = true
 		p.line = p.line.Mix(p.fg, 0.45)
 		p.line2 = p.line2.Mix(p.fg, 0.35)
 		p.muted = p.muted.Mix(p.fg, 0.4)
