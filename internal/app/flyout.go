@@ -114,8 +114,8 @@ func (a *App) flyoutHeader(c *ui.Context, p palette) {
 			ui.Text(c, locales.AppSubtitle()).FontSize(8.5).FontWeight(600).LetterSpacing(1.1).TextColor(p.muted).SingleLine()
 		})
 		ui.Spacer(c)
-		iconButton(c, p, iconRefresh, locales.FlyoutRefreshDevices(), 14, func() { a.eng.Refresh() })
-		iconButton(c, p, iconGear, locales.CommonSettings(), 15, func() { a.showSettings() })
+		iconButton(c, p, iconRefresh, locales.FlyoutRefreshDevices(), 14, func() { a.actRefresh() })
+		iconButton(c, p, iconGear, locales.CommonSettings(), 15, func() { a.actSettings() })
 	})
 }
 
@@ -169,7 +169,7 @@ func (a *App) emptyDevices(c *ui.Context, p palette) {
 		face.Opacity(0.55 + 0.45*(1-abs32(2*t-1)))
 		emptyCopy(c, p, locales.FlyoutSearching(), locales.FlyoutSearchHint(), true)
 		b := ui.ButtonBase(c).Padding(2, 6).Radius(6).Cursor(ui.CursorPointer).Label(locales.FlyoutSearchAgain())
-		b.OnClick(func() { a.eng.Refresh() })
+		b.OnClick(func() { a.actRefresh() })
 		hoverFill(b, p.pill, 6, 0)
 		b.Children(func() {
 			ui.Text(c, locales.FlyoutSearchAgain()).FontSize(12.5).TextColor(p.accent).SingleLine()
@@ -277,21 +277,21 @@ func actionFor(ph phase, active, online bool) rowActionKind {
 func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, active bool) {
 	switch actionFor(ph, active, d.Online) {
 	case actionCancel:
-		textButton(c, p, locales.ActionCancel(), iconClose, p.ctl, func() { a.disconnect() })
+		textButton(c, p, locales.ActionCancel(), iconClose, p.ctl, func() { a.actDisconnect() })
 	case actionRetry:
 		label := locales.ActionRetry()
 		if a.snap.TakenOver {
 			label = locales.ActionReconnect()
 		}
-		textButton(c, p, label, iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
+		textButton(c, p, label, iconRefresh, p.accent, func() { a.actConnect(d.ID) })
 	case actionDisconnect:
-		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.disconnect() })
+		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.actDisconnect() })
 	case actionOffline:
 		textButton(c, p, locales.ActionOffline(), iconSlash, p.muted, nil)
 	case actionConnectDisabled:
 		textButton(c, p, locales.ActionConnect(), iconLink, p.faint, nil)
 	default:
-		textButton(c, p, locales.ActionConnect(), iconLink, p.accent, func() { a.connectDevice(d.ID) })
+		textButton(c, p, locales.ActionConnect(), iconLink, p.accent, func() { a.actConnect(d.ID) })
 	}
 }
 
@@ -315,7 +315,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 		}
 		ui.Row(c).Padding(10, 12, 10, 22).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2).Margin(0, 0, 0, -2)
-			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
+			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.actVolume(v) }).Grow(1)
 			ui.Text(c, locales.FlyoutVolumeValue(a.volume)).FontSize(11.5).TextColor(p.muted).
 				FontFeatures("tnum").Width(34).TextAlign(ui.End).SingleLine()
 		})
@@ -638,10 +638,7 @@ func (a *App) flyoutFooter(c *ui.Context, p palette) {
 				Cursor(ui.CursorPointer).Label(a.updateChipLabel())
 			chip.Background(p.accentSoft)
 			hoverFill(chip, p.accentSoft.Mix(p.accent, 0.1), 11, 0)
-			chip.OnClick(func() {
-				a.page = pageUpdate
-				a.showSettings()
-			})
+			chip.OnClick(func() { a.actUpdateSettings() })
 			chip.Children(func() {
 				ui.Text(c, a.updateChipLabel()).FontSize(11.5).FontWeight(500).TextColor(p.accent).SingleLine()
 			})

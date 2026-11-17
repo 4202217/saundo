@@ -241,14 +241,14 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 		settingRow(c, p, locales.SettingsSenderName(), locales.SettingsSenderNameDesc(), func() {
 			ui.Row(c).Gap(6).Children(func() {
 				if fieldInput(c, p, &a.nameDraft, locales.AppName(), locales.SettingsSenderName()).Submitted() {
-					a.eng.SetName(a.nameDraft)
+					a.actName()
 				}
-				chipButton(c, p, locales.SettingsSave(), func() { a.eng.SetName(a.nameDraft) })
+				chipButton(c, p, locales.SettingsSave(), func() { a.actName() })
 			})
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsLaunchAtStart(), locales.SettingsLaunchAtStartDesc(), func() {
-			toggle(c, p, &a.launchAtStart, locales.SettingsLaunchAtStart(), func(v bool) { a.setLaunchAtStart(v) })
+			toggle(c, p, &a.launchAtStart, locales.SettingsLaunchAtStart(), func(v bool) { a.actLaunch(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsTrayAnimation(), locales.SettingsTrayAnimationDesc(), func() {
@@ -259,7 +259,7 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			choice := a.languageLabel()
 			options := []string{locales.LanguageSystem(), locales.LanguageEnglish(), locales.LanguageChinese()}
 			if fieldSelect(c, p, &choice, options, locales.SettingsLanguage()).Changed() {
-				a.setLanguage(choice)
+				a.actLanguage(choice)
 			}
 		})
 		rowLine(c, p)
@@ -542,11 +542,11 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 	}
 	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
-			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.eng.SetReconnect(v) })
+			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.actReconnect(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
-			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
+			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.actStrict(v) })
 		})
 		rowLine(c, p)
 		title := locales.SettingsMuteLocal()

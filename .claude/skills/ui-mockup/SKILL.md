@@ -1,15 +1,17 @@
 ---
 name: ui-mockup
-description: This skill should be used when the user asks to "mock up a UI change", "show me design variants", "decide this with mockups", or when a saundo page, dialog, empty state, or interaction has more than one defensible shape. It builds one rendered mockup in the current session by default, fans out to competing variants only when the user asks to collide ideas or compare designs, then implements the chosen design through the native UI gate.
+description: This skill should be used when the user asks to "mock up a UI change", "show me design variants", "decide this with mockups", or when a saundo page, dialog, empty state, or interaction has more than one defensible shape. It picks an HTML sketch or a native mygo preview, builds one in the current session by default, fans out to competing variants only when the user asks to collide ideas or compare designs, then implements the chosen design through the native UI gate.
 ---
 
 # Decide a saundo UI change with mockups
 
 Use rendered mockups to settle the shape before writing production code. The mockup is throwaway evidence; the commit is the durable record.
 
-## HTML first, Go after
+## The HTML sketch
 
-The mockup is a throwaway HTML sketch. The product is Go with mygo widgets. The HTML exists to settle layout, copy, and states quickly. Never ship it, embed it, or turn it into a WebView. The toolbar, window shadow, backdrop blur, and zoom around the 720x500 window are mockup scaffolding. The page inside the window is the part that becomes Go.
+The sketch is throwaway HTML. The product is Go with mygo widgets. The HTML exists to settle layout, copy, and states quickly. Never ship it, embed it, or turn it into a WebView. The toolbar, window shadow, backdrop blur, and zoom around the 720x500 window are scaffolding. The page inside the window is the part that becomes Go.
+
+The native preview below is the other instrument. It runs the product views, so there is no translation step.
 
 Constrain the HTML to what mygo can express so the approved render translates one-to-one. Card to a `ui.Column` with the palette border and radius. Row to `ui.ButtonBase` or `ui.Row`. Switch and slider to `toggle` and `slider`. Add row to a dashed `ButtonBase`. Empty note and group head to `ui.Column` or `ui.Row` with `ui.Text`. Hidden group to `CollapsibleBase`. Chips to the shared chip helper.
 
@@ -18,10 +20,59 @@ Constrain the HTML to what mygo can express so the approved render translates on
 - A new page, dialog, empty state, or interaction with more than one defensible shape.
 - A visual bug whose fix could be a restyle or a removal.
 - The user asks for mockups, variants, or a design comparison.
+- A decision that ships on the flyout or the settings window. Use the native preview.
 
 Skip it for a one-line copy change, a spacing fix with an obvious target, or a behavior change with no visual decision.
 
 The release refreshes both templates even when no design question is open: the release skill requires them to describe the shipped interface before the release commit.
+
+## Choose the instrument
+
+- **Native preview.** The decision will ship, and the surface runs in the browser target: the flyout and the settings window. It runs the real `ui` views with a fake state catalog. The human clicks the wasm build; the agent inspects `render.Still` PNGs from the same catalog. There is no HTML-to-Go translation and no template refresh.
+- **HTML sketch.** The shape is still open, two or three layouts are defensible, or the surface does not run in the browser target: the tray, menus, window chrome, file dialogs, global shortcuts. It is the cheapest way to compare directions.
+
+The native preview needs the harness: a `preview` build tag, `cmd/saundo/preview`, a fixture and `PreviewStates` in `internal/app`, a fake reducer, and the `act` seam. When the harness is missing, add it from this pattern or use the HTML sketch.
+
+## Native preview: a new feature
+
+Use this when a feature adds UI and logic to the flyout or the settings window and the decision will ship. Frame the decision and write the brief as in steps 1 and 2 below; use the same surface, token, locale, and state coverage inputs.
+
+1. Add the state first. Put the new fields in the production state (`engine.Snapshot` or the `App` fields) before the view. The preview and the product read one shape.
+2. Add catalog entries to `PreviewStates`: the default, the target, and the edge that shares the layout. The catalog is the one mock data set; the wasm buttons and the render test both read it.
+3. Write the view in the real file (`flyout.go` or `settings_window.go`). It is product code.
+4. Route a new action through `act`. Put the real engine, store, or OS call in an `actX` helper; put the fake transition in the preview reducer, updating `a.cfg` or `a.snap`. Write the transition from `docs/protocol.md` or `docs/devices.md`, so the fake state is one the engine can reach.
+5. Human: `mygo dev -web` and click the flow. Agent: `render.Still` each catalog entry and inspect the PNGs for clipping, overflow, wrapping, and state truth.
+6. Freeze the catalog and the transition table. Implement the real engine adapter, keep the views, and replay the transitions in tests.
+
+A new settings page follows the same steps. Add the `settingsPage` and its nav entry; the window renders the page. Wrap an action in `act` only when it reaches the engine or the OS; a nil-safe setter updates `a.cfg` directly.
+
+## Native preview: change an existing feature or its UI
+
+- **Visual change.** Edit the real view. Render the same catalog states before and after; the agent compares the PNGs. Leave the reducer and the seam alone.
+- **Behavior change.** Change the real action and the preview reducer's matching transition together. Click it in wasm, render the affected states, and update the transition test.
+- **New state.** Add one catalog entry. The wasm buttons and the render test both read it; one entry is the whole mock.
+- **Regression.** Render every catalog state before the change as a baseline, and after it for comparison. The image diff is the visual regression; the transition table is the behavior regression.
+
+## Native preview commands
+
+Once the harness exists, these commands drive it.
+
+```bash
+# Human: a hot-reloading browser build.
+(cd cmd/saundo/preview && GOFLAGS=-tags=preview go tool mygo dev -web)
+
+# Agent: one PNG per PreviewStates entry, from the same catalog.
+SAUNDO_PREVIEW_RENDER="$(pwd)/.audit/preview/<topic>/render" go test -tags preview ./internal/app -run TestPreviewRender -count=1
+```
+
+## Native preview rules
+
+- The render is the visual truth. It uses the platform renderer. The browser uses browser fonts and WebGL 2, so it is the interaction surface.
+- Present the running build and the render PNGs together. Refine the same view and catalog in place, and implement the version the user has seen.
+- Final-pose renders need the enter animation settled. Set the view's entered flag in the fixture (`flyoutEntered`), or render a later frame.
+- The page sets the size. A browser window ignores size options; a zero-size viewport produces a zero-height canvas. The CLI page fills the viewport, so size the browser to the surface (420 for the flyout, 720x500 for settings), or give the page a `setPreviewSize` hook.
+- Keep the preview command under `cmd/saundo/preview` so the app-package leaf rule holds. Keep action helpers in their own file so a budgeted file such as `flyout.go` does not grow.
+- The fixture and the fake reducer are throwaway. The views, the state shape, and the transition table are not.
 
 ## Stop conditions
 
@@ -30,6 +81,10 @@ The release refreshes both templates even when no design question is open: the r
 - The app is streaming and a rebuild would interrupt it. Ask before stopping it.
 - Manufacturing the state needs `%APPDATA%\saundo\*` changed. Never mutate the user's registry, credentials, or settings.
 - A variant's render contradicts its report. Fix the variant or drop it.
+- The native preview's render and wasm disagree. Fix the shared view or state.
+- A fake reducer adds a transition the engine cannot reach.
+
+The seven steps below run the HTML sketch. The native preview has its own steps above.
 
 ## 1. Frame the decision
 
@@ -128,7 +183,7 @@ make build
 
 Inspect the native PNGs for the chosen state, the normal state, both locales, and both themes. Rebuild only when it will not interrupt an active stream. Leave the change uncommitted unless the user asks to commit. When they do, use the `AGENTS.md` fields and name the tests that pin the new state.
 
-## Gotchas
+## HTML sketch gotchas
 
 - Keep one folder per decision under `.audit/mockups/<topic>/`. Never drop mockups at the repository root or in the `.audit` root.
 - Do not rebuild the window chrome. Copy `assets/mockup-template.html` or `assets/flyout-template.html` and edit the marked blocks; a rebuilt shell drifts from the real window.
@@ -144,4 +199,4 @@ Inspect the native PNGs for the chosen state, the normal state, both locales, an
 
 ## Report
 
-Name whether the run was one mockup or three variants, the surface template, the render evidence, the pick and graft, the checks that ran and printed what, and the checks not run. State where the mockups live (`.audit/mockups/<topic>/`, never committed) and whether the implementation is committed.
+Name the instrument, HTML sketch or native preview. Name whether the run was one mockup or three variants, the surface template or the state catalog entries, the render evidence, the pick and graft, the checks that ran and printed what, and the checks not run. For the native preview, name what stayed fake and what remains unwired. State where the mockups live (`.audit/mockups/<topic>/` or `.audit/preview/<topic>/`, never committed) and whether the implementation is committed.
