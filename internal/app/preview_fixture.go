@@ -3,6 +3,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/ui"
@@ -107,6 +109,7 @@ func PreviewApp() *App {
 		StandbyEnabled:    true,
 		StandbyMinutes:    30,
 	}
+	previewMedia(a)
 	return a
 }
 
@@ -129,11 +132,7 @@ func previewReduce(a *App, name string, arg any) bool {
 		if id == "" {
 			return true
 		}
-		a.selID = id
-		a.snap.SelectedID = id
-		a.snap.State = sender.StateHandshake
-		a.snap.ConnectedName = ""
-		a.snap.Error = ""
+		previewConnect(a, id)
 	case "disconnect":
 		a.snap.State = sender.StateIdle
 		a.snap.ConnectedName = ""
@@ -223,6 +222,44 @@ func previewReduce(a *App, name string, arg any) bool {
 		a.settingsWin.Invalidate()
 	}
 	return true
+}
+
+// previewAfter and previewOnMain are seams for the connect test.
+var (
+	previewAfter  = time.AfterFunc
+	previewOnMain = mygo.RunOnMain
+)
+
+// previewConnect runs the fake handshake: connecting now, streaming after a
+// beat, as the engine's snapshot would.
+func previewConnect(a *App, id string) {
+	name := ""
+	for _, d := range a.snap.Devices {
+		if d.ID == id {
+			name = d.Name
+			break
+		}
+	}
+	a.selID = id
+	a.snap.SelectedID = id
+	a.snap.State = sender.StateHandshake
+	a.snap.ConnectedName = ""
+	a.snap.Error = ""
+	previewAfter(650*time.Millisecond, func() {
+		previewOnMain(func() {
+			if a.snap.SelectedID != id || a.snap.State != sender.StateHandshake {
+				return
+			}
+			a.snap.State = sender.StateStreaming
+			a.snap.ConnectedName = name
+			if a.win != nil {
+				a.win.Invalidate()
+			}
+			if a.settingsWin != nil {
+				a.settingsWin.Invalidate()
+			}
+		})
+	})
 }
 
 // showPreviewSettings opens the real settings window over the flyout, as the
