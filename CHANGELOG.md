@@ -5,6 +5,43 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.6.4 - 2026-11-17
+
+### Added
+
+- Media controls in the tray menu. While the system has a media session, the
+  right-click menu offers previous, pause or play, and next after the
+  receiver rows.
+
+### Changed
+
+- The tray menu is rebuilt around the session. Up to six receiver rows
+  connect or switch, the in-session row is disabled, and one session row
+  carries cancel, disconnect, or retry. More than six receivers open the
+  receivers page, and an empty menu offers a rescan. The ambient light
+  becomes a submenu with a preview of every choice, a check on the current
+  one, and Last used on the stored choice while the light is off. The update
+  row appears only when an update can be downloaded or installed. Local mute
+  leaves the menu; the Connection page keeps the switch.
+- The interface follows the desktop text scale. At 125% and above both
+  windows zoom as a whole, so labels, values, and rows grow together instead
+  of clipping; high contrast keeps the design palette.
+- The media card's head places its app icon, name, and session switch on one
+  top-aligned line, with an 18-DIP icon and a 20-DIP switch on the card's
+  10-DIP inset.
+
+### Fixed
+
+- A cold start to a stereo pair lights both top displays. A remembered pair
+  keeps its members' OS version before discovery answers, and a pair member
+  announces playback before its first cover, so the second display no longer
+  stays dark until its glass is tapped.
+- Ambient light changes made during playback reach the second HomePod's top
+  display again; the pair's member sync is seeded at session start.
+- Retry after the automatic reconnect attempts are used up starts a fresh
+  backoff. A failed manual retry no longer leaves the row permanently
+  stopped.
+
 ## 0.6.3 - 2026-11-14
 
 ### Added

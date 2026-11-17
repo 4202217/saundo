@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-16 -->
+<!-- reviewed-through: 2026-11-17 -->
 
 # Multi-platform development
 
@@ -16,13 +16,16 @@ the seams and the rules for extending them. The code map:
 
 - **Shared core, no platform code.** `internal/airplay` (protocol, sender,
   ALAC, PTP), `internal/audio`, `internal/engine`, `internal/lamp`,
-  `internal/settings`, `internal/receivers`, `internal/diagnostics`, and the
-  whole of `internal/app`'s UI (mygo is cross-platform: tray, flyout,
+  `internal/settings`, `internal/receivers`, `internal/diagnostics`, and
+  almost all of `internal/app`'s UI (mygo is cross-platform: tray, flyout,
   windows, notifications) compile everywhere and know nothing about the OS.
+  The one exception is the focus-on-show pair (`focus_darwin.go`,
+  `focus_other.go`), which is deliberately platform-split.
 - **Per-platform leaf packages.** A handful of packages carry one file per
-  platform behind build tags, all with a fail-closed `*_other.go` stub for
-  platforms without an implementation. The stub returns an error or a
-  disabled capability, never a silent zero.
+  platform behind build tags. Most have a fail-closed `*_other.go` stub that
+  returns an error or a disabled capability, never a silent zero; the focus
+  pair instead no-ops on macOS, where the nonactivating panel takes key on
+  its own, and focuses the app elsewhere.
 - **`internal/darwin`.** The macOS FFI layer, pure Go through purego: the
   Objective-C bridge, the login-Keychain SecItem calls, and the Core Audio C
   API. It serves the darwin leaves only; nothing above the seams imports it.
@@ -31,13 +34,14 @@ the seams and the rules for extending them. The code map:
 
 | Seam | Shared contract | Windows | macOS | Other platforms |
 |---|---|---|---|---|
-| System capture | `capture.Start`, `capture.Config`, `capture.Source` (`capture.go`) | `capture_windows.go`: WASAPI shared-mode loopback; per-app capture is not offered (process loopback cannot isolate the selected app's local output) | `capture_darwin.go`: Core Audio process tap aggregated with the output device; per-app via a stereo mixdown tap of the selected apps' process objects, resolved from bundle IDs | `capture_other.go`: fail-closed |
+| System capture | `capture.Config` and `capture.Source` (`capture.go`); `capture.Start` per platform | `capture_windows.go`: WASAPI shared-mode loopback; per-app capture is not offered (process loopback cannot isolate the selected app's local output) | `capture_darwin.go`: Core Audio process tap aggregated with the output device; per-app via a stereo mixdown tap of the selected apps' process objects, resolved from bundle IDs | `capture_other.go`: fail-closed |
 | Credentials at rest | `creds.Store`, `protect`/`unprotect` | `dpapi_windows.go`: CryptProtectData | `dpapi_darwin.go`: AES-256-GCM, master key in the login Keychain | `dpapi_other.go`: fail-closed |
 | Mute local | `capture.EndpointMuted`, `capture.SetEndpointMuted`; per-app `capture.ProcessMuteSupported`, `capture.SetProcessMuted` | `mute_windows.go`: `IAudioEndpointVolume`; per-app falls back to the default endpoint | `mute_darwin.go`: `kAudioDevicePropertyMute` on the output device; a per-app tap mutes only the captured app (`CATapMuted`) | `mute_other.go`: fail-closed |
-| Now playing | `nowplaying.Read` and the control/snapshot set (`nowplaying.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
+| Now playing | `nowplaying.Read` (per platform), the snapshot type (`types.go`), and the control set (`control.go`) | `*_windows.go`: SMTC; names and icons resolved from the shell's AppsFolder (`appidentity_windows.go`) | `nowplaying_darwin.go`: the vendored MediaRemote adapter; names from LaunchServices, icons via `NSWorkspace` (`internal/darwin/appinfo.go`) | `nowplaying_other.go`: fail-closed |
 | Neighbor table | `discovery.neighborHosts` | `neighbors_windows.go`: `GetIpNetTable` | fail-closed empty (remembered endpoints cover offline connect) | `neighbors_other.go`: fail-closed |
 | Engine wiring | injected function fields (`engine.go` `captureStartFn`, `defaultEndpoint`, `setEndpointMuted`, `processMute`, `setProcessMuted`, `endpoints`, `lampJPEG`) | the constructor binds the capture and mute leaves | same constructor, same leaves | the constructor binds the stubs |
 | App wiring | `app.go` `readNowPlaying`/`pushNowPlaying`, `update.go` `updateEngine` | bound to `nowplaying.Read` and `mygo.Updater` | `nowplaying.Read` through the MediaRemote adapter; `mygo.Updater` through the darwin manifest | stubs |
+| Focus on show | `app.focusAppOnShow` | `focus_other.go`: `mygo.App.Focus()` | `focus_darwin.go`: no-op (the nonactivating panel takes key itself) | `focus_other.go`: `mygo.App.Focus()` |
 
 The Windows loopback carries the endpoint volume. On Realtek Digital Output
 a 440 Hz tone measured RMS 0.0706 at the top step and 0.0001 at step 0 on
@@ -162,9 +166,10 @@ Core Audio property codes stay inside the leaf packages.
 ## Build and checks
 
 - **Windows**: `mingw32-make check` and `mingw32-make build` from Git Bash.
-- **macOS**: `make check` and `make build` — the same checks (gofmt,
-  catalog, vet, `go tool mygo vet .`, architecture, size, tests) plus the app
-  bundle. cmake builds the Now Playing adapter.
+- **macOS**: `make check` and `make build` — the same checks (gofmt, catalog
+  and message checks, vet under the default, `updateharness`, and `e2e` tag
+  sets, `go tool mygo vet .`, architecture, size, tests, the verification
+  map) plus the app bundle. cmake builds the Now Playing adapter.
 - **Either host**: `scripts/check-arch` enforces the import seams, bans `go`
   statements, `time.AfterFunc`, and `time.Sleep` in the sans-i/o packages,
   bans `time.After` and `time.Tick` in product code, and requires an explicit
@@ -173,8 +178,8 @@ Core Audio property codes stay inside the leaf packages.
   `scripts/check-size` holds the line budget: files grandfathered in
   `scripts/check-size/baseline.txt` may not grow or shrink without updating
   the baseline, and new non-test files stay at or below 800 lines. Generated
-  files are exempt. `make check` runs both, and CI runs them as the
-  Architecture and Size steps.
+  files are exempt. `make check` runs all the gates above, and CI runs them
+  as the Catalogs, Architecture, Size, and Verify map steps.
 - **Either host**: `make platforms` (`go run ./scripts/check-platforms`)
   builds and vets windows/amd64 and darwin/arm64 with `CGO_ENABLED=0` and
   rejects `saundo/internal/darwin`, `purego`, and `golang.org/x/sys/windows`

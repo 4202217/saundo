@@ -60,12 +60,12 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 - **System audio capture** — everything the Mac or PC plays: WASAPI loopback on Windows, a Core Audio process tap on macOS, or, on macOS, one or more selected apps.
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock, encrypted control and event channels, retransmit on request. HomePod stereo pairs play in lockstep.
 - **Receivers, managed** — find them with mDNS or add an IP; keep them across power-offs; hide rows; choose one auto-connect target and set a per-receiver delay and password. Switch receivers from the panel or its right-click menu without stopping playback.
-- **One tray surface** — the panel carries the media card, latency, volume, and ambient light; the right-click menu carries receivers, local mute, the lamp, settings, updates, and quit. Animated faces follow the session.
+- **One tray surface** — the panel carries the media card, latency, volume, and ambient light; the right-click menu carries receiver rows that connect or switch, a session action, media controls, the ambient submenu, settings, updates, and quit. Animated faces follow the session.
 - **Ambient light** — a HomePod's top display follows the media cover or one of six three-color templates, and turns off after a chosen idle period.
 - **Mute the local output** — silences this computer while streaming and restores it on disconnect. With per-app capture on macOS, only the selected apps go quiet.
 - **Latency modes** — 200 ms, 1.5 s, 2 s, or a custom 20–2000 ms; switch while playing.
 - **Sessions that recover** — auto-reconnect with backoff, silence suspend, takeover handling, and receiver volume following.
-- **Updates, languages, pairing** — the settings update page installs signed updates on both platforms; English and Simplified Chinese; HomePod, Apple TV PIN, and receiver-password pairing with OS-secured credentials.
+- **Updates, languages, pairing** — the settings update page installs signed updates on both platforms; English and Simplified Chinese; the interface follows the desktop text scale; HomePod, Apple TV PIN, and receiver-password pairing with OS-secured credentials.
 
 ## Receiver support
 
