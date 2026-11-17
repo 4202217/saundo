@@ -75,7 +75,7 @@ The folder `.audit/mockups/<topic>/` then holds:
 
 - `baseline-settings.html` or `baseline-flyout.html`: an exact copy of the current template. Do not edit it.
 - `mockup.html` (settings) or `flyout.html` (flyout): the working copy. Edit only the marked blocks.
-- `overlay-settings.md` or `overlay-flyout.md`: the design delta. Fill in the proposed scenario IDs, the target, normal, and edge states, the copy in both languages, the layout changes, the rejected alternatives, and the render paths.
+- `overlay-settings.md` or `overlay-flyout.md`: the design delta. Fill in the proposed scenario IDs, the target, normal, and edge states, the copy in both languages, the layout changes, the rejected alternatives, and the states checked.
 
 The names carry the surface, so one topic can hold both a settings and a flyout baseline. The release uses one topic for both.
 
@@ -87,15 +87,13 @@ git diff --no-index .audit/mockups/<topic>/baseline-settings.html .audit/mockups
 
 The overlay never carries tokens or shell geometry. The token gate owns those. With `-force`, the baseline is replaced and the working copy and overlay survive, so a release refresh does not cost a design round.
 
-Render a state with headless Chrome. The settings template selects `?view=target|normal|edge&lang=zh|en&dark=0|1&zoom=1|1.25|1.5`. The flyout template selects `?state=idle|streaming|standby|empty|error|credential&lang=zh|en&dark=0|1&latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5`.
+The sketch takes one URL parameter set per state, language, and theme. The settings template selects `?view=target|normal|edge&lang=zh|en&dark=0|1&zoom=1|1.25|1.5`. The flyout template selects `?state=idle|streaming|standby|empty|error|credential&lang=zh|en&dark=0|1&latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5`.
 
-```bash
-chrome --headless=new --hide-scrollbars --window-size=1400,900 \
-  --screenshot=.audit/mockups/<topic>/r1-<state>-<lang>-<theme>.png \
-  "file:///<absolute-repo-path>/.audit/mockups/<topic>/mockup.html?view=target&lang=zh&dark=0"
-```
+Give the human an absolute `file://` URL with the parameters. On Windows, `cygpath -m "$(pwd)"` gives the path Chrome accepts. They switch states, languages, and themes in the page.
 
-Use an absolute `file://` URL. On Windows, `cygpath -m "$(pwd)"` gives the path Chrome accepts.
+Open the same URL headlessly and check the live page. Read the console for errors, and read the target rows' computed width, line count, and ellipsis. Record the checked states in the overlay. Do not rely on the source alone.
+
+A screenshot is optional. Take one only when the human asks for a frozen frame or a record needs an image, and write it to `.audit/mockups/<topic>/r<N>-<state>-<lang>-<theme>.png`.
 
 ## Native preview: a new feature
 
@@ -165,14 +163,14 @@ These are the shipped values. The flyout template's height rule and the token ga
 
 - Constrain the HTML to what mygo can express, so the approved render translates one-to-one. Card to a `ui.Column` with the palette border and radius. Row to `ui.ButtonBase` or `ui.Row`. Switch and slider to `toggle` and `slider`. Add row to a dashed `ButtonBase`. Empty note and group head to `ui.Column` or `ui.Row` with `ui.Text`. Hidden group to `CollapsibleBase`. Chips to the shared chip helper.
 - Edit only the marked blocks. In the settings template they are `NAV`, `PAGE`, `STATES`, `COPY`, the three view functions, and the notes. In the flyout template they are `COPY`, `DEVICES`, `STATES`, the state functions, and the notes. Keep the tokens, shell, toolbar, and helpers.
-- Show a visible switcher for state, language, and theme. Render every state in zh-CN and English, light and dark.
-- Write the renders to `.audit/mockups/<topic>/` as `r<N>-<state>-<lang>-<theme>.png`. Self-contained, no network.
-- Build three variants only when the user explicitly asks for variants, a model bakeoff, or collision thinking (碰撞). Run one per model from the pstack `arena runners` line, each with its own output path. Require each to render and inspect its own screenshot.
+- Show a visible switcher for state, language, and theme. Check the target, normal, and edge states in zh-CN and English, light and dark. The human switches them in the page; the agent checks the live page.
+- Keep the sketch in `.audit/mockups/<topic>/`. A screenshot is optional and goes there as `r<N>-<state>-<lang>-<theme>.png`. Self-contained, no network.
+- Build three variants only when the user explicitly asks for variants, a model bakeoff, or collision thinking (碰撞). Run one per model from the pstack `arena runners` line, each with its own output path. Require each to inspect its own live page.
 - A new state starts in the overlay. Do not add it to the production view or the catalog until the design is approved.
 
 ## Judge the render
 
-Read the render and view its screenshots. Score:
+Open the sketch in a browser and inspect the live page. Score:
 
 1. One action, one meaning. A glyph appears only where clicking performs that action.
 2. Truthful copy. The state says what is true and what to do next. Do not invent discovery status the engine does not expose.
@@ -181,11 +179,11 @@ Read the render and view its screenshots. Score:
 5. Native feasibility. Every element maps to a mygo primitive and an existing icon.
 6. No layout jump. The header, list slot, and add action keep their order when content changes.
 
-Check state semantics in the render, not the report. Confirm hidden rows show off switches, disabled actions are not drawn, and English copy stays on one line.
+Check state semantics in the live page, not the report. Confirm hidden rows show off switches, disabled actions are not drawn, and English copy stays on one line.
 
 ## Present, pick, and iterate
 
-For one mockup, present the link, its stance, and its tradeoffs. For three, present each variant by link with its stance, tradeoffs, and a recommendation. Name a base and any graft from another variant.
+For one mockup, present the file path or link with the state URL parameters, its stance, and its tradeoffs. For three, present each variant the same way with a recommendation. Name a base and any graft from another variant.
 
 The user answers in one of four ways:
 
@@ -254,4 +252,4 @@ The page and the sketch keep separate HTML copies. The token gate keeps their co
 
 ## Report
 
-Name the instruments that ran. Name whether the round was one mockup or three variants, the baseline and overlay paths, the states rendered, the render paths, the pick and graft, the checks that ran and printed what, and the checks not run. For the native preview, name what stayed fake and what remains unwired. State where the evidence lives (`.audit/mockups/<topic>/` or `.audit/preview/<topic>/`, never committed) and whether the implementation is committed.
+Name the instruments that ran. Name whether the round was one mockup or three variants, the baseline and overlay paths, the states checked, any screenshot taken on request, the pick and graft, the checks that ran and printed what, and the checks not run. For the native preview, name what stayed fake and what remains unwired. State where the evidence lives (`.audit/mockups/<topic>/` or `.audit/preview/<topic>/`, never committed) and whether the implementation is committed.
