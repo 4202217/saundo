@@ -2,7 +2,11 @@
 
 package app
 
-import "syscall/js"
+import (
+	"syscall/js"
+
+	"saundo/internal/receivers"
+)
 
 // previewBridge exposes the state catalog and the settings window to the
 // page, so a human can switch states from a button and a tool can switch
@@ -44,6 +48,21 @@ func previewBridge(a *App) {
 		}
 		a.nameDraft = args[0].String()
 		a.actName()
+		if a.settingsWin != nil {
+			a.settingsWin.Invalidate()
+		}
+		return nil
+	}))
+	js.Global().Set("addPreviewReceiver", js.FuncOf(func(this js.Value, args []js.Value) any {
+		if len(args) < 2 {
+			return nil
+		}
+		a.actReceiverAdd(receivers.Spec{
+			Name: args[0].String(),
+			Type: receivers.TypeAirPlay2,
+			Host: args[1].String(),
+			Port: 7000,
+		})
 		if a.settingsWin != nil {
 			a.settingsWin.Invalidate()
 		}

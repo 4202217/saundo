@@ -11,6 +11,7 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
+	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -78,11 +79,17 @@ func PreviewApp() *App {
 	a.cfg.Name = locales.AppName()
 	a.cfg.Language = previewLocale
 	a.selID = "AA:BB:CC:DD:EE:01"
+	devices := []device.Device{
+		{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Host: "192.168.1.21", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
+		{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Host: "192.168.1.22", Port: 7000, Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
+		{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Host: "192.168.1.23", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
+	}
 	a.snap = engine.Snapshot{
-		Devices: []device.Device{
-			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
+		Devices: devices,
+		Receivers: []receivers.View{
+			{Key: devices[0].ID, Name: devices[0].Name, Kind: receivers.KindDiscovered, Model: devices[0].Model, Online: true, AutoConnect: true, Device: devices[0], Entry: receivers.Entry{Key: devices[0].ID, Kind: receivers.KindDiscovered, Name: devices[0].Name, Host: devices[0].Host, Port: devices[0].Port, Model: devices[0].Model, AirPlay2: true, AutoConnect: true}},
+			{Key: devices[1].ID, Name: devices[1].Name, Kind: receivers.KindDiscovered, Model: devices[1].Model, Online: true, AutoConnect: true, DelayMS: 120, Device: devices[1], Entry: receivers.Entry{Key: devices[1].ID, Kind: receivers.KindDiscovered, Name: devices[1].Name, Host: devices[1].Host, Port: devices[1].Port, Model: devices[1].Model, AirPlay2: true, AutoConnect: true, DelayMS: 120}},
+			{Key: devices[2].ID, Name: devices[2].Name, Kind: receivers.KindDiscovered, Model: devices[2].Model, Device: devices[2], Entry: receivers.Entry{Key: devices[2].ID, Kind: receivers.KindDiscovered, Name: devices[2].Name, Host: devices[2].Host, Port: devices[2].Port, Model: devices[2].Model, AirPlay2: true}},
 		},
 		SelectedID:        "AA:BB:CC:DD:EE:01",
 		State:             sender.StateStreaming,
@@ -164,6 +171,48 @@ func previewReduce(a *App, name string, arg any) bool {
 		default:
 			a.cfg.Language = ""
 		}
+	case "receiver-add":
+		spec, ok := arg.(receivers.Spec)
+		if !ok {
+			return false
+		}
+		previewReceiverAdd(a, spec)
+	case "receiver-update":
+		u, ok := arg.(receiverUpdateArg)
+		if !ok {
+			return false
+		}
+		previewReceiverUpdate(a, u.key, u.patch)
+	case "receiver-remove":
+		key, ok := arg.(string)
+		if !ok {
+			return false
+		}
+		previewReceiverRemove(a, key)
+	case "receiver-password":
+		p, ok := arg.(receiverPasswordArg)
+		if !ok {
+			return false
+		}
+		previewReceiverPassword(a, p.key, p.password)
+	case "receiver-hidden":
+		b, ok := arg.(receiverBoolArg)
+		if !ok {
+			return false
+		}
+		previewReceiverHidden(a, b.key, b.on)
+	case "receiver-auto":
+		b, ok := arg.(receiverBoolArg)
+		if !ok {
+			return false
+		}
+		previewReceiverAuto(a, b.key, b.on)
+	case "receiver-delay":
+		d, ok := arg.(receiverDelayArg)
+		if !ok {
+			return false
+		}
+		previewReceiverDelay(a, d.key, d.ms)
 	default:
 		return false
 	}

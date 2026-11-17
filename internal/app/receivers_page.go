@@ -249,7 +249,7 @@ func (a *App) receiverRowHead(c *ui.Context, p palette, v receivers.View, open, 
 		ui.Row(c).Gap(8).Shrink(0).AlignItems(ui.Center).Children(func() {
 			shown := !v.Hidden
 			toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
-				a.eng.SetReceiverHidden(v.Key, !next)
+				a.actReceiverHidden(v.Key, !next)
 				if !next {
 					a.receiverHiddenOpen = true
 				}
@@ -281,7 +281,7 @@ func (a *App) receiverRowBody(c *ui.Context, p palette, v receivers.View, hidden
 		settingRowColors(c, p, locales.ReceiverAutoToggle(), locales.ReceiverAutoToggleDesc(),
 			titleColor, subColor, func() {
 				toggle(c, p, &auto, locales.ReceiverAutoToggle(), func(next bool) {
-					a.eng.SetReceiverAutoConnect(v.Key, next)
+					a.actReceiverAuto(v.Key, next)
 				})
 			})
 		rowLine(c, p)
@@ -493,7 +493,7 @@ func (a *App) scheduleReceiverDelay(key string, ms int) {
 				a.beginLatencyApply()
 			}
 			for k, v := range pending {
-				a.eng.SetReceiverDelay(k, v)
+				a.actReceiverDelay(k, v)
 			}
 		})
 	})
