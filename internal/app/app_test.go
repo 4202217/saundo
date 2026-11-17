@@ -39,68 +39,11 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// visibleFlyoutHeight is the height a tester should use for this App's
-// current devices, latency row, and media card.
-func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
-}
-
 func withLocale(t *testing.T, tag string) {
 	t.Helper()
 	old := testLocale
 	testLocale = tag
 	t.Cleanup(func() { testLocale = old })
-}
-
-func previewApp() *App {
-	a := &App{
-		cfg:               settings.Default(),
-		volume:            65,
-		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
-		captureIDs:        []string{"", "{endpoint}"},
-		captureLabels:     []string{locales.CaptureFollowSystem(), "Speakers"},
-		captureChoice:     locales.CaptureFollowSystem(),
-		appNames:          []string{locales.CaptureAllSystem(), "Spotify", "Music"},
-		appPIDs:           []uint32{0, 1234, 5678},
-		appIDs:            []string{"", "com.spotify.client", "com.apple.Music"},
-		appNameByID:       map[string]string{"com.spotify.client": "Spotify", "com.apple.Music": "Music"},
-		nameDraft:         "声渡",
-		latency:           200,
-		latencyMode:       "low",
-		latencyCustom:     700,
-		showLatencySwitch: true,
-		lampOff:           false,
-		lampPreset:        "dune",
-		standbyEnabled:    true,
-		standbyMinutes:    30,
-	}
-	a.selID = "AA:BB:CC:DD:EE:01"
-	a.snap = engine.Snapshot{
-		Devices: []device.Device{
-			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
-		},
-		SelectedID:        "AA:BB:CC:DD:EE:01",
-		State:             sender.StateStreaming,
-		ConnectedName:     "HomePods",
-		Volume:            65,
-		CaptureName:       "Speakers",
-		CaptureRate:       48000,
-		CaptureRunning:    true,
-		Name:              "声渡",
-		ReceiverLatencyMS: 70,
-		DroppedSamples:    0,
-		PTPActive:         true,
-		PTPReady:          true,
-		Reconnect:         true,
-		LampOff:           false,
-		LampPreset:        "dune",
-		StandbyEnabled:    true,
-		StandbyMinutes:    30,
-	}
-	a.reconnect = true
-	return a
 }
 
 func TestViewRendersDevicesAndStatus(t *testing.T) {

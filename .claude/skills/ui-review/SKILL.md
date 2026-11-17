@@ -32,8 +32,8 @@ gates still apply.
   generated `catalog_gen.go` is never edited by hand; after a catalog change
   run `go tool mygo generate cmd/saundo`.
 - Render the matrix in both languages:
-  `SAUNDO_PREVIEW_DIR=/tmp/saundo-ui-review go test ./internal/app -run TestRenderPreviews -count=1`
-  Add `SAUNDO_PREVIEW_ONLY=settings-audio,settings-lamp` to render only the
+  `go run ./scripts/check-ui render -out /tmp/saundo-ui-review`
+  Add `-only settings-audio,settings-lamp` to render only the
   pages a change touched.
 - Read the owning files: `ui_kit.go` for shared widgets, `flyout.go`,
   `settings_window.go`, `receivers_page.go`, `lamp.go`, the dialogs, and the

@@ -18,10 +18,12 @@ EXE := $(if $(filter windows,$(shell $(GO) env GOOS)),.exe,)
 .PHONY: build build-fast e2e-build test race vet uivet i18n fmt arch size check platforms test-mac-update
 
 build:
+	@case " $${GOFLAGS:-} " in *preview*) echo "build: GOFLAGS must not carry the preview tag" >&2; exit 2;; esac
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh
 
 # The same binary without the NSIS installer, for the development loop.
 build-fast:
+	@case " $${GOFLAGS:-} " in *preview*) echo "build: GOFLAGS must not carry the preview tag" >&2; exit 2;; esac
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh --fast
 
 # A non-installing build that links the mygo automation plugin, so the verify
@@ -68,6 +70,10 @@ size:
 
 fmt:
 	$(GOFMT) -w .
+
+# Render the UI state matrix and record a manifest. Non-gating until Phase 4.
+ui-baseline:
+	$(GO) run ./scripts/check-ui render -out .audit/ui/baseline
 
 # Build and vet windows/amd64 and darwin/arm64 on any host, and reject
 # OS-specific imports outside platform-tagged files.

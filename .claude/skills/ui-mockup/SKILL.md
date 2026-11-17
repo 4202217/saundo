@@ -114,7 +114,7 @@ Delete the control, glyph, or key the design replaces. Do not restyle it into a 
 go tool mygo generate cmd/saundo
 ```
 
-Add a `ui.Tester` test that asserts the visible text for each new state. Update any older pin the design intentionally changes. Add page-level states to `TestRenderPreviews` in `internal/app/preview_test.go` so the native renderer shows both locales and themes. Update `docs/ui.md` and `.claude/skills/verify/features/<page>.md` when the page shape or journey changes.
+Add a `ui.Tester` test that asserts the visible text for each new state. Update any older pin the design intentionally changes. Add a `Scenario` to `Catalog()` in `internal/app/ui_catalog*.go` so the native renderer shows both locales and themes. Update `docs/ui.md` and `.claude/skills/verify/features/<page>.md` when the page shape or journey changes.
 
 ## 7. Verify and hand off
 
@@ -122,7 +122,7 @@ From the main checkout:
 
 ```bash
 make check
-SAUNDO_PREVIEW_DIR="$(pwd)/.audit/previews/<topic>" go test ./internal/app -run TestRenderPreviews -count=1
+go run ./scripts/check-ui render -out "$(pwd)/.audit/previews/<topic>"
 make build
 ```
 
@@ -138,7 +138,7 @@ Inspect the native PNGs for the chosen state, the normal state, both locales, an
 - The add row is the only add affordance. A decorative plus will be clicked.
 - The English copy is longer. Measure it at the narrow width and keep it on one line.
 - Check `internal/app/icons.go` before using a glyph. Delete an unused icon only after a full `grep`.
-- `TestRenderPreviews` resolves `SAUNDO_PREVIEW_DIR` against the test's working directory. Pass an absolute path.
+- `check-ui render -out` resolves its path from the repository root. Pass an absolute path when the shell is elsewhere.
 - A worktree from the remote default branch may lack the current branch's commits. Create it from `HEAD`.
 - Copying a worktree file over the main checkout can erase another session's uncommitted edit. Check `git status` first and copy only untouched files.
 

@@ -10,6 +10,15 @@
 # development loop.
 set -u
 
+# The preview harness is a separate command. A preview tag in GOFLAGS would
+# pull the catalog and the fictional fixture into the production binary.
+case " ${GOFLAGS:-} " in
+	*preview*)
+		echo "build: GOFLAGS must not carry the preview tag" >&2
+		exit 2
+		;;
+esac
+
 fast=0
 case "${1:-}" in
 	--fast) fast=1 ;;
