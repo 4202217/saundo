@@ -81,7 +81,7 @@ required=(
   cmd/saundo/mygo.json cmd/saundo/locales/en.json cmd/saundo/locales/zh-CN.json
   internal/app/update.go internal/app/update_dialog.go internal/app/update_history.go
   .github/workflows/release.yml scripts/release-check.sh scripts/release-notes.sh
-  .claude/skills/release/SKILL.md .claude/skills/ui-mockup/SKILL.md
+  .claude/skills/release/SKILL.md .claude/skills/merge-pr/SKILL.md .claude/skills/ui-mockup/SKILL.md
   .claude/skills/ui-mockup/assets/mockup-template.html
   .claude/skills/ui-mockup/assets/flyout-template.html
 )
@@ -102,6 +102,7 @@ grep -q 'Docs audit' docs/releasing.md || fail "docs/releasing.md lacks a docs a
 grep -q '## Commit range review' docs/releasing.md || fail "docs/releasing.md lacks the commit range review"
 grep -qi 'commit range review' .claude/skills/release/SKILL.md || fail "the release skill lacks the commit range review step"
 grep -Fq 'Code review:' .claude/skills/release/SKILL.md || fail "the release skill lacks the critical-path code review rule"
+grep -q 'Critical-path code review' .claude/skills/merge-pr/SKILL.md || fail "the merge skill lacks the critical-path code review"
 grep -Fq 'Code review:' docs/releasing.md || fail "docs/releasing.md lacks the critical-path code review rule"
 grep -q '## UI mockup templates' docs/releasing.md || fail "docs/releasing.md lacks the UI mockup template refresh"
 grep -qi 'mockup templates' .claude/skills/release/SKILL.md || fail "the release skill lacks the UI mockup template step"
