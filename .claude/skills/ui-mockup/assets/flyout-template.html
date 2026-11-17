@@ -265,20 +265,20 @@
 
   /* ---------- media card ---------- */
   .media-card {
-    margin: 8px 12px 10px 12px; padding: 8px 10px 8px 10px;
+    margin: 8px 12px 10px 12px; padding: 10px 10px 8px 10px;
     border-radius: 12px; background: var(--pill);
   }
-  .media-head { height: 28px; display: flex; align-items: center; gap: 7px; }
-  .media-head .app-icon { width: 16px; height: 16px; flex: none; color: var(--fg2); }
-  .media-app { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media-head { height: 24px; display: flex; align-items: flex-start; gap: 7px; }
+  .media-head .app-icon { width: 18px; height: 18px; flex: none; color: var(--fg2); }
+  .media-app { flex: 1; min-width: 0; font-size: 13px; line-height: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .media-switch {
-    width: 24px; height: 24px; flex: none; border-radius: 7px;
+    width: 20px; height: 20px; flex: none; border-radius: 6px;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--card); color: var(--muted);
   }
   .media-switch:hover { background: var(--card-hover); color: var(--fg); }
-  .media-switch .icon { width: 12px; height: 12px; }
-  .media-main { height: 62px; display: flex; align-items: center; gap: 10px; padding: 6px 0 4px 0; }
+  .media-switch .icon { width: 14px; height: 14px; }
+  .media-main { height: 62px; display: flex; align-items: center; gap: 10px; padding: 6px 0 4px 0; margin-top: 2px; }
   .media-poster {
     width: 52px; height: 52px; flex: none; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
@@ -515,7 +515,7 @@ function notesHTML() {
       '<li><b>配对重置</b> The saved pairing could not be read; the 48 high credential notice sits under the device card, below the error bar when both show, and opens a 380 wide dialog.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
-      '<li>439 base for three rows, -29 for the empty card, -56 per missing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the credential notice, +53 for the expanded grid.</li>' +
+      '<li>439 base for three rows, -29 for the empty card, -56 per missing row, -62 for the old Now Playing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the error bar, +48 for the credential notice, +53 for the expanded grid.</li>' +
       '<li>No flexible spacer: the playback and ambient cards hold the same 8 DIP gap as the device and playback cards.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-16 -->
+<!-- reviewed-through: 2026-11-17 -->
 
 # Verification
 
@@ -478,6 +478,21 @@ keeps the image-only first light. Pins:
 members, both answered `200 OK` to the state command and the image, and
 the 2 s retry followed. The user confirmed R lights on the first connect
 without tapping the glass.
+
+## 2026-11-17 — 0.6.4 UI mockup templates
+
+The two ui-mockup templates were compared with the shipped interface and
+refreshed. The flyout template's media card head now carries the 18-DIP app
+icon and the 20-DIP session switch on the 24-DIP top-aligned row, the pill
+pads 10 DIP on top, and the main row keeps its 2-DIP top margin; the height
+notes name the 62-DIP Now Playing row and the 48-DIP error bar. The settings
+template's General sample carries all five shipped rows, including tray
+animation and appearance, in both languages. The palette and the height rule
+already matched `theme.go` and `flyoutHeightFor`. Renders: 40 states under
+`.audit/release-0.6.4/mockups/` (settings target/normal/edge and flyout
+idle/streaming/empty/error in zh-CN and English, light and dark, plus the
+media-off and ambient template/expanded states); every render was inspected
+for clipping, overflow, and wrapped copy, and none was found.
 
 ## Graduated
 
