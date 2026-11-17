@@ -33,6 +33,8 @@ Classify each commit as user-visible or internal. Read the diff when the subject
 
 Record the review in `docs/verification.md` in a dated section whose heading ends with `<version> commit range review`. The record names the range's oldest commit, its tip, and the count. It then lists every commit with its class and, for a user-visible commit, the changelog line that describes it. The release commit carries the record.
 
+A commit that touches `internal/airplay/` (crypto, sender, ptp, creds), `internal/engine/`, `internal/capture/`, `internal/app/update*.go`, or `internal/app/migrate.go` is a critical-path commit and is read in full, not classified from its subject. When the range has one, run `/code-review` on that subset before the docs audit and record `Code review: subset ran (N commits) -> no P0`, `-> fixed in <commit>`, or `Code review: not run -> <why>`. A P0 or an unresolved Standards finding lands as its own fix commit before the release commit, and the gate and candidate build rerun. The preflight fails when a critical-path commit is in the range and the record has no `Code review:` line.
+
 ## Docs audit
 
 Audit the docs against the tree before the release commit. Fix drift in the same commit.

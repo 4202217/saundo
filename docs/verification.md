@@ -623,6 +623,14 @@ pages (tracked under Currently pending). No product defect was found.
   the release and carried no separate hands-on statement for this build, so
   none is recorded. A pre-push install and smoke run remains owed.
 
+## 2026-11-17 — 0.6.4 critical-path code review (post-tag)
+
+The critical-path code review rule landed after `v0.6.4` was tagged. The
+0.6.4 range touches `internal/airplay/sender`, `internal/engine`, and
+`internal/app/update*.go`, so the subset review is owed before the local tag
+is pushed. Code review: not run -> the rule did not exist when the release
+commit was cut. The next release's range review carries the line.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
