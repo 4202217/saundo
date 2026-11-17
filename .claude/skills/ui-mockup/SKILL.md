@@ -71,6 +71,7 @@ SAUNDO_PREVIEW_RENDER="$(pwd)/.audit/preview/<topic>/render" go test -tags previ
 - Present the running build and the render PNGs together. Refine the same view and catalog in place, and implement the version the user has seen.
 - Final-pose renders need the enter animation settled. Set the view's entered flag in the fixture (`flyoutEntered`), or render a later frame.
 - The page sets the size. A browser window ignores size options; a zero-size viewport produces a zero-height canvas. The CLI page fills the viewport, so size the browser to the surface (420 for the flyout, 720x500 for settings), or give the page a `setPreviewSize` hook.
+- The browser has no tray or system menu. Render the tray menu from `trayModel` and `trayMenuItems` in a preview-only panel; the model is real, the panel is a mock, and its clicks route through the fake reducer.
 - Keep the preview command under `cmd/saundo/preview` so the app-package leaf rule holds. Keep action helpers in their own file so a budgeted file such as `flyout.go` does not grow.
 - The fixture and the fake reducer are throwaway. The views, the state shape, and the transition table are not.
 

@@ -179,6 +179,7 @@ func previewReduce(a *App, name string, arg any) bool {
 // showPreviewSettings opens the real settings window over the flyout, as the
 // gear does in the app.
 func (a *App) showPreviewSettings() {
+	a.closePreviewMenu()
 	if a.settingsWin == nil {
 		a.settingsWin = a.newSettingsWindow()
 	}

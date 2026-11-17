@@ -16,6 +16,7 @@ func previewBridge(a *App) {
 		if i < 0 || i >= len(PreviewStates) {
 			return nil
 		}
+		a.closePreviewMenu()
 		if a.settingsWin != nil {
 			a.settingsWin.Hide()
 		}
@@ -31,6 +32,10 @@ func previewBridge(a *App) {
 	}))
 	js.Global().Set("openPreviewSettings", js.FuncOf(func(this js.Value, args []js.Value) any {
 		a.showPreviewSettings()
+		return nil
+	}))
+	js.Global().Set("openPreviewMenu", js.FuncOf(func(this js.Value, args []js.Value) any {
+		a.openPreviewMenu()
 		return nil
 	}))
 	js.Global().Set("setPreviewName", js.FuncOf(func(this js.Value, args []js.Value) any {
