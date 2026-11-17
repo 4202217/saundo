@@ -364,8 +364,8 @@ func (a *App) nowPlayingCard(c *ui.Context, p palette) {
 // its transport and session switch are read-only, and animateMeter says
 // whether its meter asks for continuous frames.
 func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session, preview, animateMeter bool, art *ui.Bitmap, field *image.RGBA, level func() analyze.Frame, showSwitch bool) {
-	ui.Column(c).Margin(8, 12, 10, 12).Padding(8, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
-		ui.Row(c).Height(28).Gap(7).AlignItems(ui.Center).Children(func() {
+	ui.Column(c).Margin(8, 12, 10, 12).Padding(10, 10, 8, 10).Radius(12).Background(p.pill).Children(func() {
+		ui.Row(c).Height(24).Gap(7).AlignItems(ui.Start).Children(func() {
 			// The app icon is optional: the shell knows one for most apps,
 			// and the name alone carries the rest.
 			if a.nowIcon != nil {
@@ -392,7 +392,7 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 				})
 			}
 		})
-		ui.Row(c).Height(62).Gap(10).AlignItems(ui.Center).Padding(6, 0, 4, 0).Children(func() {
+		ui.Row(c).Height(62).Gap(10).AlignItems(ui.Center).Padding(6, 0, 4, 0).Margin(2, 0, 0, 0).Children(func() {
 			if a.cfg.CoverMode != settings.CoverNone {
 				a.nowPlayingPoster(c, p, art, a.cfg.CoverMode)
 			}
