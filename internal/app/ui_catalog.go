@@ -223,7 +223,7 @@ func applyLampOff(a *App) {
 func applyLampCover(a *App) {
 	a.lampCover = true
 	a.snap.LampCover = true
-	applySampleCover(a)
+	applySampleCover(a, i18n.Locale())
 }
 
 // applyLiveCard is the settings page with a playing card and its artwork.

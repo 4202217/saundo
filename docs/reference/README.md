@@ -14,15 +14,16 @@ fixture and catalog; the branch was not merged.
 `site/assets/demo-data.js` is generated, not edited. It carries:
 
 - the fixture's receivers, with model, auth kind, online state, selected row,
-  and stereo group;
-- the sessions the card can switch between, each with its own track list,
-  duration, and position;
+  stereo group, and the flyout subtitle in both languages;
+- the sessions the card can switch between, each with its own original app
+  mark, track list, duration, and position;
+- every track's embedded cover art and the cover lamp its clusters produce;
 - the volume, the latency tier, its three presets, and the custom value;
 - the opening flyout state: phase, standby, applying, pairing, and PTP;
 - the lamp's priority, template ID, and — when a cover exists — the cover
   lamp's base color and seeded blobs;
-- the six ambient templates, with both catalog names, their three colors, and
-  their seed;
+- the six ambient templates, with both catalog names, their three colors,
+  seed, base, and six seeded blobs, so the page paints the app's own field;
 - the IDs of the catalog scenarios marked `SiteDemo`.
 
 The page reads those values and keeps its own layout, type, and demo logic. A

@@ -59,13 +59,17 @@ var flyoutScenarios = []Scenario{
 	{ID: "flyout.mediaOff", Name: "flyout-media-off-light", Surface: SurfaceFlyout, Size: flyoutSize, SiteDemo: true, Apply: func(a *App) {
 		a.cfg.ShowNowPlayingPanel = false
 		a.nowSnap = sampleSnapshot(i18n.Locale())
-		a.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+		if len(a.nowSnap.Sessions) > 0 {
+			a.nowMediaAUMID = a.nowSnap.Sessions[0].AUMID
+		}
 	}},
 	{ID: "flyout.lamp.standby", Name: "flyout-lamp-standby-light", Dark: "flyout-lamp-standby-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, SiteDemo: true, Apply: func(a *App) {
 		a.snap.Standby = true
 	}},
 	{ID: "flyout.lamp.collapsed", Name: "flyout-lamp-collapsed-light", Dark: "flyout-lamp-collapsed-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyBase, SiteDemo: true},
 	{ID: "flyout.lamp.expanded", Name: "flyout-lamp-expanded-light", Dark: "flyout-lamp-expanded-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, SiteDemo: true, Apply: func(a *App) {
+		a.lampCover = false
+		a.snap.LampCover = false
 		a.lampExpanded = true
 	}},
 	{ID: "flyout.lamp.off", Name: "flyout-lamp-off-light", Surface: SurfaceFlyout, Size: flyoutSize, Apply: applyLampOff, SiteDemo: true},

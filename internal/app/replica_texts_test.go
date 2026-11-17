@@ -22,7 +22,6 @@ import (
 var replicaTextGaps = []string{
 	"媒体",                   // nor the lamp's media option
 	"颜色来源", "Color source", // nor a label on the lamp row's segments
-	"Show colors",   // nor a name for the lamp's disclosure button, in English
 	"Receiver list", // the receiver list is unlabelled for a screen reader, in English
 }
 

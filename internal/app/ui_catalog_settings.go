@@ -123,7 +123,9 @@ func applyNowPlayingBottom(a *App) {
 // artwork probes the live card carries.
 func applyWideNowPlaying(a *App) {
 	a.nowSnap = sampleSnapshot(i18n.Locale())
-	a.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
+	if len(a.nowSnap.Sessions) > 0 {
+		a.nowMediaAUMID = a.nowSnap.Sessions[0].AUMID
+	}
 }
 
 func applyReceiversExpanded(a *App) {

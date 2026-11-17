@@ -496,7 +496,7 @@ html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 
 .src{display:flex;align-items:center;gap:10px}
 .src-name{font-size:12px;font-weight:600;color:var(--text2);width:48px;text-align:right;white-space:nowrap}
 .src-meter{display:flex;align-items:flex-end;gap:2.5px;height:24px}
-.src-meter i{width:4.5px;border-radius:2.5px;transform-origin:bottom;animation:eq 1.3s ease-in-out infinite}
+.src-meter i{width:4.5px;border-radius:2.5px;transform-origin:bottom;animation:eqcycle 1.3s ease-in-out infinite}
 .src-meter i:nth-child(1){height:45%}
 .src-meter i:nth-child(2){height:80%}
 .src-meter i:nth-child(3){height:60%}
@@ -514,7 +514,7 @@ html[data-theme="dark"] .cap-bus{color:rgba(255,255,255,.16)}
 .cap-flow .mini-eq{height:64px;gap:4px}
 .cap-flow .mini-eq i{width:7px;background:var(--green);opacity:.9}
 .mini-eq{display:flex;align-items:flex-end;gap:4px;height:56px}
-.mini-eq i{width:6px;border-radius:3px;background:var(--eq-bar);animation:eq 1.3s ease-in-out infinite}
+.mini-eq i{width:6px;border-radius:3px;background:var(--eq-bar);animation:eqcycle 1.3s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.cap-arrow,.mini-eq i,.src-meter i{animation:none}}
 
 /* card art: stereo pair（两只合成一个目标，共享一只时钟） */
@@ -731,7 +731,7 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 /* media card */
 .fmedia{margin:8px 12px 10px 12px;padding:8px 10px;border-radius:12px;background:var(--fl-pill)}
 .fmediahead{height:28px;display:flex;align-items:center;gap:7px}
-.fappic{width:16px;height:16px;flex:none;color:var(--fl-fg2)}
+.fappic{width:16px;height:16px;flex:none;border-radius:4px;object-fit:cover;color:var(--fl-fg2)}
 .fapp{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fswitch{width:26px;height:26px;flex:none;display:inline-flex;align-items:center;justify-content:center;
   border-radius:7px;background:var(--fl-pill);color:var(--fl-fg2);cursor:pointer}
@@ -741,11 +741,12 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 .fmediamain{height:62px;display:flex;align-items:center;gap:10px;padding:6px 0 4px 0}
 .fposter{width:52px;height:52px;flex:none;border-radius:9px;background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0);position:relative;overflow:hidden}
 .fposter::after{content:"";position:absolute;inset:0;background:radial-gradient(20px 20px at 70% 30%,rgba(255,255,255,.4),transparent)}
+.fposter.photo::after{display:none}
 .fmedcopy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .fmedcopy b{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fmedcopy span{font-size:11.5px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fmeter{position:relative;width:23px;height:24px;flex:none}
-.fmeter i{position:absolute;width:3px;border-radius:1.5px;opacity:.9;transform-origin:center;animation:eq 1.15s ease-in-out infinite}
+.fmeter i{position:absolute;width:3px;border-radius:1.5px;opacity:.9;transform-origin:center;animation:eqcycle 1.15s ease-in-out infinite}
 .fmeter i:nth-child(1){left:0;height:40%;top:30%;background:linear-gradient(180deg,#5b5be0,#7a64dc)}
 .fmeter i:nth-child(2){left:5px;height:62%;top:19%;animation-delay:.12s;background:linear-gradient(180deg,#6461e0,#746cd8)}
 .fmeter i:nth-child(3){left:10px;height:88%;top:6%;animation-delay:.24s;background:linear-gradient(180deg,#7669da,#6684d5)}
@@ -982,7 +983,7 @@ html[data-theme="dark"] .amb-panel{box-shadow:0 20px 50px rgba(0,0,0,.45)}
 .media-t b{display:block;font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .media-t span{font-size:12px;color:var(--text2)}
 .media-eq{display:flex;align-items:flex-end;gap:3px;height:24px;flex:none}
-.media-eq i{width:4px;border-radius:2px;background:var(--eq-bar);height:100%;transform-origin:bottom;transform:scaleY(.2);animation:eq 1.1s ease-in-out infinite}
+.media-eq i{width:4px;border-radius:2px;background:var(--eq-bar);height:100%;transform-origin:bottom;transform:scaleY(.2);animation:eqcycle 1.1s ease-in-out infinite}
 .media-eq i:nth-child(1){animation-delay:0s}.media-eq i:nth-child(2){animation-delay:.12s}.media-eq i:nth-child(3){animation-delay:.24s}.media-eq i:nth-child(4){animation-delay:.36s}.media-eq i:nth-child(5){animation-delay:.48s}
 .media-prog{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text2)}
 .media-prog .mono{font-variant-numeric:tabular-nums}
@@ -1139,8 +1140,8 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
             <div class="fly-card" id="flyPlayback">
               <div class="fmedia">
                 <div class="fmediahead">
-                  <svg class="fappic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></svg>
-                  <span class="fapp">Music</span>
+                  <img class="fappic" id="fAppIcon" alt="" width="16" height="16" decoding="async" hidden>
+                  <span class="fapp">Longwave</span>
                   <button class="fswitch" id="fSwitch" type="button" aria-label="切换媒体" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
                 </div>
                 <div class="fmediamain">
@@ -1768,13 +1769,15 @@ if(!RM){
    dataset stopping the script before the language and demo wiring run. */
 var FALLBACK_DEMO = {
   receivers: [
-    { name:"HomePods", model:"AudioAccessory5,1", auth:"hap-transient", online:true, selected:true, stereo:false },
-    { name:"Apple TV", model:"AppleTV6,2", auth:"hap-pin", online:true, selected:false, stereo:false }
+    { name:"HomePods", model:"AudioAccessory5,1", auth:"hap-transient", online:true, selected:true, stereo:true,
+      subtitle:"AudioAccessory5,1 · 立体声组 2/2", subtitleEn:"AudioAccessory5,1 · Stereo pair 2/2" },
+    { name:"Apple TV", model:"AppleTV6,2", auth:"hap-pin", online:true, selected:false, stereo:false,
+      subtitle:"AppleTV6,2 · PIN 配对", subtitleEn:"AppleTV6,2 · PIN pairing" }
   ],
   sessions: [{
-    app:"Apple Music", current:0, items:[{
+    app:"Longwave", icon:"", current:0, items:[{
       title:"夜航", artist:"白鲸电台", titleEn:"Night Ferry", artistEn:"Signal Coast",
-      duration:244, position:128, colors:["#5b5be0","#8f6fd8","#3d9be0"]
+      duration:244, position:128, colors:["#5b5be0","#8f6fd8","#3d9be0"], cover:""
     }]
   }],
   volume:30, latency:"low", customLatency:700,
@@ -1782,7 +1785,7 @@ var FALLBACK_DEMO = {
     { mode:"low", ms:200 }, { mode:"standard", ms:1500 }, { mode:"stable", ms:2000 }
   ],
   state:{ phase:"streaming", standby:false, applying:false, pairing:false, ptp:true },
-  light:{ off:false, cover:false, preset:"dune" },
+  light:{ off:false, cover:true, preset:"dune" },
   lamp:null,
   templates:[
     { id:"ember", name:"暖烬", nameEn:"Ember", colors:["#ff5a1f","#ffc020","#b3261e"], seed:11 },
@@ -1800,7 +1803,8 @@ var FLY_MODES = { low:200, standard:1500, stable:2000 };
 (D.latencyModes || []).forEach(function(m){ FLY_MODES[m.mode] = m.ms; });   /* settings.go: LatencyLowMS… */
 var AMB_TPLS = {};
 (D.templates || []).forEach(function(tpl){
-  AMB_TPLS[tpl.id] = { n: tpl.name, en: tpl.nameEn || tpl.name, c: tpl.colors, seed: tpl.seed };
+  AMB_TPLS[tpl.id] = { n: tpl.name, en: tpl.nameEn || tpl.name, c: tpl.colors, seed: tpl.seed,
+    base: tpl.base, blobs: tpl.blobs };
 });
 /* One light, one state: the ambient section, the tray lamp card and the bento
    orb all render from `lamp`. Cover colors come from the current track (media.i). */
@@ -1837,6 +1841,7 @@ function buildAmbientChooser(){
   return row.querySelectorAll('.amb-tpl:not(.amb-cover)');
 }
 var ambTplBtns = buildAmbientChooser();
+paintAmbientDots();   /* the chooser builds the row, so the swatches paint after it, from the app's blob field */
 var ambCoverBtn = document.querySelector('#ambTplRow .amb-cover');
 var ambHit = document.getElementById('ambHit');
 function mulberry32(a){ return function(){ a+=0x6D2B79F5; var t=a; t=(t^(t>>15))*(t|1); t^=t+(t^(t>>7))*(t|61); return ((t^(t>>14))>>>0)/4294967296; }; }
@@ -2215,7 +2220,8 @@ function lampRender(){
   if(ambCoverBtn) ambCoverBtn.setAttribute('aria-pressed', String(!lamp.off && lamp.cover));
   ambTplBtns.forEach(function(b){ b.setAttribute('aria-pressed', String(!lamp.off && !lamp.cover && b.dataset.tpl === lamp.preset)); });
   var coverDot = document.querySelector('#ambTplRow .amb-cover .dot');
-  if(coverDot) coverDot.style.background = posterGradient(tr.cols);   /* the 封面 swatch previews the current artwork */
+  if(coverDot) coverDot.style.background = tr.cover
+    ? 'url("' + tr.cover + '") center/cover' : posterGradient(tr.cols);   /* the 封面 swatch previews the current artwork */
   if(ambHit) ambHit.setAttribute('aria-label', t('切换氛围灯'));
   if(ambNameEl) ambNameEl.textContent = lamp.off ? t('灯光已关')
     : lamp.cover ? (LANG === "en" ? tr.et : tr.t) : t(tpl.n);   /* cover mode names the track: the light follows the album */
@@ -2270,21 +2276,13 @@ function lampRender(){
   flyPanel.style.setProperty("--amb-3", cols[2]);
   paintLampTile();
 }
-/* paintLampTile draws the cover lamp the way internal/app/lamp.go's drawLamp
-   does: the track's base, then its blobs as radial gradients with the same
-   three stops. The dataset carries one blob set per track, so the preview
-   follows the artwork instead of repeating the first track's scatter. */
-function paintLampTile(){
-  var el = document.getElementById("fLampPrev");
-  if(!el) return;
-  var paint = MEDIA[media.i] && MEDIA[media.i].lamp ? MEDIA[media.i].lamp : D.lamp;
-  if(!lamp.cover || !paint || !paint.blobs || !paint.blobs.length){
-    el.classList.remove("painted");
-    el.style.backgroundImage = "";
-    el.style.backgroundColor = "";
-    return;
-  }
-  var size = 32;                      /* the tile's DIP width, as drawLamp's r.W */
+/* lampBackground draws what internal/app/lamp.go's drawLamp draws: the base,
+   then the six seeded blobs as radial gradients with the same three stops.
+   Cover mode reads the track's exported blob set and template mode reads the
+   template's, so every preview is the app's field at a smaller size, not a
+   second hand-drawn shape. */
+function lampBackground(paint, size){
+  if(!paint || !paint.base || !paint.blobs || !paint.blobs.length) return null;
   var layers = paint.blobs.slice().reverse().map(function(b){
     var c = hexRGB(b.color);
     var a = b.alpha;
@@ -2294,9 +2292,48 @@ function paintLampTile(){
       "rgba(" + c + "," + (0.33 * a).toFixed(3) + ") 38%, " +
       "rgba(" + c + ",0) 100%)";
   });
+  return { base: paint.base, layers: layers.join(",") };
+}
+function lampSource(){
+  if(lamp.cover){
+    var tr = MEDIA[media.i];
+    return tr && tr.lamp ? tr.lamp : D.lamp;
+  }
+  var tpl = AMB_TPLS[lamp.preset];
+  return tpl ? { base: tpl.base, blobs: tpl.blobs } : null;
+}
+function lampFallback(cols){
+  return "radial-gradient(circle at 30% 28%, " + cols[0] + " 0%, transparent 62%)" +
+    ",radial-gradient(circle at 72% 38%, " + cols[1] + " 0%, transparent 60%)" +
+    ",radial-gradient(circle at 50% 82%, " + cols[2] + " 0%, transparent 64%)," + cols[0];
+}
+function paintAmbientDots(){
+  document.querySelectorAll('#ambTplRow .amb-tpl[data-tpl]').forEach(function(b){
+    var tpl = AMB_TPLS[b.dataset.tpl];
+    var dot = b.querySelector('.dot');
+    if(!tpl || !dot) return;
+    var bg = lampBackground({ base: tpl.base, blobs: tpl.blobs }, 42);
+    if(bg){
+      dot.style.backgroundColor = bg.base;
+      dot.style.backgroundImage = bg.layers;
+    } else {
+      dot.style.background = lampFallback(tpl.c);
+    }
+  });
+}
+function paintLampTile(){
+  var el = document.getElementById("fLampPrev");
+  if(!el) return;
+  var bg = lampBackground(lampSource(), 32);   /* the tile's DIP width, as drawLamp's r.W */
+  if(!bg){
+    el.classList.remove("painted");
+    el.style.backgroundImage = "";
+    el.style.backgroundColor = "";
+    return;
+  }
   el.classList.add("painted");
-  el.style.backgroundColor = paint.base;
-  el.style.backgroundImage = layers.join(",");
+  el.style.backgroundColor = bg.base;
+  el.style.backgroundImage = bg.layers;
 }
 function hexRGB(hex){
   var n = parseInt(hex.slice(1), 16);
@@ -2481,7 +2518,8 @@ var FLY_ROWS = [
 ];
 var FLY_DEVS = (D.receivers || []).slice(0, FLY_ROWS.length).map(function(r, i){
   return { id:"dev" + i, row:FLY_ROWS[i].row, btn:FLY_ROWS[i].btn, name:r.name,
-           model:r.model, auth:r.auth, online:r.online, stereo:r.stereo, selected:!!r.selected };
+           model:r.model, auth:r.auth, online:r.online, stereo:r.stereo, selected:!!r.selected,
+           subtitle:r.subtitle || "", subtitleEn:r.subtitleEn || "" };
 });
 function glyphFor(d){
   if(/^AppleTV/.test(d.model)) return "#g-appletv";
@@ -2498,7 +2536,10 @@ function applyDemoRows(){
     var name = row.querySelector(".fnamecol b");
     if(name) name.textContent = d.name;
     var sub = row.querySelector(".fnamecol span");
-    if(sub) sub.textContent = d.model + " · " + (d.auth === "hap-pin" ? t("PIN 配对") : "AirPlay 2");
+    if(sub){
+      var line = LANG === "en" ? (d.subtitleEn || d.subtitle) : d.subtitle;
+      sub.textContent = line || d.model + " · " + (d.auth === "hap-pin" ? t("PIN 配对") : "AirPlay 2");
+    }
     var use = row.querySelector("svg.sfg use");
     if(use) use.setAttribute("href", glyphFor(d));
   });
@@ -2520,8 +2561,9 @@ var SESSIONS = (D.sessions || []).map(function(p){
     return {
       t: it.title, et: it.titleEn || it.title,
       ar: it.artist, ear: it.artistEn || it.artist,
-      app: p.app, eapp: p.app, dur: it.duration || 1, pos: it.position || 0,
+      app: p.app, eapp: p.app, icon: p.icon || "", dur: it.duration || 1, pos: it.position || 0,
       cols: it.colors && it.colors.length === 3 ? it.colors : ['#5b5be0','#8f6fd8','#3d9be0'],
+      cover: it.cover || "",
       lamp: it.lamp || null
     };
   });
@@ -2659,6 +2701,7 @@ var PLAY_D = "M8 5v14l11-7L8 5Z", PAUSE_D = "M7 5h3.4v14H7zM13.6 5H17v14h-3.4z";
 var fPoster = fMediaEl.querySelector(".fposter");
 var fTitle = fMediaEl.querySelector(".fmedcopy b"), fArtist = fMediaEl.querySelector(".fmedcopy span");
 var fApp = fMediaEl.querySelector(".fapp");
+var fAppIcon = document.getElementById("fAppIcon");
 var bmCard = document.getElementById("bmMedia");
 var bmPoster = bmCard.querySelector(".fposter");
 var bmTitle = bmCard.querySelector(".fmedcopy b"), bmArtist = bmCard.querySelector(".fmedcopy span");
@@ -2675,11 +2718,9 @@ function mixHex(a, b, k){
 }
 function posterGradient(cols){ return "linear-gradient(135deg," + cols[0] + "," + cols[1] + " 55%," + cols[2] + ")"; }
 function renderMeterTint(meter, cols){
-  /* each bar interpolates the poster palette left→right; the opening track
-     clears the inline style so the shipped CSS gradient stays pixel-identical */
+  /* each bar interpolates the track's cover palette left→right */
   var bars = meter.querySelectorAll("i");
   for(var k = 0; k < bars.length; k++){
-    if(media.app === 0 && media.i === 0){ bars[k].style.background = ""; continue; }
     var f = k / (bars.length - 1);
     bars[k].style.background = "linear-gradient(180deg," + mixHex(cols[0], cols[1], f) + "," + mixHex(cols[1], cols[2], f) + ")";
   }
@@ -2703,11 +2744,15 @@ function mediaRenderAll(){
   bmPlayPath.setAttribute("d", media.playing ? PAUSE_D : PLAY_D);
   fMeter.classList.toggle("off", !media.playing);   /* the meter reads the media session, flat while paused */
   bmMeter.classList.toggle("off", !media.playing);
-  fPoster.style.background = posterGradient(tr.cols);
-  bmPoster.style.background = posterGradient(tr.cols);
+  var art = tr.cover ? 'url("' + tr.cover + '") center/cover no-repeat' : posterGradient(tr.cols);
+  fPoster.style.background = art;
+  bmPoster.style.background = art;
+  fPoster.classList.toggle("photo", !!tr.cover);
+  bmPoster.classList.toggle("photo", !!tr.cover);
   fTitle.textContent = LANG === "en" ? tr.et : tr.t;
   fArtist.textContent = LANG === "en" ? tr.ear : tr.ar;
   fApp.textContent = LANG === "en" ? (tr.eapp || tr.app) : tr.app;
+  if(fAppIcon){ fAppIcon.src = tr.icon || ""; fAppIcon.hidden = !tr.icon; }
   bmTitle.textContent = LANG === "en" ? tr.et : tr.t;
   bmArtist.textContent = LANG === "en" ? tr.ear : tr.ar;
   bmApp.textContent = LANG === "en" ? (tr.eapp || tr.app) : tr.app;
@@ -2749,9 +2794,13 @@ function flyBuildGrid(grid){
     sw.type = "button";
     sw.className = "flampswatch";
     sw.dataset.tpl = id;
-    sw.style.background = "radial-gradient(circle at 30% 28%, " + tpl.c[0] + " 0%, transparent 62%)" +
-      ",radial-gradient(circle at 72% 38%, " + tpl.c[1] + " 0%, transparent 60%)" +
-      ",radial-gradient(circle at 50% 82%, " + tpl.c[2] + " 0%, transparent 64%)," + tpl.c[0];
+    var bg = lampBackground({ base: tpl.base, blobs: tpl.blobs }, 24);
+    if(bg){
+      sw.style.backgroundColor = bg.base;
+      sw.style.backgroundImage = bg.layers;
+    } else {
+      sw.style.background = lampFallback(tpl.c);
+    }
     sw.addEventListener("click", function(){ flyPickPreset(id); });
     grid.appendChild(sw);
   });

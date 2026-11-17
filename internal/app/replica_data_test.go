@@ -7,13 +7,16 @@ package app
 // f3f6bf8 and rebuilt on Fixture and the catalog.
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
+	"image/jpeg"
+	"image/png"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -83,11 +86,13 @@ type replicaBlob struct {
 // replicaTemplate is one ambient-light template: the preset's three colors and
 // seed, plus the names both catalogs give it.
 type replicaTemplate struct {
-	ID     string   `json:"id"`
-	Name   string   `json:"name"`
-	NameEN string   `json:"nameEn"`
-	Colors []string `json:"colors"`
-	Seed   uint32   `json:"seed"`
+	ID     string        `json:"id"`
+	Name   string        `json:"name"`
+	NameEN string        `json:"nameEn"`
+	Colors []string      `json:"colors"`
+	Seed   uint32        `json:"seed"`
+	Base   string        `json:"base"`
+	Blobs  []replicaBlob `json:"blobs"`
 }
 
 type replicaLatencyMode struct {
@@ -96,16 +101,19 @@ type replicaLatencyMode struct {
 }
 
 type replicaReceiver struct {
-	Name     string `json:"name"`
-	Model    string `json:"model"`
-	Auth     string `json:"auth"`
-	Online   bool   `json:"online"`
-	Selected bool   `json:"selected"`
-	Stereo   bool   `json:"stereo"`
+	Name       string `json:"name"`
+	Model      string `json:"model"`
+	Auth       string `json:"auth"`
+	Online     bool   `json:"online"`
+	Selected   bool   `json:"selected"`
+	Stereo     bool   `json:"stereo"`
+	Subtitle   string `json:"subtitle"`
+	SubtitleEN string `json:"subtitleEn"`
 }
 
 type replicaPlayer struct {
 	App     string        `json:"app"`
+	Icon    string        `json:"icon,omitempty"`
 	Current int           `json:"current"`
 	Items   []replicaItem `json:"items"`
 }
@@ -118,6 +126,7 @@ type replicaItem struct {
 	Duration int          `json:"duration"`
 	Position int          `json:"position"`
 	Colors   []string     `json:"colors"`
+	Cover    string       `json:"cover,omitempty"`
 	Lamp     *replicaLamp `json:"lamp,omitempty"`
 }
 
@@ -127,27 +136,14 @@ type replicaItem struct {
 // languages, because the page switches copy without refetching the dataset;
 // the first track's English values come from the app's own English fixture.
 var replicaCorpus = map[string][]replicaItem{
-	"Apple Music": {
+	"Longwave": {
 		{Title: "落日公路", TitleEN: "Sunset Highway", Artist: "霓虹车队", ArtistEN: "Neon Convoy", Duration: 207},
 		{Title: "玻璃海", TitleEN: "Glass Sea", Artist: "潮汐信号", ArtistEN: "Tide Signal", Duration: 312},
 	},
-	"Spotify": {
+	"Cinder": {
 		{Title: "绯红", TitleEN: "Crimson", Artist: "玫瑰刺", ArtistEN: "Rose Thorn", Duration: 238},
 		{Title: "雪松与雾", TitleEN: "Cedar and Fog", Artist: "苔原电台", ArtistEN: "Tundra Radio", Duration: 281},
 	},
-}
-
-// replicaPalettes are the six poster palettes the page paints, one per demo
-// track. The first is the shipped page palette, which the page's @property
-// --amb-* initial values match; the dataset carries the rest so no track wraps
-// onto another's artwork. The page reads colors and lamp blobs per track.
-var replicaPalettes = [6][3]string{
-	{"#5b5be0", "#8f6fd8", "#3d9be0"},
-	{"#ff9a3d", "#ef5d7a", "#9a4fa8"},
-	{"#35d0c5", "#3aa6d0", "#1b3d8f"},
-	{"#e34b6f", "#c22a55", "#7a1f3d"},
-	{"#2f6b4f", "#7fae5a", "#b08954"},
-	{"#d8b25a", "#8a5a2b", "#4a2f1a"},
 }
 
 // replicaStreamingApp builds the one fixture the page projects: the base
@@ -194,11 +190,11 @@ func replicaSessions(a, en *App) []replicaPlayer {
 			Position: int(s.Position.Seconds()),
 		}}
 		items = append(items, replicaCorpus[s.AppName]...)
-		players = append(players, replicaPlayer{App: s.AppName, Items: items})
+		players = append(players, replicaPlayer{App: s.AppName, Icon: replicaMarkURI(appMark(s.AppName)), Items: items})
 	}
-	for _, app := range []string{"Spotify"} {
+	for _, app := range []string{"Cinder"} {
 		if !seen[app] {
-			players = append(players, replicaPlayer{App: app, Items: replicaCorpus[app]})
+			players = append(players, replicaPlayer{App: app, Icon: replicaMarkURI(appMark(app)), Items: replicaCorpus[app]})
 		}
 	}
 	if i := a.nowMediaIndex(); i < len(a.nowSnap.Sessions) {
@@ -210,42 +206,15 @@ func replicaSessions(a, en *App) []replicaPlayer {
 			}
 		}
 	}
-	track := 0
 	for pi := range players {
 		for ii := range players[pi].Items {
-			palette := replicaPaletteFor(players[pi].Items[ii].Title)
-			if palette < 0 {
-				palette = track % len(replicaPalettes)
-			}
-			colors := replicaPalettes[palette]
-			players[pi].Items[ii].Colors = []string{colors[0], colors[1], colors[2]}
-			players[pi].Items[ii].Lamp = replicaCoverLamp(colors)
-			track++
+			it := &players[pi].Items[ii]
+			art := coverArt(it.Title)
+			it.Cover = replicaCoverURI(art)
+			it.Lamp, it.Colors = replicaCoverLamp(art)
 		}
 	}
 	return players
-}
-
-// replicaPaletteFor keeps each demo track's shipped poster palette: the five
-// tracks the page carried before the dataset gained Chrome's session keep
-// theirs, and Chrome's track takes the sixth. Falling back to flat position
-// would move 绯红 to the green palette when a track is inserted before it.
-func replicaPaletteFor(title string) int {
-	switch title {
-	case "夜航":
-		return 0
-	case "落日公路":
-		return 1
-	case "玻璃海":
-		return 2
-	case "绯红":
-		return 3
-	case "雪松与雾":
-		return 4
-	case "Open Water Sessions":
-		return 5
-	}
-	return -1
 }
 
 // replicaEnglishTrack is the English fixture's version of a player's current
@@ -260,13 +229,13 @@ func replicaEnglishTrack(a *App, app string) (title, artist string, ok bool) {
 	return "", "", false
 }
 
-// replicaCoverLamp derives a track's cover lamp through the app's own
-// lamp.CoverPreset, so every track's preview follows its artwork and the blob
-// scatter cannot drift from drawLamp.
-func replicaCoverLamp(colors [3]string) *replicaLamp {
-	p, ok := lamp.CoverPreset(replicaCoverImage(colors))
+// replicaCoverLamp derives a track's cover colors and lamp through the app's
+// own lamp.CoverPreset, so the page reads the same clusters and blob scatter
+// the app's preview paints from the same artwork.
+func replicaCoverLamp(src image.Image) (*replicaLamp, []string) {
+	p, ok := lamp.CoverPreset(src)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	l := &replicaLamp{Cover: true, Base: hexColor(p.Base)}
 	for _, b := range p.Blobs() {
@@ -274,42 +243,30 @@ func replicaCoverLamp(colors [3]string) *replicaLamp {
 			X: b.X, Y: b.Y, R: b.Radius, Color: hexColor(b.Color), Alpha: b.Alpha,
 		})
 	}
-	return l
+	colors := make([]string, 0, len(p.Colors))
+	for _, c := range p.Colors {
+		colors = append(colors, hexColor(c))
+	}
+	return l, colors
 }
 
-// replicaCoverImage paints the three-color cover a track's poster shows, so
-// CoverPreset sees the same palette the page does.
-func replicaCoverImage(colors [3]string) image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
-	c := [3]color.RGBA{replicaHex(colors[0]), replicaHex(colors[1]), replicaHex(colors[2])}
-	for y := 0; y < 64; y++ {
-		for x := 0; x < 64; x++ {
-			k := float64(x+y) / 126
-			var out color.RGBA
-			if k < 0.5 {
-				out = replicaBlend(c[0], c[1], k*2)
-			} else {
-				out = replicaBlend(c[1], c[2], (k-0.5)*2)
-			}
-			img.SetRGBA(x, y, out)
-		}
+// replicaCoverURI embeds the same artwork the native preview paints, so the
+// page shows the cover instead of a poster gradient that only approximates it.
+func replicaCoverURI(src image.Image) string {
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, src, &jpeg.Options{Quality: 86}); err != nil {
+		return ""
 	}
-	return img
+	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
-func replicaHex(s string) color.RGBA {
-	n, err := strconv.ParseUint(strings.TrimPrefix(s, "#"), 16, 32)
-	if err != nil {
-		return color.RGBA{A: 0xff}
+// replicaMarkURI embeds the source app's original mark for the card's icon.
+func replicaMarkURI(src image.Image) string {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, src); err != nil {
+		return ""
 	}
-	return color.RGBA{R: uint8(n >> 16), G: uint8(n >> 8), B: uint8(n), A: 0xff}
-}
-
-func replicaBlend(a, b color.RGBA, k float64) color.RGBA {
-	mix := func(x, y uint8) uint8 {
-		return uint8(float64(x)*(1-k) + float64(y)*k + 0.5)
-	}
-	return color.RGBA{R: mix(a.R, b.R), G: mix(a.G, b.G), B: mix(a.B, b.B), A: 0xff}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
 // replicaTemplates lists the six ambient templates in display order, with the
@@ -321,12 +278,20 @@ func replicaTemplates() []replicaTemplate {
 		for _, c := range p.Colors {
 			colors = append(colors, hexColor(c))
 		}
+		blobs := make([]replicaBlob, 0, 6)
+		for _, b := range p.Blobs() {
+			blobs = append(blobs, replicaBlob{
+				X: b.X, Y: b.Y, R: b.Radius, Color: hexColor(b.Color), Alpha: b.Alpha,
+			})
+		}
 		out = append(out, replicaTemplate{
 			ID:     p.ID,
 			Name:   replicaLampPresetName("zh-CN", p.ID),
 			NameEN: replicaLampPresetName("en", p.ID),
 			Colors: colors,
 			Seed:   p.Seed,
+			Base:   hexColor(p.Base),
+			Blobs:  blobs,
 		})
 	}
 	return out
@@ -361,6 +326,20 @@ func replicaScenarios() []string {
 		}
 	}
 	sort.Strings(out)
+	return out
+}
+
+// replicaSubtitles renders each device's line through the app's own
+// deviceSubtitle, so the page shows the same model, auth, and stereo wording
+// the flyout paints without re-deriving it from parts.
+func replicaSubtitles(devices []device.Device, locale string) map[string]string {
+	old := testLocale
+	defer func() { testLocale = old }()
+	testLocale = locale
+	out := make(map[string]string, len(devices))
+	for _, d := range devices {
+		out[d.ID] = deviceSubtitle(d)
+	}
 	return out
 }
 
@@ -407,14 +386,18 @@ func replicaDataValue(t *testing.T) replicaData {
 		},
 		Light: replicaLight{Off: a.lampOff, Cover: a.lampCover, Preset: a.lampPreset},
 	}
+	subs := replicaSubtitles(a.snap.Devices, "zh-CN")
+	enSubs := replicaSubtitles(en.snap.Devices, "en")
 	for _, d := range a.snap.Devices {
 		data.Receivers = append(data.Receivers, replicaReceiver{
-			Name:     d.Name,
-			Model:    d.Model,
-			Auth:     authName(d.Auth),
-			Online:   d.Online,
-			Selected: d.ID == a.snap.SelectedID,
-			Stereo:   d.IsStereoGroup(),
+			Name:       d.Name,
+			Model:      d.Model,
+			Auth:       authName(d.Auth),
+			Online:     d.Online,
+			Selected:   d.ID == a.snap.SelectedID,
+			Stereo:     d.IsStereoGroup(),
+			Subtitle:   subs[d.ID],
+			SubtitleEN: enSubs[d.ID],
 		})
 	}
 	data.Sessions = replicaSessions(a, en)
@@ -547,30 +530,70 @@ func TestReplicaDataCarriesBothLanguages(t *testing.T) {
 	}
 }
 
-// TestReplicaDataGivesEveryTrackItsOwnPalette fails when a track wraps onto
-// another track's poster palette or carries no cover lamp, which is what made
-// the cover-mode preview paint the previous track's artwork.
-func TestReplicaDataGivesEveryTrackItsOwnPalette(t *testing.T) {
+// TestReplicaDataGivesEveryTrackItsOwnCover fails when a track reuses another
+// track's artwork or carries no cover lamp. The page paints the embedded
+// cover and the lamp derived from it, so a shared image would make a media
+// switch look like the light did not change.
+func TestReplicaDataGivesEveryTrackItsOwnCover(t *testing.T) {
 	data := replicaDataValue(t)
-	seen := map[string]bool{}
+	seenCover := map[string]bool{}
+	seenColors := map[string]bool{}
 	tracks := 0
 	for _, p := range data.Sessions {
 		for _, it := range p.Items {
 			tracks++
+			if !strings.HasPrefix(it.Cover, "data:image/jpeg;base64,") {
+				t.Fatalf("%s / %q has no embedded cover", p.App, it.Title)
+			}
+			if seenCover[it.Cover] {
+				t.Fatalf("%s / %q reuses another track's cover", p.App, it.Title)
+			}
+			seenCover[it.Cover] = true
 			if len(it.Colors) != 3 {
 				t.Fatalf("%s / %q has %d colors, want 3", p.App, it.Title, len(it.Colors))
 			}
 			key := strings.Join(it.Colors, ",")
-			if seen[key] {
-				t.Fatalf("%s / %q reuses palette %s", p.App, it.Title, key)
+			if seenColors[key] {
+				t.Fatalf("%s / %q reuses cover colors %s", p.App, it.Title, key)
 			}
-			seen[key] = true
+			seenColors[key] = true
 			if it.Lamp == nil || len(it.Lamp.Blobs) == 0 {
 				t.Fatalf("%s / %q has no cover lamp", p.App, it.Title)
 			}
 		}
 	}
-	if tracks != len(replicaPalettes) {
-		t.Fatalf("the corpus has %d tracks and %d palettes", tracks, len(replicaPalettes))
+	if tracks != len(coverArtTitles()) {
+		t.Fatalf("the corpus has %d tracks and %d covers", tracks, len(coverArtTitles()))
+	}
+}
+
+// TestReplicaDataCarriesEveryPlayerMark fails when a session reaches the card
+// with no icon, which leaves a player name beside a generic glyph.
+func TestReplicaDataCarriesEveryPlayerMark(t *testing.T) {
+	data := replicaDataValue(t)
+	seen := map[string]bool{}
+	for _, p := range data.Sessions {
+		if !strings.HasPrefix(p.Icon, "data:image/png;base64,") {
+			t.Fatalf("%s has no embedded mark", p.App)
+		}
+		if seen[p.Icon] {
+			t.Fatalf("%s reuses another player's mark", p.App)
+		}
+		seen[p.Icon] = true
+	}
+}
+
+// TestReplicaTemplatesCarryTheAppField fails when a template reaches the page
+// without the base and six blobs the app's drawLamp paints, which is what let
+// the page draw its own approximate swatch.
+func TestReplicaTemplatesCarryTheAppField(t *testing.T) {
+	data := replicaDataValue(t)
+	if len(data.Templates) != len(lamp.All()) {
+		t.Fatalf("the dataset has %d templates, want %d", len(data.Templates), len(lamp.All()))
+	}
+	for _, tpl := range data.Templates {
+		if tpl.Base == "" || len(tpl.Blobs) != 6 {
+			t.Fatalf("%s carries base %q and %d blobs, want a base and 6 blobs", tpl.ID, tpl.Base, len(tpl.Blobs))
+		}
 	}
 }

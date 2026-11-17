@@ -1,8 +1,8 @@
 {
-  "commit": "a04ce1ba55d7a794078d8067de826c0d26d59812",
+  "commit": "61d5484a27d1fc193b356c2ab4620cb2d51d04cc",
   "dirty": "dirty",
   "renderer": "ui.Tester/raster",
-  "generated": "2026-11-17T10:13:36Z",
+  "generated": "2026-11-17T13:18:57Z",
   "files": [
     {
       "name": "dialog-receiver-add-en.png",
@@ -18,121 +18,121 @@
     },
     {
       "name": "flyout-connecting-en.png",
-      "sha256": "31bafca9f7405549151081ec737aec62d19600ad09c1f1200fe1833d3ee0f29d",
+      "sha256": "5f0b576889f7d53102efcf2d090928d8a425dde8cb4e70055f55117e9f4c0c4b",
       "width": 840,
       "height": 1022
     },
     {
       "name": "flyout-connecting-zh.png",
-      "sha256": "d558279cbd972f78d37edbba2a09e892a7bca9a9d5c8daf02ffb56ddaab3fc0e",
+      "sha256": "06bf6a48bc684f8942abeff7b0fbad4e894f296148d5b34276e499bd1c66ef09",
       "width": 840,
       "height": 1022
     },
     {
       "name": "flyout-empty-en.png",
-      "sha256": "b4d96f61c676fb4ee65e498b23c6456c87ffb38e78c6b446d327f4707b397e45",
+      "sha256": "45f18c1905bbeda23808cb4dc337bc8b884c9e583caa919d2ee1bd4df94f9275",
       "width": 840,
       "height": 964
     },
     {
       "name": "flyout-empty-zh.png",
-      "sha256": "8041eeabfeac9ad85288a4fd29f86385f836e94016d33adf338820809c4372b8",
+      "sha256": "67b97ebb126337f7eca78b6c4ec34df921320798a229ecefd3dfe3a8b1c67c7d",
       "width": 840,
       "height": 964
     },
     {
       "name": "flyout-error-en.png",
-      "sha256": "3a7c73d663c470c385807fbd00320a8c55391ff400fb51f7d39ac957fed3ecab",
+      "sha256": "280e89fd25f19c70ce0c90fcfdb2cf8e40897c6116e4456ad4abb0640a25dedd",
       "width": 840,
       "height": 1118
     },
     {
       "name": "flyout-error-zh.png",
-      "sha256": "0c399f000e5616ec716fac279fa978b2bca19b9166e6ac100507f1fe2afb9564",
+      "sha256": "8617819d11d02364a53f31ced0148154c44b4414cdc973300cc1418ac01fbd31",
       "width": 840,
       "height": 1118
     },
     {
       "name": "flyout-stream-dark-en.png",
-      "sha256": "648ca1509fd98ed67c092a92f5a4d22acf4a87d3e32de60d23ba3c2c8eec0762",
+      "sha256": "1ed2911c4936c1120745e9805cd084927962adc99bf05cf7153819e69ff13fc5",
       "width": 840,
       "height": 1322
     },
     {
       "name": "flyout-stream-dark-zh.png",
-      "sha256": "c841a417be214cd4a067896aa9ce65e9c7ad2926e279c214561fed3071f60d2a",
+      "sha256": "cfc8e6505e6219f35c7631dcda7093e44ea38800354b5b8c4583efc4e92f3d7c",
       "width": 840,
       "height": 1322
     },
     {
       "name": "flyout-stream-light-en.png",
-      "sha256": "90b0d7012b127055303183ff8b8743067658451c8da93aa5624f2d1907c74e78",
+      "sha256": "cb5bab908c6e9c6ac95b520dcc2f4216d99915dc0f6893407e7435e9cbf6e4de",
       "width": 840,
       "height": 1322
     },
     {
       "name": "flyout-stream-light-zh.png",
-      "sha256": "6ff55280542a7fd27e6333683c82d378c4a785a6ff83bd01cac77ea23dfb834d",
+      "sha256": "0c2628e1aa355267223f23130bb3124b93e8c7f7430d54e29923e9dc6df96b4b",
       "width": 840,
       "height": 1322
     },
     {
       "name": "settings-audio-custom-light-en.png",
-      "sha256": "4af0a3e6c9b78b3701aa7607aded5671fddb36ea6cf63533dde3f0270169561a",
+      "sha256": "ece496922ef16841d6112a231e275cbee40d625caf561600084096920cabf776",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-audio-custom-light-zh.png",
-      "sha256": "e5457d53264bf9d8af7a1c79dc8a131d34b2a2731e100344b14ec63c55953b2b",
+      "sha256": "17feac0915c06dca89c5b5753fce31ba66e245a3274723c430d4d57208b35b82",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-connection-dark-en.png",
-      "sha256": "1ef358183d120d16df08a4fce2d62c9ad5151b1d1b6be8bf6a2acfa060bcd260",
+      "sha256": "4cd141390fd8f07f5b6b836dc651b696298273d915e712ed135c101cc3d578fd",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-connection-dark-zh.png",
-      "sha256": "0866aacfd263a336ae277ffd90cb2ba3714932d27defacd4cd2c4af7bec0ad6b",
+      "sha256": "0571616514acf1d883a7e3259c0e124c5589a9469a914ee6352624da171d0f5d",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-general-light-en.png",
-      "sha256": "e06bfe435307d5c5bc38e05ec84640936ab837e858b675b2d60fbb8e67de6c14",
+      "sha256": "9c5b69b57fa3dee85615951a9c9c50d7423fb3342fc855b28d661fd4a6bcdf68",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-general-light-zh.png",
-      "sha256": "8470c89584c2b86d460ab86d7ecc47ee789685202bbd78b7d148e92ae009736f",
+      "sha256": "f1db5015a288e6ee4be90b3035cfe6d7262863f140655a15e37f5f8cfb19f2f7",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-lamp-cover-light-en.png",
-      "sha256": "73267bbff730cdc6930ffbe094c361c1eaf2d43df5c7c4d3b149b5e9a17b6754",
+      "sha256": "f34eb65a9a9ce75387d28bb392d60e0d7f14ae6463f755e13cc354a439f58e7d",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-lamp-cover-light-zh.png",
-      "sha256": "8bd0137c4a84d5ad2d68e0d0b9ea41dd830034487ff2b4fc0541e39871518765",
+      "sha256": "c2f69abb9fa8366ce95c3912e4cc41f9d3c3d696e86866768d0962c08df1f8cd",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-nowplaying-live-light-en.png",
-      "sha256": "91553dcca9ad936cd1489bccf40b165bc4c2c6c7459c65ccbc30a49d29e0a846",
+      "sha256": "d217772bfc1f2ddc982725321b5b104ecc46227a8e5a7e2345f683807ddcf345",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-nowplaying-live-light-zh.png",
-      "sha256": "3bc092f0f41c8dfe9a966415514ff01b7995d5c255802cd8ea5905b3758ff5ef",
+      "sha256": "222aa8186a15e8aaa1451cad7aab1ea03aff5dfd133dc1e44d27b0a520dfaa9b",
       "width": 1440,
       "height": 1000
     },

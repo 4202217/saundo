@@ -53,7 +53,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 		"声渡", "AIRPLAY 2", "接收器", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开连接", "离线", "音量", "65%", "正在通过 HomePods 播放",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义",
-		"氛围灯", "沙丘",
+		"氛围灯", "封面",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())

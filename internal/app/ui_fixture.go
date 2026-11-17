@@ -6,8 +6,6 @@ package app
 // entries are unreachable from a production build, so the linker drops them.
 
 import (
-	"image"
-	"image/color"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -33,8 +31,9 @@ func visibleFlyoutHeight(a *App) int {
 // previewApp is the base fixture the untagged tests and the preview matrix
 // build on.
 func previewApp() *App {
+	cfg := settings.Default()
 	a := &App{
-		cfg:               settings.Default(),
+		cfg:               cfg,
 		volume:            65,
 		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureIDs:        []string{"", "{endpoint}"},
@@ -49,14 +48,17 @@ func previewApp() *App {
 		latencyMode:       "low",
 		latencyCustom:     700,
 		showLatencySwitch: true,
-		lampOff:           false,
-		lampPreset:        "dune",
+		lampOff:           cfg.Lamp.Off,
+		lampCover:         cfg.Lamp.Cover,
+		lampPreset:        cfg.Lamp.Preset,
 		standbyEnabled:    true,
 		standbyMinutes:    30,
 		setThemeSource:    mygo.Theme.SetSource,
 	}
 	devices := []device.Device{
-		{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Host: "192.168.1.21", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
+		{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Host: "192.168.1.21", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true,
+			StereoID: "1",
+			Members:  []device.Device{{ID: "AA:BB:CC:DD:EE:11", Name: "L"}, {ID: "AA:BB:CC:DD:EE:12", Name: "R"}}},
 		{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Host: "192.168.1.22", Port: 7000, Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
 		{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Host: "192.168.1.23", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 	}
@@ -66,7 +68,7 @@ func previewApp() *App {
 		// The receivers settings page reads this list, while the flyout reads
 		// Devices, so the fixture fills both from the same rows.
 		Receivers: []receivers.View{
-			{Key: devices[0].ID, Name: devices[0].Name, Kind: receivers.KindDiscovered, Model: devices[0].Model, Online: true, AutoConnect: true,
+			{Key: devices[0].ID, Name: devices[0].Name, Kind: receivers.KindDiscovered, Model: devices[0].Model, Online: true, AutoConnect: true, Stereo: true,
 				Device: devices[0],
 				Entry:  receivers.Entry{Key: devices[0].ID, Kind: receivers.KindDiscovered, Name: devices[0].Name, Host: devices[0].Host, Port: devices[0].Port, Model: devices[0].Model, AirPlay2: true, AutoConnect: true}},
 			{Key: devices[1].ID, Name: devices[1].Name, Kind: receivers.KindDiscovered, Model: devices[1].Model, Online: true, DelayMS: 120,
@@ -89,8 +91,9 @@ func previewApp() *App {
 		PTPActive:         true,
 		PTPReady:          true,
 		Reconnect:         true,
-		LampOff:           false,
-		LampPreset:        "dune",
+		LampOff:           cfg.Lamp.Off,
+		LampCover:         cfg.Lamp.Cover,
+		LampPreset:        cfg.Lamp.Preset,
 		StandbyEnabled:    true,
 		StandbyMinutes:    30,
 	}
@@ -179,40 +182,6 @@ func sampleTrack(locale string) nowplaying.Track {
 	return nowplaying.Track{Title: "夜航", Artist: "白鲸电台", Album: "远洋信号"}
 }
 
-// sampleCoverImage is a generated gradient, so a preview shows the cover path
-// without embedding a real listener's artwork.
-func sampleCoverImage() image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
-	for y := 0; y < 64; y++ {
-		for x := 0; x < 64; x++ {
-			img.SetRGBA(x, y, color.RGBA{R: uint8(60 + x), G: uint8(90 + y/2), B: uint8(150 + x/3), A: 255})
-		}
-	}
-	return img
-}
-
-// sampleAppIcon is a generated rounded icon, so the preview shows the app
-// icon path without borrowing a real app's mark.
-func sampleAppIcon() image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, 32, 32))
-	for y := 0; y < 32; y++ {
-		for x := 0; x < 32; x++ {
-			dx, dy := float64(x)-15.5, float64(y)-15.5
-			if dx*dx+dy*dy > 15.5*15.5 {
-				continue
-			}
-			t := float64(x+y) / 62
-			img.SetRGBA(x, y, color.RGBA{
-				R: uint8(91 + (54-91)*t),
-				G: uint8(108 + (197-108)*t),
-				B: uint8(255 + (176-255)*t),
-				A: 255,
-			})
-		}
-	}
-	return img
-}
-
 // sampleLevel is a fixed meter frame: previews must not depend on the
 // machine's audio or on the capture engine.
 func sampleLevel() analyze.Frame {
@@ -220,21 +189,21 @@ func sampleLevel() analyze.Frame {
 }
 
 // sampleSnapshot is the card fixture: one playing session and a second one
-// behind the switch arrow. The artwork stays empty, so the cover falls back to
-// the note tile instead of showing a real listener's media.
+// behind the switch arrow. The apps are fictional, so the generated marks
+// below never sit beside a real product name.
 func sampleSnapshot(locale string) nowplaying.Snapshot {
 	tr := sampleTrack(locale)
 	return nowplaying.Snapshot{
 		Sessions: []nowplaying.Session{
 			{
-				AUMID: "AppleInc.AppleMusicWin_preview", AppName: "Apple Music",
+				AUMID: "Longwave.Player.preview", AppName: "Longwave",
 				Title: tr.Title, Artist: tr.Artist, Album: tr.Album,
 				Status: nowplaying.StatusPlaying, Playing: true,
 				CanPlay: true, CanPause: true, CanNext: true, CanPrev: true,
 				Position: 128 * time.Second, Duration: 244 * time.Second,
 			},
 			{
-				AUMID: "Chrome.UserData.preview", AppName: "Chrome",
+				AUMID: "Marlin.Browser.preview", AppName: "Marlin",
 				Title: "Open Water Sessions", Artist: "Signal Coast",
 				Status:  nowplaying.StatusPaused,
 				CanPlay: true, CanSeek: true,
@@ -250,10 +219,12 @@ func sampleSnapshot(locale string) nowplaying.Snapshot {
 // the mode stays whatever the scenario chose.
 func applySampleCard(a *App, locale string) {
 	a.nowSnap = sampleSnapshot(locale)
-	a.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
-	cover := sampleCoverImage()
+	cover := coverArt(sampleTrack(locale).Title)
 	a.nowArt = ui.NewBitmap(cover)
-	a.nowIcon = ui.NewBitmap(sampleAppIcon())
+	if len(a.nowSnap.Sessions) > 0 {
+		a.nowMediaAUMID = a.nowSnap.Sessions[0].AUMID
+		a.nowIcon = ui.NewBitmap(appMark(a.nowSnap.Sessions[0].AppName))
+	}
 	a.nowFieldLight = coverField(cover, false)
 	a.nowFieldDark = coverField(cover, true)
 	a.nowLamp, a.nowLampOK = lamp.CoverPreset(cover)
@@ -262,8 +233,8 @@ func applySampleCard(a *App, locale string) {
 
 // applySampleCover gives a the sample artwork and the lamp preset made from
 // it, without a playing session.
-func applySampleCover(a *App) {
-	cover := sampleCoverImage()
+func applySampleCover(a *App, locale string) {
+	cover := coverArt(sampleTrack(locale).Title)
 	a.nowArt = ui.NewBitmap(cover)
 	a.nowFieldLight = coverField(cover, false)
 	a.nowFieldDark = coverField(cover, true)
