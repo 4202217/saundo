@@ -63,6 +63,10 @@ func run(root string, args []string) error {
 		return runRender(root, args[1:])
 	case "catalog":
 		return runCatalog(root)
+	case "tokens":
+		return runTokens(root)
+	case "words":
+		return runWords(root)
 	case "wasm":
 		return runWasm(root)
 	case "baseline":
@@ -77,7 +81,7 @@ func run(root string, args []string) error {
 }
 
 func usage() error {
-	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui wasm | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui tokens | check-ui words | check-ui wasm | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
 }
 
 // runWasm builds the browser preview with the preview tag into a temp file.
@@ -132,6 +136,31 @@ func runCatalog(root string) error {
 // pass line. The trailing space keeps TestCatalogFoo from matching.
 func catalogPassed(output []byte) bool {
 	return bytes.Contains(output, []byte("--- PASS: TestCatalog "))
+}
+
+// runWords runs the wording test the way the milestone gate does. The test
+// compares the rendered flyout with the landing page, so it needs the preview
+// tag for the catalog. A run that finds no matching test exits 0, so the pass
+// line is what proves the test ran.
+func runWords(root string) error {
+	cmd := exec.Command("go", "test", "-tags", "preview", "./internal/app", "-run", "^TestReplicaSharesTheFlyoutsWording$", "-count=1", "-v")
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("words: %w\n%s", err, output)
+	}
+	if !wordsPassed(output) {
+		return fmt.Errorf("words: TestReplicaSharesTheFlyoutsWording did not run\n%s", output)
+	}
+	fmt.Printf("%s", output)
+	fmt.Println("check-ui: words ok")
+	return nil
+}
+
+// wordsPassed reports whether the test output carries the wording test's own
+// pass line. The trailing space keeps a similarly named test from matching.
+func wordsPassed(output []byte) bool {
+	return bytes.Contains(output, []byte("--- PASS: TestReplicaSharesTheFlyoutsWording "))
 }
 
 func runRender(root string, args []string) error {

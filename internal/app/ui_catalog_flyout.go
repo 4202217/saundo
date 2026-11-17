@@ -12,15 +12,15 @@ import (
 )
 
 var flyoutScenarios = []Scenario{
-	{ID: "flyout.stream", Name: "flyout-stream-light", Dark: "flyout-stream-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyStreamingCard},
+	{ID: "flyout.stream", Name: "flyout-stream-light", Dark: "flyout-stream-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyStreamingCard, SiteDemo: true},
 	{ID: "flyout.stream.largeText", Name: "flyout-stream-large-text", Surface: SurfaceFlyout, Size: flyoutSize, Scale: 1.25, Apply: applyStreamingCard},
-	{ID: "flyout.nowPlaying.unknown", Name: "flyout-nowplaying-unknown-light", Dark: "flyout-nowplaying-unknown-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyUnknownSession},
-	{ID: "flyout.idle", Name: "flyout-idle", Surface: SurfaceFlyout, Size: flyoutSize, Apply: applyIdle},
-	{ID: "flyout.connecting", Name: "flyout-connecting", Surface: SurfaceFlyout, Size: flyoutSize, Apply: func(a *App) {
+	{ID: "flyout.nowPlaying.unknown", Name: "flyout-nowplaying-unknown-light", Dark: "flyout-nowplaying-unknown-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyUnknownSession, SiteDemo: true},
+	{ID: "flyout.idle", Name: "flyout-idle", Surface: SurfaceFlyout, Size: flyoutSize, Apply: applyIdle, SiteDemo: true},
+	{ID: "flyout.connecting", Name: "flyout-connecting", Surface: SurfaceFlyout, Size: flyoutSize, SiteDemo: true, Apply: func(a *App) {
 		a.snap.State = sender.StateHandshake
 		a.snap.ConnectedName = ""
 	}},
-	{ID: "flyout.error", Name: "flyout-error", Surface: SurfaceFlyout, Size: flyoutSize, Apply: func(a *App) {
+	{ID: "flyout.error", Name: "flyout-error", Surface: SurfaceFlyout, Size: flyoutSize, SiteDemo: true, Apply: func(a *App) {
 		a.snap.State = sender.StateIdle
 		a.snap.Error = "接收器没有响应。"
 		if i18n.Locale() == "en" {
@@ -31,13 +31,13 @@ var flyoutScenarios = []Scenario{
 	{ID: "flyout.credential", Name: "flyout-credential-light", Dark: "flyout-credential-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: func(a *App) {
 		a.snap.CredentialReset = true
 	}},
-	{ID: "flyout.takenOver", Name: "flyout-taken-over-light", Dark: "flyout-taken-over-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyTakenOver},
-	{ID: "flyout.customLatency", Name: "flyout-custom-light", Dark: "flyout-custom-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyCustomLatency},
+	{ID: "flyout.takenOver", Name: "flyout-taken-over-light", Dark: "flyout-taken-over-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyTakenOver, SiteDemo: true},
+	{ID: "flyout.customLatency", Name: "flyout-custom-light", Dark: "flyout-custom-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyCustomLatency, SiteDemo: true},
 	{ID: "flyout.latencySwitchOff", Name: "flyout-switch-off", Surface: SurfaceFlyout, Size: flyoutSize, Apply: func(a *App) {
 		a.showLatencySwitch = false
 	}},
-	{ID: "flyout.latencyApplying", Name: "flyout-latency-applying", Dark: "flyout-latency-applying-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyLatencyApplying},
-	{ID: "flyout.empty", Name: "flyout-empty", Surface: SurfaceFlyout, Size: flyoutSize, Apply: func(a *App) {
+	{ID: "flyout.latencyApplying", Name: "flyout-latency-applying", Dark: "flyout-latency-applying-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyLatencyApplying, SiteDemo: true},
+	{ID: "flyout.empty", Name: "flyout-empty", Surface: SurfaceFlyout, Size: flyoutSize, SiteDemo: true, Apply: func(a *App) {
 		a.snap.Devices = nil
 		a.snap.State = sender.StateIdle
 		a.snap.SelectedID = ""
@@ -48,28 +48,28 @@ var flyoutScenarios = []Scenario{
 		a.snap.SelectedID = ""
 		a.selID = ""
 	}},
-	{ID: "flyout.coverNone", Name: "flyout-cover-none-light", Surface: SurfaceFlyout, Size: flyoutSize, Apply: func(a *App) {
+	{ID: "flyout.coverNone", Name: "flyout-cover-none-light", Surface: SurfaceFlyout, Size: flyoutSize, SiteDemo: true, Apply: func(a *App) {
 		applySampleCard(a, i18n.Locale())
 		a.cfg.CoverMode = settings.CoverNone
 	}},
-	{ID: "flyout.coverPlaceholder", Name: "flyout-cover-placeholder-light", Dark: "flyout-cover-placeholder-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: func(a *App) {
+	{ID: "flyout.coverPlaceholder", Name: "flyout-cover-placeholder-light", Dark: "flyout-cover-placeholder-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, SiteDemo: true, Apply: func(a *App) {
 		applySampleCard(a, i18n.Locale())
 		a.cfg.CoverMode = settings.CoverPlaceholder
 	}},
-	{ID: "flyout.mediaOff", Name: "flyout-media-off-light", Surface: SurfaceFlyout, Size: flyoutSize, Apply: func(a *App) {
+	{ID: "flyout.mediaOff", Name: "flyout-media-off-light", Surface: SurfaceFlyout, Size: flyoutSize, SiteDemo: true, Apply: func(a *App) {
 		a.cfg.ShowNowPlayingPanel = false
 		a.nowSnap = sampleSnapshot(i18n.Locale())
 		a.nowMediaAUMID = "AppleInc.AppleMusicWin_preview"
 	}},
-	{ID: "flyout.lamp.standby", Name: "flyout-lamp-standby-light", Dark: "flyout-lamp-standby-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: func(a *App) {
+	{ID: "flyout.lamp.standby", Name: "flyout-lamp-standby-light", Dark: "flyout-lamp-standby-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, SiteDemo: true, Apply: func(a *App) {
 		a.snap.Standby = true
 	}},
-	{ID: "flyout.lamp.collapsed", Name: "flyout-lamp-collapsed-light", Dark: "flyout-lamp-collapsed-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyBase},
-	{ID: "flyout.lamp.expanded", Name: "flyout-lamp-expanded-light", Dark: "flyout-lamp-expanded-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: func(a *App) {
+	{ID: "flyout.lamp.collapsed", Name: "flyout-lamp-collapsed-light", Dark: "flyout-lamp-collapsed-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: applyBase, SiteDemo: true},
+	{ID: "flyout.lamp.expanded", Name: "flyout-lamp-expanded-light", Dark: "flyout-lamp-expanded-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, SiteDemo: true, Apply: func(a *App) {
 		a.lampExpanded = true
 	}},
-	{ID: "flyout.lamp.off", Name: "flyout-lamp-off-light", Surface: SurfaceFlyout, Size: flyoutSize, Apply: applyLampOff},
-	{ID: "flyout.lamp.cover", Name: "flyout-lamp-cover-light", Dark: "flyout-lamp-cover-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, Apply: func(a *App) {
+	{ID: "flyout.lamp.off", Name: "flyout-lamp-off-light", Surface: SurfaceFlyout, Size: flyoutSize, Apply: applyLampOff, SiteDemo: true},
+	{ID: "flyout.lamp.cover", Name: "flyout-lamp-cover-light", Dark: "flyout-lamp-cover-dark", Surface: SurfaceFlyout, Size: flyoutSize, Theme: ThemeBoth, SiteDemo: true, Apply: func(a *App) {
 		applyLampCover(a)
 		a.lampExpanded = true
 	}},

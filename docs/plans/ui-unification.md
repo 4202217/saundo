@@ -272,9 +272,11 @@ Files. `internal/app/replica_data_test.go`, `internal/app/replica_texts_test.go`
 
 Acceptance. A fixture change without regeneration fails the staleness test with the regeneration command. A seeded token drift fails. A seeded wording drift fails. The landing page renders the same demo in a browser.
 
-Evidence. The generated data diff, a browser screenshot, and the gate output.
+Result. `site/assets/demo-data.js` is generated from `Fixture("zh-CN")` and the `flyout.stream` scenario. It carries the receivers, per-player sessions with both languages, volume, latency modes, the lamp preset and per-track cover lamps, the six ambient templates, and the 17 `SiteDemo` IDs. The page loads it before its own script, keeps its demo logic, and falls back to a static demo if the file is missing. `check-ui tokens` passes 15 tokens in two appearances, 11 metrics, and 420 px. `check-ui words` passes 97 messages, 92 on the page, 5 declared gaps. The page keeps two receiver rows, and the dataset carries three. The review found 20 defects, all fixed, including the mini glyph, the English track text, the per-player transport, the 320 px fit, the cover lamp, and the README claims. The matrix still matches 243 stable files. The full gate passes. Screenshots are in `.audit/ui/phase3-fixes/screenshots/`.
 
-Risk. The site's demo logic assumes the hardcoded shape. Port the loader with a fallback and delete the fallback once the gate is green.
+Evidence. The generated dataset, the gate outputs, the browser screenshots at 1400x900 and 320 px in both languages, and the full gate.
+
+Risk. The page keeps a static demo fallback for a missing dataset; the dataset is still the single source. The site-fidelity skill and the four-instrument skill rewrite are Phase 5.
 
 ### Phase 4. Baselines and CI
 

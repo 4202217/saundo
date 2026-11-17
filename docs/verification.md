@@ -494,6 +494,81 @@ idle/streaming/empty/error in zh-CN and English, light and dark, plus the
 media-off and ambient template/expanded states); every render was inspected
 for clipping, overflow, and wrapped copy, and none was found.
 
+## 2026-11-17: Phase 3 site projection and replica gates
+
+The landing page's flyout replica reads `site/assets/demo-data.js`,
+generated from `Fixture("zh-CN")` and `Fixture("en")` with the catalog's
+`flyout.stream` scenario. The dataset carries the three receivers, three
+players and their track lists in both languages, each track's poster palette
+and cover-lamp blobs, volume, latency modes, opening phase and sync state, the
+six ambient templates, and the 17 `SiteDemo` catalog IDs.
+`TestReplicaDataIsCurrent` fails with the regenerate command when the fixture
+and the file part ways; `TestReplicaDataCarriesBothLanguages`,
+`TestReplicaDataGivesEveryTrackItsOwnPalette`, and
+`TestAuthNameSerializesEveryAuth` pin the projection. Source: the
+`worktree-render-demo` research branch at `f3f6bf8`, ported onto the shared
+fixture and catalog, not merged.
+
+`check-ui tokens` compares 15 `--fl-*` palette tokens in both appearances, 11
+DIP metrics pinned to the declarations the CSS anchors come from, and the 420
+px panel width. `check-ui words` renders the real flyout in zh-CN and English
+and requires its 97 catalog messages on the page; five remain declared in
+`replicaTextGaps`, and the list fails when a gap is fixed or when a declared
+gap is no longer rendered. `check-ui catalog` compares the catalog's
+`SiteDemo` rows with `scenarios` in the checked-in dataset. All three run in
+`make check`, both CI jobs, and both release check jobs; the CI and release
+jobs also vet the `updateharness` and `e2e` builds that `make check` runs.
+
+Gates: `gofmt -l .` printed nothing; `go vet ./...` and
+`go vet -tags preview ./...` passed; `go test ./... -count=1` and
+`go test -tags preview ./internal/app -count=1` passed; `check-ui catalog`,
+`tokens`, `words`, and `wasm` (26,417,305 bytes) passed; `mingw32-make check`
+passed including `check-platforms`. The CPU matrix wrote 254 files and 243
+match the Phase 0 baseline; the 11 other files are not compared.
+
+Fail-closed proofs: a changed light accent (`#4f46e6`) failed tokens with
+`light: --fl-accent is #4f46e6 on the site and #4f46e5 in theme.go`; changing
+the header's `Height(46)` to 47 while the two PIN/password `Height(46)`
+duplicates remained failed tokens with `no longer declares the header height
+where the CSS copies it`; changing 正在通过 to 正在向 failed words with
+`正在通过 {name} 播放` missing; renaming `HomePods` in the dataset failed
+`TestReplicaDataIsCurrent` with the regenerate command; adding
+`flyout.extra` to the dataset `scenarios` failed catalog with `flyout.extra is
+not a catalog row`; renaming the wording test made `check-ui words` fail with
+`TestReplicaSharesTheFlyoutsWording did not run`. All were restored.
+
+Browser: `site/` was served over HTTP and opened in headless Chrome. At
+1400x900 the HomePods row used `#g-homepod-mini` (model `AudioAccessory5,1`)
+and Apple TV used `#g-appletv`; the flyout showed 夜航/白鲸电台 under Apple
+Music at 2:08, 65%, PTP synced, 200 ms, the 沙丘 lamp, and 正在通过 HomePods
+播放. The six visible swatches matched the dataset's `templates` order and
+colors. The panel measured 323.4 px, the 420 DIP stage at `zoom:.77`, with a
+540 px glow. At 320 px the fit set `--fly-zoom:.6476`, the panel and stage
+measured 272 px with both edges at 24/296, the document width stayed 320, and
+the glow shrank to 455.8 px. `?lang=en` showed Night Ferry / Signal Coast in
+the tray and bento; cover mode named the ambient light Night Ferry, and after
+Next the lamp preview, `--amb-1`, glow, and name all moved to Sunset Highway /
+Neon Convoy. The source arrow cycled Apple Music -> Chrome -> Spotify ->
+Apple Music, the transport stayed inside each player, and Chrome returned to
+its stored 0:10 position. Standard selected the dataset's 1.5 s with no NaN.
+Without `demo=0`, the scripted pass moved volume from the dataset's 65 to 30
+in ten visible steps and selected the standard latency. With
+`assets/demo-data.js` removed, the page logged `saundo:
+assets/demo-data.js did not load; using the page's static demo fallback.`,
+kept its receivers, track, swatches, and language toggle working; after the
+dataset was restored, `assets/demo-data.js` returned 200 and the page had no
+console errors. Screenshots:
+`.audit/ui/phase3-fixes/screenshots/1400-zh-light.png`,
+`1400-en-cover-track2.png`, `1400-en-ambient-cover.png`, and
+`320-en-panel.png`.
+
+Pins: `TestReplicaDataIsCurrent`, `TestReplicaSharesTheFlyoutsWording`,
+`TestCatalog`, `TestRepositoryTokensMatch`,
+`TestSeededDeclarationDriftFails`, `TestSiteDemoProblemsCatchesDrift`,
+`TestReplicaDataCarriesBothLanguages`,
+`TestReplicaDataGivesEveryTrackItsOwnPalette`,
+`TestAuthNameSerializesEveryAuth`.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

@@ -37,6 +37,8 @@ jobs:
         run: go vet -tags preview ./...
       - name: Vet the update harness
         run: go vet -tags updateharness ./cmd/saundo
+      - name: Vet the e2e harness
+        run: go vet -tags e2e ./cmd/saundo
       - name: UI vet
         run: go tool mygo vet .
       - name: UI vet (preview)
@@ -53,6 +55,10 @@ jobs:
         run: go test -tags preview ./internal/app -count=1
       - name: Preview catalog
         run: go run ./scripts/check-ui catalog
+      - name: Replica tokens
+        run: go run ./scripts/check-ui tokens
+      - name: Replica words
+        run: go run ./scripts/check-ui words
       - name: Preview wasm
         run: go run ./scripts/check-ui wasm
       - name: Verify map
@@ -144,6 +150,10 @@ jobs:
         run: go vet ./...
       - name: Preview vet
         run: go vet -tags preview ./...
+      - name: Vet the update harness
+        run: go vet -tags updateharness ./cmd/saundo
+      - name: Vet the e2e harness
+        run: go vet -tags e2e ./cmd/saundo
       - name: UI vet
         run: go tool mygo vet .
       - name: UI vet (preview)
@@ -162,6 +172,10 @@ jobs:
         run: go test -tags preview ./internal/app -count=1
       - name: Preview catalog
         run: go run ./scripts/check-ui catalog
+      - name: Replica tokens
+        run: go run ./scripts/check-ui tokens
+      - name: Replica words
+        run: go run ./scripts/check-ui words
       - name: Preview wasm
         run: go run ./scripts/check-ui wasm
       - name: Verify map

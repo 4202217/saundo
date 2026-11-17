@@ -197,9 +197,13 @@ html[data-theme="dark"] .ic-sun{display:none}
 .hero-proof a{color:var(--text2);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;transition:color .3s var(--ease)}
 .hero-proof a:hover{color:var(--text)}
 .hero-proof .dot-sep{margin:0 9px}
-/* zoom, not a narrower column: panel, glow and caption scale together as one object,
-   and the layout height shrinks with it (transform:scale would strand empty space) */
-.hero-visual{position:relative;justify-self:end;width:100%;max-width:380px;min-width:0;zoom:.85}
+/* zoom, not a narrower column: the panel and its glow scale together as one
+   object, and the layout height shrinks with it (transform: scale would strand
+   empty space). The stage is laid out at the app's own 420 DIP and scaled by
+   --fly-zoom to fit the column, so there is one layout at every viewport and
+   the copy in check-ui tokens can pin its width. */
+.hero-visual{position:relative;justify-self:end;width:100%;max-width:420px;min-width:0}
+.hero-stage{position:relative;width:420px;margin:0 auto;zoom:var(--fly-zoom,.77)}
 /* the halo is a field of uneven color blobs inside an organic silhouette — the
    border-radius is randomized per load (no SVG filter: displacement maps are
    software-rasterized on phones and stall first paint at DPR 3) */
@@ -221,7 +225,7 @@ html[data-theme="dark"] .hero-glow{opacity:.8}
 html[data-lamp-glow="off"] .hero-glow{opacity:0}
 @keyframes glowDrift{0%,100%{transform:rotate(-1.4deg) scale(1)}50%{transform:rotate(1.8deg) scale(1.06)}}
 @media (prefers-reduced-motion:reduce){.hero-glow{animation:none}}
-.hero-visual .fly-wrap{position:relative;z-index:1;width:100%}
+.hero-visual .fly-wrap{position:relative;z-index:1;width:420px}
 .hero-visual .flyout{width:100%}
 .hero-visual .flyout{box-shadow:0 32px 72px rgba(0,0,0,.14), 0 4px 38px color-mix(in srgb, var(--amb-1) 12%, transparent), 0 0 80px color-mix(in srgb, var(--amb-1) 8%, transparent);
   transition:box-shadow .7s var(--ease)}
@@ -233,8 +237,8 @@ html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 
   .hero{padding:calc(96px + 40px) 0 var(--sp-600)}
   .hero-grid{grid-template-columns:minmax(0,1fr);gap:var(--sp-600);padding:0 var(--sp-300);justify-items:center;text-align:center}
   .hero-copy{justify-items:center;order:1;max-width:560px;min-width:0;width:100%}
-  /* stacked below the copy the panel is content, not a prop: render at design size */
-  .hero-visual{zoom:1}
+  /* stacked below the copy the panel is content: the 420 DIP stage scales
+     down to the column, never reflows */
   .hero-cta{justify-content:center}
   .hero-visual{order:2;justify-self:center;max-width:380px;min-width:0}
   .hero .sub{max-width:100%}
@@ -662,7 +666,7 @@ html[data-theme="dark"] .art-ambient .orb-glass{background:linear-gradient(155de
 @media (prefers-reduced-motion:reduce){.mute-route i{animation:none;opacity:1}}
 
 /* ---------- tray flyout (mirrors internal/app/flyout.go) ---------- */
-.fly-wrap{justify-self:center;width:100%;max-width:380px}
+.fly-wrap{justify-self:center;width:420px;max-width:none}
 .flyout{background:var(--fl-panel);color:var(--fl-fg);border:1px solid var(--fl-line);border-radius:12px;overflow:hidden;
   box-shadow:0 24px 60px rgba(0,0,0,.14);display:flex;flex-direction:column;user-select:none;text-align:left}
 /* header */
@@ -729,6 +733,11 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 .fmediahead{height:28px;display:flex;align-items:center;gap:7px}
 .fappic{width:16px;height:16px;flex:none;color:var(--fl-fg2)}
 .fapp{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fswitch{width:26px;height:26px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:7px;background:var(--fl-pill);color:var(--fl-fg2);cursor:pointer}
+.fswitch svg{width:12px;height:12px}
+.fswitch:hover{background:var(--fl-pillHover)}
+.fswitch[hidden]{display:none}
 .fmediamain{height:62px;display:flex;align-items:center;gap:10px;padding:6px 0 4px 0}
 .fposter{width:52px;height:52px;flex:none;border-radius:9px;background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0);position:relative;overflow:hidden}
 .fposter::after{content:"";position:absolute;inset:0;background:radial-gradient(20px 20px at 70% 30%,rgba(255,255,255,.4),transparent)}
@@ -755,6 +764,7 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 /* ambient (lamp) card */
 .flamprow{height:44px;display:flex;align-items:center;gap:8px;padding:0 12px}
 .flamp-prev{width:32px;height:32px;flex:none;border-radius:9px;background:var(--fl-card);position:relative;overflow:hidden;transition:opacity .5s var(--ease)}
+.flamp-prev.painted::before{background:none}
 .flamp-prev::before{content:"";position:absolute;inset:0;background:radial-gradient(circle, transparent 34%, rgba(0,0,0,.14) 72%, rgba(0,0,0,.32) 100%),radial-gradient(circle at 30% 28%, var(--amb-1) 0%, transparent 62%),radial-gradient(circle at 72% 38%, var(--amb-2) 0%, transparent 60%),radial-gradient(circle at 50% 82%, var(--amb-3) 0%, transparent 64%);transition:--amb-1 .9s var(--ease),--amb-2 .9s var(--ease),--amb-3 .9s var(--ease),opacity .5s var(--ease)}
 .lamp-pick{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
 #flyPanel[data-lamp="tpl"] .lamp-pick{cursor:pointer}
@@ -817,7 +827,7 @@ html[data-theme="dark"] .fly-wrap,html[data-theme="dark"] #bmMedia{
   .fly-wrap,#bmMedia{--fl-muted:#5f5f68;--fl-fg2:#33333a;--fl-ctl:#47474f;--fl-faint:#76767f}
   html[data-theme="dark"] .fly-wrap,html[data-theme="dark"] #bmMedia{--fl-muted:#b9b9c2;--fl-fg2:#dedee4;--fl-ctl:#c7c7cf;--fl-faint:#8f8f99}
 }
-@media (max-width:1020px){.fly-wrap{justify-self:center;width:100%;max-width:380px;min-width:0}}
+@media (max-width:1020px){.fly-wrap{justify-self:center;min-width:0}}
 /* touch reach: transparent pseudo overlays enlarge the hot zones — not a visual
    pixel moves. Vertical-only on the adjacent seg buttons so neighbors never steal taps. */
 .ftransport button,.fseg button,.fly-ibtn,.faction,.flampswatch{position:relative}
@@ -1098,6 +1108,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
     </div>
 
     <div class="hero-visual reveal" role="group" aria-label="声渡托盘面板：接收器、音量、延迟、播放与氛围灯">
+      <div class="hero-stage">
       <span class="hero-glow" aria-hidden="true"></span>
       <div class="fly-wrap">
         <div class="flyout" id="flyPanel">
@@ -1113,13 +1124,13 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
             <div class="fly-shead"><span class="fly-slabel" data-i18n="flyDevices">接收器</span><span class="fly-snote" id="fCount">2 台</span></div>
             <div class="fly-card">
               <div class="fdev sel" id="fDev0">
-                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg><i class="fdot"></i></span>
-                <span class="fnamecol"><b>客厅 HomePod</b><span>AudioAccessory5,1 · AirPlay 2</span></span>
+                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg><i class="fdot"></i></span>
+                <span class="fnamecol"><b>HomePods</b><span>AudioAccessory5,1 · AirPlay 2</span></span>
                 <button class="faction accent" id="fRowAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
               </div>
               <div class="fdev" id="fDev1">
-                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-pair"/></svg><i class="fdot"></i></span>
-                <span class="fnamecol"><b>书房 HomePods</b><span>AudioAccessory5,1 · 立体声组 2/2</span></span>
+                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-appletv"/></svg><i class="fdot"></i></span>
+                <span class="fnamecol"><b>Apple TV</b><span>AppleTV6,2 · PIN 配对</span></span>
                 <button class="faction accent" type="button" id="fAtvAction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
               </div>
             </div>
@@ -1130,6 +1141,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
                 <div class="fmediahead">
                   <svg class="fappic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></svg>
                   <span class="fapp">Music</span>
+                  <button class="fswitch" id="fSwitch" type="button" aria-label="切换媒体" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
                 </div>
                 <div class="fmediamain">
                   <span class="fposter" aria-hidden="true"></span>
@@ -1150,9 +1162,9 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
               <div class="fline"></div>
               <div class="flat">
                 <div class="fseg" role="group" aria-label="延迟模式">
-                  <button class="on" data-lat="200" type="button" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span data-i18n="latLow">低延迟</span></button>
-                  <button data-lat="1500" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span data-i18n="latStandard">标准</span></button>
-                  <button data-lat="2000" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span data-i18n="latStable">稳定</span></button>
+                  <button class="on" data-lat="200" data-lat-mode="low" type="button" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span data-i18n="latLow">低延迟</span></button>
+                  <button data-lat="1500" data-lat-mode="standard" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span data-i18n="latStandard">标准</span></button>
+                  <button data-lat="2000" data-lat-mode="stable" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span data-i18n="latStable">稳定</span></button>
                   <button data-lat="custom" type="button" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-i18n="latCustom">自定义</span></button>
                 </div>
               </div>
@@ -1187,6 +1199,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
             <span class="fstatus" id="fFootState" role="status">未连接</span>
           </footer>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -1305,9 +1318,9 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
                 <i class="fa-mark" id="faMark"></i>
               </div>
               <div class="fa-lat-modes" role="group" aria-label="延迟模式">
-                <button class="on" type="button" data-fa-lat="200" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span>200 ms</span></button>
-                <button type="button" data-fa-lat="1500" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span>1.5 s</span></button>
-                <button type="button" data-fa-lat="2000" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span>2 s</span></button>
+                <button class="on" type="button" data-fa-lat="200" data-fa-lat-mode="low" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span>200 ms</span></button>
+                <button type="button" data-fa-lat="1500" data-fa-lat-mode="standard" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span>1.5 s</span></button>
+                <button type="button" data-fa-lat="2000" data-fa-lat-mode="stable" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span>2 s</span></button>
                 <button type="button" data-fa-lat="custom" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-en="Custom" data-zh="自定义">自定义</span></button>
               </div>
             </div>
@@ -1480,6 +1493,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
   </div>
 </footer>
 
+<script src="assets/demo-data.js"></script>
 <script>
 (function(){
 "use strict";
@@ -1536,6 +1550,7 @@ var EN = {
   "播放": "Playback",
   "ALAC · 44.1 kHz · 延迟 200 ms": "ALAC · 44.1 kHz · 200 ms latency",
   "上一首": "Previous track",
+  "切换媒体": "Switch media",
   "播放或暂停": "Play or pause",
   "下一首": "Next track",
   "延迟模式": "Latency mode",
@@ -1569,7 +1584,7 @@ var EN = {
   "苔庭": "Moss",
   "潮汐": "Tide",
   "兰夜": "Orchid",
-  "月白": "Moonlight",
+  "月白": "Moon",
   "HomePod mini 俯视图": "HomePod mini, top view",
   "切换氛围灯": "Change the ambient light",
   "声渡和系统自带的 AirPlay 有什么不同？": "How is saundo different from the built-in AirPlay?",
@@ -1608,6 +1623,7 @@ var EN = {
   "关闭菜单": "Close menu",
   "取消": "Cancel",
   "断开连接": "Disconnect",
+  "PIN 配对": "PIN pairing",
   "正在连接…": "Connecting…",
   "已待机 · 播放声音即唤醒": "Standby · wakes when sound plays",
   "开灯": "Turn the light on",
@@ -1696,6 +1712,7 @@ function applyLang(lang){
   var lb = document.getElementById("langBtn");
   if(lb){ lb.textContent = lang === "en" ? "中文" : "EN"; lb.setAttribute("aria-label", lang === "en" ? "中文 (Switch to Chinese)" : "EN (Switch to English)"); }
 
+  if(typeof applyDemoRows === "function") applyDemoRows();   /* the receiver line is composed, not a data-i18n node */
   if(typeof flyRender === "function") flyRender();   /* tray demo + ambient section re-render their dynamic labels */
   if(typeof renderLatency === "function") renderLatency();
   if(typeof menuBtn !== "undefined" && menuBtn){
@@ -1741,24 +1758,85 @@ if(!RM){
 }
 
 
-/* ---------- ambient light (mirrors internal/lamp/presets.go) ---------- */
-var AMB_TPLS = {
-  ember:{n:'暖烬',c:['#ff5a1f','#ffc020','#b3261e'],seed:11},
-  dune:{n:'沙丘',c:['#c08a00','#c47a1e','#7a3f14'],seed:23},
-  moss:{n:'苔庭',c:['#4e8a42','#b8d42e','#2f7f86'],seed:37},
-  tide:{n:'潮汐',c:['#2e7fd0','#3fc9c0','#4fd18a'],seed:41},
-  orchid:{n:'兰夜',c:['#a83ed0','#4a5fe0','#c85a9e'],seed:53},
-  moon:{n:'月白',c:['#c4d6ee','#6e84a8','#e0c48a'],seed:67}
+/* ---------- ambient light (mirrors internal/lamp/presets.go) ----------
+   The six palettes and their names come from assets/demo-data.js, generated
+   from the app's own presets, so the page cannot paint a color the app does
+   not have. */
+/* assets/demo-data.js is generated from the app's fixture and wins when it
+   loads. If it is missing, the demo still starts from the page's own static
+   state and the console names the missing file, instead of a half-built
+   dataset stopping the script before the language and demo wiring run. */
+var FALLBACK_DEMO = {
+  receivers: [
+    { name:"HomePods", model:"AudioAccessory5,1", auth:"hap-transient", online:true, selected:true, stereo:false },
+    { name:"Apple TV", model:"AppleTV6,2", auth:"hap-pin", online:true, selected:false, stereo:false }
+  ],
+  sessions: [{
+    app:"Apple Music", current:0, items:[{
+      title:"夜航", artist:"白鲸电台", titleEn:"Night Ferry", artistEn:"Signal Coast",
+      duration:244, position:128, colors:["#5b5be0","#8f6fd8","#3d9be0"]
+    }]
+  }],
+  volume:30, latency:"low", customLatency:700,
+  latencyModes:[
+    { mode:"low", ms:200 }, { mode:"standard", ms:1500 }, { mode:"stable", ms:2000 }
+  ],
+  state:{ phase:"streaming", standby:false, applying:false, pairing:false, ptp:true },
+  light:{ off:false, cover:false, preset:"dune" },
+  lamp:null,
+  templates:[
+    { id:"ember", name:"暖烬", nameEn:"Ember", colors:["#ff5a1f","#ffc020","#b3261e"], seed:11 },
+    { id:"dune", name:"沙丘", nameEn:"Dune", colors:["#c08a00","#c47a1e","#7a3f14"], seed:23 },
+    { id:"moss", name:"苔庭", nameEn:"Moss", colors:["#4e8a42","#b8d42e","#2f7f86"], seed:37 },
+    { id:"tide", name:"潮汐", nameEn:"Tide", colors:["#2e7fd0","#3fc9c0","#4fd18a"], seed:41 },
+    { id:"orchid", name:"兰夜", nameEn:"Orchid", colors:["#a83ed0","#4a5fe0","#c85a9e"], seed:53 },
+    { id:"moon", name:"月白", nameEn:"Moon", colors:["#c4d6ee","#6e84a8","#e0c48a"], seed:67 }
+  ],
+  scenarios:[]
 };
+if(!window.SAUNDO_DEMO) console.error("saundo: assets/demo-data.js did not load; using the page's static demo fallback.");
+var D = window.SAUNDO_DEMO || FALLBACK_DEMO;
+var FLY_MODES = { low:200, standard:1500, stable:2000 };
+(D.latencyModes || []).forEach(function(m){ FLY_MODES[m.mode] = m.ms; });   /* settings.go: LatencyLowMS… */
+var AMB_TPLS = {};
+(D.templates || []).forEach(function(tpl){
+  AMB_TPLS[tpl.id] = { n: tpl.name, en: tpl.nameEn || tpl.name, c: tpl.colors, seed: tpl.seed };
+});
 /* One light, one state: the ambient section, the tray lamp card and the bento
    orb all render from `lamp`. Cover colors come from the current track (media.i). */
-var lamp = { off:false, cover:true, preset:"dune" };
+var LIGHT = D.light || {};
+var lamp = { off: !!LIGHT.off, cover: !!LIGHT.cover, preset: LIGHT.preset || "dune" };
 var lampUI = { expanded:false };                         /* flyout-only: the swatch grid */
 var ambStage = document.getElementById('ambStage');
 var ambPower = document.getElementById('ambPower');
 var ambNameEl = document.getElementById('ambName');
 var ambCapEl = document.getElementById('ambCap');
-var ambTplBtns = document.querySelectorAll('#ambTplRow .amb-tpl:not(.amb-cover)');
+/* The section's chooser is the dataset's templates in its own order and
+   colors: a preset change reaches the visible row, not only the tray grid. */
+function templateLabel(tpl){ return LANG === "en" ? (tpl.nameEn || tpl.name) : tpl.name; }
+function buildAmbientChooser(){
+  var row = document.getElementById('ambTplRow');
+  if(!row) return document.querySelectorAll('#ambTplRow .amb-tpl:not(.amb-cover)');
+  row.querySelectorAll('.amb-tpl:not(.amb-cover)').forEach(function(b){ b.remove(); });
+  (D.templates || []).forEach(function(tpl){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'amb-tpl';
+    b.dataset.tpl = tpl.id;
+    b.setAttribute('aria-pressed', 'false');
+    var dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = 'linear-gradient(135deg,' + tpl.colors[0] + ',' + tpl.colors[1] + ' 55%,' + tpl.colors[2] + ')';
+    var label = document.createElement('span');
+    label.className = 'amb-tpl-name';
+    label.textContent = templateLabel(tpl);
+    b.appendChild(dot);
+    b.appendChild(label);
+    row.appendChild(b);
+  });
+  return row.querySelectorAll('.amb-tpl:not(.amb-cover)');
+}
+var ambTplBtns = buildAmbientChooser();
 var ambCoverBtn = document.querySelector('#ambTplRow .amb-cover');
 var ambHit = document.getElementById('ambHit');
 function mulberry32(a){ return function(){ a+=0x6D2B79F5; var t=a; t=(t^(t>>15))*(t|1); t^=t+(t^(t>>7))*(t|61); return ((t^(t>>14))>>>0)/4294967296; }; }
@@ -2093,14 +2171,19 @@ function renderBlobs(cols, seed){
 }
 /* The exact three-color seeded blobs from internal/lamp/presets.go: the
    same base color, the same six mulberry32 draws, painted into the pod. */
-function lampCols(){ return lamp.cover ? MEDIA[media.i].cols : AMB_TPLS[lamp.preset].c; }
+function lampCols(){
+  if(lamp.cover) return MEDIA[media.i].cols;
+  var tpl = AMB_TPLS[lamp.preset] || AMB_TPLS[Object.keys(AMB_TPLS)[0]];
+  return tpl.c;
+}
 /* Palette changes only on a real source switch (track ↔ template ↔ track):
    the glow canvas crossfades 0.9 s, the CSS --amb vars carry their own
-   transitions; no-op renders must not retrigger them. */
+   transitions; no-op renders must not retrigger them. The key carries the
+   player because two players' first tracks have different artwork. */
 var lampAppliedKey = null;
 function lampApplyColors(){
   var cols = lampCols();
-  var key = lamp.cover ? "cover:" + media.i : "tpl:" + lamp.preset;
+  var key = lamp.cover ? "cover:" + media.app + ":" + media.i : "tpl:" + lamp.preset;
   if(key === lampAppliedKey) return;
   lampAppliedKey = key;
   var r = document.documentElement.style;
@@ -2175,11 +2258,49 @@ function lampRender(){
       sw.setAttribute("aria-pressed", String(sw.dataset.tpl === lamp.preset));
     });
   }
+  ambTplBtns.forEach(function(b){
+    var tpl = AMB_TPLS[b.dataset.tpl];
+    var label = b.querySelector("span:not(.dot)");
+    if(tpl && label) label.textContent = LANG === "en" ? tpl.en : tpl.n;
+  });
   /* the preview paints its own three colors on the panel, scoped off the section demo */
   var cols = lampCols();
   flyPanel.style.setProperty("--amb-1", cols[0]);
   flyPanel.style.setProperty("--amb-2", cols[1]);
   flyPanel.style.setProperty("--amb-3", cols[2]);
+  paintLampTile();
+}
+/* paintLampTile draws the cover lamp the way internal/app/lamp.go's drawLamp
+   does: the track's base, then its blobs as radial gradients with the same
+   three stops. The dataset carries one blob set per track, so the preview
+   follows the artwork instead of repeating the first track's scatter. */
+function paintLampTile(){
+  var el = document.getElementById("fLampPrev");
+  if(!el) return;
+  var paint = MEDIA[media.i] && MEDIA[media.i].lamp ? MEDIA[media.i].lamp : D.lamp;
+  if(!lamp.cover || !paint || !paint.blobs || !paint.blobs.length){
+    el.classList.remove("painted");
+    el.style.backgroundImage = "";
+    el.style.backgroundColor = "";
+    return;
+  }
+  var size = 32;                      /* the tile's DIP width, as drawLamp's r.W */
+  var layers = paint.blobs.slice().reverse().map(function(b){
+    var c = hexRGB(b.color);
+    var a = b.alpha;
+    var r = Math.round(b.r / 100 * size * 100) / 100;
+    return "radial-gradient(circle " + r + "px at " + b.x.toFixed(2) + "% " + b.y.toFixed(2) + "%, " +
+      "rgba(" + c + "," + (0.8 * a).toFixed(3) + ") 0%, " +
+      "rgba(" + c + "," + (0.33 * a).toFixed(3) + ") 38%, " +
+      "rgba(" + c + ",0) 100%)";
+  });
+  el.classList.add("painted");
+  el.style.backgroundColor = paint.base;
+  el.style.backgroundImage = layers.join(",");
+}
+function hexRGB(hex){
+  var n = parseInt(hex.slice(1), 16);
+  return ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255);
 }
 ambPower.addEventListener('click', function(){ setLamp({off: !lamp.off}); });
 if(ambCoverBtn) ambCoverBtn.addEventListener('click', function(){ setLamp({cover:true, on:true}); });
@@ -2217,10 +2338,27 @@ window.addEventListener("hashchange", openHashedFaq);
 openHashedFaq();
 
 /* ---------- latency: one state behind the tray seg and the bento rail ---------- */
-var lat = { mode:"low", custom:700 };        /* settings.go: LatencyLowMS…, DefaultLatencyCustomMS */
-var LAT_SEGMAP = { low:"200", standard:"1500", stable:"2000", custom:"custom" };
-var LAT_RAW2MODE = { "200":"low", "1500":"standard", "2000":"stable", custom:"custom" };
+var lat = { mode: D.latency || "low", custom: D.customLatency || 700 };   /* settings.go: LatencyLowMS…, DefaultLatencyCustomMS */
+var LAT_SEGMAP = { low:String(FLY_MODES.low), standard:String(FLY_MODES.standard), stable:String(FLY_MODES.stable), custom:"custom" };
+var LAT_RAW2MODE = { custom:"custom" };
+Object.keys(FLY_MODES).forEach(function(mode){ LAT_RAW2MODE[String(FLY_MODES[mode])] = mode; });
 var LAT_RAIL = { low:0, standard:1, stable:2, custom:3 };
+/* The three preset values are the dataset's latency modes, not the markup's:
+   a settings change reaches both the tray segments and the bento labels. */
+function applyLatencyModeValues(){
+  document.querySelectorAll('[data-lat-mode]').forEach(function(b){
+    var ms = FLY_MODES[b.dataset.latMode];
+    if(typeof ms === "number") b.dataset.lat = String(ms);
+  });
+  document.querySelectorAll('[data-fa-lat-mode]').forEach(function(b){
+    var ms = FLY_MODES[b.dataset.faLatMode];
+    if(typeof ms !== "number") return;
+    b.dataset.faLat = String(ms);
+    var label = b.querySelector("span");
+    if(label) label.textContent = latText(ms);
+  });
+}
+applyLatencyModeValues();
 function renderLatency(){
   var mark = document.getElementById('faMark');
   if(mark) mark.style.left = (12.5 + LAT_RAIL[lat.mode] * 25) + '%';
@@ -2333,38 +2471,103 @@ addEventListener("keydown", function(e){
 });
 
 /* ---------- flyout state machine (mirrors internal/app: ui_kit.go phaseOf/faceOf,
-   flyout.go actionFor/statusText, latency.go apply-hold, lamp.go lampSection) ---------- */
-var FLY_DEVS = [
-  { id:"living", row:"fDev0", btn:"fRowAction", zh:"客厅 HomePod", en:"Living Room HomePod" },
-  { id:"study",  row:"fDev1", btn:"fAtvAction", zh:"书房 HomePods", en:"Study HomePods" }
+   flyout.go actionFor/statusText, latency.go apply-hold, lamp.go lampSection) ----------
+   The rows are structure; every value they show — name, model, auth, glyph —
+   comes from assets/demo-data.js, generated from the app's fixture. The page
+   lays out as many receivers as it has rows for. */
+var FLY_ROWS = [
+  { row:"fDev0", btn:"fRowAction" },
+  { row:"fDev1", btn:"fAtvAction" }
 ];
-var FLY_MODES = { low:200, standard:1500, stable:2000 };       /* settings.go: LatencyLowMS… */
+var FLY_DEVS = (D.receivers || []).slice(0, FLY_ROWS.length).map(function(r, i){
+  return { id:"dev" + i, row:FLY_ROWS[i].row, btn:FLY_ROWS[i].btn, name:r.name,
+           model:r.model, auth:r.auth, online:r.online, stereo:r.stereo, selected:!!r.selected };
+});
+function glyphFor(d){
+  if(/^AppleTV/.test(d.model)) return "#g-appletv";
+  if(/^AudioAccessory5/.test(d.model)) return d.stereo ? "#g-homepod-pair" : "#g-homepod-mini";
+  if(/^AudioAccessory/.test(d.model)) return d.stereo ? "#g-homepod-pair" : "#g-homepod";
+  return "#g-desktop";
+}
+/* applyDemoRows writes the dataset into the rows the markup carries, so the
+   static fallback text cannot outlive the fixture. */
+function applyDemoRows(){
+  FLY_DEVS.forEach(function(d){
+    var row = document.getElementById(d.row);
+    if(!row) return;
+    var name = row.querySelector(".fnamecol b");
+    if(name) name.textContent = d.name;
+    var sub = row.querySelector(".fnamecol span");
+    if(sub) sub.textContent = d.model + " · " + (d.auth === "hap-pin" ? t("PIN 配对") : "AirPlay 2");
+    var use = row.querySelector("svg.sfg use");
+    if(use) use.setAttribute("href", glyphFor(d));
+  });
+}
+applyDemoRows();
 var FLY_ICONS = {
   link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg>',
   unlink:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>'
 };
-/* ---------- the system media session: one playlist behind every media surface ----------
-   The tray card and the bento card both render from `media`. Track 0 keeps the
-   shipped poster palette — the @property --amb-* initial values match it, so the
-   default page looks exactly as before. cols also feed the lamp in cover mode. */
-var MEDIA = [
-  { t:"夜航",     et:"Night Flight", ar:"白鲸电台", ear:"White Whale Radio", app:"Music",   dur:244, cols:['#5b5be0','#8f6fd8','#3d9be0'] },
-  { t:"落日公路", et:"Sunset Drive", ar:"霓虹车队", ear:"Neon Convoy",       app:"Music",   dur:207, cols:['#ff9a3d','#ef5d7a','#9a4fa8'] },
-  { t:"玻璃海",   et:"Glass Sea",    ar:"潮汐信号", ear:"Tidal Signal",      app:"浏览器",  eapp:"Browser", dur:312, cols:['#35d0c5','#3aa6d0','#1b3d8f'] },
-  { t:"绯红",     et:"Crimson",      ar:"玫瑰刺",   ear:"Rose Thorn",        app:"Spotify", dur:238, cols:['#e34b6f','#c22a55','#7a1f3d'] },
-  { t:"雪松与雾", et:"Cedar & Mist", ar:"苔原电台", ear:"Tundra Radio",      app:"Music",   dur:281, cols:['#2f6b4f','#7fae5a','#b08954'] }
-];
-var media = { i:0, playing:false, pos:0 };    /* 夜航 — 白鲸电台, paused at 0:00 until the session starts */
+/* ---------- the media sessions: several players, each with its own list --------
+   The tray card and the bento card render `MEDIA`, the current player's items,
+   out of `SESSIONS`, which assets/demo-data.js supplies. The card's arrow
+   switches player, as it pins another session in the app; the transport moves
+   inside the current player's list. Each item carries both languages, its own
+   poster palette, and its own cover lamp, so no surface infers them. */
+var SESSIONS = (D.sessions || []).map(function(p){
+  var items = (p.items || []).map(function(it){
+    return {
+      t: it.title, et: it.titleEn || it.title,
+      ar: it.artist, ear: it.artistEn || it.artist,
+      app: p.app, eapp: p.app, dur: it.duration || 1, pos: it.position || 0,
+      cols: it.colors && it.colors.length === 3 ? it.colors : ['#5b5be0','#8f6fd8','#3d9be0'],
+      lamp: it.lamp || null
+    };
+  });
+  var current = Math.min(p.current || 0, Math.max(0, items.length - 1));
+  return { app:p.app, current:current, pos: items[current] ? (items[current].pos || 0) : 0, items:items };
+});
+var MEDIA = SESSIONS.length ? SESSIONS[0].items : [];
+var media = { app:0, i:0, playing:false, pos: SESSIONS.length ? SESSIONS[0].pos : 0 };   /* paused until the session starts */
+/* pinApp moves the card to another player, as the arrow pins another session
+   in the app: that player's own list and position come with it, and the
+   playback state stays what it was. */
+function pinApp(k, opts){
+  if(!SESSIONS.length) return;
+  if(!(opts && opts.initial) && SESSIONS[media.app]){
+    SESSIONS[media.app].current = media.i;
+    SESSIONS[media.app].pos = media.pos;
+  }
+  media.app = ((k % SESSIONS.length) + SESSIONS.length) % SESSIONS.length;
+  var player = SESSIONS[media.app];
+  MEDIA = player.items;
+  media.i = Math.min(player.current || 0, Math.max(0, MEDIA.length - 1));
+  media.pos = typeof player.pos === "number" ? player.pos : (MEDIA[media.i].pos || 0);
+  if(opts && opts.fresh) media.playing = false;
+  if(opts && opts.initial) return;
+  mediaRenderAll();
+  flyRenderFooter();
+  lampRender();
+}
+if(SESSIONS.length) pinApp(0, {fresh:true, initial:true});
+/* The opening flyout state is the fixture's, not the page's: the dataset names
+   the phase, the selected receiver, the sync and standby states. */
+var DSTATE = D.state || {};
+var flySel = null;
+for(var fi = 0; fi < FLY_DEVS.length; fi++){ if(FLY_DEVS[fi].selected){ flySel = FLY_DEVS[fi].id; break; } }
+if(!flySel && FLY_DEVS.length) flySel = FLY_DEVS[0].id;
+var flyPaired = {};
+if(flySel) flyPaired[flySel] = true;
 var fly = {
-  phase:"streaming", /* the page opens on a live session: the glow is up on entry */
-  sel:"living",      /* a.selID: the row last chosen */
-  active:"living",   /* snap.SelectedID while a session exists */
-  pairing:false,     /* sender.StatePairing on a first-time connect */
-  paired:{living:true},
-  ptp:true,          /* the PTP follower settled before the page loaded */
-  standby:false,     /* snap.Standby */
-  applying:false     /* latencyApplying: the stream restarts under the held face */
+  phase: DSTATE.phase || "streaming", /* the page opens on a live session: the glow is up on entry */
+  sel: flySel,                        /* a.selID: the row last chosen */
+  active: DSTATE.phase === "idle" ? null : flySel, /* snap.SelectedID while a session exists */
+  pairing: !!DSTATE.pairing,          /* sender.StatePairing on a first-time connect */
+  paired: flyPaired,
+  ptp: !!DSTATE.ptp,                  /* the PTP follower's state at load */
+  standby: !!DSTATE.standby,          /* snap.Standby */
+  applying: !!DSTATE.applying         /* latencyApplying: the stream restarts under the held face */
 };
 var flyTimers = {};
 var flyPanel = document.getElementById("flyPanel");
@@ -2382,12 +2585,13 @@ var fFill = fMediaEl.querySelector(".ffill");
 var fThumb = fMediaEl.querySelector(".fthumb");
 var fClocks = fMediaEl.querySelectorAll(".fclock");
 var fMeter = fMediaEl.querySelector(".fmeter");
+var fSwitch = document.getElementById("fSwitch");
 
 function flyDev(id){
   for(var i = 0; i < FLY_DEVS.length; i++){ if(FLY_DEVS[i].id === id) return FLY_DEVS[i]; }
   return FLY_DEVS[0];
 }
-function flyDevName(d){ return LANG === "en" ? d.en : d.zh; }
+function flyDevName(d){ return d.name; }          /* a receiver's name is not localized */
 function flySetTimer(k, fn, ms){
   flyClearTimer(k);
   flyTimers[k] = setTimeout(function(){ flyTimers[k] = null; fn(); }, ms);
@@ -2471,11 +2675,11 @@ function mixHex(a, b, k){
 }
 function posterGradient(cols){ return "linear-gradient(135deg," + cols[0] + "," + cols[1] + " 55%," + cols[2] + ")"; }
 function renderMeterTint(meter, cols){
-  /* each bar interpolates the poster palette left→right; track 0 clears the
-     inline style so the shipped CSS gradient stays pixel-identical */
+  /* each bar interpolates the poster palette left→right; the opening track
+     clears the inline style so the shipped CSS gradient stays pixel-identical */
   var bars = meter.querySelectorAll("i");
   for(var k = 0; k < bars.length; k++){
-    if(media.i === 0){ bars[k].style.background = ""; continue; }
+    if(media.app === 0 && media.i === 0){ bars[k].style.background = ""; continue; }
     var f = k / (bars.length - 1);
     bars[k].style.background = "linear-gradient(180deg," + mixHex(cols[0], cols[1], f) + "," + mixHex(cols[1], cols[2], f) + ")";
   }
@@ -2507,6 +2711,7 @@ function mediaRenderAll(){
   bmTitle.textContent = LANG === "en" ? tr.et : tr.t;
   bmArtist.textContent = LANG === "en" ? tr.ear : tr.ar;
   bmApp.textContent = LANG === "en" ? (tr.eapp || tr.app) : tr.app;
+  if(fSwitch) fSwitch.hidden = SESSIONS.length < 2;
   renderMeterTint(fMeter, tr.cols);
   renderMeterTint(bmMeter, tr.cols);
   renderMediaProgress();
@@ -2520,9 +2725,10 @@ function toggleMediaPlay(){
   flyRearmStandby();
 }
 function mediaSwitch(i){
-  if(i === media.i){ media.pos = 0; renderMediaProgress(); return; }   /* same track: restart */
+  if(i === media.i){ media.pos = 0; if(SESSIONS[media.app]) SESSIONS[media.app].pos = 0; renderMediaProgress(); return; }   /* same track: restart */
   media.i = i;
   media.pos = 0;
+  if(SESSIONS[media.app]){ SESSIONS[media.app].current = i; SESSIONS[media.app].pos = 0; }
   if(!media.playing) media.playing = true;        /* skipping wakes playback */
   fly.standby = false;
   mediaRenderAll();
@@ -2531,7 +2737,7 @@ function mediaSwitch(i){
   flyRearmStandby();
 }
 function mediaPrev(){
-  if(media.pos > 3){ media.pos = 0; renderMediaProgress(); return; }   /* past 3 s: restart first, like the players do */
+  if(media.pos > 3){ media.pos = 0; if(SESSIONS[media.app]) SESSIONS[media.app].pos = 0; renderMediaProgress(); return; }   /* past 3 s: restart first, like the players do */
   mediaSwitch((media.i + MEDIA.length - 1) % MEDIA.length);
 }
 function mediaNext(){ mediaSwitch((media.i + 1) % MEDIA.length); }
@@ -2651,9 +2857,11 @@ function setVolume(v){
   fVolEl.style.setProperty("--fly-vol", v + "%");
   fVolPct.textContent = v + "%";
 }
+if(typeof D.volume === "number") fVolEl.value = String(D.volume);
 setVolume(fVolEl.value);
 fVolEl.addEventListener("input", function(){ setVolume(fVolEl.value); });
 fPlayBtn.addEventListener("click", toggleMediaPlay);
+if(fSwitch) fSwitch.addEventListener("click", function(){ pinApp(media.app + 1); });
 (function(){
   var tbtns = document.querySelectorAll("#flyPlayback .ftransport button");
   tbtns[0].addEventListener("click", mediaPrev);
@@ -2680,6 +2888,7 @@ setInterval(function(){
   if(document.hidden) return;
   if(!media.playing) return;
   media.pos += 1;
+  if(SESSIONS[media.app]) SESSIONS[media.app].pos = media.pos;   /* the player keeps its place */
   if(media.pos >= MEDIA[media.i].dur){ mediaNext(); return; }   /* the track ended: advance like a player does */
   renderMediaProgress();
 }, 1000);
@@ -2714,8 +2923,12 @@ function demoRun(){
   demo.run = true;
   var steps = [                                                  /* each gap waits out the previous action */
     [function(){ if(!media.playing) toggleMediaPlay(); }, RM ? 500 : 900],   /* 播放：电平条起 */
-    [function(){ setLatency("1500"); },    RM ? 500 : 1700],     /* the apply spinner runs under it */
-    [function(){ demoVolume(30, 68, RM ? 1 : 1100); }, RM ? 500 : 1600],
+    [function(){ setLatency(LAT_SEGMAP.standard); }, RM ? 500 : 1700],       /* the apply spinner runs under it */
+    [function(){
+      var from = Number(fVolEl.value);                            /* the fixture's own volume */
+      var to = from > 50 ? Math.max(0, from - 35) : Math.min(100, from + 35);
+      demoVolume(from, to, RM ? 1 : 1100);                        /* always a visible move */
+    }, RM ? 500 : 1600],
     [function(){ mediaNext(); },           RM ? 500 : 1600]      /* 下一首 → 封面换色收尾 */
   ];
   var t = 0;
@@ -2763,6 +2976,21 @@ var initLang = ql === "en" || ql === "zh" ? ql
 applyLang(initLang);
 if(qa === "off"){ setLamp({off:true}); }
 if(qa === "tpl"){ setLamp({tpl:'dune', on:true}); }
+})();
+</script>
+<script>
+// The stage lays out at the app's 420 DIP and shrinks with the column, never
+// reflows: one layout to keep faithful to the real flyout at every viewport.
+// The glow lives inside the stage, so it scales with the panel.
+(function(){
+  var col = document.querySelector('.hero-visual');
+  if(!col) return;
+  function fit(){
+    var z = Math.min(.77, col.clientWidth / 420);
+    col.style.setProperty('--fly-zoom', z);
+  }
+  fit();
+  addEventListener('resize', fit, {passive:true});
 })();
 </script>
 </body>
