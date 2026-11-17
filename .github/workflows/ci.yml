@@ -62,6 +62,13 @@ jobs:
         run: go run ./scripts/check-ui words
       - name: Preview wasm
         run: go run ./scripts/check-ui wasm
+      - name: UI baseline render
+        shell: bash
+        run: |
+          go run ./scripts/check-ui render -out .audit/ui/ci \
+            -only "flyout-stream-light,flyout-stream-dark,flyout-connecting,flyout-error,flyout-empty,settings-general-light,settings-connection-dark,settings-receivers-expanded-light,settings-audio-custom-light,settings-lamp-cover-light,settings-nowplaying-live-light,dialog-receiver-add"
+      - name: UI baseline diff
+        run: go run ./scripts/check-ui diff -baseline docs/ui-baseline/manifest.json -against .audit/ui/ci/manifest.json
       - name: Verify map
         shell: bash
         run: scripts/check-verify-map.sh
@@ -70,6 +77,7 @@ jobs:
         run: go tool mygo build -platform windows/amd64 -skip-installer
 
   check-macos:
+    # The pixel baseline is per host; only the Windows job diffs it.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

@@ -71,6 +71,8 @@ func run(root string, args []string) error {
 		return runWasm(root)
 	case "baseline":
 		return runBaseline(args[1:])
+	case "subset":
+		return runSubset(args[1:])
 	case "rebaseline":
 		return runRebaseline(args[1:])
 	case "diff":
@@ -81,7 +83,7 @@ func run(root string, args []string) error {
 }
 
 func usage() error {
-	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui tokens | check-ui words | check-ui wasm | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui tokens | check-ui words | check-ui wasm | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui subset -baseline <manifest> -states <stems> [-src <dir>] -out <dir> | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
 }
 
 // runWasm builds the browser preview with the preview tag into a temp file.
@@ -347,10 +349,138 @@ func runBaseline(args []string) error {
 	return nil
 }
 
+// runSubset cuts the canonical baseline out of a full stable render. It
+// selects the named state stems, proves each PNG matches its manifest record,
+// copies the PNGs, and writes the subset manifest. A stem that selects
+// nothing, or a PNG that disagrees with its record, is a setup error: the
+// baseline membership is explicit and the bytes are the evidence.
+func runSubset(args []string) error {
+	fs := flag.NewFlagSet("subset", flag.ContinueOnError)
+	baselinePath := fs.String("baseline", "", "full stable manifest")
+	src := fs.String("src", "", "directory holding the render's PNGs, the manifest's directory by default")
+	states := fs.String("states", "", "comma-separated state stems")
+	out := fs.String("out", "", "baseline output directory")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *baselinePath == "" || *states == "" || *out == "" {
+		return fmt.Errorf("subset: -baseline, -states, and -out are required")
+	}
+	full, err := readManifest(*baselinePath)
+	if err != nil {
+		return fmt.Errorf("%w: baseline: %v", errInconclusive, err)
+	}
+	srcDir := *src
+	if srcDir == "" {
+		srcDir = filepath.Dir(*baselinePath)
+	}
+	stems := splitStates(*states)
+	if len(stems) == 0 {
+		return fmt.Errorf("subset: -states lists no state")
+	}
+	selected := map[string]bool{}
+	for _, stem := range stems {
+		matched := false
+		for _, f := range full.Files {
+			if matchesStem(f.Name, stem) {
+				selected[f.Name] = true
+				matched = true
+			}
+		}
+		if !matched {
+			return fmt.Errorf("subset: %s matches no file in %s", stem, *baselinePath)
+		}
+	}
+	type pickedFile struct {
+		record fileRecord
+		path   string
+	}
+	var picked []pickedFile
+	for _, f := range full.Files {
+		if !selected[f.Name] {
+			continue
+		}
+		path := filepath.Join(srcDir, f.Name)
+		rec, err := recordFile(path)
+		if err != nil {
+			return fmt.Errorf("%w: %s: %v", errInconclusive, f.Name, err)
+		}
+		if rec.SHA256 != f.SHA256 || rec.Width != f.Width || rec.Height != f.Height {
+			return fmt.Errorf("%w: %s does not match the stable manifest", errInconclusive, f.Name)
+		}
+		picked = append(picked, pickedFile{record: f, path: path})
+	}
+	outDir, err := filepath.Abs(*out)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return err
+	}
+	if err := cleanOutput(outDir); err != nil {
+		return err
+	}
+	var files []fileRecord
+	for _, p := range picked {
+		if err := copyFile(p.path, filepath.Join(outDir, p.record.Name)); err != nil {
+			return err
+		}
+		files = append(files, p.record)
+	}
+	m := manifest{
+		Commit:    full.Commit,
+		Dirty:     full.Dirty,
+		Renderer:  full.Renderer,
+		Generated: time.Now().UTC().Format(time.RFC3339),
+		Files:     files,
+	}
+	if err := writeManifest(filepath.Join(outDir, "manifest.json"), m); err != nil {
+		return err
+	}
+	fmt.Printf("check-ui: %d files from %d stems in %s, renderer %s\n", len(files), len(stems), outDir, m.Renderer)
+	return nil
+}
+
+// splitStates reads the comma-separated stem list.
+func splitStates(list string) []string {
+	var out []string
+	for _, s := range strings.Split(list, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// matchesStem reports whether name is the matrix image of stem in one locale,
+// or the platform render's unsuffixed image. Exact matching keeps one stem
+// from selecting a longer stem that starts the same way.
+func matchesStem(name, stem string) bool {
+	if name == stem+".png" {
+		return true
+	}
+	for _, locale := range []string{"-en", "-zh"} {
+		if name == stem+locale+".png" {
+			return true
+		}
+	}
+	return false
+}
+
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o644)
+}
+
 // runRebaseline updates the hashes of the existing baseline file set from a
 // new render. It never adds or removes a state: a missing file fails, and an
 // extra file is ignored. That keeps the baseline membership fixed while an
-// intentional visual change updates only the states under review.
+// intentional visual change updates only the states under review. The new
+// PNGs are copied beside the output manifest, so the manifest and the images
+// never disagree.
 func runRebaseline(args []string) error {
 	fs := flag.NewFlagSet("rebaseline", flag.ContinueOnError)
 	baselinePath := fs.String("baseline", "", "baseline manifest whose file set is kept")
@@ -377,11 +507,31 @@ func runRebaseline(args []string) error {
 	for _, f := range against.Files {
 		next[f.Name] = f
 	}
+	outPath := *out
+	if outPath == "" {
+		outPath = *baselinePath
+	}
+	outDir := filepath.Dir(outPath)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return err
+	}
+	srcDir := filepath.Dir(*againstPath)
 	changed := 0
 	for i, f := range base.Files {
 		g, ok := next[f.Name]
 		if !ok {
 			return fmt.Errorf("rebaseline: %s is missing from the new manifest", f.Name)
+		}
+		srcPath := filepath.Join(srcDir, g.Name)
+		rec, err := recordFile(srcPath)
+		if err != nil {
+			return fmt.Errorf("%w: %s: %v", errInconclusive, g.Name, err)
+		}
+		if rec.SHA256 != g.SHA256 || rec.Width != g.Width || rec.Height != g.Height {
+			return fmt.Errorf("%w: %s does not match the new manifest", errInconclusive, g.Name)
+		}
+		if err := copyFile(srcPath, filepath.Join(outDir, g.Name)); err != nil {
+			return err
 		}
 		if f.SHA256 == g.SHA256 && f.Width == g.Width && f.Height == g.Height {
 			continue
@@ -393,14 +543,10 @@ func runRebaseline(args []string) error {
 	base.Commit = against.Commit
 	base.Dirty = against.Dirty
 	base.Generated = time.Now().UTC().Format(time.RFC3339)
-	outPath := *out
-	if outPath == "" {
-		outPath = *baselinePath
-	}
 	if err := writeManifest(outPath, base); err != nil {
 		return err
 	}
-	fmt.Printf("check-ui: updated %d of %d files\n", changed, len(base.Files))
+	fmt.Printf("check-ui: copied %d files, updated %d\n", len(base.Files), changed)
 	return nil
 }
 
@@ -426,6 +572,12 @@ func runDiff(args []string) error {
 	if baseline.Renderer != against.Renderer {
 		return fmt.Errorf("%w: renderer differs, baseline %q against %q", errInconclusive, baseline.Renderer, against.Renderer)
 	}
+	if err := verifyManifestPNGs(*baselinePath, baseline); err != nil {
+		return err
+	}
+	if err := verifyManifestPNGs(*againstPath, against); err != nil {
+		return err
+	}
 	problems, extras := compareManifests(baseline, against)
 	if *strict {
 		for _, name := range extras {
@@ -440,6 +592,33 @@ func runDiff(args []string) error {
 		fmt.Printf("check-ui: %d files not in the baseline were not compared\n", len(extras))
 	}
 	fmt.Printf("check-ui: %d files match\n", len(baseline.Files))
+	return nil
+}
+
+// verifyManifestPNGs proves a manifest describes the images beside it. A
+// missing image is a setup error. An image whose bytes differ from its record
+// is also inconclusive: the manifest and the committed PNG disagree, so
+// neither can be trusted over the other, and a hand-edited baseline must not
+// reach the manifest comparison.
+func verifyManifestPNGs(manifestPath string, m manifest) error {
+	dir := filepath.Dir(manifestPath)
+	var problems []string
+	for _, f := range m.Files {
+		rec, err := recordFile(filepath.Join(dir, f.Name))
+		if err != nil {
+			return fmt.Errorf("%w: %s: %v", errInconclusive, f.Name, err)
+		}
+		if rec.SHA256 != f.SHA256 {
+			problems = append(problems, "changed "+f.Name)
+			continue
+		}
+		if rec.Width != f.Width || rec.Height != f.Height {
+			problems = append(problems, fmt.Sprintf("size %s, manifest %dx%d image %dx%d", f.Name, f.Width, f.Height, rec.Width, rec.Height))
+		}
+	}
+	if len(problems) > 0 {
+		return fmt.Errorf("%w: %s does not match the images beside it\n%s", errInconclusive, manifestPath, strings.Join(problems, "\n"))
+	}
 	return nil
 }
 
@@ -491,6 +670,9 @@ func readManifest(path string) (manifest, error) {
 	}
 	if len(m.Files) == 0 {
 		return manifest{}, fmt.Errorf("%s lists no files", path)
+	}
+	if m.Renderer == "" {
+		return manifest{}, fmt.Errorf("%s records no renderer", path)
 	}
 	return m, nil
 }

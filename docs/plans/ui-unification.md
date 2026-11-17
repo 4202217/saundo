@@ -294,6 +294,8 @@ Files. `scripts/check-ui/main.go`, `docs/ui-baseline/manifest.json`, `docs/ui-ba
 
 Acceptance. A seeded one-pixel change fails. An unchanged tree passes. A missing baseline is inconclusive. A renderer mismatch is reported, not hidden.
 
+Result. `docs/ui-baseline/` holds the 12 canonical state stems and 24 PNGs, one per locale, plus the manifest. `check-ui subset` cuts the subset from the full stable manifest and refuses a missing stem or a mismatched PNG. `check-ui diff` verifies each manifest against the PNGs beside it, refuses a missing manifest or a missing renderer, and names a changed file. The Windows CI and release check jobs render the canonical states and run the diff; the macOS jobs skip the pixel diff because the baseline is per host. `TestPreviewRender` records `Progress.Renderer` per image and at the top level; the local run reported `Direct3D 11 (NVIDIA GeForce RTX 5070)`. The canonical render matched 24 files. A one-pixel change to a baseline PNG, a missing manifest, and a renderer mismatch each failed closed; the unchanged tree passed.
+
 Evidence. The red run and the green run, with the manifest and the hash.
 
 Risk. Cross-host font differences. The baseline is per host. Windows is the reference. Add macOS only when a macOS contributor needs it.

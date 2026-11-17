@@ -569,6 +569,64 @@ Pins: `TestReplicaDataIsCurrent`, `TestReplicaSharesTheFlyoutsWording`,
 `TestReplicaDataGivesEveryTrackItsOwnPalette`,
 `TestAuthNameSerializesEveryAuth`.
 
+## 2026-11-17: Phase 4 canonical baseline and CI pixel diff
+
+`docs/ui-baseline/manifest.json` pins 24 PNGs from 12 canonical state stems,
+each rendered in English and Simplified Chinese by the CPU matrix
+(`ui.Tester/raster`). The set covers the flyout playing light and dark,
+connecting, error, and empty; the general, connection dark, receivers
+expanded, audio custom, lamp cover, and Now Playing live settings pages; and
+the add-receiver dialog. The manifest and its PNGs agree byte for byte, and
+`check-ui diff` verifies that agreement before it compares a render. The
+Windows `check` jobs in `.github/workflows/ci.yml` and
+`.github/workflows/release.yml` render the canonical stems and run
+`check-ui diff -baseline docs/ui-baseline/manifest.json -against
+.audit/ui/ci/manifest.json`. The macOS jobs build and test but do not diff
+pixels: the baseline is per host, and Windows is the reference.
+`check-ui subset` cuts the committed set from a full stable manifest and
+refuses a stem with no file or a PNG whose bytes disagree with its record.
+`check-ui rebaseline` keeps the existing file set, updates the changed hashes,
+and copies the new PNGs beside the manifest.
+
+`TestPreviewRender` now passes `render.Options{Progress: ...}` and writes a
+`manifest.json` in its output directory with each file's SHA-256, size, and
+the renderer that drew it. The 2026-11-17 run wrote 108 PNGs to
+`.audit/ui/phase4-platform/manifest.json` with
+`Direct3D 11 (NVIDIA GeForce RTX 5070)`. An unreported renderer is recorded as
+`unknown`, never guessed.
+
+Gates: `gofmt -l .` printed nothing; `go vet ./...` and
+`go vet -tags preview ./...` passed; `go test ./... -count=1` and
+`go test -tags preview ./internal/app -count=1` passed; `check-ui catalog`,
+`tokens`, `words`, and `wasm` (26,417,305 bytes) passed; `mingw32-make check`
+passed, including `check-platforms` for windows/amd64 and darwin/arm64. The
+canonical render wrote 24 files and the diff printed
+`check-ui: 24 files match`.
+
+Fail-closed proofs. Flipping one pixel in
+`docs/ui-baseline/flyout-stream-light-en.png` made the diff print
+`docs/ui-baseline/manifest.json does not match the images beside it` and
+`changed flyout-stream-light-en.png`; the built tool exited 2 (`go run`
+reports the child's `exit status 2` and exits 1 itself). Renaming the manifest
+made it print `inconclusive: baseline: open ...` and exit 2. Changing the
+manifest's renderer to `not-the-matrix` made it print
+`renderer differs, baseline "not-the-matrix" against "ui.Tester/raster"` and
+exit 2. Changing the light accent from `#4f46e5` to `#4f46e6` made the render
+differ on 18 files, named one per line, and the diff failed; the changed files
+were the connecting, empty, error, and stream-light flyout states, the audio
+custom, lamp cover, Now Playing live, and receivers expanded settings pages,
+and the add-receiver dialog, each in both locales. The unchanged tree then
+printed `check-ui: 24 files match`. All seeds were restored.
+
+Pins: `TestSubsetSelectsStemsAndCopiesPNGs`,
+`TestSubsetRefusesAStemWithNoFile`,
+`TestSubsetRefusesASourceThatDisagreesWithTheManifest`,
+`TestDiffVerifiesTheBaselinePNGs`, `TestDiffRefusesAMissingBaseline`,
+`TestDiffRefusesARendererMismatch`,
+`TestRebaselineKeepsFileSetUpdatesHashesAndCopiesPNGs`,
+`TestReadManifestRejectsNoRenderer`,
+`TestRendererLabelNeverInventsAName`, `TestPreviewRender`.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

@@ -73,7 +73,8 @@ size:
 fmt:
 	$(GOFMT) -w .
 
-# Render the UI state matrix and record a manifest. Non-gating until Phase 4.
+# Render the UI state matrix and record a manifest. The canonical pixel gate
+# runs in CI; see docs/ui-baseline/README.md.
 ui-baseline:
 	$(GO) run ./scripts/check-ui render -out .audit/ui/baseline
 
