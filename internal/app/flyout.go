@@ -369,7 +369,7 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 			// The app icon is optional: the shell knows one for most apps,
 			// and the name alone carries the rest.
 			if a.nowIcon != nil {
-				ui.Image(c, a.nowIcon).Size(16, 16).Shrink(0)
+				ui.Image(c, a.nowIcon).Size(18, 18).Shrink(0)
 			}
 			name := s.AppName
 			if name == "" {
@@ -377,7 +377,7 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 			}
 			ui.Text(c, name).FontSize(13).FontWeight(600).SingleLine().Ellipsis("…").Grow(1)
 			if showSwitch {
-				btn := ui.ButtonBase(c).Size(24, 24).Radius(7).Center().Background(p.card).
+				btn := ui.ButtonBase(c).Size(20, 20).Radius(6).Center().Background(p.card).
 					Cursor(ui.CursorPointer).Label(locales.FlyoutSwitchMedia()).Disabled(preview)
 				if btn.Hovered() {
 					btn.Background(p.cardHover)
@@ -388,7 +388,7 @@ func (a *App) nowPlayingCardBody(c *ui.Context, p palette, s nowplaying.Session,
 					if btn.Hovered() {
 						col = p.fg
 					}
-					ui.Icon(c, iconChevronRight).Size(12, 12).TextColor(col)
+					ui.Icon(c, iconChevronRight).Size(14, 14).TextColor(col)
 				})
 			}
 		})

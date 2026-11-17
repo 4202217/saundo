@@ -29,9 +29,9 @@ page, and the diagnostics log row lives on the settings 关于 page.
   hides the
   segment row lives in the settings window's 音频 page latency-card header,
   not in the flyout.
-- Now Playing media card: a 16-DIP shell-resolved app icon and app name
+- Now Playing media card: an 18-DIP shell-resolved app icon and app name
   (未知应用 only when the shell cannot resolve one) with the session-switch
-  arrow; the card follows the system's current session,
+  arrow on a 20-DIP button; the card follows the system's current session,
   and the arrow pins another until the current session changes; a
   fixed-52-DIP-tall poster whose width follows
   the cover's aspect ratio (a 16:9 thumbnail gets a wider poster; the card
