@@ -49,9 +49,10 @@ func TestRenderPreviews(t *testing.T) {
 	testLocale = "zh-CN"
 }
 
-// previewWanted filters the matrix by SAUNDO_PREVIEW_ONLY, a comma-separated
-// list of name prefixes such as settings-audio,flyout, so a UI change renders
-// only the pages it touched. An empty or unset value renders everything.
+// previewWanted filters the matrix and the platform driver by
+// SAUNDO_PREVIEW_ONLY, a comma-separated list of name prefixes such as
+// settings-audio,flyout, so a UI change renders only the pages it touched. An
+// empty or unset value renders everything.
 func previewWanted() func(string) bool {
 	only := strings.TrimSpace(os.Getenv("SAUNDO_PREVIEW_ONLY"))
 	if only == "" {

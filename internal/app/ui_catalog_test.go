@@ -37,9 +37,6 @@ func TestCatalog(t *testing.T) {
 		if sc.Surface > SurfaceTrayMenu {
 			t.Fatalf("%s: unknown surface %d", sc.ID, sc.Surface)
 		}
-		if sc.Surface == SurfaceTrayMenu {
-			t.Fatalf("%s: the tray menu has no CPU view yet", sc.ID)
-		}
 		if sc.SiteDemo {
 			siteDemo++
 			siteDemoIDs[sc.ID] = true

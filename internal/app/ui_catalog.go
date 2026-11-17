@@ -64,21 +64,21 @@ type Scenario struct {
 
 // Catalog is every state, grouped by surface.
 func Catalog() []Scenario {
-	all := make([]Scenario, 0, len(flyoutScenarios)+len(settingsScenarios)+len(dialogScenarios))
+	all := make([]Scenario, 0, len(flyoutScenarios)+len(settingsScenarios)+len(dialogScenarios)+len(trayScenarios))
 	all = append(all, flyoutScenarios...)
 	all = append(all, settingsScenarios...)
 	all = append(all, dialogScenarios...)
+	all = append(all, trayScenarios...)
 	return all
 }
 
-// PreviewScenarios is the catalog subset the wasm preview can show: every
-// surface with a real view. A tray menu state needs its own panel and stays
-// out until it has one.
+// PreviewScenarios is the catalog subset the wasm preview can show. The tray
+// menu has its own panel, built from the same model as the native menu.
 func PreviewScenarios() []Scenario {
 	var out []Scenario
 	for _, sc := range Catalog() {
 		switch sc.Surface {
-		case SurfaceFlyout, SurfaceSettings, SurfaceDialog:
+		case SurfaceFlyout, SurfaceSettings, SurfaceDialog, SurfaceTrayMenu:
 			out = append(out, sc)
 		}
 	}
@@ -96,6 +96,8 @@ func (s Scenario) view(a *App) func(*ui.Context) {
 			return a.settingsView
 		}
 		return a.view
+	case SurfaceTrayMenu:
+		return a.previewMenuScene
 	case SurfaceFlyout:
 		return a.view
 	}

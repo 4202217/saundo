@@ -16,7 +16,7 @@ func TestPreviewScenariosApplyEveryState(t *testing.T) {
 	for _, sc := range scenarios {
 		surfaces[sc.Surface] = true
 	}
-	for _, want := range []Surface{SurfaceFlyout, SurfaceSettings, SurfaceDialog} {
+	for _, want := range []Surface{SurfaceFlyout, SurfaceSettings, SurfaceDialog, SurfaceTrayMenu} {
 		if !surfaces[want] {
 			t.Fatalf("the wasm preview has no surface %d state", want)
 		}
@@ -41,8 +41,11 @@ func TestPreviewScenariosApplyEveryState(t *testing.T) {
 			t.Fatalf("%s: page = %d, want %d", sc.ID, a.page, sc.Page)
 		}
 		want := SurfaceFlyout
-		if sc.Surface == SurfaceSettings || (sc.Surface == SurfaceDialog && sc.Host == SurfaceSettings) {
+		switch {
+		case sc.Surface == SurfaceSettings || (sc.Surface == SurfaceDialog && sc.Host == SurfaceSettings):
 			want = SurfaceSettings
+		case sc.Surface == SurfaceTrayMenu:
+			want = SurfaceTrayMenu
 		}
 		if len(hosts) != i+1 {
 			t.Fatalf("%s: host was not shown", sc.ID)

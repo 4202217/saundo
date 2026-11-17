@@ -317,9 +317,11 @@ Files. `.claude/skills/ui-mockup/SKILL.md`, `.claude/skills/ui-mockup/assets/*.h
 
 Acceptance. A new state starts in an overlay, graduates to the catalog, and appears in all four paths. A release dry run regenerates the matrix and the site data and needs no manual three-way comparison.
 
-Evidence. The overlay-to-catalog diff, the release dry-run log, and the updated skill text.
+Result. `check-ui tokens` now checks both sketch templates: 44 palette tokens in two appearances, 31 metric values, and 18 height-rule and window-size values. `check-ui sketch` writes a baseline, a working copy, and an overlay under `.audit/mockups/<topic>/`; the baseline refresh and the overlay are the graduation path. The `ui-mockup` skill describes the four instruments and the graduation path; the verify map, ui-review, release, `docs/ui.md`, `docs/releasing.md`, and `docs/reference` describe the same workflow. `check-ui all` runs the fast gates. The `tray.menu` catalog scenario renders through the matrix and the platform driver, and the panel's separator height was corrected. A temporary `flyout.graduation` state went from the overlay to the catalog to the CPU matrix and the platform render, then was removed. The release dry run regenerated the matrix and the site data, ran the gates, and matched the canonical 24; no manual three-way comparison. The matrix writes 258 files; 243 stable files match; the 15 extras are the known animation states and the four tray images. The full gate passes.
 
-Risk. The component extraction breaks the site's demo. The fallback is gate-only, and the extraction becomes a separate decision.
+Evidence. The template drift red runs, the tray menu PNG, the graduation evidence, the release dry-run log, and the full gate.
+
+Risk. The site flyout component extraction is deferred. The trigger is a structural rule that has to change in both copies for one design decision twice, or a component edit that has to be made in both copies each round. The macOS platform truth render is not run; the platform renderer is the Windows Direct3D 11 device.
 
 ## Verification
 
@@ -327,7 +329,7 @@ Each phase is verified on the artifact, not on the report.
 
 - Unit. The phase's tests and `check-ui` subcommands. A gate change ships with a seeded failure that must go red.
 - Live. Phase 0 inspects the manifest. Phase 1 diffs hashes. Phase 2 clicks the wasm surfaces and inspects the platform PNGs. Phase 3 loads the landing page in a browser. Phase 4 seeds a pixel change and runs CI. Phase 5 runs the release dry run.
-- Perf. Phase 0 measured 28 to 31 seconds for the full matrix. The budget is 37 seconds. The canonical subset budget is 60 seconds.
+- Perf. Phase 5 measured 36.4 to 39.5 seconds for the full 258-file matrix. The budget is 45 seconds. The canonical 24-file subset renders in about 5 seconds.
 - Review. Phases 1 and 5 stop for the operator. Phases 2, 3, and 4 report and continue on the operator's go.
 
 ## Decisions for the operator

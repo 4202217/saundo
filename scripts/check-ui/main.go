@@ -69,6 +69,10 @@ func run(root string, args []string) error {
 		return runWords(root)
 	case "wasm":
 		return runWasm(root)
+	case "all":
+		return runAll(root)
+	case "sketch":
+		return runSketch(root, args[1:])
 	case "baseline":
 		return runBaseline(args[1:])
 	case "subset":
@@ -83,7 +87,29 @@ func run(root string, args []string) error {
 }
 
 func usage() error {
-	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui catalog | check-ui tokens | check-ui words | check-ui wasm | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui subset -baseline <manifest> -states <stems> [-src <dir>] -out <dir> | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui all | check-ui catalog | check-ui tokens | check-ui words | check-ui wasm | check-ui sketch -topic <topic> [-surface settings|flyout] [-force] | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui subset -baseline <manifest> -states <stems> [-src <dir>] -out <dir> | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+}
+
+// runAll runs the fast gates that belong in the milestone check. The render,
+// baseline, subset, and diff need an output directory or a baseline, so they
+// stay explicit commands.
+func runAll(root string) error {
+	steps := []struct {
+		name string
+		run  func(string) error
+	}{
+		{"catalog", runCatalog},
+		{"tokens", runTokens},
+		{"words", runWords},
+		{"wasm", runWasm},
+	}
+	for _, step := range steps {
+		if err := step.run(root); err != nil {
+			return fmt.Errorf("all: %s: %w", step.name, err)
+		}
+	}
+	fmt.Println("check-ui: all gates passed")
+	return nil
 }
 
 // runWasm builds the browser preview with the preview tag into a temp file.

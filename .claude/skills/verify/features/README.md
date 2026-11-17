@@ -18,6 +18,15 @@ page's Gotchas; never weaken the journey to make it pass.
 | [Ambient light](ambient-light.md) | Settings 氛围灯 page, flyout ambient card | Headless UI + live app |
 | [Updates](updates.md) | Settings 更新 page, notes dialog | Headless UI + live app |
 
+For the flyout, tray menu, and settings surfaces, the catalog in
+`internal/app/ui_catalog*.go` and the preview are the evidence source.
+`go run ./scripts/check-ui render -out <dir>` writes the CPU matrix in both
+languages from the catalog rows.
+`SAUNDO_PREVIEW_RENDER=<dir> go test -tags preview ./internal/app -run
+TestPreviewRender -count=1` writes the platform renders from the same rows.
+Name the scenario ID in the evidence. The catalog ID joins the matrix, the
+platform render, the site projection, and the page you drove live.
+
 Cross-cutting states that touch several features: silence suspend (the pacer
 pauses after 5 s of digital silence), the idle standby that darkens the top
 display after the configured silence threshold, the 3 s streaming-snapshot

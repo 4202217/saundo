@@ -290,3 +290,6 @@ contains it. `go run ./scripts/check-ui catalog` validates the state table,
 `check-ui wasm` builds `GOOS=js GOARCH=wasm -tags preview` into a temporary
 file and prints its size, and `go test -tags preview ./internal/app` runs the
 preview tests. All three run inside `make check` and in both CI jobs.
+`go run ./scripts/check-ui sketch -topic <topic> -surface settings|flyout`
+copies the approved sketch baseline into `.audit/mockups/` and writes the
+overlay document; it is a local design tool, not a gate.

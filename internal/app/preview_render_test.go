@@ -57,10 +57,14 @@ func TestPreviewRender(t *testing.T) {
 	var files []previewFileRecord
 	renderer := ""
 	count := 0
+	wanted := previewWanted()
 	for _, sc := range PreviewScenarios() {
 		// The CPU matrix owns the interaction states: motion probes, the
 		// hover move, and the scrolled pages.
 		if sc.Frames > 0 || sc.Move != nil || sc.Scroll != 0 {
+			continue
+		}
+		if !sc.anyWanted(wanted) {
 			continue
 		}
 		for _, v := range sc.variants() {

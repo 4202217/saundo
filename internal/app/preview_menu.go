@@ -7,12 +7,22 @@ import (
 	"image/png"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
 )
 
-const previewMenuWidth = 260
+const (
+	previewMenuWidth = 260
+	previewMenuPad   = 6
+
+	previewMenuRowDIP         = 30
+	previewMenuRowSubtitleDIP = 40
+	// previewMenuSeparatorDIP is the 1-DIP line plus its 6-DIP margins.
+	previewMenuSeparatorGap = 6
+	previewMenuSeparatorDIP = 1 + 2*previewMenuSeparatorGap
+)
 
 // previewMenuWin stands in for the tray menu in the browser, which has no
 // tray. The model and its items are the product's; the panel is preview-only.
@@ -31,21 +41,7 @@ func (a *App) openPreviewMenu() {
 	if a.settingsWin != nil {
 		a.settingsWin.Hide()
 	}
-	if a.menuIcons == nil {
-		a.menuIcons = loadMenuIcons()
-	}
-	previewMenuSVGIcons = map[*mygo.MenuIcon]*ui.SVG{}
-	for _, it := range menuIconSources {
-		if ic := a.menuIcons[it.name]; ic != nil {
-			previewMenuSVGIcons[ic] = it.svg
-		}
-	}
-	for _, family := range menuDeviceFamilies {
-		if ic := a.menuIcons["dev:"+family]; ic != nil {
-			previewMenuSVGIcons[ic] = sfIcons[family]
-		}
-	}
-	items := a.trayMenuItems(a.trayModel(mygo.App.Locale(), mygo.Theme.IsDark()))
+	items := a.previewMenuPanelItems(mygo.Theme.IsDark())
 	previewMenuItemsCache = items
 	previewMenuLampOpen = false
 	h := previewMenuHeight(items)
@@ -64,6 +60,41 @@ func (a *App) openPreviewMenu() {
 	previewMenuWin.Show()
 }
 
+// previewMenuPanelItems builds the menu the panel draws. The locale comes
+// from the app's locale function and the appearance from the caller, so the
+// catalog can render the menu in either theme without a second model.
+func (a *App) previewMenuPanelItems(dark bool) []*mygo.MenuItem {
+	if a.menuIcons == nil {
+		a.menuIcons = loadMenuIcons()
+	}
+	previewMenuSVGIcons = map[*mygo.MenuIcon]*ui.SVG{}
+	for _, it := range menuIconSources {
+		if ic := a.menuIcons[it.name]; ic != nil {
+			previewMenuSVGIcons[ic] = it.svg
+		}
+	}
+	for _, family := range menuDeviceFamilies {
+		if ic := a.menuIcons["dev:"+family]; ic != nil {
+			previewMenuSVGIcons[ic] = sfIcons[family]
+		}
+	}
+	return a.trayMenuItems(a.trayModel(i18n.Locale(), dark))
+}
+
+// previewMenuScene is the catalog's tray menu. It draws the same panel the
+// browser shows, at the appearance the renderer asks for.
+func (a *App) previewMenuScene(c *ui.Context) {
+	previewMenuLampOpen = false
+	a.previewMenuView(c, a.previewMenuPanelItems(c.Theme().Dark))
+}
+
+// previewMenuSize is the catalog's menu size: the panel's width and the height
+// its rows need.
+func previewMenuSize(a *App) (int, int) {
+	previewMenuLampOpen = false
+	return previewMenuWidth, previewMenuHeight(a.previewMenuPanelItems(false))
+}
+
 func (a *App) closePreviewMenu() {
 	if previewMenuWin != nil {
 		previewMenuWin.Close()
@@ -73,13 +104,13 @@ func (a *App) closePreviewMenu() {
 
 func (a *App) previewMenuView(c *ui.Context, items []*mygo.MenuItem) {
 	p := design(c)
-	ui.Column(c).Fill().Background(p.card).Padding(6).Children(func() {
+	ui.Column(c).Fill().Background(p.card).Padding(previewMenuPad).Children(func() {
 		for _, item := range items {
 			if item == nil || item.Hidden {
 				continue
 			}
 			if item.Type == mygo.MenuItemSeparator {
-				ui.Box(c).Height(1).Margin(6, 0, 6, 0).Background(p.line2)
+				ui.Box(c).Height(1).Margin(previewMenuSeparatorGap, 0, previewMenuSeparatorGap, 0).Background(p.line2)
 				continue
 			}
 			a.previewMenuRow(c, p, item, 0, false)
@@ -89,7 +120,7 @@ func (a *App) previewMenuView(c *ui.Context, items []*mygo.MenuItem) {
 						continue
 					}
 					if sub.Type == mygo.MenuItemSeparator {
-						ui.Box(c).Height(1).Margin(6, 0, 6, 0).Background(p.line2)
+						ui.Box(c).Height(1).Margin(previewMenuSeparatorGap, 0, previewMenuSeparatorGap, 0).Background(p.line2)
 						continue
 					}
 					a.previewMenuRow(c, p, sub, 18, true)
@@ -100,9 +131,9 @@ func (a *App) previewMenuView(c *ui.Context, items []*mygo.MenuItem) {
 }
 
 func (a *App) previewMenuRow(c *ui.Context, p palette, item *mygo.MenuItem, indent float32, submenu bool) {
-	h := float32(30)
+	h := float32(previewMenuRowDIP)
 	if item.Subtitle != "" {
-		h = 40
+		h = previewMenuRowSubtitleDIP
 	}
 	row := ui.ButtonBase(c).FillWidth().Height(h).Padding(0, 10, 0, 10+indent).Gap(8).Radius(6).
 		AlignItems(ui.Center).Justify(ui.Start).Label(item.Label).Background(ui.Transparent)
@@ -152,16 +183,16 @@ func previewMenuRowHeight(item *mygo.MenuItem) int {
 	}
 	switch {
 	case item.Type == mygo.MenuItemSeparator:
-		return 9
+		return previewMenuSeparatorDIP
 	case item.Subtitle != "":
-		return 40
+		return previewMenuRowSubtitleDIP
 	default:
-		return 30
+		return previewMenuRowDIP
 	}
 }
 
 func previewMenuHeight(items []*mygo.MenuItem) int {
-	h := 12
+	h := 2 * previewMenuPad
 	for _, item := range items {
 		h += previewMenuRowHeight(item)
 		if previewMenuLampOpen && item != nil && len(item.Submenu) > 0 {

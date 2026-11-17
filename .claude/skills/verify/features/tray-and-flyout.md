@@ -86,6 +86,14 @@ drive them through UI Automation and the doctor, on macOS through the
 menu-bar icon. The flyout and the settings window it opens are drivable
 through the e2e harness's element tree on both platforms.
 
+The flyout and tray menu states have catalog IDs. `go run
+./scripts/check-ui render -out <dir>` writes `flyout.stream`,
+`flyout.connecting`, `flyout.error`, `flyout.empty`, `flyout.idle`, and
+`tray.menu` in zh-CN and English. `SAUNDO_PREVIEW_RENDER=<dir> go test -tags
+preview ./internal/app -run TestPreviewRender -count=1` writes the platform
+renders from the same rows. `tray.menu` draws the preview panel, not the
+native menu; the native menu stays UIA-only. Name the ID in the evidence.
+
 ```bash
 powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/doctor.ps1   # process, windows
 mingw32-make e2e-build

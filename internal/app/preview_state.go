@@ -16,10 +16,14 @@ import (
 var previewLocale = "zh-CN"
 
 // previewHost is the window a scenario shows: the settings window for a
-// settings page or a dialog over it, the flyout for everything else.
+// settings page or a dialog over it, the tray menu panel for a tray state,
+// and the flyout for everything else.
 func previewHost(sc Scenario) Surface {
 	if sc.usesSettingsPage() {
 		return SurfaceSettings
+	}
+	if sc.Surface == SurfaceTrayMenu {
+		return SurfaceTrayMenu
 	}
 	return SurfaceFlyout
 }
@@ -29,6 +33,10 @@ func previewHost(sc Scenario) Surface {
 var previewShowHost = func(a *App, host Surface) {
 	if host == SurfaceSettings {
 		a.showPreviewSettings()
+		return
+	}
+	if host == SurfaceTrayMenu {
+		a.openPreviewMenu()
 		return
 	}
 	a.showPreviewFlyout()
@@ -41,7 +49,8 @@ func previewStateCount() int { return len(PreviewScenarios()) }
 // state never inherits the one before it. The host window is shown first: its
 // OnShow hook resets the log and enter flags, and the scenario must set them
 // after that. The page is set before the window opens so it paints the right
-// one.
+// one. The tray menu builds its rows from the applied state, so it opens after
+// Apply.
 func previewStateAt(a *App, i int) {
 	sc := PreviewScenarios()[i]
 	a.resetPreviewState()
@@ -49,9 +58,14 @@ func previewStateAt(a *App, i int) {
 		a.page = sc.Page
 	}
 	a.closePreviewMenu()
-	previewShowHost(a, previewHost(sc))
-	sc.Apply(a)
-	previewResize(a)
+	if sc.Surface == SurfaceTrayMenu {
+		sc.Apply(a)
+		previewShowHost(a, SurfaceTrayMenu)
+	} else {
+		previewShowHost(a, previewHost(sc))
+		sc.Apply(a)
+		previewResize(a)
+	}
 	if a.win != nil {
 		a.win.Invalidate()
 	}
