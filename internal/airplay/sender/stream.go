@@ -110,6 +110,7 @@ func (s *Sender) applyPause(paused bool) {
 		frames := int(float64(s.inputRate) * DefaultStartCushion.Seconds())
 		s.ring.KeepNewest(frames * channels)
 	}
+	s.ringFed, s.lastFedFrames = false, s.framesSent
 	s.pacer.arm(now)
 	s.info("audio resumed at frame %d", s.framesSent)
 }
@@ -118,7 +119,16 @@ func (s *Sender) sendAudioPacket() {
 	var frames [framesPerPacket * channels]int16
 	available := s.fillFrames(frames[:])
 	if available < framesPerPacket {
-		s.underruns++
+		// A starve is a defect the receiver can hear only while the source
+		// was feeding the ring: roughly two start cushions after the last
+		// real packet. Past that window the padding carries silence over
+		// silence, which is what an idle source should stream.
+		if s.ringFed && s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+			s.underruns++
+		}
+	} else {
+		s.ringFed = true
+		s.lastFedFrames = s.framesSent
 	}
 
 	var header [12]byte

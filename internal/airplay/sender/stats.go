@@ -12,7 +12,9 @@ type Stats struct {
 	// wall-clock target after the capped burst.
 	LateTicks uint64
 	// Underruns counts audio packets padded with silence because the ring
-	// could not supply a full packet.
+	// ran dry while it was still being fed real audio. Padding silence over
+	// an idle source is the stream's correct output, not a defect, so it is
+	// not counted.
 	Underruns uint64
 	// SentBlocks counts audio packets at least one copy of which reached the
 	// host. SendErrors counts the datagrams the host refused, including a
@@ -31,6 +33,17 @@ type Stats struct {
 	BufferValid bool
 	// WiFi is the receiver's snapshot from the stream SETUP response.
 	WiFi WiFiMetrics
+}
+
+// resetSessionCounters clears the per-session diagnostic counters at stream
+// start.
+func (s *Sender) resetSessionCounters() {
+	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
+	s.ringFed, s.lastFedFrames = false, 0
+	s.encryptErrors = 0
+	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
+	s.lastSync = time.Time{}
+	s.wifi = WiFiMetrics{}
 }
 
 // Stats returns the session's diagnostic counters.

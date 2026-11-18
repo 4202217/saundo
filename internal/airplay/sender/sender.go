@@ -250,6 +250,9 @@ type Sender struct {
 	underruns   uint64
 	sentBlocks  uint64
 	sendErrors  uint64
+	// ringFed/lastFedFrames gate underrun counting; see sendAudioPacket.
+	ringFed       bool
+	lastFedFrames uint64
 	// encryptErrors counts audio packets dropped because the AP2 cipher
 	// refused the payload. A packet that cannot be encrypted is never sent.
 	encryptErrors uint64
@@ -640,11 +643,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
-	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
-	s.encryptErrors = 0
-	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
-	s.lastSync = time.Time{}
-	s.wifi = WiFiMetrics{}
+	s.resetSessionCounters()
 	if s.resampler == nil {
 		s.resampler = resample.NewLinear(s.inputRate)
 	} else {
