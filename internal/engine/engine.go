@@ -39,6 +39,7 @@ type Snapshot struct {
 	// Targets carries each live target's per-device audio controls. Empty when
 	// idle.
 	Targets   []TargetControl
+	Notice    SessionNotice
 	Error     string
 	ErrorKey  UserErrorKey
 	ErrorArgs []string
@@ -250,8 +251,7 @@ type Engine struct {
 	captureInfo   chan captureInfo
 	captureResult chan captureStart
 	mute          localMute
-	// The mute worker owns every endpoint and guard-file call; the loop
-	// applies generation-checked results.
+	// The mute worker owns endpoint calls; the loop applies checked results.
 	muteReq      chan muteRequest
 	muteStatus   chan muteStatus
 	muteStop     chan struct{}
@@ -286,12 +286,12 @@ type Engine struct {
 
 	devices    []device.Device
 	selectedID string
-	// activeHost, activePort, and activeMembers describe the session being
-	// opened, so a credentials callback can pin the endpoint it paired with.
+	// activeHost/Port/Members describe the session being opened.
 	activeHost       string
 	activePort       uint16
 	activeMembers    []device.Device
 	connectedName    string
+	notice           SessionNotice
 	lastError        string
 	lastErrorKey     UserErrorKey
 	lastErrorArgs    []string
@@ -1363,10 +1363,8 @@ func (e *Engine) onLaunched(ok bool, err string) {
 	if ok {
 		now := e.now()
 		e.sessionStartedAt = now
-		// The dark threshold counts from the last RTP push. A user connect
-		// carries the session start as its baseline, so the light shows for a
-		// full idle period. An automatic reconnect carries none, so a PC that
-		// has not pushed for hours goes dark at once.
+		// The dark threshold counts from the last RTP push: a user connect
+		// starts it, an automatic reconnect does not.
 		if e.connectAuto {
 			e.darkBaseline = time.Time{}
 		} else {
@@ -2304,6 +2302,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		ConnectedName:       e.connectedName,
 		ActiveTargets:       e.activeKeys(),
 		Targets:             e.targetControls(),
+		Notice:              e.notice,
 		Error:               e.lastError,
 		ErrorKey:            e.lastErrorKey,
 		ErrorArgs:           e.lastErrorArgs,

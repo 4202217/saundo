@@ -254,7 +254,7 @@ the endpoint, whether the failure is synchronous or reported at launch. A
 member that closes while the cohort runs does not take the session with it:
 the transport records the lost target, a cohort with other targets rebuilds
 without it, and the lost target leaves the wanted set so no retry includes it.
-A single-target session keeps the close-and-retry path.
+A single-target session keeps the close-and-retry path. The isolated loss publishes a `SessionNotice` naming the target and its survivor count; the flyout shows it with 重试 and clears it on the next user connect or after 8 s. A join in progress needs no engine state: the flyout derives it from a `TargetJoining` member beside an existing one.
 
 ## A connect, end to end
 

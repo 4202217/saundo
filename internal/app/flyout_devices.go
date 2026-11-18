@@ -33,10 +33,9 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 	}
 	sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)), false, action)
 	a.deviceCard(c, p, devices)
+	a.sessionNoticeBar(c, p)
 	if a.errorBarShown() {
-		ui.Row(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).Background(p.redSoft).Children(func() {
-			ui.Text(c, locales.FlyoutConnectFailed(a.errorText())).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
-		})
+		statusBar(c, p, barDanger, iconAlert, locales.FlyoutConnectFailed(a.errorText()), nil)
 	}
 	if a.snap.CredentialReset {
 		a.credentialBar(c, p)
@@ -405,6 +404,9 @@ func (a *App) connectDevice(id string) {
 	a.cancelLatencyApply()
 	a.finishLatencyApply()
 	a.selectDevice(id)
+	if a.eng == nil {
+		return
+	}
 	a.eng.Connect(id)
 }
 

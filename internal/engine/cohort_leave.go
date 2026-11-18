@@ -19,6 +19,7 @@ func (e *Engine) DisconnectTarget(id string) {
 // and full-disconnect path; a per-target leave only reaches it with the last
 // target.
 func (e *Engine) disconnectAll() {
+	e.notice = SessionNotice{}
 	e.autoTried = true
 	e.userDisconnect = true
 	e.reconnectCount = 0
@@ -46,6 +47,7 @@ func (e *Engine) leaveTarget(key string) {
 	if key == "" {
 		return
 	}
+	e.notice = SessionNotice{}
 	// A cohort that exists counts as live even before its first state: the
 	// sender is between commands, and the connect that created it must be
 	// undone by a rebuild, not by shrinking the wanted set.
@@ -102,7 +104,12 @@ func (e *Engine) sessionLost(key string) {
 			}
 		}
 		if plan, err := e.buildPlan(remaining); err == nil {
-			e.logf("cohort: %s left the session; continuing with %d target(s)", e.nameFor(key), len(remaining))
+			name := e.nameFor(key)
+			if name == "" {
+				name = key
+			}
+			e.notice = SessionNotice{Kind: NoticeMemberLost, DeviceID: key, Name: name, Remaining: len(remaining)}
+			e.logf("cohort: %s left the session; continuing with %d target(s)", name, len(remaining))
 			// The session continues, so the retry onClosed scheduled must not
 			// fire into the new cohort.
 			e.reconnectAt = time.Time{}

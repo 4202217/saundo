@@ -44,6 +44,8 @@ The channel choices are `Stereo` / `立体声`, `Left` / `左`, and `Right` / `�
 
 A multi-target session names itself as `{name} + {name}` wherever one identity is needed (footer, connection card, sidebar), and the connection card's subtitle reads `{n} 台接收器` / `{n} receivers`. The card's receiver-processing stat keeps `最高 {value}` / `Up to {value}` because the engine reports the slowest member.
 
+A member that leaves while the rest continue reads `{name} 已断开，其他设备继续播放` / `{name} disconnected; the other devices keep playing`; a join in progress reads `正在加入 {name}，其他设备会短暂暂停` / `Adding {name}; the other devices pause briefly`. The notice's dismiss action is 忽略 / Dismiss, and its only other action is 重试 / Retry on the loss.
+
 ## One state, one phrase
 
 | State | Long form | Short form |

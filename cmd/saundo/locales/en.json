@@ -96,6 +96,23 @@
   "flyoutRefreshDevices": "Refresh receivers",
   "flyoutDevices": "Receivers",
   "flyoutDeviceCount": "{n, plural, =0 {No receivers} one {# receiver} other {# receivers}}",
+  "flyoutMemberLostNotice": "{name} disconnected; the other devices keep playing",
+  "@flyoutMemberLostNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutJoinNotice": "Adding {name}; the other devices pause briefly",
+  "@flyoutJoinNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutNoticeDismiss": "Dismiss",
   "@flyoutDeviceCount": {
     "placeholders": {
       "n": {

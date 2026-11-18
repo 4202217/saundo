@@ -79,6 +79,23 @@
   "flyoutRefreshDevices": "刷新接收器",
   "flyoutDevices": "接收器",
   "flyoutDeviceCount": "{n, plural, =0 {暂无} other {# 台}}",
+  "flyoutMemberLostNotice": "{name} 已断开，其他设备继续播放",
+  "@flyoutMemberLostNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutJoinNotice": "正在加入 {name}，其他设备会短暂暂停",
+  "@flyoutJoinNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutNoticeDismiss": "忽略",
   "flyoutConnectFailed": "连接失败：{error}",
   "credentialResetBar": "保存的配对已重置，需要重新配对。",
   "credentialResetTitle": "保存的配对已重置",

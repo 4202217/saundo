@@ -318,6 +318,14 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("flyout-joining-light", joining.view, flyoutWidth, visibleFlyoutHeight(joining), false)
 	save("flyout-joining-dark", joining.view, flyoutWidth, visibleFlyoutHeight(joining), true)
 
+	notice := fixture()
+	notice.snap.Notice = engine.SessionNotice{
+		Kind: engine.NoticeMemberLost, DeviceID: "AA:BB:CC:DD:EE:02",
+		Name: "Apple TV", Remaining: 1,
+	}
+	save("flyout-notice-light", notice.view, flyoutWidth, visibleFlyoutHeight(notice), false)
+	save("flyout-notice-dark", notice.view, flyoutWidth, visibleFlyoutHeight(notice), true)
+
 	failed := fixture()
 	failed.snap.State = sender.StateIdle
 	failed.snap.Error = "The receiver did not respond."

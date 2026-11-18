@@ -518,6 +518,38 @@ func (msgs Messages) FlyoutDeviceCount(n int) string {
 	return Catalog.Format(msgs.locale, "flyoutDeviceCount", map[string]any{"n": n})
 }
 
+// FlyoutMemberLostNotice says "{name} disconnected; the other devices keep playing"
+// in the language the app shows.
+func FlyoutMemberLostNotice(name string) string {
+	return In(i18n.Locale()).FlyoutMemberLostNotice(name)
+}
+
+// FlyoutMemberLostNotice says "{name} disconnected; the other devices keep playing"
+// in the language of msgs.
+func (msgs Messages) FlyoutMemberLostNotice(name string) string {
+	return Catalog.Format(msgs.locale, "flyoutMemberLostNotice", map[string]any{"name": name})
+}
+
+// FlyoutJoinNotice says "Adding {name}; the other devices pause briefly"
+// in the language the app shows.
+func FlyoutJoinNotice(name string) string { return In(i18n.Locale()).FlyoutJoinNotice(name) }
+
+// FlyoutJoinNotice says "Adding {name}; the other devices pause briefly"
+// in the language of msgs.
+func (msgs Messages) FlyoutJoinNotice(name string) string {
+	return Catalog.Format(msgs.locale, "flyoutJoinNotice", map[string]any{"name": name})
+}
+
+// FlyoutNoticeDismiss says "Dismiss"
+// in the language the app shows.
+func FlyoutNoticeDismiss() string { return In(i18n.Locale()).FlyoutNoticeDismiss() }
+
+// FlyoutNoticeDismiss says "Dismiss"
+// in the language of msgs.
+func (msgs Messages) FlyoutNoticeDismiss() string {
+	return Catalog.Format(msgs.locale, "flyoutNoticeDismiss", nil)
+}
+
 // FlyoutConnectFailed says "Connection failed: {error}"
 // in the language the app shows.
 func FlyoutConnectFailed(error string) string { return In(i18n.Locale()).FlyoutConnectFailed(error) }

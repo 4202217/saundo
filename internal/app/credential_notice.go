@@ -10,13 +10,14 @@ import (
 // be read and was moved aside. It is text-only so it shares the connection
 // error bar's inset and height; the chevron opens the explanation.
 func (a *App) credentialBar(c *ui.Context, p palette) {
-	bar := ui.ButtonBase(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).
+	bar := ui.ButtonBase(c).MinHeight(44).Padding(8, 10).Radius(9).Border(1, p.line).
 		Background(p.warningSoft).Cursor(ui.CursorPointer).Label(locales.CredentialResetBar())
 	bar.OnClick(func() {
 		a.credentialOpen = true
 		a.credentialEntered = false
 	})
 	bar.Children(func() {
+		ui.Icon(c, iconKey).Size(16, 16).TextColor(p.warning)
 		ui.Text(c, locales.CredentialResetBar()).FontSize(11.5).TextColor(p.warning).Grow(1).SingleLine().Ellipsis("…")
 		ui.Icon(c, iconChevronRight).Size(12, 12).TextColor(p.warning)
 	})

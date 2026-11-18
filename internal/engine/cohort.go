@@ -683,6 +683,7 @@ func (e *Engine) connectResolved(key string, cached *receivers.Target) {
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
 	e.takenOver = false
+	e.notice = SessionNotice{}
 
 	action, keys := e.connectIntent(key)
 	if action == connectNoop {

@@ -77,3 +77,32 @@ func TestMemberDeathOfTheOnlyTargetKeepsTheRetry(t *testing.T) {
 		t.Fatalf("wanted = %v, want the target kept for the retry", h.e.wantedKeys)
 	}
 }
+
+// TestMemberDeathPublishesANotice pins the flyout's explanation: a member that
+// leaves while the rest continue is named in the snapshot, and the next user
+// connect clears it.
+func TestMemberDeathPublishesANotice(t *testing.T) {
+	h := newHarness(t)
+	b := advertiseBoth(h)
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	h.launch()
+
+	h.e.sessionLost(b.ID)
+	snap := h.e.Snapshot()
+	n := snap.Notice
+	if n.Kind != NoticeMemberLost || n.DeviceID != b.ID || n.Remaining != 1 {
+		t.Fatalf("notice = %+v, want the lost target and one survivor", n)
+	}
+	if n.Name == "" {
+		t.Fatal("notice has no device name")
+	}
+
+	// A user action takes responsibility for the session, so the explanation
+	// goes away.
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	if got := h.e.Snapshot().Notice; got.Kind != NoticeNone {
+		t.Fatalf("notice survived a user connect: %+v", got)
+	}
+}

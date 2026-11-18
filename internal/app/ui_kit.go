@@ -505,3 +505,38 @@ func enterPose(c *ui.Context, e ui.Element, entered *bool) {
 	}
 	e.AnimatePose(ui.Pose{Fade: 0}, contentEnter)
 }
+
+// barTone is the status-bar family shared by the session notice, the
+// connection error, and the credential notice.
+type barTone uint8
+
+const (
+	barAccent barTone = iota
+	barNeutral
+	barDanger
+	barWarning
+)
+
+// statusBar is one 44-DIP line under the device card: a 16-DIP glyph, one
+// single-line message, and an optional trailing action cluster. Every bar in
+// that slot uses this shape, so they read as one family.
+func statusBar(c *ui.Context, p palette, tone barTone, glyph *ui.SVG, text string, trailing func()) {
+	bg, iconColor, textColor := p.accentSoft, p.accent, p.fg2
+	switch tone {
+	case barNeutral:
+		bg, iconColor = p.pill, p.muted
+	case barDanger:
+		bg, iconColor, textColor = p.redSoft, p.red, p.red
+	case barWarning:
+		bg, iconColor, textColor = p.warningSoft, p.warning, p.warning
+	}
+	bar := ui.Row(c).MinHeight(44).Padding(8, 10).Radius(9).Gap(9).
+		AlignItems(ui.Center).Background(bg).Border(1, p.line)
+	bar.Children(func() {
+		ui.Icon(c, glyph).Size(16, 16).TextColor(iconColor)
+		ui.Text(c, text).FontSize(11.5).TextColor(textColor).Grow(1).SingleLine().Ellipsis("…")
+		if trailing != nil {
+			trailing()
+		}
+	})
+}

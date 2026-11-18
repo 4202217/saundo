@@ -1051,6 +1051,26 @@ records the lost target), `TestMemberDeathKeepsOthersPlaying`,
 `TestMemberDeathOfTheOnlyTargetKeepsTheRetry`. Not run: the same power-off
 pass on real hardware after the fix.
 
+## 2026-11-18 — session notices explain a lost member and a join
+
+A member death already kept the rest playing, but the flyout explained nothing:
+the room paused and the row simply left the session. The engine now publishes a
+`SessionNotice` when it isolates a lost member, and the flyout renders a
+44-DIP bar under the device card with the member's name, 重试, and a dismiss.
+The bar clears on the next user connect or after 8 s. A join in progress is
+derived from a `TargetJoining` member beside an existing one and uses the same
+bar to warn that the other devices pause briefly. The window adds 52 DIP while
+a notice shows. The connection-error and credential-recovery bars now share
+that 44-DIP geometry, left glyph, and border, so the three read as one family.
+
+Checks: `mingw32-make check` passed (378 messages, 136 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. The preview
+matrix renders `flyout-notice-light` and `flyout-notice-dark`. Pins:
+`TestMemberDeathPublishesANotice`, `TestSessionNoticeShowsLostMember`,
+`TestSessionNoticeJoinCopy`, `TestSessionNoticeAddsItsHeight`. Not run: the
+notice in a live two-receiver session.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 // visibleFlyoutHeight is the height a tester should use for this App's
 // current devices, latency row, and media card.
 func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
+	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset, a.noticeShown())
 }
 
 func withLocale(t *testing.T, tag string) {
@@ -2081,7 +2081,7 @@ func TestFitFlyoutResizesWithoutATray(t *testing.T) {
 		width, height = w, h
 	}
 	a.fitFlyout()
-	want := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
+	want := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset, a.noticeShown())
 	if width != flyoutWidth || height != want {
 		t.Fatalf("fitFlyout resized to %dx%d, want %dx%d", width, height, flyoutWidth, want)
 	}

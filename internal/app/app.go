@@ -79,15 +79,14 @@ type App struct {
 	historyKey    string
 	historyLocale string
 	historyState  updateHistoryState
-	// async runs a job off the UI thread: a goroutine, or a test's direct
-	// call that makes the update states observable at once.
+	// async runs a job off the UI thread or directly in a test.
 	async func(func())
 
-	snap  engine.Snapshot
-	selID string
+	snap   engine.Snapshot
+	selID  string
+	notice sessionNoticeState
 
-	// mutedVolume remembers the level a target's speaker button muted from,
-	// so its next click restores it. It is session state, not a setting.
+	// mutedVolume remembers the level a target's speaker button muted from.
 	mutedVolume map[string]float64
 
 	pinOpen bool
@@ -750,6 +749,7 @@ func (a *App) onEngineChange(snap engine.Snapshot) {
 
 func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.snap = snap
+	a.trackNotice()
 	a.strict = snap.StrictAuth
 	a.reconnect = snap.Reconnect
 	a.lampOff = snap.LampOff

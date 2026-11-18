@@ -60,7 +60,9 @@
   phase. A rebuild names no joiner, so it offers no 取消. A member that
   closes while the cohort runs leaves the session instead of being retried:
   the rest keep playing, the lost row returns to 连接, and a single-target
-  session still closes and retries. The row's 断开连接
+  session still closes and retries. A session notice under the device card
+  names the lost member with 重试 and a dismiss, or warns that a joining
+  member pauses the others briefly; it clears on a user action or after 8 s. The row's 断开连接
   removes only that target (`DisconnectTarget` rebuilds the cohort with the
   rest; the last target ends the session), while the device head's 全部断开
   ends the whole session. The head reserves the action's 10-DIP height in every state, so the panel does not move when the button appears; pinned by `TestDeviceHeadKeepsItsHeight`.
@@ -72,6 +74,7 @@
   `TestFlyoutRowsShareOneHeight`, `TestChannelIconFadesTheOtherSide`,
   `TestFlyoutJoiningRowHidesMixer`, `TestRebuildRowsOfferNoCancel`,
   `TestMemberDeathKeepsOthersPlaying`, `TestPrimaryDeathPromotesTheRemainingTarget`,
+  `TestSessionNoticeShowsLostMember`, `TestSessionNoticeJoinCopy`,
   `TestRowActionFollowsTargetState`,
   `TestFlyoutDisconnectAllButtonFollowsSession`,
   `TestConnectPublishesJoiningThenMember`, `TestAddPublishesMemberAndJoining`,
@@ -107,8 +110,9 @@
   page. The tray tooltip appends the available version while an update
   waits, and `Update ready` with no version once it is downloaded.
 - Credential recovery: when the engine reports
-  `Snapshot.CredentialReset`, a text-only 48-DIP bar with the connection
-  error bar's inset and height sits under the device card. Its chevron
+  `Snapshot.CredentialReset`, a 44-DIP bar in the status-bar family (key
+  glyph, warning tone, same inset and height as the error bar) sits under the
+  device card. Its chevron
   opens a 380-DIP dialog with the reason, the re-pair step, the
   receiver-reset fallback, and 不再提示 / 重新配对. A successful pairing or
   the dismiss action clears the notice. Pinned by
