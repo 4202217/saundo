@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"slices"
+
 	"saundo/internal/receivers"
 )
 
@@ -153,9 +155,15 @@ func (e *Engine) handleRemoveReceiver(key string) {
 		delete(e.setsValue.VolumeByDevice, key)
 		e.markSettingsDirty()
 	}
-	if e.setsValue.LastDeviceID == key {
-		e.setsValue.LastDeviceID = ""
-		e.markSettingsDirty()
+	// The removed receiver also leaves the remembered combination.
+	if len(e.setsValue.LastTargets) > 0 {
+		kept := slices.DeleteFunc(slices.Clone(e.setsValue.LastTargets), func(k string) bool {
+			return k == key
+		})
+		if len(kept) != len(e.setsValue.LastTargets) {
+			e.setsValue.LastTargets = kept
+			e.markSettingsDirty()
+		}
 	}
 	wanted := false
 	for _, k := range e.wantedKeys {

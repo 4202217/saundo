@@ -75,12 +75,13 @@ func TestLiveStereoGroup(t *testing.T) {
 	if !snap.PTPActive || !snap.PTPReady {
 		t.Fatalf("PTP master not ready for both members: active=%v ready=%v", snap.PTPActive, snap.PTPReady)
 	}
-	t.Logf("streaming to %q, volume %.0f, ptp=%v/%v, member rings=%d", snap.ConnectedName, snap.Volume, snap.PTPActive, snap.PTPReady, len(e.memberRings))
+	primary, _ := snap.Target(snap.SelectedID)
+	t.Logf("streaming to %q, volume %.0f, ptp=%v/%v, member rings=%d", snap.ConnectedName, primary.Volume, snap.PTPActive, snap.PTPReady, len(e.memberRings))
 
-	initialVolume := snap.Volume
+	initialVolume := primary.Volume
 	if initialVolume > 30 {
-		e.SetVolume(30)
-		snap.Volume = 30
+		e.SetTargetVolume(snap.SelectedID, 30)
+		primary.Volume = 30
 		time.Sleep(300 * time.Millisecond)
 	}
 	if os.Getenv("SAUNDO_STEREO_TONE") == "1" {
@@ -113,7 +114,7 @@ func TestLiveStereoGroup(t *testing.T) {
 	}
 
 	if initialVolume > 30 && initialVolume <= 100 {
-		e.SetVolume(initialVolume)
+		e.SetTargetVolume(snap.SelectedID, initialVolume)
 		time.Sleep(300 * time.Millisecond)
 	}
 	e.Disconnect()

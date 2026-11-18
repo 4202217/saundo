@@ -274,6 +274,45 @@ func TestAutoConnectSkipsAStaleStereoPair(t *testing.T) {
 	}
 }
 
+// TestAutoConnectRestoresTheLastCombination pins the multi-device launch: the
+// flagged row anchors the attempt, and when it belongs to the last session's
+// combination the whole combination opens as one cohort in its recorded order.
+func TestAutoConnectRestoresTheLastCombination(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	second := secondDevice()
+	h.e.setsValue.LastTargets = []string{testDeviceID, second.ID}
+	h.e.setDevices([]device.Device{onlineDevice(), second})
+
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the combination launched", h.sessions)
+	}
+	if got := h.e.plan.keys(); len(got) != 2 || got[0] != testDeviceID || got[1] != second.ID {
+		t.Fatalf("plan = %v, want the recorded combination in order", got)
+	}
+	if h.e.plan.joinKey != testDeviceID {
+		t.Fatalf("join key = %q, want the anchor", h.e.plan.joinKey)
+	}
+}
+
+// TestAutoConnectLaunchesTheAnchorAlone pins the rule that keeps a re-flagged
+// row authoritative: a combination that does not contain the anchor leaves the
+// anchor to launch alone, and the combination returns after the next session.
+func TestAutoConnectLaunchesTheAnchorAlone(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	second := secondDevice()
+	h.e.setsValue.LastTargets = []string{second.ID, "AA:BB:CC:DD:EE:FF"}
+	h.e.setDevices([]device.Device{onlineDevice(), second})
+
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the anchor alone", h.sessions)
+	}
+	if got := h.e.plan.keys(); len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("plan = %v, want the anchor only", got)
+	}
+}
+
 // TestAutoConnectKeepsALiveStereoPair pins the other side of the stale-pair
 // rule: while discovery still advertises the pair, stray single rows for its
 // members must not stop the launch from connecting it.
@@ -829,8 +868,8 @@ func TestRemoveActiveReceiverClearsSelection(t *testing.T) {
 	}
 	h.e.handleCommand(command{kind: cmdRemoveReceiver, deviceID: key})
 	snap := h.e.Snapshot()
-	if snap.SelectedID != "" || h.e.setsValue.LastDeviceID != "" {
-		t.Fatalf("selection survived removal: selected=%q last=%q", snap.SelectedID, h.e.setsValue.LastDeviceID)
+	if snap.SelectedID != "" || len(h.e.setsValue.LastTargets) != 0 {
+		t.Fatalf("selection survived removal: selected=%q last=%v", snap.SelectedID, h.e.setsValue.LastTargets)
 	}
 	for _, d := range snap.Devices {
 		if d.ID == key {

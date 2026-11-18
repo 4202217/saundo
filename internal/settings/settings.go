@@ -117,26 +117,31 @@ type Settings struct {
 	CaptureAppIDs       []string           `json:"captureAppIds"`
 	CaptureAppNames     []string           `json:"captureAppNames"`
 	LastDeviceID        string             `json:"lastDeviceId"`
-	StrictReceiverAuth  bool               `json:"strictReceiverAuth"`
-	AutoConnect         bool               `json:"autoConnect"`
-	Reconnect           bool               `json:"reconnect"`
-	ShowNowPlayingPanel bool               `json:"showNowPlayingPanel"`
-	PlaybackControls    bool               `json:"playbackControls"`
-	CoverColors         bool               `json:"coverColors"`
-	CoverMode           CoverMode          `json:"coverMode"`
-	AudioLevel          bool               `json:"audioLevel"`
-	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
-	Lamp                LampSettings       `json:"lamp"`
-	Standby             StandbySettings    `json:"standby"`
-	TrayAnimation       bool               `json:"trayAnimation"`
-	LaunchAtStart       bool               `json:"launchAtStart"`
-	Language            string             `json:"language"`
-	Theme               ThemeMode          `json:"theme"`
-	Beta                bool               `json:"beta"`
-	AutoUpdate          bool               `json:"autoUpdate"`
-	AutoDownload        bool               `json:"autoDownload"`
-	SkippedVersion      string             `json:"skippedVersion"`
-	LastCheck           string             `json:"lastCheck"`
+	// LastTargets is the last streaming session's target keys in target
+	// order. It is what the launch auto-connect restores and what seeds the
+	// UI's pre-session selection; lastDeviceId is the legacy single-device
+	// record the receiver migration reads.
+	LastTargets         []string        `json:"lastTargets"`
+	StrictReceiverAuth  bool            `json:"strictReceiverAuth"`
+	AutoConnect         bool            `json:"autoConnect"`
+	Reconnect           bool            `json:"reconnect"`
+	ShowNowPlayingPanel bool            `json:"showNowPlayingPanel"`
+	PlaybackControls    bool            `json:"playbackControls"`
+	CoverColors         bool            `json:"coverColors"`
+	CoverMode           CoverMode       `json:"coverMode"`
+	AudioLevel          bool            `json:"audioLevel"`
+	MuteLocalOnConnect  bool            `json:"muteLocalOnConnect"`
+	Lamp                LampSettings    `json:"lamp"`
+	Standby             StandbySettings `json:"standby"`
+	TrayAnimation       bool            `json:"trayAnimation"`
+	LaunchAtStart       bool            `json:"launchAtStart"`
+	Language            string          `json:"language"`
+	Theme               ThemeMode       `json:"theme"`
+	Beta                bool            `json:"beta"`
+	AutoUpdate          bool            `json:"autoUpdate"`
+	AutoDownload        bool            `json:"autoDownload"`
+	SkippedVersion      string          `json:"skippedVersion"`
+	LastCheck           string          `json:"lastCheck"`
 }
 
 // Default returns the first-run configuration.

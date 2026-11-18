@@ -378,12 +378,6 @@ func (c *cohortTransport) SetInputFormat(rate int) {
 	c.gate.SetInputRate(rate)
 }
 
-func (c *cohortTransport) SetVolume(pct float64) {
-	for _, m := range c.members {
-		m.sender.SetVolume(pct)
-	}
-}
-
 // SetTargetVolume applies one target's volume to every member, so a stereo
 // pair shares the value and a single receiver gets its own.
 func (c *cohortTransport) SetTargetVolume(key string, pct float64) {
@@ -775,4 +769,21 @@ func (e *Engine) rebuildSession() {
 		return
 	}
 	e.startPlan(plan, true)
+}
+
+// sessionAddressable checks every live target's device before a rebuild. The
+// rebuild opens one cohort for the whole set, so a missing or offline member
+// would fail the launch and take the running session with it. It returns the
+// first missing key or the first offline device's name; ok reports all clear.
+func (e *Engine) sessionAddressable() (missing, offline string, ok bool) {
+	for _, key := range e.plan.keys() {
+		d, found := e.find(key)
+		if !found {
+			return key, "", false
+		}
+		if !d.Online {
+			return "", d.Name, false
+		}
+	}
+	return "", "", true
 }

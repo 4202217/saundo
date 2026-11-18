@@ -100,7 +100,7 @@ func TestSnapshotTargetControls(t *testing.T) {
 // legacy value does not move.
 func TestSetTargetVolumeAppliesOnlyItsTarget(t *testing.T) {
 	h, b := connectTwo(t)
-	primaryVolume := h.e.volume
+	primaryVolume := h.e.setsValue.Volume
 	h.e.handleCommand(command{kind: cmdTargetVolume, deviceID: b.ID, value: 30})
 
 	if got := h.e.setsValue.VolumeByDevice[b.ID]; got != 30 {
@@ -115,8 +115,8 @@ func TestSetTargetVolumeAppliesOnlyItsTarget(t *testing.T) {
 	if len(h.fake.targetVolumes) != 1 {
 		t.Fatalf("transport applied to %v, want only the target", h.fake.targetVolumes)
 	}
-	if h.e.volume != primaryVolume || h.e.setsValue.Volume != primaryVolume {
-		t.Fatalf("primary volume = %f/%f, want %f", h.e.volume, h.e.setsValue.Volume, primaryVolume)
+	if h.e.setsValue.Volume != primaryVolume {
+		t.Fatalf("primary volume = %f, want %f", h.e.setsValue.Volume, primaryVolume)
 	}
 
 	h.e.handleCommand(command{kind: cmdTargetVolume, deviceID: b.ID, value: 140})
@@ -137,7 +137,7 @@ func TestReceiverVolumeEventMapsToItsTarget(t *testing.T) {
 	if _, ok := h.e.setsValue.VolumeByDevice[testDeviceID]; ok {
 		t.Fatal("the report moved the other target's volume")
 	}
-	if h.e.volume == 44 {
+	if h.e.setsValue.Volume == 44 {
 		t.Fatal("a secondary report moved the primary volume")
 	}
 }
@@ -163,8 +163,8 @@ func TestInitialVolumeAdoptedPerTarget(t *testing.T) {
 	if got := h.e.setsValue.VolumeByDevice[testDeviceID]; got != 37 {
 		t.Fatalf("primary volume changed on add: %f, want 37", got)
 	}
-	if h.e.volume != 37 {
-		t.Fatalf("primary snapshot volume = %f, want 37", h.e.volume)
+	if got := h.e.setsValue.Volume; got != 37 {
+		t.Fatalf("primary stored volume = %f, want 37", got)
 	}
 }
 
@@ -251,25 +251,6 @@ func TestCohortTargetChannelReachesEveryMember(t *testing.T) {
 	}
 	if got := c.members[2].sender.Channel(); got != sender.ChannelStereo {
 		t.Fatalf("other target channel = %v, want stereo", got)
-	}
-}
-
-// TestVolumeCommandKeepsTheSingleTargetPath pins the old Engine.SetVolume
-// command: it routes to the primary target and still stores it.
-func TestVolumeCommandKeepsTheSingleTargetPath(t *testing.T) {
-	h := newHarness(t)
-	h.addDevice()
-	h.connect()
-	h.launch()
-	h.e.handleCommand(command{kind: cmdVolume, value: 55})
-	if got := h.e.setsValue.VolumeByDevice[testDeviceID]; got != 55 {
-		t.Fatalf("stored volume = %f, want 55", got)
-	}
-	if got := h.fake.targetVolumes[testDeviceID]; got != 55 {
-		t.Fatalf("transport target volume = %f, want 55", got)
-	}
-	if h.e.volume != 55 {
-		t.Fatalf("snapshot volume = %f, want 55", h.e.volume)
 	}
 }
 

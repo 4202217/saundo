@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"errors"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -31,7 +32,6 @@ type fakeTransport struct {
 	identity       sender.Identity
 	strict         bool
 	inputRates     []int
-	volumes        []float64
 	targetVolumes  map[string]float64
 	targetChannels map[string]sender.ChannelMode
 	initialByKey   map[string]float64
@@ -84,13 +84,11 @@ func (f *fakeTransport) Pushing() bool                  { return f.pushing }
 func (f *fakeTransport) SetIdentity(id sender.Identity) { f.identity = id }
 func (f *fakeTransport) Rings() []*ring.Buffer          { return f.rings }
 func (f *fakeTransport) SetInputFormat(rate int)        { f.inputRates = append(f.inputRates, rate) }
-func (f *fakeTransport) SetVolume(p float64)            { f.volumes = append(f.volumes, p) }
 func (f *fakeTransport) SetTargetVolume(key string, p float64) {
 	if f.targetVolumes == nil {
 		f.targetVolumes = map[string]float64{}
 	}
 	f.targetVolumes[key] = p
-	f.volumes = append(f.volumes, p)
 }
 func (f *fakeTransport) SetTargetChannel(key string, mode sender.ChannelMode) {
 	if f.targetChannels == nil {
@@ -278,12 +276,12 @@ func TestFirstLaunchAdoptsReceiverVolume(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.fake.initialPct, h.fake.hasInitial = 37, true
-	if len(h.fake.volumes) != 0 {
-		t.Fatalf("volume set before launch: %v", h.fake.volumes)
+	if len(h.fake.targetVolumes) != 0 {
+		t.Fatalf("volume sent before launch: %v", h.fake.targetVolumes)
 	}
 	h.launch()
-	if h.e.volume != 37 || h.e.setsValue.Volume != 37 {
-		t.Fatalf("volume = %f, want 37", h.e.volume)
+	if got := h.e.setsValue.Volume; got != 37 {
+		t.Fatalf("stored volume = %f, want 37", got)
 	}
 }
 
@@ -292,7 +290,7 @@ func TestVolumeCommandStoresPerDevice(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
-	h.e.handleCommand(command{kind: cmdVolume, value: 55})
+	h.e.handleCommand(command{kind: cmdTargetVolume, deviceID: testDeviceID, value: 55})
 	if got := h.e.setsValue.VolumeByDevice[testDeviceID]; got != 55 {
 		t.Fatalf("per-device volume = %f, want 55", got)
 	}
@@ -935,7 +933,7 @@ func TestConnectSelectsTheDeviceBeingConnected(t *testing.T) {
 	// The previous session's device is stale: the user connected a different
 	// device from the list.
 	h.e.selectedID = staleID
-	h.e.setsValue.LastDeviceID = staleID
+	h.e.setsValue.LastTargets = []string{staleID}
 	h.e.setDevices([]device.Device{
 		{ID: staleID, Name: "REDMI", Model: "AppleTV3,2", Auth: device.AuthLegacyPin},
 		{ID: testDeviceID, Name: "客厅 HomePod", Host: "192.0.2.10", Port: 7000,
@@ -955,26 +953,26 @@ func TestConnectSelectsTheDeviceBeingConnected(t *testing.T) {
 		t.Fatalf("connected name = %q, want 客厅 HomePod", snap.ConnectedName)
 	}
 	h.flushSettings()
-	if got := h.e.sets.Load().LastDeviceID; got != testDeviceID {
-		t.Fatalf("persisted last device = %q, want %q", got, testDeviceID)
+	if got := h.e.sets.Load().LastTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("persisted last targets = %v, want [%s]", got, testDeviceID)
 	}
 }
 
-func TestFailedLaunchDoesNotReplaceLastDevice(t *testing.T) {
+func TestFailedLaunchDoesNotReplaceLastTargets(t *testing.T) {
 	h := newHarness(t)
-	const lastID = "AA:BB:CC:DD:EE:99"
-	h.e.setsValue.LastDeviceID = lastID
-	h.flushSettings() // the previous target is on disk
+	last := []string{"AA:BB:CC:DD:EE:99"}
+	h.e.setsValue.LastTargets = last
+	h.flushSettings() // the previous combination is on disk
 	h.addDevice()
 	h.connect()
 	h.fake.launch(false, "Device refused")
 	h.flushSettings()
 
-	if got := h.e.setsValue.LastDeviceID; got != lastID {
-		t.Fatalf("last device after a failed launch = %q, want %q", got, lastID)
+	if got := h.e.setsValue.LastTargets; !slices.Equal(got, last) {
+		t.Fatalf("last targets after a failed launch = %v, want %v", got, last)
 	}
-	if got := h.e.sets.Load().LastDeviceID; got != lastID {
-		t.Fatalf("failed launch replaced the persisted last device with %q", got)
+	if got := h.e.sets.Load().LastTargets; !slices.Equal(got, last) {
+		t.Fatalf("failed launch replaced the persisted combination with %v", got)
 	}
 }
 
@@ -1266,12 +1264,34 @@ func TestOnClosedRemembersRetransmitRatio(t *testing.T) {
 	h := newHarness(t)
 	const key = "AA:00"
 	h.e.reg.Put(receivers.Entry{Key: key, Kind: receivers.KindDiscovered})
-	h.e.selectedID = key
-	h.e.snap.Diagnostics = Diagnostics{Retransmits: 4, SentBlocks: 100}
+	h.e.snap.Targets = []TargetControl{{ID: key, Health: TargetHealth{Retransmits: 4, SentBlocks: 100}}}
 	h.e.onClosed()
 	entry, ok := h.e.reg.Get(key)
 	if !ok || entry.LastRetransmits != 4 || entry.LastSentBlocks != 100 {
 		t.Fatalf("remembered stats = %+v, ok=%v", entry, ok)
+	}
+}
+
+// TestRememberSessionStatsPerTarget pins the per-target fold: each target's
+// own counters land in its own registry entry, not the session total in the
+// primary's row.
+func TestRememberSessionStatsPerTarget(t *testing.T) {
+	h, b := connectTwo(t)
+	h.e.reg.Put(receivers.Entry{Key: b.ID, Kind: receivers.KindDiscovered})
+	h.fake.stats = []sender.Stats{
+		{Retransmits: 3, SentBlocks: 100},
+		{Retransmits: 5, SentBlocks: 200},
+	}
+	h.e.publish()
+	h.e.onClosed()
+
+	first, ok := h.e.reg.Get(testDeviceID)
+	if !ok || first.LastRetransmits != 3 || first.LastSentBlocks != 100 {
+		t.Fatalf("first target stats = %+v ok=%v", first, ok)
+	}
+	second, ok := h.e.reg.Get(b.ID)
+	if !ok || second.LastRetransmits != 5 || second.LastSentBlocks != 200 {
+		t.Fatalf("second target stats = %+v ok=%v", second, ok)
 	}
 }
 

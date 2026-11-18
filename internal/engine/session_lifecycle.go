@@ -1,9 +1,23 @@
 package engine
 
-import "time"
+import (
+	"slices"
+	"time"
+
+	"saundo/internal/settings"
+)
 
 // The transport's lifecycle callbacks. They run on the engine goroutine, own
 // the session's start and failure transitions, and publish once at the end.
+
+// lastSessionFirst is the previous session's first target, for the
+// pre-session selection. Empty before the first session.
+func lastSessionFirst(cfg settings.Settings) string {
+	if len(cfg.LastTargets) > 0 {
+		return cfg.LastTargets[0]
+	}
+	return ""
+}
 
 func (e *Engine) onLaunched(ok bool, err string) {
 	e.plan.joinKey = "" // the attempt ended: no row is the user's joiner now
@@ -25,8 +39,11 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		if e.connectedName == "" {
 			e.connectedName = e.nameFor(e.selectedID)
 		}
-		if e.setsValue.LastDeviceID != e.selectedID {
-			e.setsValue.LastDeviceID = e.selectedID
+		// The session's target set is what a launch restores and what the
+		// UI's pre-session selection seeds from.
+		keys := e.plan.keys()
+		if !slices.Equal(e.setsValue.LastTargets, keys) {
+			e.setsValue.LastTargets = keys
 			e.markSettingsDirty()
 		}
 		e.clearError()
@@ -126,20 +143,23 @@ func (e *Engine) onPreempted(reason string) {
 	e.publish()
 }
 
-// rememberSessionStats stores the session's retransmit ratio for the next
-// launch's duplicate policy.
+// rememberSessionStats stores each target's retransmit ratio in its own
+// registry entry, for that target's next launch's duplicate policy. The
+// snapshot's targets carry the health folded per target; a close reads the
+// last publish, the same source the connection card shows.
 func (e *Engine) rememberSessionStats() {
-	key := e.selectedID
-	if key == "" {
-		return
+	saved := false
+	for _, t := range e.snap.Targets {
+		entry, ok := e.reg.Get(t.ID)
+		if !ok {
+			continue
+		}
+		entry.LastRetransmits = t.Health.Retransmits
+		entry.LastSentBlocks = t.Health.SentBlocks
+		e.reg.Put(entry)
+		saved = true
 	}
-	entry, ok := e.reg.Get(key)
-	if !ok {
-		return
+	if saved {
+		e.saveRegistry()
 	}
-	diag := e.snap.Diagnostics
-	entry.LastRetransmits = diag.Retransmits
-	entry.LastSentBlocks = diag.SentBlocks
-	e.reg.Put(entry)
-	e.saveRegistry()
 }

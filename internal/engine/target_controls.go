@@ -172,7 +172,8 @@ func (e *Engine) targetControls() []TargetControl {
 }
 
 // storeTargetVolume clamps and remembers one target's volume. The primary
-// target also updates the legacy global value, which old surfaces read.
+// target also updates the global value, which becomes the default a target
+// with no remembered volume adopts.
 func (e *Engine) storeTargetVolume(key string, pct float64) {
 	if key == "" {
 		return
@@ -183,19 +184,14 @@ func (e *Engine) storeTargetVolume(key string, pct float64) {
 	}
 	e.setsValue.VolumeByDevice[key] = pct
 	if key == e.selectedID {
-		e.volume = pct
 		e.setsValue.Volume = pct
 	}
 	e.markSettingsDirty()
 }
 
 // applyTargetVolume stores a user's volume and sends it to that target's live
-// members. An empty key falls back to the primary target for the old
-// single-target command.
+// members.
 func (e *Engine) applyTargetVolume(key string, pct float64) {
-	if key == "" {
-		key = e.selectedID
-	}
 	if key == "" {
 		return
 	}
@@ -232,8 +228,7 @@ func (e *Engine) adoptInitialVolumes() {
 	}
 }
 
-// SetTargetVolume sets one target's volume in percent. The primary target's
-// value still drives Snapshot.Volume for old surfaces.
+// SetTargetVolume sets one target's volume in percent.
 func (e *Engine) SetTargetVolume(id string, pct float64) {
 	e.send(command{kind: cmdTargetVolume, deviceID: id, value: pct})
 }

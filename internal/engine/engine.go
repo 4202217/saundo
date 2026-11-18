@@ -56,7 +56,6 @@ type Snapshot struct {
 	// saved. It differs from PasswordDeviceID for a stereo member, whose
 	// password is stored under the member key but whose pair is the target.
 	PasswordTargetID string
-	Volume           float64
 	Name             string
 	Reconnect        bool
 	Reconnecting     bool
@@ -116,7 +115,6 @@ const (
 	cmdConnect commandKind = iota
 	cmdDisconnect
 	cmdDisconnectTarget
-	cmdVolume
 	cmdTargetVolume
 	cmdPin
 	cmdDismissPassword
@@ -303,7 +301,6 @@ type Engine struct {
 	passwordDevice   string
 	passwordDeviceID string
 	passwordTargetID string
-	volume           float64
 	// receiverLatency is the largest arrival-to-render latency any member of
 	// the active session reported. It is diagnostic only.
 	receiverLatency int
@@ -396,8 +393,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		quit:            make(chan struct{}),
 		done:            make(chan struct{}),
 		setsValue:       cfg,
-		volume:          cfg.Volume,
-		selectedID:      cfg.LastDeviceID,
+		selectedID:      lastSessionFirst(cfg),
 		captureEndpoint: cfg.CaptureEndpointID,
 		captureName:     cfg.CaptureEndpointName,
 		captureProcess:  cfg.CaptureProcessPID,
@@ -511,11 +507,6 @@ func (e *Engine) Connect(deviceID string) {
 
 // Disconnect stops the current session.
 func (e *Engine) Disconnect() { e.send(command{kind: cmdDisconnect}) }
-
-// SetVolume sets receiver volume in percent.
-func (e *Engine) SetVolume(pct float64) {
-	e.send(command{kind: cmdVolume, value: pct})
-}
 
 // SubmitPIN supplies the receiver's on-screen code.
 func (e *Engine) SubmitPIN(code string) {
@@ -996,8 +987,6 @@ func (e *Engine) handleCommand(cmd command) {
 		e.disconnectAll()
 	case cmdDisconnectTarget:
 		e.leaveTarget(cmd.deviceID)
-	case cmdVolume:
-		e.applyTargetVolume(e.selectedID, cmd.value)
 	case cmdTargetVolume:
 		e.applyTargetVolume(cmd.deviceID, cmd.value)
 	case cmdPin:
@@ -1071,13 +1060,18 @@ func (e *Engine) handleCommand(cmd command) {
 			// A PIN wait is pairing progress, not a live stream: restarting
 			// over it would discard the code the user is typing.
 			if e.tr.WaitingForPin() {
-				e.logf("latency apply: %s is waiting for a PIN; session left alone", e.selectedID)
-			} else if d, ok := e.find(e.selectedID); !ok {
-				e.fail(ErrLatencyDeviceMissing)
-				e.logf("latency apply: device %s not found; session left running", e.selectedID)
-			} else if !d.Online {
-				e.fail(ErrLatencyOffline)
-				e.logf("latency apply: %s is offline; session left running", e.selectedID)
+				e.logf("latency apply: %s is waiting for a PIN; session left alone", e.connectedName)
+			} else if missing, offline, ok := e.sessionAddressable(); !ok {
+				// Every member must be addressable: the rebuild opens a new
+				// cohort for the whole set, so one missing or offline target
+				// would fail the launch and take the session down.
+				if missing != "" {
+					e.fail(ErrLatencyDeviceMissing)
+					e.logf("latency apply: device %s not found; session left running", missing)
+				} else {
+					e.fail(ErrLatencyOffline)
+					e.logf("latency apply: %s is offline; session left running", offline)
+				}
 			} else {
 				e.userDisconnect = false
 				e.connectAuto = false
@@ -2196,7 +2190,6 @@ func (e *Engine) buildSnapshot() Snapshot {
 		PasswordDevice:      e.passwordDevice,
 		PasswordDeviceID:    e.passwordDeviceID,
 		PasswordTargetID:    e.passwordTargetID,
-		Volume:              e.volume,
 		Name:                e.setsValue.Name,
 		Reconnect:           e.setsValue.Reconnect,
 		Reconnecting:        e.reconnectWanted && !e.reconnectAt.IsZero(),

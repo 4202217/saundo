@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 	"time"
 
@@ -349,6 +350,57 @@ func TestAddReplaysNowPlaying(t *testing.T) {
 	}
 	if h.fake.nowCoverMIME != "image/jpeg" {
 		t.Fatalf("rebuilt cohort cover mime = %q, want image/jpeg", h.fake.nowCoverMIME)
+	}
+}
+
+// TestLaunchRecordsTheTargetCombination pins the combination record: a
+// streaming cohort's target keys persist in target order for the next launch
+// and the UI's pre-session selection.
+func TestLaunchRecordsTheTargetCombination(t *testing.T) {
+	h := newHarness(t)
+	b := advertiseBoth(h)
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	h.launch()
+	if got := h.e.setsValue.LastTargets; !slices.Equal(got, []string{testDeviceID, b.ID}) {
+		t.Fatalf("recorded combination = %v, want [%s %s]", got, testDeviceID, b.ID)
+	}
+}
+
+// TestLatencyApplyChecksEveryMember pins the multi-device guard: one missing
+// or offline member leaves the whole session running, because the rebuild
+// would open a cohort that cannot launch and take the session down.
+func TestLatencyApplyChecksEveryMember(t *testing.T) {
+	h := newHarness(t)
+	b := advertiseBoth(h)
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	h.launch()
+	sessions := h.sessions
+
+	// The added receiver disappears entirely: no discovery, no registry row.
+	h.e.reg.Delete(b.ID)
+	h.e.setDevices([]device.Device{onlineDevice()})
+	h.e.handleCommand(command{kind: cmdLatency, value: 300, reconnect: true})
+	if h.sessions != sessions {
+		t.Fatal("latency apply rebuilt a cohort with a missing member")
+	}
+	if snap := h.e.Snapshot(); snap.ErrorKey != ErrLatencyDeviceMissing {
+		t.Fatalf("error key = %q, want %q", snap.ErrorKey, ErrLatencyDeviceMissing)
+	}
+
+	// The added receiver is advertised offline: not rebuilt either.
+	off := secondDevice()
+	off.Online = false
+	h.e.setDevices([]device.Device{onlineDevice(), off})
+	h.e.handleCommand(command{kind: cmdLatency, value: 300, reconnect: true})
+	if h.sessions != sessions {
+		t.Fatal("latency apply rebuilt a cohort with an offline member")
+	}
+	if snap := h.e.Snapshot(); snap.ErrorKey != ErrLatencyOffline {
+		t.Fatalf("error key = %q, want %q", snap.ErrorKey, ErrLatencyOffline)
 	}
 }
 

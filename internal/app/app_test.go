@@ -86,7 +86,6 @@ func previewApp() *App {
 		Targets:           []engine.TargetControl{{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember}},
 		State:             sender.StateStreaming,
 		ConnectedName:     "HomePods",
-		Volume:            65,
 		CaptureName:       "Speakers",
 		CaptureRate:       48000,
 		CaptureRunning:    true,
@@ -237,7 +236,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "主", "AudioAccessory5,1 · 立体声 · 65%", "正在播放", "本次连接", "已连接时长", "42 分钟", "稳定性", "良好", "丢样 0 · 欠载 0", "网络重传", "0.2%", "重连", "0 次", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
+		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "AudioAccessory5,1 · 立体声 · 65%", "正在播放", "本次连接", "已连接时长", "42 分钟", "稳定性", "良好", "丢样 0 · 欠载 0", "网络重传", "0.2%", "重连", "0 次", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
@@ -320,7 +319,6 @@ func TestConnectionPageDeviceList(t *testing.T) {
 	for _, want := range []string{
 		locales.SettingsConnectionDevices(), "2", "HomePods", "Apple TV",
 		"AudioAccessory5,1 · 立体声 · 65%", "AppleTV6,2 · 立体声 · 50%",
-		locales.SettingsConnectionPrimary(),
 	} {
 		if !hasExactText(tt, want) {
 			t.Fatalf("device list is missing exact %q; texts: %q", want, tt.Texts())
@@ -473,7 +471,7 @@ func TestConnectionPagePairRow(t *testing.T) {
 
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"HomePods", "AudioAccessory5,1 · 立体声 · 52%", locales.SettingsConnectionPrimary(),
+		"HomePods", "AudioAccessory5,1 · 立体声 · 52%",
 		locales.StatusStreaming(),
 	} {
 		if !hasExactText(tt, want) {

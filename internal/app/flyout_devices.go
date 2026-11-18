@@ -240,10 +240,7 @@ func (a *App) toggleTargetMute(t engine.TargetControl) {
 	}
 	restore, ok := a.mutedVolume[t.ID]
 	if !ok || restore <= 0 {
-		restore = a.snap.Volume
-		if restore <= 0 {
-			restore = a.cfg.Volume
-		}
+		restore = a.cfg.Volume
 		if restore <= 0 {
 			restore = 50
 		}

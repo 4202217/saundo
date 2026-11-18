@@ -49,7 +49,6 @@ type transport interface {
 	SetIdentity(id sender.Identity)
 	Rings() []*ring.Buffer
 	SetInputFormat(rate int)
-	SetVolume(pct float64)
 	// SetTargetVolume applies a volume to one target's members; a pair shares
 	// it and a single receiver gets its own.
 	SetTargetVolume(key string, pct float64)
