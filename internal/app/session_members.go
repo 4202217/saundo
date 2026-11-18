@@ -64,21 +64,6 @@ func (a *App) sessionName() string {
 	return strings.Join(names, " + ")
 }
 
-// sessionPrimary is the target the interface speaks for: the selected member
-// when it is in the session, else the first one.
-func (a *App) sessionPrimary() (sessionMember, bool) {
-	members := a.sessionMembers()
-	if len(members) == 0 {
-		return sessionMember{}, false
-	}
-	for _, m := range members {
-		if m.Device.ID == a.snap.SelectedID || m.Device.ID == a.selID {
-			return m, true
-		}
-	}
-	return members[0], true
-}
-
 // sessionLatencyMS is the effective latency of the slowest session member.
 // Every member gets its own base plus DSP/DAC delay, so one number for the
 // session is the slowest of them.

@@ -366,7 +366,6 @@
   "settingsConnectionUptime": "Connected for",
   "settingsConnectionRetransmit": "Network retransmit",
   "settingsConnectionReconnects": "Reconnects",
-  "settingsConnectionPrimary": "Primary",
   "settingsConnectionLost": "{name} disconnected",
   "@settingsConnectionLost": {
     "placeholders": {
@@ -571,6 +570,17 @@
   "captureSystemDefault": "System default output",
   "summaryConnected": "Connected",
   "sidebarNoDevice": "No receiver selected",
+  "sidebarSessionCount": "{name} and {more} more",
+  "@sidebarSessionCount": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "more": {
+        "type": "int"
+      }
+    }
+  },
   "sidebarConnectedStereo": "Connected · Stereo pair",
   "captureFollowSystem": "Follow system default",
   "captureAllSystem": "Entire system",

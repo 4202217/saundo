@@ -1,5 +1,14 @@
 package app
 
+// seedSelection starts the panel's selection on the last session's first
+// target; syncSelection falls back to the first listed device before any
+// session.
+func (a *App) seedSelection(last []string) {
+	if len(last) > 0 {
+		a.selID = last[0]
+	}
+}
+
 // syncSelection keeps the flyout's selected row on a device that is still in
 // the list, falling back to the first row.
 func (a *App) syncSelection() {

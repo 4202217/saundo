@@ -1898,16 +1898,6 @@ func (msgs Messages) SettingsConnectionReconnects() string {
 	return Catalog.Format(msgs.locale, "settingsConnectionReconnects", nil)
 }
 
-// SettingsConnectionPrimary says "Primary"
-// in the language the app shows.
-func SettingsConnectionPrimary() string { return In(i18n.Locale()).SettingsConnectionPrimary() }
-
-// SettingsConnectionPrimary says "Primary"
-// in the language of msgs.
-func (msgs Messages) SettingsConnectionPrimary() string {
-	return Catalog.Format(msgs.locale, "settingsConnectionPrimary", nil)
-}
-
 // SettingsConnectionLost says "{name} disconnected"
 // in the language the app shows.
 func SettingsConnectionLost(name string) string {
@@ -3008,6 +2998,18 @@ func SidebarNoDevice() string { return In(i18n.Locale()).SidebarNoDevice() }
 // in the language of msgs.
 func (msgs Messages) SidebarNoDevice() string {
 	return Catalog.Format(msgs.locale, "sidebarNoDevice", nil)
+}
+
+// SidebarSessionCount says "{name} and {more} more"
+// in the language the app shows.
+func SidebarSessionCount(name string, more int) string {
+	return In(i18n.Locale()).SidebarSessionCount(name, more)
+}
+
+// SidebarSessionCount says "{name} and {more} more"
+// in the language of msgs.
+func (msgs Messages) SidebarSessionCount(name string, more int) string {
+	return Catalog.Format(msgs.locale, "sidebarSessionCount", map[string]any{"name": name, "more": more})
 }
 
 // SidebarConnectedStereo says "Connected · Stereo pair"

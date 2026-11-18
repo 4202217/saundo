@@ -254,7 +254,7 @@ func Run() error {
 	mygo.Theme.SetSource(appearanceSource(cfg.Theme))
 	a.beta = cfg.Beta
 	mygo.Updater.SetPrereleases(cfg.Beta)
-	a.selID = cfg.LastDeviceID
+	a.seedSelection(cfg.LastTargets)
 	a.nameDraft = cfg.Name
 	a.strict = cfg.StrictReceiverAuth
 	a.reconnect = cfg.Reconnect

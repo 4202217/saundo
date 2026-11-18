@@ -93,7 +93,7 @@ func (a *App) settingsTitleBar(c *ui.Context, p palette) {
 }
 
 func (a *App) settingsSidebar(c *ui.Context, p palette) {
-	name, sub, dot := a.sidebarIdentity(p)
+	name, sub, dot, tip := a.sidebarIdentity(p)
 	ui.Column(c).Width(190).FillHeight().Background(p.bg).Padding(12, 10, 10, 10).
 		BorderWidth(0, 1, 0, 0).BorderColor(p.line2).Children(func() {
 		ui.Column(c).Gap(2).Children(func() {
@@ -105,10 +105,7 @@ func (a *App) settingsSidebar(c *ui.Context, p palette) {
 		ui.Box(c).Height(1).Background(p.line2)
 		ui.Row(c).Gap(8).Margin(10, 6, 0, 6).Children(func() {
 			ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(dot)
-			ui.Column(c).Gap(1).Grow(1).Children(func() {
-				ui.Text(c, name).FontSize(11.5).SingleLine().Ellipsis("…")
-				ui.Text(c, sub).FontSize(10.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-			})
+			sidebarFooterColumn(c, p, name, sub, tip)
 		})
 	})
 }

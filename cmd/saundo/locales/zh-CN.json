@@ -244,7 +244,6 @@
   "settingsConnectionUptime": "已连接时长",
   "settingsConnectionRetransmit": "网络重传",
   "settingsConnectionReconnects": "重连",
-  "settingsConnectionPrimary": "主",
   "settingsConnectionLost": "{name} 已断开",
   "@settingsConnectionLost": {
     "placeholders": {
@@ -449,6 +448,17 @@
   "captureSystemDefault": "系统默认输出",
   "summaryConnected": "已连接",
   "sidebarNoDevice": "未选择接收器",
+  "sidebarSessionCount": "{name} 和其他 {more} 台",
+  "@sidebarSessionCount": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "more": {
+        "type": "int"
+      }
+    }
+  },
   "sidebarConnectedStereo": "已连接 · 立体声组",
   "captureFollowSystem": "跟随系统默认",
   "captureAllSystem": "整个系统",

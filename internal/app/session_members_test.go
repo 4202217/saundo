@@ -57,9 +57,6 @@ func TestSessionNameJoinsWhileOpening(t *testing.T) {
 	if got, want := a.sessionName(), "HomePods + Apple TV"; got != want {
 		t.Fatalf("opening session name = %q, want %q", got, want)
 	}
-	if primary, ok := a.sessionPrimary(); !ok || primary.Device.ID != "AA:BB:CC:DD:EE:01" {
-		t.Fatalf("primary = %+v", primary)
-	}
 }
 
 // TestSessionLatencyUsesSlowestMember pins the ALAC line's value: each member
@@ -106,7 +103,8 @@ func TestTrayMenuMarksEveryMember(t *testing.T) {
 }
 
 // TestConnectionPageSpeaksForTheSession pins the connection card and sidebar:
-// a multi-member session shows the joined name and a member count.
+// a multi-member session's sidebar names the first member with a count, and
+// the tooltip carries the joined name the 190-wide sidebar cannot show.
 func TestConnectionPageSpeaksForTheSession(t *testing.T) {
 	a := multiSessionApp()
 	a.page = pageConnection
@@ -114,13 +112,20 @@ func TestConnectionPageSpeaksForTheSession(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		locales.SettingsConnectionDevices(), "2", "HomePods", "Apple TV",
+		locales.SidebarSessionCount("HomePods", 1),
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("connection page is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
-	name, _, _ := a.sidebarIdentity(paletteFor(false))
-	if name != "HomePods + Apple TV" {
-		t.Fatalf("sidebar identity = %q, want the session name", name)
+	if tt.HasText("HomePods + Apple TV") {
+		t.Fatalf("the joined name leaked into the sidebar; texts: %q", tt.Texts())
+	}
+	name, _, _, tip := a.sidebarIdentity(paletteFor(false))
+	if name != locales.SidebarSessionCount("HomePods", 1) {
+		t.Fatalf("sidebar identity = %q, want the first member and a count", name)
+	}
+	if tip != "HomePods + Apple TV" {
+		t.Fatalf("sidebar tooltip = %q, want the joined name", tip)
 	}
 }

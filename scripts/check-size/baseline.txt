@@ -6,7 +6,7 @@
 # _test.go files are exempt.
 internal/engine/engine.go	2316
 internal/app/app.go	1187
-internal/app/settings_window.go	1018
+internal/app/settings_window.go	1015
 internal/airplay/sender/sender.go	1147
 internal/airplay/sender/rtsp.go	772
 internal/capture/capture_darwin.go	851

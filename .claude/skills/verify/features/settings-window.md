@@ -22,8 +22,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
   once).
 - 连接 page: two sections above the switches card. 已连接设备 lists every
-  target in the session: a 24-DIP glyph, the name with 主 on the primary, a
-  second line of model · channel · volume, and the member state
+  target in the session: a 24-DIP glyph, the name, a second line of model · channel · volume, and the member state
   (正在播放, 正在连接…, 正在重连…, 连接失败) right-aligned and vertically
   centered. A retransmit share of at least 0.5% or any underrun joins the
   second line in the warning color; healthy devices show no counters. A
@@ -33,12 +32,16 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   稳定性 (良好 or 有卡顿, with 丢样 and 欠载 on the label line), 网络重传,
   and 重连, above one full-width hairline. Both section labels use the group
   style (11.5 / 600 / letter-spacing) above the cards. No latency mode and no
-  receiver-processing stat appear here. Pinned by
+  receiver-processing stat appear here. The sidebar's footer identity names a
+  multi-member session `{name} 和其他 {n} 台` / `{name} and {n} more` (the
+  first member plus a count, joined name on the tooltip); one member keeps
+  its name, a stereo pair reads 已连接 · 立体声组. Pinned by
   `TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
   `TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
   `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`
-  `TestConnectionPagePairRow`. Below the sections are 断开后自动重连,
-  严格验证接收器, and 连接后静音本机输出 (on by default).
+  `TestConnectionPagePairRow`, `TestConnectionPageSpeaksForTheSession`. Below
+  the sections are 断开后自动重连, 严格验证接收器, and 连接后静音本机输出 (on
+  by default).
   The mute row's subtitle follows the engine state (`MuteLocal`): off,
   waiting for a connection, muted now, or failed; the driver caveat under
   the card shows only while the switch is on. With a per-app selection on

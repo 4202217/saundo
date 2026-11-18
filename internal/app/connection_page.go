@@ -62,11 +62,7 @@ func (a *App) connectionSession(c *ui.Context, p palette) {
 	card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 	card.Children(func() {
 		for i, m := range members {
-			primary := i == 0
-			if a.snap.SelectedID != "" {
-				primary = m.Device.ID == a.snap.SelectedID
-			}
-			a.connectionDeviceRow(c, p, m, primary, i == len(members)-1)
+			a.connectionDeviceRow(c, p, m, i == len(members)-1)
 		}
 	})
 	a.connectionLostNotice(c, p)
@@ -88,9 +84,9 @@ func (a *App) connectionSectionHead(c *ui.Context, p palette, label string, coun
 	})
 }
 
-// connectionDeviceRow is one connected target: name and role, the device's
-// audio state, and its network counters only when they are worth naming.
-func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, primary, last bool) {
+// connectionDeviceRow is one connected target: the device's name, its audio
+// state, and its network counters only when they are worth naming.
+func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, last bool) {
 	row := ui.Row(c).Padding(8, 14).Gap(10).AlignItems(ui.Center)
 	if !last {
 		row.BorderWidth(0, 0, 1, 0).BorderColor(p.line2)
@@ -98,11 +94,8 @@ func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, pri
 	row.Children(func() {
 		connectionGlyph(c, p, m.Device)
 		ui.Column(c).Grow(1).Gap(2).Children(func() {
-			ui.Row(c).Height(22).Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Height(22).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, m.Device.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-				if primary {
-					inlineChip(c, p, locales.SettingsConnectionPrimary(), chipNeutral, false)
-				}
 			})
 			ui.Row(c).Height(18).Gap(8).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, connectionDeviceMeta(m)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
@@ -275,14 +268,33 @@ func connectionRetransmitText(retransmits, sent uint64) string {
 	return fmt.Sprintf("%.1f%%", rate)
 }
 
-func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color) {
+// sidebarIdentity is the settings sidebar's footer: the session's name, its
+// link state, and the tooltip that carries the full member list. A
+// multi-member session names itself by its first member and a count — the
+// joined name overflows the 190 sidebar — and the tooltip holds what the
+// count folds away.
+// sidebarFooterColumn is the settings sidebar's footer text: the identity
+// name with the joined session name as its tooltip when the count folded
+// members away, over the link-state line.
+func sidebarFooterColumn(c *ui.Context, p palette, name, sub, tip string) {
+	ui.Column(c).Gap(1).Grow(1).Children(func() {
+		text := ui.Text(c, name).FontSize(11.5).SingleLine().Ellipsis("…")
+		if tip != "" {
+			text = text.Tooltip(tip)
+		}
+		ui.Text(c, sub).FontSize(10.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+	})
+}
+
+func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color, tip string) {
 	members := a.sessionMembers()
 	d, ok := a.currentDevice()
 	name = locales.SidebarNoDevice()
 	group := false
 	switch {
 	case len(members) > 1:
-		name = a.sessionName()
+		name = locales.SidebarSessionCount(members[0].Device.Name, len(members)-1)
+		tip = a.sessionName()
 	case len(members) == 1:
 		name, group = members[0].Device.Name, members[0].Device.IsStereoGroup()
 	case ok:
@@ -304,5 +316,5 @@ func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color) {
 	default:
 		sub, dot = locales.StatusDisconnected(), p.faint
 	}
-	return name, sub, dot
+	return name, sub, dot, tip
 }

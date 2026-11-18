@@ -433,6 +433,20 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-connection-640-light", connection640.settingsView, 640, 420, false)
 	save("settings-connection-640-dark", connection640.settingsView, 640, 420, true)
 
+	// The multi-member session: the sidebar footer names the first member
+	// with a count and carries the joined name as a tooltip.
+	members := fixture()
+	members.page = pageConnection
+	members.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	members.snap.Targets = append(members.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50,
+		Channel: "stereo", State: engine.TargetMember,
+	})
+	members.snap.State = sender.StateStreaming
+	members.snap.ConnectedName = "HomePods + Apple TV"
+	save("settings-connection-members-light", members.settingsView, 720, 500, false)
+	save("settings-connection-members-dark", members.settingsView, 720, 500, true)
+
 	// The general page at the 640 minimum, scrolled to its last rows, where
 	// the subtitle rows have the least width.
 	general640 := fixture()
