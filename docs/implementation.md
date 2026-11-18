@@ -135,7 +135,10 @@ with its settings, no secrets — only whether a password exists); `SelectedID`
 stays the primary target, `ActiveTargets` lists the live or wanted keys in
 target order, `Active(key)` answers a row, and `ConnectedName` joins the
 target names with ` + `. `Targets` carries one `TargetControl` per active key
-(name, volume, channel, stereo flag, and its `TargetState`), and `Target(id)`
+(name, volume, channel, stereo flag, its `TargetState`, and a `TargetHealth`
+that folds the target's members' retransmits, sent blocks, and underruns; a
+stats slice that does not line up with the plan leaves health at zero rather
+than attributing one member's counters to another), and `Target(id)`
 answers one; a wanted key keeps an entry while a retry waits, so every active
 row has a state, and the list is empty while idle. `TargetState` names the
 row's role in the current attempt: `TargetJoining` for the key the user's
@@ -154,6 +157,12 @@ with its device row and published controls, plus the joined session name and
 the slowest member's effective latency. The tray, the connection page, the
 settings sidebar, and the playback head's latency line read that layer instead
 of a single selected device; the flyout already renders one row per member.
+The connection page draws two sections from it: 已连接设备 lists the members
+with their channel, volume, and state, naming retransmits and underruns only
+when notable, and 本次连接 reads `Snapshot.Diagnostics` for uptime, stability,
+the session retransmit share, and reconnects while the session streams. A
+dropped member leaves the list and appears as the engine notice's reconnect
+row. Neither card restates a setting or a device constant.
 
 `Snapshot.Diagnostics` is the diagnostics model. The sender exposes
 `Stats` (retransmits served, late pacer ticks, underruns, sent blocks, last

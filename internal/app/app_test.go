@@ -81,6 +81,7 @@ func previewApp() *App {
 			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 		},
 		SelectedID:        "AA:BB:CC:DD:EE:01",
+		Diagnostics:       engine.Diagnostics{HasStats: true, SessionUptime: 42 * time.Minute, Retransmits: 2, SentBlocks: 1000},
 		ActiveTargets:     []string{"AA:BB:CC:DD:EE:01"},
 		Targets:           []engine.TargetControl{{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember}},
 		State:             sender.StateStreaming,
@@ -236,7 +237,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
+		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "主", "AudioAccessory5,1 · 立体声 · 65%", "正在播放", "本次连接", "已连接时长", "42 分钟", "稳定性", "良好", "丢样 0 · 欠载 0", "网络重传", "0.2%", "重连", "0 次", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
@@ -312,92 +313,144 @@ func countExactText(tt *ui.Tester, want string) int {
 	return n
 }
 
-func TestConnectionHealthCardLabelsAreExact(t *testing.T) {
-	a := previewApp()
+func TestConnectionPageDeviceList(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		locales.SettingsLatency(),
-		locales.SettingsHealthLatencySub(),
-		locales.SettingsHealthReceiver(),
-		locales.SettingsHealthReceiverSub(),
-		locales.SettingsHealthDrops(),
-		locales.SettingsHealthDropsGood(),
-		locales.SettingsHealthDropsSub(),
+		locales.SettingsConnectionDevices(), "2", "HomePods", "Apple TV",
+		"AudioAccessory5,1 · 立体声 · 65%", "AppleTV6,2 · 立体声 · 50%",
+		locales.SettingsConnectionPrimary(),
 	} {
 		if !hasExactText(tt, want) {
-			t.Fatalf("card is missing exact text %q; texts: %q", want, tt.Texts())
+			t.Fatalf("device list is missing exact %q; texts: %q", want, tt.Texts())
 		}
 	}
-	for _, old := range []string{"延迟", "调度缓冲", "接收器输出", "接收器上报", "丢样本"} {
-		if hasExactText(tt, old) {
-			t.Fatalf("card still shows old text %q; texts: %q", old, tt.Texts())
-		}
+	// The sidebar's 正在播放 nav entry contributes two labels of its own.
+	if got := countExactText(tt, locales.StatusStreaming()); got != 4 {
+		t.Fatalf("playing states = %d, want two members beside the nav labels; texts: %q", got, tt.Texts())
+	}
+	if hasExactText(tt, "HomePod mini") {
+		t.Fatalf("an inactive device is listed as connected; texts: %q", tt.Texts())
 	}
 }
 
-func TestConnectionHealthCardStability(t *testing.T) {
-	a := previewApp()
+// TestConnectionPageDeviceHealthNotableOnly pins the per-device counters: a
+// notable retransmit share or any underrun is named, a healthy device keeps
+// its row quiet.
+func TestConnectionPageDeviceHealthNotableOnly(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
-	a.snap.DroppedSamples = 3
+	a.snap.Targets[1].Health = engine.TargetHealth{Retransmits: 12, SentBlocks: 1000, Underruns: 3}
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !hasExactText(tt, locales.SettingsHealthDropsBad()) {
-		t.Fatalf("unstable session is missing %q; texts: %q", locales.SettingsHealthDropsBad(), tt.Texts())
+	want := locales.SettingsRetransmitShort("1.2") + " · " + locales.SettingsUnderrunsShort(3)
+	if !hasExactText(tt, want) {
+		t.Fatalf("device row is missing %q; texts: %q", want, tt.Texts())
+	}
+	if hasExactText(tt, locales.SettingsRetransmitShort("0.0")) {
+		t.Fatalf("a healthy device shows a retransmit counter; texts: %q", tt.Texts())
+	}
+}
+
+// TestConnectionPageSessionCard pins the measured card: uptime, stability with
+// its evidence, the session retransmit share, and the reconnect count.
+func TestConnectionPageSessionCard(t *testing.T) {
+	a := multiSessionApp()
+	a.page = pageConnection
+	a.snap.Diagnostics = engine.Diagnostics{
+		HasStats: true, SessionUptime: 42 * time.Minute,
+		Retransmits: 2, SentBlocks: 1000, Reconnects: 1,
+	}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsConnectionThis(), locales.SettingsConnectionUptime(), "42 分钟",
+		locales.SettingsHealthDrops(), locales.SettingsHealthDropsGood(),
+		" · " + locales.SettingsStabilityNote(0, 0),
+		locales.SettingsConnectionRetransmit(), "0.2%",
+		locales.SettingsConnectionReconnects(), locales.SettingsReconnectsValue(1),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("session card is missing exact %q; texts: %q", want, tt.Texts())
+		}
+	}
+	if hasExactText(tt, locales.SettingsLatency()) {
+		t.Fatalf("session card restates the latency setting; texts: %q", tt.Texts())
+	}
+}
+
+func TestConnectionPageSessionCardDegraded(t *testing.T) {
+	a := multiSessionApp()
+	a.page = pageConnection
+	a.snap.Diagnostics = engine.Diagnostics{
+		HasStats: true, SessionUptime: 6 * time.Minute,
+		Degraded: true, Overflow: 120, Underruns: 8,
+	}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsHealthDropsBad(), " · " + locales.SettingsStabilityNote(120, 8),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("degraded card is missing exact %q; texts: %q", want, tt.Texts())
+		}
 	}
 	if hasExactText(tt, locales.SettingsHealthDropsGood()) {
-		t.Fatalf("unstable session still reads %q; texts: %q", locales.SettingsHealthDropsGood(), tt.Texts())
+		t.Fatalf("degraded card still reads %q; texts: %q", locales.SettingsHealthDropsGood(), tt.Texts())
 	}
 }
 
-func TestConnectionHealthCardUnknownAndDisconnected(t *testing.T) {
-	a := previewApp()
+// TestConnectionPageLostNotice pins the lost member as an event under the
+// device card, not a disconnected row inside the connected list.
+func TestConnectionPageLostNotice(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
-
-	a.snap.ReceiverLatencyMS = 0
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01"}
+	a.snap.Targets = a.snap.Targets[:1]
+	a.snap.Notice = engine.SessionNotice{
+		Kind: engine.NoticeMemberLost, DeviceID: "AA:BB:CC:DD:EE:02", Name: "Apple TV",
+	}
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{locales.SettingsHealthReceiver(), "—", locales.SettingsHealthReceiverUnknown()} {
-		if !hasExactText(tt, want) {
-			t.Fatalf("unknown latency state is missing exact %q; texts: %q", want, tt.Texts())
-		}
-	}
-
-	a.snap.State = sender.StateIdle
-	tt = ui.NewTester(a.settingsView, 720, 500)
-	if got := countExactText(tt, locales.StatusDisconnected()); got != 2 {
-		t.Fatalf("disconnected text count = %d, want 2 (sidebar and card chip); texts: %q", got, tt.Texts())
-	}
-	for _, absent := range []string{
-		locales.SettingsLatency(), locales.SettingsHealthLatencySub(),
-		locales.SettingsHealthReceiver(), locales.SettingsHealthReceiverSub(),
-		locales.SettingsHealthDrops(), locales.SettingsHealthDropsSub(),
-		locales.SettingsHealthNote(),
+	for _, want := range []string{
+		locales.SettingsConnectionLost("Apple TV"), locales.ActionReconnect(),
 	} {
-		if hasExactText(tt, absent) {
-			t.Fatalf("disconnected card still shows %q; texts: %q", absent, tt.Texts())
+		if !hasExactText(tt, want) {
+			t.Fatalf("lost notice is missing exact %q; texts: %q", want, tt.Texts())
 		}
 	}
+	if hasExactText(tt, "Apple TV") {
+		t.Fatalf("the lost member is still a connected row; texts: %q", tt.Texts())
+	}
+
+	// Once the device is back in the session, the notice has nothing to say.
+	a.snap.ActiveTargets = append(a.snap.ActiveTargets, "AA:BB:CC:DD:EE:02")
+	a.snap.Targets = append(a.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50,
+		Channel: receivers.ChannelStereo, State: engine.TargetMember,
+	})
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if hasExactText(tt, locales.SettingsConnectionLost("Apple TV")) {
+		t.Fatalf("the notice survived the member's return; texts: %q", tt.Texts())
+	}
 }
 
-// TestConnectionHealthCardShowsBaseLatency pins the card to the value chosen
-// on the 音频 page, not the effective value that also carries the receiver's
-// DSP/DAC delay.
-func TestConnectionHealthCardShowsBaseLatency(t *testing.T) {
-	a := previewApp()
+// TestConnectionPageHidesSessionCard pins the card's precondition: it exists
+// only while the session streams and the engine has measurements.
+func TestConnectionPageHidesSessionCard(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
-	a.snap.Receivers = []receivers.View{{Key: a.snap.SelectedID, DelayMS: 120}}
-
-	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !hasExactText(tt, "200 ms") {
-		t.Fatalf("card is missing the base latency 200 ms; texts: %q", tt.Texts())
+	a.snap.Diagnostics = engine.Diagnostics{}
+	if hasExactText(ui.NewTester(a.settingsView, 720, 500), locales.SettingsConnectionThis()) {
+		t.Fatal("the session card shows without statistics")
 	}
-	if hasExactText(tt, "320 ms") {
-		t.Fatalf("card shows the effective latency 320 ms; texts: %q", tt.Texts())
+	a.snap.Diagnostics.HasStats = true
+	a.snap.State = sender.StateHandshake
+	if hasExactText(ui.NewTester(a.settingsView, 720, 500), locales.SettingsConnectionThis()) {
+		t.Fatal("the session card shows while connecting")
 	}
 }
 
-// TestConnectionHealthCardStereoGroup pins the pair's value as the higher of
-// the two member reports and drops the old 当前接收器 suffix.
-func TestConnectionHealthCardStereoGroup(t *testing.T) {
+// TestConnectionPagePairRow pins a stereo pair as one device row with its
+// shared volume and stereo side.
+func TestConnectionPagePairRow(t *testing.T) {
 	a := previewApp()
 	a.page = pageConnection
 	group := device.Device{
@@ -417,17 +470,15 @@ func TestConnectionHealthCardStereoGroup(t *testing.T) {
 	a.snap.SelectedID = group.ID
 	a.selID = group.ID
 	a.snap.State = sender.StateStreaming
-	a.snap.ReceiverLatencyMS = 70
 
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if want := locales.SettingsHealthReceiverGroupValue("70 ms"); !hasExactText(tt, want) {
-		t.Fatalf("group card is missing %q; texts: %q", want, tt.Texts())
-	}
-	if want := locales.SummaryStereoGroup(2); !hasExactText(tt, want) {
-		t.Fatalf("group card is missing %q; texts: %q", want, tt.Texts())
-	}
-	if hasExactText(tt, "当前接收器") {
-		t.Fatalf("group card still says 当前接收器; texts: %q", tt.Texts())
+	for _, want := range []string{
+		"HomePods", "AudioAccessory5,1 · 立体声 · 52%", locales.SettingsConnectionPrimary(),
+		locales.StatusStreaming(),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("pair row is missing exact %q; texts: %q", want, tt.Texts())
+		}
 	}
 }
 

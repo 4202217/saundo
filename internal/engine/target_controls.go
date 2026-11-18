@@ -25,6 +25,15 @@ const (
 	TargetFailed
 )
 
+// TargetHealth is one target's measured session health, folded over its
+// members. Zero when no transport runs or its stats do not line up with the
+// plan, so the UI shows no numbers instead of a guessed one.
+type TargetHealth struct {
+	Retransmits uint64
+	SentBlocks  uint64
+	Underruns   uint64
+}
+
 // TargetControl is one active target's per-device audio settings and its role
 // in the current attempt: the volume the flyout slider and the settings page
 // share, and the stereo side a single receiver plays. A stereo pair is always
@@ -37,8 +46,9 @@ type TargetControl struct {
 	Stereo   bool
 	// Split marks a user-created pair: the target's two receivers play one
 	// side each, so the row's channel control is a locked status.
-	Split bool
-	State TargetState
+	Split  bool
+	State  TargetState
+	Health TargetHealth
 }
 
 // Target returns the live target's controls. An idle snapshot has no targets.
@@ -95,6 +105,33 @@ func (e *Engine) targetState(key string) TargetState {
 	return TargetFailed
 }
 
+// targetHealth folds each member's sender stats onto its target. The stats
+// slice follows the plan's member order; a mismatch leaves every target at
+// zero instead of attributing one member's counters to another.
+func (e *Engine) targetHealth() map[string]TargetHealth {
+	if e.tr == nil || !e.plan.live() {
+		return nil
+	}
+	stats := e.tr.Stats()
+	if len(stats) != len(e.plan.members) {
+		return nil
+	}
+	out := make(map[string]TargetHealth, len(e.plan.targets))
+	i := 0
+	for _, t := range e.plan.targets {
+		var h TargetHealth
+		for j := 0; j < t.count; j++ {
+			s := stats[i]
+			h.Retransmits += s.Retransmits
+			h.SentBlocks += s.SentBlocks
+			h.Underruns += s.Underruns
+			i++
+		}
+		out[t.key] = h
+	}
+	return out
+}
+
 // targetControls projects the active keys, the settings map, and the registry
 // onto the UI's per-device controls. A wanted key keeps an entry while a retry
 // waits, so the flyout never has to synthesize one.
@@ -103,6 +140,7 @@ func (e *Engine) targetControls() []TargetControl {
 	if len(keys) == 0 {
 		return nil
 	}
+	health := e.targetHealth()
 	out := make([]TargetControl, 0, len(keys))
 	for _, key := range keys {
 		state := e.targetState(key)
@@ -127,6 +165,7 @@ func (e *Engine) targetControls() []TargetControl {
 			Channel: channel.String(),
 			Stereo:  stereo,
 			State:   state,
+			Health:  health[key],
 		})
 	}
 	return out

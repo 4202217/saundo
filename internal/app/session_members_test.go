@@ -113,11 +113,10 @@ func TestConnectionPageSpeaksForTheSession(t *testing.T) {
 	a.snap.ReceiverLatencyMS = 70
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"HomePods + Apple TV", locales.SummarySessionReceivers(2),
-		locales.SettingsHealthReceiverGroupValue("70 ms"),
+		locales.SettingsConnectionDevices(), "2", "HomePods", "Apple TV",
 	} {
 		if !tt.HasText(want) {
-			t.Fatalf("connection card is missing %q; texts: %q", want, tt.Texts())
+			t.Fatalf("connection page is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
 	name, _, _ := a.sidebarIdentity(paletteFor(false))

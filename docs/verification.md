@@ -1105,6 +1105,33 @@ password the same pair reached `streaming to HomePod R + MacBook Air` at
 21:57:56. A second rejection at 21:58:16 repeated the pattern. This supersedes
 the "not run" line in the previous entry; its pins still hold.
 
+## 2026-11-18 — the connection page states the session, not its settings
+
+The old 连接 page repeated values that did not answer a question: the latency
+mode was a setting already on 音频, and 接收器处理 was a receiver constant no
+user can change. The page now draws the session itself. 已连接设备 lists every
+target with its channel, volume, and state, and names per-device retransmits
+and underruns only when notable; a dropped member leaves the list and appears
+as the engine notice's `{name} 已断开` row with 重新连接. 本次连接 appears only
+while streaming and the engine has measurements: 已连接时长, 稳定性 with 丢样
+和 欠载, 网络重传, and 重连 in a 2×2 grid above one full-width hairline. Both
+section labels use the group style above the cards. The engine now publishes
+`TargetControl.Health`, folding each target's members' retransmits, sent
+blocks, and underruns; a stats slice that does not line up with the plan keeps
+health at zero. The page copy adds the session labels, the uptime formats, the
+stability note, and the notable-device counters.
+
+Checks: `mingw32-make check` passed (381 messages, 138 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. The preview
+matrix renders the page in both themes and at 640 DIP
+(`settings-connection-*`). Pins: `TestTargetControlsCarryMeasuredHealth`,
+`TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
+`TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
+`TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
+`TestConnectionPagePairRow`. Not run: the reworked page against a live
+two-receiver session.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

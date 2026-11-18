@@ -188,7 +188,7 @@
   "settingsNavCapture": "采集",
   "settingsNavNowPlaying": "正在播放",
   "pageGeneralDesc": "发送端身份、启动与外观。",
-  "pageConnectionDesc": "连接状态、延迟与稳定性。",
+  "pageConnectionDesc": "设备与本次连接的状态。",
   "pageReceiversDesc": "管理接收器、自动连接、显示与声道。",
   "pageAudioDesc": "在延迟与稳定性之间权衡；播放中切换会自动重连。",
   "pageCaptureDesc": "系统声音，或一个或多个应用。",
@@ -236,23 +236,85 @@
   "settingsReconnectDesc": "断开后会自动重试几次，然后停止",
   "settingsStrictAuth": "严格验证接收器",
   "settingsStrictAuthDesc": "接收器验证不通过时断开",
-  "settingsHealthLatencySub": "可在音频页调整",
-  "settingsHealthReceiver": "接收器处理",
-  "settingsHealthReceiverSub": "接收器自报",
-  "settingsHealthReceiverUnknown": "接收器未上报",
-  "settingsHealthReceiverGroupValue": "最高 {value}",
-  "@settingsHealthReceiverGroupValue": {
+  "settingsHealthDrops": "稳定性",
+  "settingsHealthDropsGood": "良好",
+  "settingsHealthDropsBad": "有卡顿",
+  "settingsConnectionDevices": "已连接设备",
+  "settingsConnectionThis": "本次连接",
+  "settingsConnectionUptime": "已连接时长",
+  "settingsConnectionRetransmit": "网络重传",
+  "settingsConnectionReconnects": "重连",
+  "settingsConnectionPrimary": "主",
+  "settingsConnectionLost": "{name} 已断开",
+  "@settingsConnectionLost": {
     "placeholders": {
-      "value": {
+      "name": {
         "type": "String"
       }
     }
   },
-  "settingsHealthDrops": "稳定性",
-  "settingsHealthDropsSub": "本次会话",
-  "settingsHealthDropsGood": "良好",
-  "settingsHealthDropsBad": "有卡顿",
-  "settingsHealthNote": "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。",
+  "settingsUptimeMinutes": "{n} 分钟",
+  "@settingsUptimeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHours": "{h} 小时 {m} 分钟",
+  "@settingsUptimeHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHoursWhole": "{h} 小时",
+  "@settingsUptimeHoursWhole": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsStabilityNote": "丢样 {drops} · 欠载 {underruns}",
+  "@settingsStabilityNote": {
+    "placeholders": {
+      "drops": {
+        "type": "int"
+      },
+      "underruns": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRetransmitShort": "重传 {pct}%",
+  "@settingsRetransmitShort": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnderrunsShort": "欠载 {n}",
+  "@settingsUnderrunsShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsReconnectsValue": "{n} 次",
+  "@settingsReconnectsValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "receiverGroupEnabled": "已启用",
   "receiverGroupHidden": "已隐藏",
   "receiverAddTitle": "添加接收器",
@@ -385,19 +447,7 @@
   "settingsCaptureWaitingApp": "等待所选应用",
   "settingsCaptureNotRunning": "未运行",
   "captureSystemDefault": "系统默认输出",
-  "summaryStereoGroup": "立体声组 · {n, number}/2",
-  "summarySessionReceivers": "{n} 台接收器",
-  "@summarySessionReceivers": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "summaryModelCurrentDevice": "{model}",
-  "summaryCurrentDevice": "接收器",
   "summaryConnected": "已连接",
-  "summaryConnecting": "连接中",
   "sidebarNoDevice": "未选择接收器",
   "sidebarConnectedStereo": "已连接 · 立体声组",
   "captureFollowSystem": "跟随系统默认",

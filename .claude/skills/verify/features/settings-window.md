@@ -5,7 +5,7 @@ area (the window frame adds a few DIPs; min 640×420), hidden title bar,
 created hidden at startup before the engine starts. The desktop text scale
 multiplies the content size (`scaledSize`; 125% gives 900×625 and an 800×525
 minimum) while the view carries the same scale as its content zoom, so the
-layout stays 720 DIP wide. The title, cards, and
+layout stays 720 DIP wide. The title, cards
 notes share one content column capped at 720 DIP and centered on a wider
 window; the scroll gutter stays at the window edge. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · Saundo` under en — match windows by class `MyGoWindow` + pid;
@@ -18,13 +18,26 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 
 - 通用 page: 发送端名称 (the name receivers show on their next connection),
   登录时自动启动 (a `HKCU\...\Run` value named `com.saundo.app` in the
-  packaged build; a macOS login item on darwin), 托盘动画, language, and
+  packaged build; a macOS login item on darwin), 托盘动画, language
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
   once).
-- 连接 page: a health card for the current receiver (identity, state, and
-  while streaming 延迟模式, 接收器处理, and 稳定性; the two latency values
-  name different stages and are never summed; 稳定性 reads 良好 or 有卡顿;
-  disconnected shows identity and state only), then 断开后自动重连,
+- 连接 page: two sections above the switches card. 已连接设备 lists every
+  target in the session: a 24-DIP glyph, the name with 主 on the primary, a
+  second line of model · channel · volume, and the member state
+  (正在播放, 正在连接…, 正在重连…, 连接失败) right-aligned and vertically
+  centered. A retransmit share of at least 0.5% or any underrun joins the
+  second line in the warning color; healthy devices show no counters. A
+  dropped member leaves the list and appears under the card as
+  `{name} 已断开` with 重新连接, from the engine's session notice. 本次连接
+  appears only while streaming with measurements: a 2×2 grid of 已连接时长,
+  稳定性 (良好 or 有卡顿, with 丢样 and 欠载 on the label line), 网络重传,
+  and 重连, above one full-width hairline. Both section labels use the group
+  style (11.5 / 600 / letter-spacing) above the cards. No latency mode and no
+  receiver-processing stat appear here. Pinned by
+  `TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
+  `TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
+  `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`
+  `TestConnectionPagePairRow`. Below the sections are 断开后自动重连,
   严格验证接收器, and 连接后静音本机输出 (on by default).
   The mute row's subtitle follows the engine state (`MuteLocal`): off,
   waiting for a connection, muted now, or failed; the driver caveat under
@@ -53,7 +66,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   only plus.
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 托盘面板中显示
-  header switch that shows or hides the flyout's latency segment row, and
+  header switch that shows or hides the flyout's latency segment row
   read-only format/sync rows. Below 714 DIP the three presets stack as
   full-width rows in the custom tile's shape; at every width they take the
   height their wrapped description needs, so no text leaves its card. The
@@ -62,7 +75,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   action, a 72-DIP preview of the current preset with its localized name, a
   颜色来源 row (封面 / 模板) whose segment sits at its right, a 模板 block
   whose six fixed 68-DIP tiles (暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白) wrap on a
-  narrow page, its 六组预设灯光颜色 description, the Sound Glow reminder, and
+  narrow page, its 六组预设灯光颜色 description, the Sound Glow reminder
   the 自动关闭氛围灯 row (from 从不 to 30 分钟, default 30). Off dims the
   preview to 35% and disables the grid and the standby select. The page and
   the flyout's ambient card read the same global choice; see
@@ -75,7 +88,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   loopback cannot keep the selected app off the local output without
   silencing the capture. The status row counts a multi-app selection and
   keeps the rate visible, with the full names in its tooltip; it shows
-  `{active}/{selected}` with a warning dot when some apps are missing, and
+  `{active}/{selected}` with a warning dot when some apps are missing
   "Waiting for the selected apps" until one has a process. Both
   pickers are 220 DIP wide, for device and app names. The status keeps the
   row's right-hand column, capped at 55% and ellipsized so a long device name
@@ -112,7 +125,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
 Settings defaults:
@@ -131,7 +144,7 @@ SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
 ```
 
 E2E UI drives this window from the e2e build: launch it as SKILL.md's e2e
-launch block shows, press the flyout's gear (设置) to raise the window, and
+launch block shows, press the flyout's gear (设置) to raise the window
 act on the refs a snapshot prints:
 
 ```bash

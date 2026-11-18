@@ -131,10 +131,12 @@ func TestCatalogUniqueValues(t *testing.T) {
 		"updateAvailableMeta": true, "updateNotesMeta": true,
 		"settingsNavLamp": true, "settingsLampCardTitle": true, "flyoutLampSection": true,
 		"settingsLampTemplates": true, "lampSourceTemplate": true,
-		"lampSourceCover": true, "summaryCurrentDevice": true,
-		"passwordLabel": true, "receiverFieldAuth": true,
+		"lampSourceCover": true,
+		"passwordLabel":   true, "receiverFieldAuth": true,
 		"themeLight":            true,
 		"settingsLatencyStable": true, "settingsChannelStable": true,
+		// Uptime and the lamp standby select share the minutes form.
+		"settingsUptimeMinutes": true, "settingsLampStandbyMinutes": true,
 		// Both choices mean "none": no receiver authentication, no cover.
 		"receiverAuthNone": true, "settingsCoverNone": true,
 	}

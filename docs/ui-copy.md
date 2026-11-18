@@ -30,11 +30,10 @@ The tray menu's receiver rows keep the flyout's 离线 status. The session actio
 | Concept | Chinese | English | Do not use |
 |---|---|---|---|
 | The sender buffer the user chooses | 延迟模式 | latency mode | 调度缓冲, 缓冲延迟 |
-| The receiver's own reported processing time | 接收器处理 | receiver processing | 接收器输出, 设备输出 |
 | Session audio stability | 稳定性 | stability | 丢样本, 丢帧 |
 | Where the latency mode is changed | 可在音频页调整 | Adjust on Audio | — |
 
-The two latency values measure different stages. Never draw them as one bar, never add them, and never present the receiver's value as a total.
+The connection page shows no latency value; the latency mode lives on 音频 and the flyout's ALAC line carries the effective value. The receiver's own processing time is measured for diagnostics and has no surface.
 
 ## Per-device controls
 
@@ -47,6 +46,8 @@ A multi-target session names itself as `{name} + {name}` wherever one identity i
 A member that leaves while the rest continue reads `{name} 已断开，其他设备继续播放` / `{name} disconnected; the other devices keep playing`; a join in progress reads `正在加入 {name}，其他设备会短暂暂停` / `Adding {name}; the other devices pause briefly`. The notice's dismiss action is 忽略 / Dismiss, and its only other action is 重试 / Retry on the loss.
 
 A refused saved password reads `{device} 的密码未被接收器接受。` / `The receiver did not accept the password for {device}.` The masked password dialog that opens is the same one used on first connect; the error explains why it reopened.
+
+The 连接 page names its two sections 已连接设备 / Connected devices and 本次连接 / This connection, in the group-label style above the card. A device row's state reuses 正在播放 / Streaming, 正在连接… / Connecting…, 正在重连… / Reconnecting…, and 连接失败 / Connection failed; the primary carries 主 / Primary. A device dropped while the rest continue appears as `{name} 已断开` / `{name} disconnected` with 重新连接 / Reconnect. The measured card reads 已连接时长 / Connected for, 稳定性 / Stability with `丢样 {drops} · 欠载 {underruns}` / `{drops} dropped · {underruns} underruns`, 网络重传 / Network retransmit, and 重连 / Reconnects; a healthy device's counters stay hidden, and a notable one reads `重传 {pct}%` / `{pct}% retransmitted` and `欠载 {n}` / `{n} underruns`.
 
 ## One state, one phrase
 

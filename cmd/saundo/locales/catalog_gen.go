@@ -1336,11 +1336,11 @@ func (msgs Messages) PageGeneralDesc() string {
 	return Catalog.Format(msgs.locale, "pageGeneralDesc", nil)
 }
 
-// PageConnectionDesc says "Connection, latency, and stability."
+// PageConnectionDesc says "Devices and this connection's state."
 // in the language the app shows.
 func PageConnectionDesc() string { return In(i18n.Locale()).PageConnectionDesc() }
 
-// PageConnectionDesc says "Connection, latency, and stability."
+// PageConnectionDesc says "Devices and this connection's state."
 // in the language of msgs.
 func (msgs Messages) PageConnectionDesc() string {
 	return Catalog.Format(msgs.locale, "pageConnectionDesc", nil)
@@ -1818,58 +1818,6 @@ func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
 }
 
-// SettingsHealthLatencySub says "Adjust on Audio"
-// in the language the app shows.
-func SettingsHealthLatencySub() string { return In(i18n.Locale()).SettingsHealthLatencySub() }
-
-// SettingsHealthLatencySub says "Adjust on Audio"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthLatencySub() string {
-	return Catalog.Format(msgs.locale, "settingsHealthLatencySub", nil)
-}
-
-// SettingsHealthReceiver says "Receiver processing"
-// in the language the app shows.
-func SettingsHealthReceiver() string { return In(i18n.Locale()).SettingsHealthReceiver() }
-
-// SettingsHealthReceiver says "Receiver processing"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiver() string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiver", nil)
-}
-
-// SettingsHealthReceiverSub says "Reported by receiver"
-// in the language the app shows.
-func SettingsHealthReceiverSub() string { return In(i18n.Locale()).SettingsHealthReceiverSub() }
-
-// SettingsHealthReceiverSub says "Reported by receiver"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiverSub() string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiverSub", nil)
-}
-
-// SettingsHealthReceiverUnknown says "Not reported"
-// in the language the app shows.
-func SettingsHealthReceiverUnknown() string { return In(i18n.Locale()).SettingsHealthReceiverUnknown() }
-
-// SettingsHealthReceiverUnknown says "Not reported"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiverUnknown() string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiverUnknown", nil)
-}
-
-// SettingsHealthReceiverGroupValue says "Up to {value}"
-// in the language the app shows.
-func SettingsHealthReceiverGroupValue(value string) string {
-	return In(i18n.Locale()).SettingsHealthReceiverGroupValue(value)
-}
-
-// SettingsHealthReceiverGroupValue says "Up to {value}"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiverGroupValue(value string) string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiverGroupValue", map[string]any{"value": value})
-}
-
 // SettingsHealthDrops says "Stability"
 // in the language the app shows.
 func SettingsHealthDrops() string { return In(i18n.Locale()).SettingsHealthDrops() }
@@ -1878,16 +1826,6 @@ func SettingsHealthDrops() string { return In(i18n.Locale()).SettingsHealthDrops
 // in the language of msgs.
 func (msgs Messages) SettingsHealthDrops() string {
 	return Catalog.Format(msgs.locale, "settingsHealthDrops", nil)
-}
-
-// SettingsHealthDropsSub says "This session"
-// in the language the app shows.
-func SettingsHealthDropsSub() string { return In(i18n.Locale()).SettingsHealthDropsSub() }
-
-// SettingsHealthDropsSub says "This session"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthDropsSub() string {
-	return Catalog.Format(msgs.locale, "settingsHealthDropsSub", nil)
 }
 
 // SettingsHealthDropsGood says "Good"
@@ -1910,14 +1848,150 @@ func (msgs Messages) SettingsHealthDropsBad() string {
 	return Catalog.Format(msgs.locale, "settingsHealthDropsBad", nil)
 }
 
-// SettingsHealthNote says "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure…"
+// SettingsConnectionDevices says "Connected devices"
 // in the language the app shows.
-func SettingsHealthNote() string { return In(i18n.Locale()).SettingsHealthNote() }
+func SettingsConnectionDevices() string { return In(i18n.Locale()).SettingsConnectionDevices() }
 
-// SettingsHealthNote says "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure…"
+// SettingsConnectionDevices says "Connected devices"
 // in the language of msgs.
-func (msgs Messages) SettingsHealthNote() string {
-	return Catalog.Format(msgs.locale, "settingsHealthNote", nil)
+func (msgs Messages) SettingsConnectionDevices() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionDevices", nil)
+}
+
+// SettingsConnectionThis says "This connection"
+// in the language the app shows.
+func SettingsConnectionThis() string { return In(i18n.Locale()).SettingsConnectionThis() }
+
+// SettingsConnectionThis says "This connection"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionThis() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionThis", nil)
+}
+
+// SettingsConnectionUptime says "Connected for"
+// in the language the app shows.
+func SettingsConnectionUptime() string { return In(i18n.Locale()).SettingsConnectionUptime() }
+
+// SettingsConnectionUptime says "Connected for"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionUptime() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionUptime", nil)
+}
+
+// SettingsConnectionRetransmit says "Network retransmit"
+// in the language the app shows.
+func SettingsConnectionRetransmit() string { return In(i18n.Locale()).SettingsConnectionRetransmit() }
+
+// SettingsConnectionRetransmit says "Network retransmit"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionRetransmit() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionRetransmit", nil)
+}
+
+// SettingsConnectionReconnects says "Reconnects"
+// in the language the app shows.
+func SettingsConnectionReconnects() string { return In(i18n.Locale()).SettingsConnectionReconnects() }
+
+// SettingsConnectionReconnects says "Reconnects"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionReconnects() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionReconnects", nil)
+}
+
+// SettingsConnectionPrimary says "Primary"
+// in the language the app shows.
+func SettingsConnectionPrimary() string { return In(i18n.Locale()).SettingsConnectionPrimary() }
+
+// SettingsConnectionPrimary says "Primary"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionPrimary() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionPrimary", nil)
+}
+
+// SettingsConnectionLost says "{name} disconnected"
+// in the language the app shows.
+func SettingsConnectionLost(name string) string {
+	return In(i18n.Locale()).SettingsConnectionLost(name)
+}
+
+// SettingsConnectionLost says "{name} disconnected"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionLost(name string) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionLost", map[string]any{"name": name})
+}
+
+// SettingsUptimeMinutes says "{n} min"
+// in the language the app shows.
+func SettingsUptimeMinutes(n int) string { return In(i18n.Locale()).SettingsUptimeMinutes(n) }
+
+// SettingsUptimeMinutes says "{n} min"
+// in the language of msgs.
+func (msgs Messages) SettingsUptimeMinutes(n int) string {
+	return Catalog.Format(msgs.locale, "settingsUptimeMinutes", map[string]any{"n": n})
+}
+
+// SettingsUptimeHours says "{h} h {m} min"
+// in the language the app shows.
+func SettingsUptimeHours(h int, m int) string { return In(i18n.Locale()).SettingsUptimeHours(h, m) }
+
+// SettingsUptimeHours says "{h} h {m} min"
+// in the language of msgs.
+func (msgs Messages) SettingsUptimeHours(h int, m int) string {
+	return Catalog.Format(msgs.locale, "settingsUptimeHours", map[string]any{"h": h, "m": m})
+}
+
+// SettingsUptimeHoursWhole says "{h} h"
+// in the language the app shows.
+func SettingsUptimeHoursWhole(h int) string { return In(i18n.Locale()).SettingsUptimeHoursWhole(h) }
+
+// SettingsUptimeHoursWhole says "{h} h"
+// in the language of msgs.
+func (msgs Messages) SettingsUptimeHoursWhole(h int) string {
+	return Catalog.Format(msgs.locale, "settingsUptimeHoursWhole", map[string]any{"h": h})
+}
+
+// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// in the language the app shows.
+func SettingsStabilityNote(drops int, underruns int) string {
+	return In(i18n.Locale()).SettingsStabilityNote(drops, underruns)
+}
+
+// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// in the language of msgs.
+func (msgs Messages) SettingsStabilityNote(drops int, underruns int) string {
+	return Catalog.Format(msgs.locale, "settingsStabilityNote", map[string]any{"drops": drops, "underruns": underruns})
+}
+
+// SettingsRetransmitShort says "{pct}% retransmitted"
+// in the language the app shows.
+func SettingsRetransmitShort(pct string) string {
+	return In(i18n.Locale()).SettingsRetransmitShort(pct)
+}
+
+// SettingsRetransmitShort says "{pct}% retransmitted"
+// in the language of msgs.
+func (msgs Messages) SettingsRetransmitShort(pct string) string {
+	return Catalog.Format(msgs.locale, "settingsRetransmitShort", map[string]any{"pct": pct})
+}
+
+// SettingsUnderrunsShort says "{n} underruns"
+// in the language the app shows.
+func SettingsUnderrunsShort(n int) string { return In(i18n.Locale()).SettingsUnderrunsShort(n) }
+
+// SettingsUnderrunsShort says "{n} underruns"
+// in the language of msgs.
+func (msgs Messages) SettingsUnderrunsShort(n int) string {
+	return Catalog.Format(msgs.locale, "settingsUnderrunsShort", map[string]any{"n": n})
+}
+
+// SettingsReconnectsValue says "{n}"
+// in the language the app shows.
+func SettingsReconnectsValue(n int) string { return In(i18n.Locale()).SettingsReconnectsValue(n) }
+
+// SettingsReconnectsValue says "{n}"
+// in the language of msgs.
+func (msgs Messages) SettingsReconnectsValue(n int) string {
+	return Catalog.Format(msgs.locale, "settingsReconnectsValue", map[string]any{"n": n})
 }
 
 // ReceiverGroupEnabled says "Enabled"
@@ -2916,48 +2990,6 @@ func (msgs Messages) CaptureSystemDefault() string {
 	return Catalog.Format(msgs.locale, "captureSystemDefault", nil)
 }
 
-// SummaryStereoGroup says "Stereo pair · {n, number}/2"
-// in the language the app shows.
-func SummaryStereoGroup(n int) string { return In(i18n.Locale()).SummaryStereoGroup(n) }
-
-// SummaryStereoGroup says "Stereo pair · {n, number}/2"
-// in the language of msgs.
-func (msgs Messages) SummaryStereoGroup(n int) string {
-	return Catalog.Format(msgs.locale, "summaryStereoGroup", map[string]any{"n": n})
-}
-
-// SummarySessionReceivers says "{n} receivers"
-// in the language the app shows.
-func SummarySessionReceivers(n int) string { return In(i18n.Locale()).SummarySessionReceivers(n) }
-
-// SummarySessionReceivers says "{n} receivers"
-// in the language of msgs.
-func (msgs Messages) SummarySessionReceivers(n int) string {
-	return Catalog.Format(msgs.locale, "summarySessionReceivers", map[string]any{"n": n})
-}
-
-// SummaryModelCurrentDevice says "{model}"
-// in the language the app shows.
-func SummaryModelCurrentDevice(model string) string {
-	return In(i18n.Locale()).SummaryModelCurrentDevice(model)
-}
-
-// SummaryModelCurrentDevice says "{model}"
-// in the language of msgs.
-func (msgs Messages) SummaryModelCurrentDevice(model string) string {
-	return Catalog.Format(msgs.locale, "summaryModelCurrentDevice", map[string]any{"model": model})
-}
-
-// SummaryCurrentDevice says "Receiver"
-// in the language the app shows.
-func SummaryCurrentDevice() string { return In(i18n.Locale()).SummaryCurrentDevice() }
-
-// SummaryCurrentDevice says "Receiver"
-// in the language of msgs.
-func (msgs Messages) SummaryCurrentDevice() string {
-	return Catalog.Format(msgs.locale, "summaryCurrentDevice", nil)
-}
-
 // SummaryConnected says "Connected"
 // in the language the app shows.
 func SummaryConnected() string { return In(i18n.Locale()).SummaryConnected() }
@@ -2966,16 +2998,6 @@ func SummaryConnected() string { return In(i18n.Locale()).SummaryConnected() }
 // in the language of msgs.
 func (msgs Messages) SummaryConnected() string {
 	return Catalog.Format(msgs.locale, "summaryConnected", nil)
-}
-
-// SummaryConnecting says "Connecting"
-// in the language the app shows.
-func SummaryConnecting() string { return In(i18n.Locale()).SummaryConnecting() }
-
-// SummaryConnecting says "Connecting"
-// in the language of msgs.
-func (msgs Messages) SummaryConnecting() string {
-	return Catalog.Format(msgs.locale, "summaryConnecting", nil)
 }
 
 // SidebarNoDevice says "No receiver selected"

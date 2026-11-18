@@ -272,3 +272,41 @@ func TestVolumeCommandKeepsTheSingleTargetPath(t *testing.T) {
 		t.Fatalf("snapshot volume = %f, want 55", h.e.volume)
 	}
 }
+
+// TestTargetControlsCarryMeasuredHealth pins the per-target fold: each target
+// reports its own members' retransmits, sent blocks, and underruns, and a
+// mismatched stats slice publishes no health instead of guessing.
+func TestTargetControlsCarryMeasuredHealth(t *testing.T) {
+	h := newHarness(t)
+	b := advertiseBoth(h)
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	h.launch()
+	if len(h.e.plan.members) != 2 {
+		t.Fatalf("members = %d, want two", len(h.e.plan.members))
+	}
+	h.fake.stats = []sender.Stats{
+		{Retransmits: 3, SentBlocks: 100, Underruns: 1},
+		{Retransmits: 5, SentBlocks: 200, Underruns: 0},
+	}
+	h.e.publish()
+	snap := h.e.Snapshot()
+	first, _ := snap.Target(testDeviceID)
+	if got, want := first.Health, (TargetHealth{Retransmits: 3, SentBlocks: 100, Underruns: 1}); got != want {
+		t.Fatalf("first target health = %+v, want %+v", got, want)
+	}
+	second, _ := snap.Target(b.ID)
+	if got, want := second.Health, (TargetHealth{Retransmits: 5, SentBlocks: 200, Underruns: 0}); got != want {
+		t.Fatalf("second target health = %+v, want %+v", got, want)
+	}
+
+	// One stat for two members cannot be attributed; fail closed.
+	h.fake.stats = h.fake.stats[:1]
+	h.e.publish()
+	snap = h.e.Snapshot()
+	first, _ = snap.Target(testDeviceID)
+	if got := first.Health; got != (TargetHealth{}) {
+		t.Fatalf("mismatched stats leaked health: %+v", got)
+	}
+}

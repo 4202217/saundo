@@ -1,23 +1,28 @@
 package app
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
-	"saundo/internal/settings"
+	"saundo/internal/engine"
 )
 
-// The 连接 settings page's session card and the settings sidebar's identity.
-// Both read the session member set, so a multi-target session shows the joined
-// name instead of one selected device.
+// The 连接 settings page: the devices in the current session, the session's
+// measured health, and the connection switches. Every value comes from the
+// snapshot; the page never restates a setting or a device constant.
+
+// deviceUnhealthyRetransmit is the retransmit share that makes one device's
+// link worth naming. Below it the counters stay hidden, so a healthy session
+// is not noisy. Any underrun is notable by itself.
+const deviceUnhealthyRetransmit = 0.5
 
 func (a *App) connectionPage(c *ui.Context, p palette) {
-	if m, ok := a.sessionPrimary(); ok {
-		a.connectionHealthCard(c, p, m.Device)
-	} else if d, ok := a.currentDevice(); ok {
-		a.connectionHealthCard(c, p, d)
-	}
+	a.connectionSession(c, p)
 	pageCard(c, p, func() {
 		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
 			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.eng.SetReconnect(v) })
@@ -46,107 +51,228 @@ func (a *App) connectionPage(c *ui.Context, p palette) {
 	}
 }
 
-// processMuteMode reports whether the mute switch targets the captured app
-
-// connectionHealthCard is the connection page's leading card. It keeps the
-// receiver's identity and state, and adds the session's latency and stability
-// only while streaming. The two latency values are separate measurements, not
-// a total, so they are drawn as two independent stats.
-func (a *App) connectionHealthCard(c *ui.Context, p palette, d device.Device) {
-	connected := phaseOf(a.snap) == phaseStreaming
+// connectionSession draws the device list, a lost member's notice, and the
+// measured session card. Nothing is drawn without a session.
+func (a *App) connectionSession(c *ui.Context, p palette) {
 	members := a.sessionMembers()
-	name, sub := d.Name, summarySub(d)
-	group := d.IsStereoGroup()
-	if len(members) > 1 {
-		// The card speaks for the whole session, not one of its members.
-		name, sub, group = a.sessionName(), locales.SummarySessionReceivers(len(members)), true
+	if len(members) == 0 {
+		return
 	}
-	card := ui.Column(c).Margin(12, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip()
+	a.connectionSectionHead(c, p, locales.SettingsConnectionDevices(), len(members), 6)
+	card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 	card.Children(func() {
-		ui.Row(c).Height(56).Padding(0, 14).Gap(10).Children(func() {
-			deviceGlyph(c, p, d, false)
-			ui.Column(c).Grow(1).Gap(2).Children(func() {
-				ui.Text(c, name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-				ui.Text(c, sub).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-			})
-			a.connectionStateChip(c, p)
-		})
-		if connected {
-			rowLine(c, p)
-			a.connectionHealthStats(c, p, group)
+		for i, m := range members {
+			primary := i == 0
+			if a.snap.SelectedID != "" {
+				primary = m.Device.ID == a.snap.SelectedID
+			}
+			a.connectionDeviceRow(c, p, m, primary, i == len(members)-1)
+		}
+	})
+	a.connectionLostNotice(c, p)
+	if phaseOf(a.snap) == phaseStreaming && a.snap.Diagnostics.HasStats {
+		a.connectionSectionHead(c, p, locales.SettingsConnectionThis(), 0, 12)
+		a.connectionSessionCard(c, p)
+	}
+}
+
+// connectionSectionHead is the page's group label: the same 11.5 / 600 /
+// letter-spaced muted style the receiver page and the flyout use, above the
+// card rather than inside it.
+func (a *App) connectionSectionHead(c *ui.Context, p palette, label string, count int, top float32) {
+	ui.Row(c).Margin(top, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		if count > 0 {
+			countBadge(c, p, count)
 		}
 	})
 }
 
-func (a *App) connectionStateChip(c *ui.Context, p palette) {
-	switch phaseOf(a.snap) {
-	case phaseStreaming:
-		chip(c, p, locales.SummaryConnected(), chipOK)
-	case phaseConnecting:
-		chip(c, p, locales.SummaryConnecting(), chipAccent)
-	case phaseError:
-		text := locales.StatusConnectionFailed()
-		if a.snap.TakenOver {
-			text = locales.StatusTakenOver()
-		}
-		chip(c, p, text, chipDanger)
-	default:
-		chip(c, p, locales.StatusDisconnected(), chipNeutral)
+// connectionDeviceRow is one connected target: name and role, the device's
+// audio state, and its network counters only when they are worth naming.
+func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, primary, last bool) {
+	row := ui.Row(c).Padding(8, 14).Gap(10).AlignItems(ui.Center)
+	if !last {
+		row.BorderWidth(0, 0, 1, 0).BorderColor(p.line2)
 	}
+	row.Children(func() {
+		connectionGlyph(c, p, m.Device)
+		ui.Column(c).Grow(1).Gap(2).Children(func() {
+			ui.Row(c).Height(22).Gap(6).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, m.Device.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
+				if primary {
+					inlineChip(c, p, locales.SettingsConnectionPrimary(), chipNeutral, false)
+				}
+			})
+			ui.Row(c).Height(18).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, connectionDeviceMeta(m)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+				if metrics := a.connectionDeviceMetrics(m); metrics != "" {
+					ui.Text(c, metrics).FontSize(11.5).TextColor(p.warning).SingleLine()
+				}
+			})
+		})
+		text, tone := a.connectionMemberState(m, p)
+		ui.Row(c).Shrink(0).Gap(5).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(6, 6).Radius(3).Background(tone)
+			ui.Text(c, text).FontSize(11.5).TextColor(p.muted).SingleLine()
+		})
+	})
 }
 
-func (a *App) connectionHealthStats(c *ui.Context, p palette, group bool) {
-	ui.Column(c).Padding(12, 14).Children(func() {
-		ui.Row(c).Gap(18).AlignItems(ui.Start).Children(func() {
-			healthStat(c, p, locales.SettingsLatency(), settings.LatencyText(a.latencyMS()),
-				locales.SettingsHealthLatencySub())
-			value, sub := "—", locales.SettingsHealthReceiverUnknown()
-			if a.snap.ReceiverLatencyMS > 0 {
-				value = settings.LatencyText(a.snap.ReceiverLatencyMS)
-				if group {
-					value = locales.SettingsHealthReceiverGroupValue(value)
-				}
-				sub = locales.SettingsHealthReceiverSub()
-			}
-			healthStat(c, p, locales.SettingsHealthReceiver(), value, sub)
+func connectionGlyph(c *ui.Context, p palette, d device.Device) {
+	g := ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.pill)
+	g.Children(func() {
+		ui.Icon(c, deviceIcon(d.Model, d.IsStereoGroup())).Size(13, 13).TextColor(p.fg2)
+		if d.Online {
+			ui.Box(c).Size(8, 8).Radius(4).Background(p.green).
+				Shadow(0, 0, 0, 2, p.card).
+				Attach(ui.AnchorBottomRight, ui.AnchorBottomRight).Right(-1).Bottom(-1)
+		}
+	})
+}
+
+// connectionDeviceMeta is the device's own audio state: model, channel, and
+// the level it is set to.
+func connectionDeviceMeta(m sessionMember) string {
+	model := m.Device.Model
+	if model == "" {
+		model = locales.DeviceDefaultModel()
+	}
+	parts := []string{model}
+	if m.HasTarget {
+		parts = append(parts, channelDisplay(m.Target.Channel), locales.FlyoutVolumeValue(m.Target.Volume))
+	}
+	return strings.Join(parts, " · ")
+}
+
+func (a *App) connectionDeviceMetrics(m sessionMember) string {
+	if !m.HasTarget {
+		return ""
+	}
+	h := m.Target.Health
+	var parts []string
+	if rate, ok := retransmitRate(h.Retransmits, h.SentBlocks); ok && rate >= deviceUnhealthyRetransmit {
+		parts = append(parts, locales.SettingsRetransmitShort(fmt.Sprintf("%.1f", rate)))
+	}
+	if h.Underruns > 0 {
+		parts = append(parts, locales.SettingsUnderrunsShort(int(h.Underruns)))
+	}
+	return strings.Join(parts, " · ")
+}
+
+// connectionMemberState names one member's role in the session, not the
+// session phase: a member of a re-establishing cohort is still connected.
+func (a *App) connectionMemberState(m sessionMember, p palette) (string, ui.Color) {
+	switch m.Target.State {
+	case engine.TargetJoining:
+		return locales.StatusConnecting(), p.accent
+	case engine.TargetReopening:
+		return locales.StatusReconnecting(), p.accent
+	case engine.TargetFailed:
+		return locales.StatusConnectionFailed(), p.red
+	}
+	if !m.HasTarget {
+		return locales.StatusDisconnected(), p.faint
+	}
+	if phaseOf(a.snap) == phaseStreaming {
+		return locales.StatusStreaming(), p.green
+	}
+	return locales.SummaryConnected(), p.muted
+}
+
+// connectionLostNotice explains a member the engine dropped while the rest
+// kept playing. It reads the engine's notice, not the flyout's transient one,
+// so it stays until a user action clears it.
+func (a *App) connectionLostNotice(c *ui.Context, p palette) {
+	n := a.snap.Notice
+	if n.Kind != engine.NoticeMemberLost || n.DeviceID == "" || a.snap.Active(n.DeviceID) {
+		return
+	}
+	row := ui.Row(c).Margin(8, 0, 0, 0).MinHeight(44).Padding(8, 10).Radius(9).Gap(9).
+		AlignItems(ui.Center).Background(p.accentSoft).Border(1, p.line)
+	row.Children(func() {
+		ui.Icon(c, iconInfo).Size(16, 16).TextColor(p.accent)
+		ui.Text(c, locales.SettingsConnectionLost(n.Name)).FontSize(11.5).TextColor(p.fg2).
+			Grow(1).SingleLine().Ellipsis("…")
+		b := ui.ButtonBase(c.Key("lost-reconnect")).Height(26).Radius(7).Padding(0, 8).
+			Center().Shrink(0).Label(locales.ActionReconnect()).Cursor(ui.CursorPointer)
+		b.OnClick(func() { a.connectDevice(n.DeviceID) })
+		hoverFill(b, p.pill, 7, 0)
+		b.Children(func() {
+			ui.Text(c, locales.ActionReconnect()).FontSize(11.5).FontWeight(500).
+				TextColor(p.accent).SingleLine()
+		})
+	})
+}
+
+// connectionSessionCard is the measured side of the connection: how long it
+// has run, whether it is stable, and how much the link and reconnects cost.
+func (a *App) connectionSessionCard(c *ui.Context, p palette) {
+	diag := a.snap.Diagnostics
+	card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
+	card.Children(func() {
+		ui.Row(c).Padding(12, 14).Gap(18).Children(func() {
+			connectionStatCell(c, p, locales.SettingsConnectionUptime(),
+				connectionUptimeText(diag.SessionUptime), "", p.fg)
 			status, tone := locales.SettingsHealthDropsGood(), p.green
-			if a.snap.DroppedSamples > 0 {
+			if diag.Degraded {
 				status, tone = locales.SettingsHealthDropsBad(), p.red
 			}
-			healthStatusStat(c, p, locales.SettingsHealthDrops(), status,
-				locales.SettingsHealthDropsSub(), tone)
+			connectionStatCell(c, p, locales.SettingsHealthDrops(), status,
+				locales.SettingsStabilityNote(int(diag.Overflow), int(diag.Underruns)), tone)
 		})
-		ui.Text(c, locales.SettingsHealthNote()).FontSize(10.5).TextColor(p.muted).Margin(10, 0, 0, 0)
-	})
-}
-
-func healthStat(c *ui.Context, p palette, label, value, sub string) {
-	ui.Column(c).Grow(1).Gap(2).Children(func() {
-		ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-		ui.Text(c, value).FontSize(15).FontWeight(600).FontFeatures("tnum").SingleLine()
-		ui.Text(c, sub).FontSize(10.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-	})
-}
-
-func healthStatusStat(c *ui.Context, p palette, label, value, sub string, tone ui.Color) {
-	ui.Column(c).Grow(1).Gap(2).Children(func() {
-		ui.Row(c).Gap(5).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(tone)
-			ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+		rowLine(c, p)
+		ui.Row(c).Padding(12, 14).Gap(18).Children(func() {
+			connectionStatCell(c, p, locales.SettingsConnectionRetransmit(),
+				connectionRetransmitText(diag.Retransmits, diag.SentBlocks), "", p.fg)
+			connectionStatCell(c, p, locales.SettingsConnectionReconnects(),
+				locales.SettingsReconnectsValue(diag.Reconnects), "", p.fg)
 		})
-		ui.Text(c, value).FontSize(15).FontWeight(600).TextColor(tone).SingleLine()
-		ui.Text(c, sub).FontSize(10.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 	})
 }
 
-func summarySub(d device.Device) string {
-	if d.IsStereoGroup() {
-		return locales.SummaryStereoGroup(len(d.Members))
+func connectionStatCell(c *ui.Context, p palette, label, value, note string, tone ui.Color) {
+	ui.Column(c).Grow(1).Gap(2).Children(func() {
+		ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine()
+			if note != "" {
+				ui.Text(c, " · "+note).FontSize(10.5).TextColor(p.faint).
+					SingleLine().Ellipsis("…")
+			}
+		})
+		ui.Text(c, value).FontSize(15).FontWeight(600).TextColor(tone).
+			FontFeatures("tnum").SingleLine()
+	})
+}
+
+func connectionUptimeText(d time.Duration) string {
+	minutes := int(d.Minutes())
+	if minutes < 1 {
+		minutes = 1
 	}
-	if d.Model != "" {
-		return locales.SummaryModelCurrentDevice(d.Model)
+	if minutes < 60 {
+		return locales.SettingsUptimeMinutes(minutes)
 	}
-	return locales.SummaryCurrentDevice()
+	h, m := minutes/60, minutes%60
+	if m == 0 {
+		return locales.SettingsUptimeHoursWhole(h)
+	}
+	return locales.SettingsUptimeHours(h, m)
+}
+
+func retransmitRate(retransmits, sent uint64) (float64, bool) {
+	if sent == 0 {
+		return 0, false
+	}
+	return float64(retransmits) / float64(sent) * 100, true
+}
+
+func connectionRetransmitText(retransmits, sent uint64) string {
+	rate, ok := retransmitRate(retransmits, sent)
+	if !ok {
+		return "—"
+	}
+	return fmt.Sprintf("%.1f%%", rate)
 }
 
 func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color) {

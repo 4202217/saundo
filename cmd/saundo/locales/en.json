@@ -310,7 +310,7 @@
   "settingsNavCapture": "Capture",
   "settingsNavNowPlaying": "Now Playing",
   "pageGeneralDesc": "Sender identity, startup, and appearance.",
-  "pageConnectionDesc": "Connection, latency, and stability.",
+  "pageConnectionDesc": "Devices and this connection's state.",
   "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and channel.",
   "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio, or one or more apps.",
@@ -358,23 +358,85 @@
   "settingsReconnectDesc": "Retries automatically a few times before giving up",
   "settingsStrictAuth": "Strict receiver verification",
   "settingsStrictAuthDesc": "Disconnect when receiver verification fails",
-  "settingsHealthLatencySub": "Adjust on Audio",
-  "settingsHealthReceiver": "Receiver processing",
-  "settingsHealthReceiverSub": "Reported by receiver",
-  "settingsHealthReceiverUnknown": "Not reported",
-  "settingsHealthReceiverGroupValue": "Up to {value}",
-  "@settingsHealthReceiverGroupValue": {
+  "settingsHealthDrops": "Stability",
+  "settingsHealthDropsGood": "Good",
+  "settingsHealthDropsBad": "Stuttering",
+  "settingsConnectionDevices": "Connected devices",
+  "settingsConnectionThis": "This connection",
+  "settingsConnectionUptime": "Connected for",
+  "settingsConnectionRetransmit": "Network retransmit",
+  "settingsConnectionReconnects": "Reconnects",
+  "settingsConnectionPrimary": "Primary",
+  "settingsConnectionLost": "{name} disconnected",
+  "@settingsConnectionLost": {
     "placeholders": {
-      "value": {
+      "name": {
         "type": "String"
       }
     }
   },
-  "settingsHealthDrops": "Stability",
-  "settingsHealthDropsSub": "This session",
-  "settingsHealthDropsGood": "Good",
-  "settingsHealthDropsBad": "Stuttering",
-  "settingsHealthNote": "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure different stages and are not additive.",
+  "settingsUptimeMinutes": "{n} min",
+  "@settingsUptimeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHours": "{h} h {m} min",
+  "@settingsUptimeHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHoursWhole": "{h} h",
+  "@settingsUptimeHoursWhole": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsStabilityNote": "{drops} dropped · {underruns} underruns",
+  "@settingsStabilityNote": {
+    "placeholders": {
+      "drops": {
+        "type": "int"
+      },
+      "underruns": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRetransmitShort": "{pct}% retransmitted",
+  "@settingsRetransmitShort": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnderrunsShort": "{n} underruns",
+  "@settingsUnderrunsShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsReconnectsValue": "{n}",
+  "@settingsReconnectsValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "receiverGroupEnabled": "Enabled",
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
@@ -507,33 +569,7 @@
   "settingsCaptureWaitingApp": "Waiting for the selected apps",
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
-  "summaryStereoGroup": "Stereo pair · {n, number}/2",
-  "summarySessionReceivers": "{n} receivers",
-  "@summarySessionReceivers": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "@summaryStereoGroup": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "summaryModelCurrentDevice": "{model}",
-  "@summaryModelCurrentDevice": {
-    "placeholders": {
-      "model": {
-        "type": "String"
-      }
-    }
-  },
-  "summaryCurrentDevice": "Receiver",
   "summaryConnected": "Connected",
-  "summaryConnecting": "Connecting",
   "sidebarNoDevice": "No receiver selected",
   "sidebarConnectedStereo": "Connected · Stereo pair",
   "captureFollowSystem": "Follow system default",
