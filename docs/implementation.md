@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-18 -->
+<!-- reviewed-through: 2026-11-19 -->
 
 # Implementation overview
 
@@ -110,18 +110,21 @@ flyout cannot move the preview away from the top display.
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
-`Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetVolume`, `SetTargetVolume`, `SubmitPIN`,
+`Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetTargetVolume`, `SubmitPIN`,
 `DismissPasswordPrompt`, `DismissCredentialReset`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureApps`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
 `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, `SetTrayAnimation`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
 `SetReceiverHidden`, `SetReceiverDelay`. `SetTargetVolume` stores and applies
-one target's volume; `SetVolume` remains the primary-target command for old
-callers. `UpdateReceiver` with a `Channel` patch saves the side and applies it
+one target's volume; the primary target's value also updates the global
+default a target with no remembered volume adopts. `UpdateReceiver` with a `Channel` patch saves the side and applies it
 to the live target's members; a stereo pair ignores a non-stereo value.
 `SetLatency` applies on the next
-session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
+session; `ApplyLatency` restarts a live one, but only after checking every
+member's device — one missing or offline receiver fails the apply with the
+error and leaves the running cohort alone, because the rebuild would open a
+cohort that cannot launch. `SetLatencySettings` keeps the
 app-only latency mode fields in the engine settings copy. User-facing
 failures carry a `UserErrorKey` plus arguments in
 `Snapshot.ErrorKey`/`ErrorArgs`; `internal/app/user_error.go` resolves them
@@ -146,7 +149,7 @@ connect started or added (`sessionPlan.joinKey`, dropped when the launch
 resolves), `TargetMember` for every other planned key, `TargetReopening` for a
 wanted key while an automatic retry waits, and `TargetFailed` once it stops.
 A rebuild carries the join key only while that target stays planned.
-`Snapshot.Volume` stays the primary target's value for old surfaces. It also
+The snapshot also
 carries `LampOff`, `LampCover`, and `LampPreset`, which both lamp surfaces
 read, and `Standby` (the live dark phase) with the configured
 `StandbyEnabled` and `StandbyMinutes`.
@@ -162,12 +165,20 @@ with their channel, volume, and state, naming retransmits and underruns only
 when notable, and 本次连接 reads `Snapshot.Diagnostics` for uptime, stability,
 the session retransmit share, and reconnects while the session streams. A
 dropped member leaves the list and appears as the engine notice's reconnect
-row. Neither card restates a setting or a device constant.
+row. Neither card restates a setting or a device constant. Two selection
+semantics stay distinct: the engine's `SelectedID` is the primary target — the
+session's first key, which guards the reconnect policy and anchors the tray's
+retry — while the app's `selID` is the panel's view selection, seeded from the
+last session's first target, moved by clicks, and kept on a listed device.
 
 `Snapshot.Diagnostics` is the diagnostics model. The sender exposes
 `Stats` (retransmits served, late pacer ticks, underruns, sent blocks, last
 timing packet, ring buffer milliseconds, and the SETUP Wi-Fi snapshot); the
-engine calls it on the event loop and folds it once per publish. The engine
+engine calls it on the event loop and folds it once per publish. An underrun
+is a packet padded with silence while the ring was still being fed real
+audio — roughly two start cushions after the last fed packet; padding over an
+idle source is the stream's correct output and stays uncounted, so connecting
+with nothing playing reads zero. The engine
 owns the group rules: Wi-Fi, late ticks, and buffer take the worst member,
 resends and underruns sum, the overflow figure sums the members' session
 drops, and stability uses the max drop the connection card already shows. A
@@ -195,10 +206,15 @@ signals dead the same way.
 The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
 settings survive the pair going offline. Exactly one entry carries
-`AutoConnect`; at launch the engine connects that target once, immediately
-for a manual row or a remembered row with a cached address, members,
-features, and auth, and otherwise on the first snapshot that reports the
-discovered row online. A user connect or disconnect ends the launch wait, and a failed
+`AutoConnect`, and that row anchors the launch: the engine connects it once —
+immediately for a manual row or a remembered row with a cached address,
+members, features, and auth, and otherwise on the first snapshot that reports
+the discovered row online. When the anchor belongs to the last session's
+combination (`settings.LastTargets`, recorded in target order at every
+launch), the whole combination opens as one cohort in that order; an anchor
+outside the combination launches alone, and a combination member that no
+longer resolves or has no endpoint yet drops until a later launch. A user
+connect or disconnect ends the launch wait, and a failed
 launch falls into the ordinary reconnect policy. The global
 `settings.AutoConnect` flag is a migration input only.
 
@@ -321,8 +337,8 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
 
 All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saundo/` on macOS:
 
-- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, the per-app capture selection (`captureAppIds`, `captureAppNames`), and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
-- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, the stereo channel preference (`channel`: `stereo`, `left`, or `right`; empty and unknown read as stereo), last address, cached member addresses, feature/auth bits, the last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
+- `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, the per-app capture selection (`captureAppIds`, `captureAppNames`), the last session's target combination (`lastTargets`), and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
+- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, the stereo channel preference (`channel`: `stereo`, `left`, or `right`; empty and unknown read as stereo), last address, cached member addresses, feature/auth bits, the target's own last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM. A file that fails to decrypt is moved to `credentials.dat.corrupt-<UTC time>` and a fresh store is created in its place; the next connect logs the quarantined path and says a receiver may need to be paired again.
 - `mute-guard.json` — written before the engine mutes the local render
