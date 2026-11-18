@@ -227,10 +227,14 @@ func TestCohortMemberDeathSignalsEngineOnce(t *testing.T) {
 // the teardown to the engine, or the half-dead cohort never reconnects.
 func TestCohortMemberCloseBeforeLaunchSignalsEngine(t *testing.T) {
 	c := buildTestCohort(2)
+	c.members[0].targetKey = "AA:1"
 	closed := 0
 	c.onClosed = func() { closed++ }
 
 	c.memberClosed(0)
+	if got := c.LostTarget(); got != "AA:1" {
+		t.Fatalf("lost target = %q, want the closed member's target", got)
+	}
 
 	select {
 	case <-c.dead:

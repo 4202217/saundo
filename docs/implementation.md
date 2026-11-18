@@ -250,7 +250,11 @@ offline pair, or a FairPlay receiver — publishes its error and leaves the live
 cohort playing, and the error bar shows it even while the session keeps
 streaming. The wanted key set survives a failed launch, so Retry on any active
 row retries the whole request. A rebuild whose new cohort cannot open restores
-the endpoint, whether the failure is synchronous or reported at launch.
+the endpoint, whether the failure is synchronous or reported at launch. A
+member that closes while the cohort runs does not take the session with it:
+the transport records the lost target, a cohort with other targets rebuilds
+without it, and the lost target leaves the wanted set so no retry includes it.
+A single-target session keeps the close-and-retry path.
 
 ## A connect, end to end
 

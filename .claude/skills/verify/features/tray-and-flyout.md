@@ -57,7 +57,10 @@
   keeps its name, model, and action on the live row's 26/2/20 rhythm. The row's action is a table on the engine's `TargetState`: the
   joining row offers 取消, a member and a reopening target offer 断开连接, a
   failed target offers 重试, and a device with no role falls back to the
-  phase. A rebuild names no joiner, so it offers no 取消. The row's 断开连接
+  phase. A rebuild names no joiner, so it offers no 取消. A member that
+  closes while the cohort runs leaves the session instead of being retried:
+  the rest keep playing, the lost row returns to 连接, and a single-target
+  session still closes and retries. The row's 断开连接
   removes only that target (`DisconnectTarget` rebuilds the cohort with the
   rest; the last target ends the session), while the device head's 全部断开
   ends the whole session. The head reserves the action's 10-DIP height in every state, so the panel does not move when the button appears; pinned by `TestDeviceHeadKeepsItsHeight`.
@@ -68,6 +71,7 @@
   `TestFlyoutPairChannelButtonIsFixed`, `TestNextChannelCycles`,
   `TestFlyoutRowsShareOneHeight`, `TestChannelIconFadesTheOtherSide`,
   `TestFlyoutJoiningRowHidesMixer`, `TestRebuildRowsOfferNoCancel`,
+  `TestMemberDeathKeepsOthersPlaying`, `TestPrimaryDeathPromotesTheRemainingTarget`,
   `TestRowActionFollowsTargetState`,
   `TestFlyoutDisconnectAllButtonFollowsSession`,
   `TestConnectPublishesJoiningThenMember`, `TestAddPublishesMemberAndJoining`,

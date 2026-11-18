@@ -40,6 +40,9 @@ type cohortTransport struct {
 	once     sync.Once
 	dead     chan struct{}
 	deadOnce sync.Once
+	// lostKey is the target whose member closed first, read on the dead arm so
+	// the rest of the session can continue without it.
+	lostKey string
 
 	onLaunched        func(ok bool, err string)
 	onClosed          func()
@@ -246,6 +249,7 @@ func (c *cohortTransport) forward(m *cohortMember) {
 
 func (c *cohortTransport) Events() <-chan raopio.Event { return c.events }
 func (c *cohortTransport) Dead() <-chan struct{}       { return c.dead }
+func (c *cohortTransport) LostTarget() string          { return c.lostKey }
 func (c *cohortTransport) Rings() []*ring.Buffer {
 	rings := make([]*ring.Buffer, 0, len(c.members))
 	for _, m := range c.members {
@@ -581,6 +585,7 @@ func (c *cohortTransport) memberClosed(idx int) {
 		return
 	}
 	c.closedReported = true
+	c.lostKey = c.members[idx].targetKey
 	if c.onClosed != nil {
 		c.onClosed()
 	}

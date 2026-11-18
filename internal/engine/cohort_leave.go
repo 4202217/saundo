@@ -1,5 +1,10 @@
 package engine
 
+import (
+	"slices"
+	"time"
+)
+
 // Per-target leave: one row's disconnect drops that target from the plan, and
 // the remaining targets rebuild as one cohort.
 
@@ -82,4 +87,32 @@ func (e *Engine) leaveTarget(key string) {
 	}
 	e.logf("cohort: leaving %s", e.nameFor(key))
 	e.startPlan(plan, true)
+}
+
+// sessionLost handles a dead transport. When one member closed while others
+// were in the session, the rest continue without it and the lost target leaves
+// the wanted set, so no retry drags the survivors down. A session whose only
+// target died keeps the existing close-and-retry path.
+func (e *Engine) sessionLost(key string) {
+	if key != "" && len(e.wantedKeys) > 1 && slices.Contains(e.wantedKeys, key) {
+		remaining := make([]string, 0, len(e.wantedKeys)-1)
+		for _, k := range e.wantedKeys {
+			if k != key {
+				remaining = append(remaining, k)
+			}
+		}
+		if plan, err := e.buildPlan(remaining); err == nil {
+			e.logf("cohort: %s left the session; continuing with %d target(s)", e.nameFor(key), len(remaining))
+			// The session continues, so the retry onClosed scheduled must not
+			// fire into the new cohort.
+			e.reconnectAt = time.Time{}
+			e.reconnectNum = 0
+			e.startPlan(plan, true)
+			return
+		} else {
+			e.logf("cohort: continuing without %s failed: %v", e.nameFor(key), err)
+		}
+	}
+	e.closeSession(false)
+	e.publish()
 }

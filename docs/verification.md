@@ -58,20 +58,34 @@ live state:
   the 2026-11-17 live session covers two standalone HomePods and a MacBook
   Air, and the two-pair, four-peer run plus a measured room offset remain
   owed.
-- Multi-device acceptance checklist, the next live pass (2026-11-18). Run it
-  with two members, then three, and record what is heard, not only what the
-  log says. Two members stream and each volume slider moves only its own room;
-  mute and unmute stay per device. A left/right assignment is audibly separate
-  across the rooms. A third target joins mid-playback and the original pair
-  resumes in sync. Disconnecting one member pauses the others only for the
-  rebuild and they resume; record the gap, which is accepted for now. One
-  member loses power or leaves the network; record how the session fails and
-  whether it recovers. Different per-device delays are judged by ear. A PIN or
-  receiver password prompt on one member leaves the other playing. Sleep,
-  wake, lock, and a network change recover the session. A 30-minute
-  three-member soak records drift, dropped samples, CPU, and memory. The
-  session identity is checked in the footer, the tray tooltip, the connection
-  card, and the sidebar, which now read the same member set.
+- Multi-device acceptance checklist (2026-11-18). Two members stream and each
+  volume slider moves only its own room; mute and unmute stay per device. A
+  third target joins mid-playback and the original pair resumes in sync.
+  Disconnecting one member pauses the others only for the rebuild and they
+  resume; the gap is accepted for now. A PIN or receiver password prompt on
+  one member leaves the other playing. Sleep, wake, lock, and a network change
+  recover the session. The session identity is checked in the footer, the tray
+  tooltip, the connection card, and the sidebar, which read the same member
+  set. Still owed: three-member runs, a left/right assignment judged by ear,
+  different per-device delays judged by ear, and a 30-minute three-member soak
+  for drift, drops, CPU, and memory.
+- Powering off a member mid-session (2026-11-18 live pass, after the member
+  isolation fix). HomePod R was powered off while R and L streamed. The
+  survivor kept playing its receiver buffer until the engine saw the lost
+  member's control connection close at 20:42:23.700, logged `cohort: HomePod R
+  left the session; continuing with 1 target(s)`, stopped the survivor at
+  20:42:23.701, and resumed streaming at 20:42:25.069 (a 1.37 s rebuild gap,
+  the accepted cost). R disappeared from discovery and returned on power-on.
+  The delay before the gap is the survivor's buffer plus TCP close detection,
+  not extra session work.
+- Auto-connect after a member returns (2026-11-18, deferred by the user). A
+  receiver that is powered off and comes back mid-session is not connected
+  again: 启动时自动连接 is a launch-time single-target choice, evaluated when
+  the app starts, and nothing watches a member reappearing while another
+  target streams. This is the old single-target launch logic, which does not
+  model a multi-device wanted set; the user asked to leave it for now. The
+  eventual shape is either a per-receiver auto-recover or a launch choice that
+  restores the last wanted set.
 - Per-device volume and channel on real hardware: two standalone HomePods set
   left and right, a MacBook Air set stereo, different volumes on each, and the
   result confirmed by ear, from the flyout rows and the settings receiver rows.
@@ -1012,6 +1026,30 @@ ok); `go test -race ./internal/app` passed. Pins:
 `TestConnectionPageSpeaksForTheSession`. Not run: a live two-receiver session
 with different per-device delays to see the ALAC line and the tray in the real
 app.
+
+## 2026-11-18 — a dead member leaves the cohort instead of retrying it
+
+The two-HomePod acceptance pass found that powering off one receiver while
+both streamed took the other one down. The dead signal closed the whole
+cohort, and the automatic retry rebuilt the full wanted set, including the
+unreachable receiver. The run's log shows the retry ladder on HomePod L's
+dial failure with `session stopped` for HomePod R on every attempt
+(20:26:13 to 20:26:31), so the surviving room was interrupted for the whole
+ladder. The cohort now records the target whose member closed first
+(`LostTarget`), and the engine rebuilds without it while the rest keep their
+session; the lost target leaves the wanted set, so no retry includes it. A
+single-target session keeps the close-and-retry path. The lost target's row
+leaves the session immediately; discovery's offline marking is a separate,
+slower signal.
+
+Checks: `mingw32-make check` passed (375 messages, 134 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app ./internal/receivers`
+passed. Pins: `TestCohortMemberCloseBeforeLaunchSignalsEngine` (the transport
+records the lost target), `TestMemberDeathKeepsOthersPlaying`,
+`TestPrimaryDeathPromotesTheRemainingTarget`,
+`TestMemberDeathOfTheOnlyTargetKeepsTheRetry`. Not run: the same power-off
+pass on real hardware after the fix.
 
 ## Graduated
 
