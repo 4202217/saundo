@@ -483,6 +483,14 @@
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
   "summaryStereoGroup": "Stereo pair · {n, number}/2",
+  "summarySessionReceivers": "{n} receivers",
+  "@summarySessionReceivers": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "@summaryStereoGroup": {
     "placeholders": {
       "n": {

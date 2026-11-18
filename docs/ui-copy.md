@@ -42,6 +42,8 @@ A target is one receiver or one stereo pair. Volume and channel belong to the ta
 
 The channel choices are `Stereo` / `立体声`, `Left` / `左`, and `Right` / `右`. Left or right copies that input channel into both outputs. The settings row hints this with `Left or right copies that channel to both outputs` / `左或右会把该声道复制到两个输出`; as a row hint it carries no terminal punctuation. A stereo pair always plays stereo: its row shows a disabled `立体声`, never `左` or `右`.
 
+A multi-target session names itself as `{name} + {name}` wherever one identity is needed (footer, connection card, sidebar), and the connection card's subtitle reads `{n} 台接收器` / `{n} receivers`. The card's receiver-processing stat keeps `最高 {value}` / `Up to {value}` because the engine reports the slowest member.
+
 ## One state, one phrase
 
 | State | Long form | Short form |

@@ -361,6 +361,14 @@
   "settingsCaptureNotRunning": "未运行",
   "captureSystemDefault": "系统默认输出",
   "summaryStereoGroup": "立体声组 · {n, number}/2",
+  "summarySessionReceivers": "{n} 台接收器",
+  "@summarySessionReceivers": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "summaryModelCurrentDevice": "{model}",
   "summaryCurrentDevice": "接收器",
   "summaryConnected": "已连接",

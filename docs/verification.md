@@ -58,6 +58,20 @@ live state:
   the 2026-11-17 live session covers two standalone HomePods and a MacBook
   Air, and the two-pair, four-peer run plus a measured room offset remain
   owed.
+- Multi-device acceptance checklist, the next live pass (2026-11-18). Run it
+  with two members, then three, and record what is heard, not only what the
+  log says. Two members stream and each volume slider moves only its own room;
+  mute and unmute stay per device. A left/right assignment is audibly separate
+  across the rooms. A third target joins mid-playback and the original pair
+  resumes in sync. Disconnecting one member pauses the others only for the
+  rebuild and they resume; record the gap, which is accepted for now. One
+  member loses power or leaves the network; record how the session fails and
+  whether it recovers. Different per-device delays are judged by ear. A PIN or
+  receiver password prompt on one member leaves the other playing. Sleep,
+  wake, lock, and a network change recover the session. A 30-minute
+  three-member soak records drift, dropped samples, CPU, and memory. The
+  session identity is checked in the footer, the tray tooltip, the connection
+  card, and the sidebar, which now read the same member set.
 - Per-device volume and channel on real hardware: two standalone HomePods set
   left and right, a MacBook Air set stereo, different volumes on each, and the
   result confirmed by ear, from the flyout rows and the settings receiver rows.
@@ -976,6 +990,28 @@ when it appeared, which resized the panel; the slot now holds an invisible
 without a live session. `mingw32-make build` produced the 0.6.4 binary and
 relaunched it. Not run: a live two-HomePod join; the preview matrix
 renders the joining state (`flyout-joining-light`, `flyout-joining-dark`).
+
+## 2026-11-18 — the session member set reaches every surface
+
+The flyout already rendered one row per active target, but the tray, the
+connection page, the settings sidebar, and the ALAC latency line still spoke
+for one selected device. The app now reads a session through `sessionMembers`
+(`internal/app/session_members.go`): active targets in snapshot order, each
+with its row and published controls, plus the joined session name and the
+slowest member's effective latency. The tray accents and disables every member
+row, not only the primary; the connection card shows the joined name and a
+member count while the sidebar shows the joined name; the ALAC line reports the
+slowest member's base-plus-delay so a mixed-delay cohort does not claim one
+member's value. Idle behavior is unchanged.
+
+Checks: `mingw32-make check` passed (375 messages, 133 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/app` passed. Pins:
+`TestSessionMembersFollowActiveTargets`, `TestSessionNameJoinsWhileOpening`,
+`TestSessionLatencyUsesSlowestMember`, `TestTrayMenuMarksEveryMember`,
+`TestConnectionPageSpeaksForTheSession`. Not run: a live two-receiver session
+with different per-device delays to see the ALAC line and the tray in the real
+app.
 
 ## Graduated
 

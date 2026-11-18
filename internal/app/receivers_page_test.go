@@ -8,6 +8,7 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
+	"saundo/internal/engine"
 	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
@@ -27,6 +28,11 @@ func receiverFixture() *App {
 	a := previewApp()
 	a.snap.SelectedID = "AA:00"
 	a.snap.ConnectedName = "客厅 HomePod"
+	a.snap.ActiveTargets = []string{"AA:00"}
+	a.snap.Targets = []engine.TargetControl{{
+		ID: "AA:00", Name: "客厅 HomePod", Volume: 65, Channel: receivers.ChannelStereo,
+		State: engine.TargetMember,
+	}}
 	a.selID = "AA:00"
 	a.snap.Devices = []device.Device{
 		{ID: "AA:00", Name: "客厅 HomePod", Host: "192.168.1.20", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},

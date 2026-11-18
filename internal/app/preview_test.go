@@ -562,6 +562,20 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		save("dialog-receiver-password", receiversPage.settingsView, 720, 500, false)
 	}
 
+	// A two-member session: the connection card and sidebar name the whole
+	// session, and the receiver stat carries the slowest member's value.
+	multiSession := fixture()
+	multiSession.page = pageConnection
+	multiSession.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	multiSession.snap.Targets = append(multiSession.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo",
+		State: engine.TargetMember,
+	})
+	multiSession.snap.ConnectedName = "HomePods + Apple TV"
+	multiSession.snap.ReceiverLatencyMS = 70
+	save("settings-connection-session-light", multiSession.settingsView, 720, 500, false)
+	save("settings-connection-session-dark", multiSession.settingsView, 720, 500, true)
+
 	customSettings := fixture()
 	customSettings.page = pageAudio
 	customSettings.latencyMode = settings.LatencyCustom

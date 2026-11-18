@@ -2882,6 +2882,16 @@ func (msgs Messages) SummaryStereoGroup(n int) string {
 	return Catalog.Format(msgs.locale, "summaryStereoGroup", map[string]any{"n": n})
 }
 
+// SummarySessionReceivers says "{n} receivers"
+// in the language the app shows.
+func SummarySessionReceivers(n int) string { return In(i18n.Locale()).SummarySessionReceivers(n) }
+
+// SummarySessionReceivers says "{n} receivers"
+// in the language of msgs.
+func (msgs Messages) SummarySessionReceivers(n int) string {
+	return Catalog.Format(msgs.locale, "summarySessionReceivers", map[string]any{"n": n})
+}
+
 // SummaryModelCurrentDevice says "{model}"
 // in the language the app shows.
 func SummaryModelCurrentDevice(model string) string {

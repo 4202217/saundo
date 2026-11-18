@@ -148,6 +148,13 @@ carries `LampOff`, `LampCover`, and `LampPreset`, which both lamp surfaces
 read, and `Standby` (the live dark phase) with the configured
 `StandbyEnabled` and `StandbyMinutes`.
 
+The app reads a session through one layer, `sessionMembers` in
+`internal/app/session_members.go`: the active targets in snapshot order, each
+with its device row and published controls, plus the joined session name and
+the slowest member's effective latency. The tray, the connection page, the
+settings sidebar, and the playback head's latency line read that layer instead
+of a single selected device; the flyout already renders one row per member.
+
 `Snapshot.Diagnostics` is the diagnostics model. The sender exposes
 `Stats` (retransmits served, late pacer ticks, underruns, sent blocks, last
 timing packet, ring buffer milliseconds, and the SETUP Wi-Fi snapshot); the

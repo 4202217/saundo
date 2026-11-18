@@ -409,6 +409,11 @@ func TestConnectionHealthCardStereoGroup(t *testing.T) {
 		},
 	}
 	a.snap.Devices = []device.Device{group}
+	a.snap.ActiveTargets = []string{group.ID}
+	a.snap.Targets = []engine.TargetControl{{
+		ID: group.ID, Name: group.Name, Volume: 52, Channel: receivers.ChannelStereo,
+		Stereo: true, State: engine.TargetMember,
+	}}
 	a.snap.SelectedID = group.ID
 	a.selID = group.ID
 	a.snap.State = sender.StateStreaming
