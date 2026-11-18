@@ -51,6 +51,27 @@ const (
 	groupKeyPrefix  = "stereo:"
 )
 
+// The stored channel preference. A stereo pair always plays stereo; a single
+// receiver may play either input channel into both outputs.
+const (
+	ChannelStereo = "stereo"
+	ChannelLeft   = "left"
+	ChannelRight  = "right"
+)
+
+// ParseChannel normalizes a stored channel preference. Empty and unknown
+// values read as stereo, because this is a preference, not a capability gate.
+func ParseChannel(value string) string {
+	switch value {
+	case ChannelLeft:
+		return ChannelLeft
+	case ChannelRight:
+		return ChannelRight
+	default:
+		return ChannelStereo
+	}
+}
+
 // Member is one speaker of a remembered stereo pair. Discovery supplies the
 // addresses; keeping them lets the next launch connect the pair without
 // waiting for mDNS.
@@ -104,6 +125,10 @@ type Entry struct {
 	Hidden      bool     `json:"hidden,omitempty"`
 	AutoConnect bool     `json:"autoConnect,omitempty"`
 	DelayMS     int      `json:"delayMs,omitempty"`
+	// Channel is the stereo side a single receiver plays: "stereo", "left",
+	// or "right". A stereo pair always plays stereo. Empty and unknown values
+	// read as stereo, because this is a preference, not a capability gate.
+	Channel string `json:"channel,omitempty"`
 	// LastRetransmits and LastSentBlocks drive the next session's duplicate
 	// count: clean sessions get one copy, lossy ones two or three.
 	LastRetransmits uint64 `json:"lastRetransmits,omitempty"`

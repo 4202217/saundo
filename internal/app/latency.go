@@ -91,6 +91,16 @@ func (a *App) disconnect() {
 	}
 }
 
+// disconnectTarget removes one target from the session; the other targets
+// keep playing. The last target takes the whole session down in the engine.
+func (a *App) disconnectTarget(id string) {
+	a.cancelLatencyApply()
+	a.finishLatencyApply()
+	if a.eng != nil {
+		a.eng.DisconnectTarget(id)
+	}
+}
+
 // latencyMS is the value the mode resolves to, with the engine's last value as
 // the fallback while settings are being migrated.
 func (a *App) latencyMS() int {
@@ -133,12 +143,9 @@ func (a *App) effectiveLatencyMS() int {
 	return ms
 }
 
-// receiverDelay reads the row's delay, preferring an in-flight slider draft
-// so the ALAC line follows the drag before the engine applies it.
+// receiverDelay reads the row's stored DSP/DAC delay for the selected
+// receiver.
 func (a *App) receiverDelay(key string) (int, bool) {
-	if delay, ok := a.receiverDelayPend[key]; ok {
-		return delay, true
-	}
 	for _, v := range a.snap.Receivers {
 		if v.Key == key {
 			return v.DelayMS, true

@@ -27,9 +27,10 @@ const (
 	maxExchangeTimeout     = 12 * time.Second
 )
 
-// Master is a PTP grandmaster for one AirPlay 2 stereo pair. It owns one pair
-// of UDP sockets for all peers and sends Sync/Follow_Up, Announce, and delay
-// responses without touching the system clock.
+// Master is a PTP grandmaster for the synchronized stereo pairs of one
+// session. It owns one pair of UDP sockets for all peers and sends
+// Sync/Follow_Up, Announce, and delay responses without touching the system
+// clock.
 type Master struct {
 	clockID uint64
 	peers   map[string]*masterPeer
@@ -60,11 +61,13 @@ type masterPeer struct {
 	requestAt   time.Time
 }
 
-// NewMaster binds UDP 319 and 320 for a grandmaster serving one or two
-// distinct IPv4 peers.
+// NewMaster binds UDP 319 and 320 for a grandmaster serving one or more
+// distinct IPv4 peers. Every member of every synchronized stereo pair is a
+// peer; the exchange loop already iterates the peer map, so there is no
+// protocol cap.
 func NewMaster(peerIPs []string) (*Master, error) {
-	if len(peerIPs) == 0 || len(peerIPs) > 2 {
-		return nil, fmt.Errorf("ptp: master wants 1 or 2 peers, got %d", len(peerIPs))
+	if len(peerIPs) == 0 {
+		return nil, fmt.Errorf("ptp: master wants at least one peer, got 0")
 	}
 	peers := make(map[string]*masterPeer, len(peerIPs))
 	for _, raw := range peerIPs {

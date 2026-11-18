@@ -8,7 +8,6 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
-	"saundo/internal/airplay/sender"
 	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
@@ -36,25 +35,29 @@ func receiverFixture() *App {
 		{
 			Key: "AA:00", Name: "客厅 HomePod", Kind: receivers.KindDiscovered,
 			Model: "AudioAccessory5,1", Online: true, AutoConnect: true, DelayMS: 0,
-			Device: a.snap.Devices[0],
-			Entry:  receivers.Entry{Key: "AA:00", Kind: receivers.KindDiscovered, Name: "客厅 HomePod", AutoConnect: true},
+			Channel: receivers.ChannelStereo,
+			Device:  a.snap.Devices[0],
+			Entry:   receivers.Entry{Key: "AA:00", Kind: receivers.KindDiscovered, Name: "客厅 HomePod", AutoConnect: true},
 		},
 		{
 			Key: "AA:01", Name: "卧室 HomePod mini", Kind: receivers.KindDiscovered,
 			Model: "AudioAccessory5,1", Hidden: true, DelayMS: 120,
-			Device: device.Device{ID: "AA:01", Name: "卧室 HomePod mini", Model: "AudioAccessory5,1"},
-			Entry:  receivers.Entry{Key: "AA:01", Kind: receivers.KindDiscovered, Name: "卧室 HomePod mini", Hidden: true, DelayMS: 120},
+			Channel: receivers.ChannelStereo,
+			Device:  device.Device{ID: "AA:01", Name: "卧室 HomePod mini", Model: "AudioAccessory5,1"},
+			Entry:   receivers.Entry{Key: "AA:01", Kind: receivers.KindDiscovered, Name: "卧室 HomePod mini", Hidden: true, DelayMS: 120},
 		},
 		{
 			Key: "m:ab12", Name: "书房 AirPort Express", Kind: receivers.KindManual,
 			Type: receivers.TypeAirPortExpress, Address: "192.168.1.32:5000",
 			Model: "AirPort", Online: true, PasswordSet: true,
-			Device: device.Device{ID: "m:ab12", Name: "书房 AirPort Express", Model: "AirPort", Auth: device.AuthSetup, Online: true},
-			Entry:  receivers.Entry{Key: "m:ab12", Kind: receivers.KindManual, Type: receivers.TypeAirPortExpress, Name: "书房 AirPort Express", Host: "192.168.1.32", Port: 5000},
+			Channel: receivers.ChannelLeft,
+			Device:  device.Device{ID: "m:ab12", Name: "书房 AirPort Express", Model: "AirPort", Auth: device.AuthSetup, Online: true},
+			Entry:   receivers.Entry{Key: "m:ab12", Kind: receivers.KindManual, Type: receivers.TypeAirPortExpress, Name: "书房 AirPort Express", Host: "192.168.1.32", Port: 5000},
 		},
 		{
 			Key: "stereo:1", Name: "客厅立体声", Kind: receivers.KindDiscovered,
 			Model: "AudioAccessory5,1", Online: true, Stereo: true,
+			Channel: receivers.ChannelStereo,
 			Device: device.Device{ID: "stereo:1", Name: "客厅立体声", Model: "AudioAccessory5,1", StereoID: "1",
 				Members: []device.Device{{ID: "AA:10", Name: "L"}, {ID: "AA:11", Name: "R"}}, Online: true},
 			Entry: receivers.Entry{Key: "stereo:1", Kind: receivers.KindDiscovered, Name: "客厅立体声"},
@@ -69,7 +72,7 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	a.receiverHiddenOpen = true
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。",
+		"接收器", "管理接收器、自动连接、显示与声道。",
 		"已启用", "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
 		"启动时", "手动添加", "添加接收器", "已隐藏", "卧室 HomePod mini",
 		"AudioAccessory5,1 · 192.168.1.20:7000",
@@ -215,7 +218,6 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		"启动时自动连接", "同一时间仅一台",
-		"DSP/DAC 延迟", "补偿接收器的硬件音频延迟", "0 ms", "2 s",
 		"接收器密码", "已保存 · 用于 AirPlay 密码认证", "更改", "••••••",
 		"编辑",
 	} {
@@ -226,27 +228,6 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	// The offline remembered row shows 未保存 for its password.
 	if !tt.HasText("未保存 · 连接时按需填写") {
 		t.Fatalf("unset password copy is missing; texts: %q", tt.Texts())
-	}
-}
-
-// TestReceiverDelayRowAlignsWithSettingRows pins the delay row to the same
-// left inset as the auto-connect and password rows.
-func TestReceiverDelayRowAlignsWithSettingRows(t *testing.T) {
-	a := receiverFixture()
-	a.page = pageReceivers
-	a.receiverOpen = map[string]bool{"AA:00": true}
-	tt := ui.NewTester(a.settingsView, 720, 500)
-	tt.Frame()
-	auto, ok := tt.Find("启动时自动连接")
-	if !ok {
-		t.Fatalf("auto-connect row is missing: %q", tt.Texts())
-	}
-	delay, ok := tt.Find("DSP/DAC 延迟")
-	if !ok {
-		t.Fatalf("delay row is missing: %q", tt.Texts())
-	}
-	if delay.X != auto.X {
-		t.Fatalf("delay row is not aligned with setting rows: auto x=%.1f delay x=%.1f", auto.X, delay.X)
 	}
 }
 
@@ -459,7 +440,7 @@ func TestReceiverPasswordRowOpensItsDialog(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.receiverOpen = map[string]bool{"m:ab12": true}
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 700)
 	if err := tt.Click("更改"); err != nil {
 		t.Fatalf("click the password action: %v", err)
 	}
@@ -472,29 +453,6 @@ func TestReceiverPasswordRowOpensItsDialog(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("更改接收器密码") {
 		t.Fatalf("password dialog did not render: %q", tt.Texts())
-	}
-}
-
-func TestReceiverDelayDraftFeedsTheSliderAndALACLine(t *testing.T) {
-	a := receiverFixture()
-	a.page = pageReceivers
-	a.receiverOpen = map[string]bool{"AA:00": true}
-	a.receiverDelayPend = map[string]int{"AA:00": 120}
-	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !tt.HasText("120 ms") {
-		t.Fatalf("delay draft is not on the row: %q", tt.Texts())
-	}
-	a.latencyMode = settings.LatencyLow
-	a.latency = 200
-	a.snap.State = sender.StateStreaming
-	a.snap.SelectedID = "AA:00"
-	if got := a.latencyDisplay(); got != "320 ms" {
-		t.Fatalf("ALAC latency = %q, want 320 ms", got)
-	}
-	a.receiverDelayPend = nil
-	a.snap.State = sender.StateIdle
-	if got := a.latencyDisplay(); got != "200 ms" {
-		t.Fatalf("idle ALAC latency = %q, want the base 200 ms", got)
 	}
 }
 

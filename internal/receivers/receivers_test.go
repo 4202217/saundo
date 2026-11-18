@@ -76,7 +76,7 @@ func TestMergeHidesTheLocalReceiver(t *testing.T) {
 	if !v.Local || !v.Hidden || v.AutoConnect {
 		t.Fatalf("local view = %+v, want local, hidden, no auto-connect", v)
 	}
-	if got := Visible(targets, ""); len(got) != 0 {
+	if got := Visible(targets, nil); len(got) != 0 {
 		t.Fatalf("local receiver leaked into the flyout: %+v", got)
 	}
 }
@@ -213,7 +213,7 @@ func TestManageableDropsOfflineRememberedRows(t *testing.T) {
 		{Key: "m:01", Kind: KindManual, Type: TypeAirPlay2, Name: "手动", Host: "192.0.2.9", Port: 7000},
 	}}
 	devs := []device.Device{discovered("AA:00", "在线", "192.0.2.1", 7000)}
-	targets := Manageable(Merge(reg, devs, nil), "")
+	targets := Manageable(Merge(reg, devs, nil), nil)
 	if len(targets) != 2 {
 		t.Fatalf("targets = %+v, want the online and the manual row", targets)
 	}
@@ -222,7 +222,7 @@ func TestManageableDropsOfflineRememberedRows(t *testing.T) {
 			t.Fatalf("offline remembered row survived: %+v", target)
 		}
 	}
-	if got := Manageable(Merge(reg, devs, nil), "AA:01"); len(got) != 3 {
+	if got := Manageable(Merge(reg, devs, nil), map[string]bool{"AA:01": true}); len(got) != 3 {
 		t.Fatalf("active row dropped: %+v", got)
 	}
 }
@@ -258,11 +258,11 @@ func TestVisibleFiltersHiddenAndKeepsActive(t *testing.T) {
 		{Device: discovered("AA:00", "可见", "h", 7000), Entry: Entry{Key: "AA:00", Kind: KindDiscovered}},
 		{Device: discovered("AA:01", "隐藏", "h", 7000), Entry: Entry{Key: "AA:01", Kind: KindDiscovered, Hidden: true}},
 	}
-	got := Visible(targets, "")
+	got := Visible(targets, nil)
 	if len(got) != 1 || got[0].ID != "AA:00" {
 		t.Fatalf("hidden row leaked into the flyout: %+v", got)
 	}
-	got = Visible(targets, "AA:01")
+	got = Visible(targets, map[string]bool{"AA:01": true})
 	if len(got) != 2 {
 		t.Fatalf("the active session's hidden row was dropped: %+v", got)
 	}

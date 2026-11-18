@@ -38,8 +38,8 @@
   group with its auto-connect flag cleared (`merge.go:82-88`), drawn with
   the 本机 chip and no switch or expander (`receivers_page.go:217-230,335-336`),
   and never listed in the flyout. The engine refuses to connect it
-  (`engine.go:1418-1427`), the launch auto-connect skips it
-  (`engine.go:2147-2153`), and the sender stops a session whose socket local
+  (`plan.go:447-454`), the launch auto-connect skips it
+  (`engine.go:1880-1886`), and the sender stops a session whose socket local
   and peer addresses match (`sender.go:860-864`). A sender and its own
   receiver would share one audio path and loop.
 - Connect paths by auth kind: HAP transient (fixed PIN `3939`, stops at M4),
@@ -48,21 +48,22 @@
   (`AppleTV3,x` → FairPlay message, never a silent session).
 - Stored-credential reconnect: pair-setup skipped, pair-verify only.
 - Disconnect sends TEARDOWN; auto-reconnect backs off 1s/2s/5s/10s/15s, five
-  failed connect attempts, then 自动重连 {count} 次后停止 (`engine.go:320-324`,
-  budget at `:291-292`, `planReconnect` at `:1559-1572`, give-up message at
-  `:1563`). A key absent from the list is retried every 5 s without consuming
-  the budget; a receiver that merely goes offline keeps its cached endpoint
-  and each attempt counts. A user connect resets the budget (`cmdConnect`,
-  `engine.go:1170-1173`), so 重试, 重新连接, and the tray's 重试连接 start a
-  fresh 1/2/5/10/15 s cycle after a give-up
+  failed connect attempts, then 自动重连 {count} 次后停止 (`engine.go:248-251`,
+  budget at `:218-219`, `planReconnect` at `:1241-1255`, give-up message at
+  `:1243-1244`). A key absent from the list is retried every 5 s without
+  consuming the budget; a receiver that merely goes offline keeps its cached
+  endpoint and each attempt counts. A user connect resets the budget
+  (`connectResolved`, `cohort.go:626-629`), so 重试, 重新连接, and the tray's
+  重试连接 start a fresh 1/2/5/10/15 s cycle after a give-up
   (`TestUserRetryAfterGiveUpResumesReconnect`).
 - Takeover is terminal: a clean control close during streaming stops the
-  reconnect (`engine.go:1785-1802`; `sender.go:906`), the status reads
+  reconnect (`engine.go:1511-1529`; `sender.go:906`), the status reads
   已被其他设备接管, and the active row offers 重新连接
   (`flyout.go:281-283`; `app.go:1125-1128`). A close carrying an error stays
   retryable.
 - A failed attempt clears its error on the next connect or disconnect
-  (`engine.go:1193`, `:1434`), and other online rows stay connectable in the
+  (`cohort.go:629`, `engine.go:1033`), and other online rows stay connectable
+  in the
   error phase (`flyout.go:244-286`; `TestRowActionKeepsOtherReceiversConnectable`).
 
 ## How to get to it (user POV)
@@ -70,8 +71,9 @@
 Launch the app; the flyout lists receivers on the LAN (about ten seconds).
 Click a row, click 连接. On a PIN receiver the 配对码 dialog opens; on a
 password receiver a masked prompt opens on first connect. The tray menu's
-receiver rows are the second entry point: a click connects or switches (the
-in-session row is disabled), and its session row carries 取消连接 /
+receiver rows are the second entry point: a click connects when idle, or adds
+that receiver to the playing cohort while streaming (an already-active
+target is a no-op), and its session row carries 取消连接 /
 断开连接 / 重试连接; see [tray-and-flyout.md](tray-and-flyout.md).
 
 ## Driving it

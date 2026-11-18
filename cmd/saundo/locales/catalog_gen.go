@@ -698,6 +698,16 @@ func (msgs Messages) ErrorSessionOpen(error string) string {
 	return Catalog.Format(msgs.locale, "errorSessionOpen", map[string]any{"error": error})
 }
 
+// ErrorClockConflict says "A stereo pair cannot join standalone PTP receivers."
+// in the language the app shows.
+func ErrorClockConflict() string { return In(i18n.Locale()).ErrorClockConflict() }
+
+// ErrorClockConflict says "A stereo pair cannot join standalone PTP receivers."
+// in the language of msgs.
+func (msgs Messages) ErrorClockConflict() string {
+	return Catalog.Format(msgs.locale, "errorClockConflict", nil)
+}
+
 // ErrorReconnectStopped says "Stopped after {count} reconnect attempts."
 // in the language the app shows.
 func ErrorReconnectStopped(count string) string {
@@ -840,6 +850,36 @@ func (msgs Messages) FlyoutVolumeValue(v float64) string {
 	return Catalog.Format(msgs.locale, "flyoutVolumeValue", map[string]any{"v": v})
 }
 
+// VolumeFor says "Volume · {device}"
+// in the language the app shows.
+func VolumeFor(device string) string { return In(i18n.Locale()).VolumeFor(device) }
+
+// VolumeFor says "Volume · {device}"
+// in the language of msgs.
+func (msgs Messages) VolumeFor(device string) string {
+	return Catalog.Format(msgs.locale, "volumeFor", map[string]any{"device": device})
+}
+
+// MuteFor says "Mute {device}"
+// in the language the app shows.
+func MuteFor(device string) string { return In(i18n.Locale()).MuteFor(device) }
+
+// MuteFor says "Mute {device}"
+// in the language of msgs.
+func (msgs Messages) MuteFor(device string) string {
+	return Catalog.Format(msgs.locale, "muteFor", map[string]any{"device": device})
+}
+
+// UnmuteFor says "Unmute {device}"
+// in the language the app shows.
+func UnmuteFor(device string) string { return In(i18n.Locale()).UnmuteFor(device) }
+
+// UnmuteFor says "Unmute {device}"
+// in the language of msgs.
+func (msgs Messages) UnmuteFor(device string) string {
+	return Catalog.Format(msgs.locale, "unmuteFor", map[string]any{"device": device})
+}
+
 // FlyoutNowPlayingNoMedia says "No media detected"
 // in the language the app shows.
 func FlyoutNowPlayingNoMedia() string { return In(i18n.Locale()).FlyoutNowPlayingNoMedia() }
@@ -970,6 +1010,16 @@ func ActionReconnect() string { return In(i18n.Locale()).ActionReconnect() }
 // in the language of msgs.
 func (msgs Messages) ActionReconnect() string {
 	return Catalog.Format(msgs.locale, "actionReconnect", nil)
+}
+
+// DisconnectAll says "Disconnect all"
+// in the language the app shows.
+func DisconnectAll() string { return In(i18n.Locale()).DisconnectAll() }
+
+// DisconnectAll says "Disconnect all"
+// in the language of msgs.
+func (msgs Messages) DisconnectAll() string {
+	return Catalog.Format(msgs.locale, "disconnectAll", nil)
 }
 
 // ActionDisconnect says "Disconnect"
@@ -1252,11 +1302,11 @@ func (msgs Messages) PageConnectionDesc() string {
 	return Catalog.Format(msgs.locale, "pageConnectionDesc", nil)
 }
 
-// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver delay compensation."
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and channel."
 // in the language the app shows.
 func PageReceiversDesc() string { return In(i18n.Locale()).PageReceiversDesc() }
 
-// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver delay compensation."
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and channel."
 // in the language of msgs.
 func (msgs Messages) PageReceiversDesc() string {
 	return Catalog.Format(msgs.locale, "pageReceiversDesc", nil)
@@ -1966,24 +2016,14 @@ func (msgs Messages) ReceiverAutoToggleDesc() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)
 }
 
-// ReceiverDelayTitle says "DSP/DAC delay"
+// ReceiverChannelDesc says "Left or right copies that channel to both outputs"
 // in the language the app shows.
-func ReceiverDelayTitle() string { return In(i18n.Locale()).ReceiverDelayTitle() }
+func ReceiverChannelDesc() string { return In(i18n.Locale()).ReceiverChannelDesc() }
 
-// ReceiverDelayTitle says "DSP/DAC delay"
+// ReceiverChannelDesc says "Left or right copies that channel to both outputs"
 // in the language of msgs.
-func (msgs Messages) ReceiverDelayTitle() string {
-	return Catalog.Format(msgs.locale, "receiverDelayTitle", nil)
-}
-
-// ReceiverDelayDesc says "Compensate the receiver's hardware audio delay"
-// in the language the app shows.
-func ReceiverDelayDesc() string { return In(i18n.Locale()).ReceiverDelayDesc() }
-
-// ReceiverDelayDesc says "Compensate the receiver's hardware audio delay"
-// in the language of msgs.
-func (msgs Messages) ReceiverDelayDesc() string {
-	return Catalog.Format(msgs.locale, "receiverDelayDesc", nil)
+func (msgs Messages) ReceiverChannelDesc() string {
+	return Catalog.Format(msgs.locale, "receiverChannelDesc", nil)
 }
 
 // ReceiverPasswordTitle says "Receiver password"
@@ -2932,6 +2972,68 @@ func VolumeLabel() string { return In(i18n.Locale()).VolumeLabel() }
 // in the language of msgs.
 func (msgs Messages) VolumeLabel() string {
 	return Catalog.Format(msgs.locale, "volumeLabel", nil)
+}
+
+// ChannelLabel says "Channel"
+// in the language the app shows.
+func ChannelLabel() string { return In(i18n.Locale()).ChannelLabel() }
+
+// ChannelLabel says "Channel"
+// in the language of msgs.
+func (msgs Messages) ChannelLabel() string {
+	return Catalog.Format(msgs.locale, "channelLabel", nil)
+}
+
+// ChannelStereo says "Stereo"
+// in the language the app shows.
+func ChannelStereo() string { return In(i18n.Locale()).ChannelStereo() }
+
+// ChannelStereo says "Stereo"
+// in the language of msgs.
+func (msgs Messages) ChannelStereo() string {
+	return Catalog.Format(msgs.locale, "channelStereo", nil)
+}
+
+// ChannelLeft says "Left"
+// in the language the app shows.
+func ChannelLeft() string { return In(i18n.Locale()).ChannelLeft() }
+
+// ChannelLeft says "Left"
+// in the language of msgs.
+func (msgs Messages) ChannelLeft() string {
+	return Catalog.Format(msgs.locale, "channelLeft", nil)
+}
+
+// ChannelRight says "Right"
+// in the language the app shows.
+func ChannelRight() string { return In(i18n.Locale()).ChannelRight() }
+
+// ChannelRight says "Right"
+// in the language of msgs.
+func (msgs Messages) ChannelRight() string {
+	return Catalog.Format(msgs.locale, "channelRight", nil)
+}
+
+// ChannelTooltip says "Channel: {current} · Click for {next}"
+// in the language the app shows.
+func ChannelTooltip(current string, next string) string {
+	return In(i18n.Locale()).ChannelTooltip(current, next)
+}
+
+// ChannelTooltip says "Channel: {current} · Click for {next}"
+// in the language of msgs.
+func (msgs Messages) ChannelTooltip(current string, next string) string {
+	return Catalog.Format(msgs.locale, "channelTooltip", map[string]any{"current": current, "next": next})
+}
+
+// ChannelPairTooltip says "Channel: {current} · A stereo pair always plays stereo"
+// in the language the app shows.
+func ChannelPairTooltip(current string) string { return In(i18n.Locale()).ChannelPairTooltip(current) }
+
+// ChannelPairTooltip says "Channel: {current} · A stereo pair always plays stereo"
+// in the language of msgs.
+func (msgs Messages) ChannelPairTooltip(current string) string {
+	return Catalog.Format(msgs.locale, "channelPairTooltip", map[string]any{"current": current})
 }
 
 // SettingsNavUpdates says "Updates"

@@ -35,6 +35,8 @@ func userErrorText(key engine.UserErrorKey, args []string, fallback string) stri
 		return locales.ErrorEndpointMoved(arg(0))
 	case engine.ErrSessionOpen:
 		return locales.ErrorSessionOpen(arg(0))
+	case engine.ErrClockConflict:
+		return locales.ErrorClockConflict()
 	case engine.ErrReconnectStopped:
 		return locales.ErrorReconnectStopped(arg(0))
 	case engine.ErrReceiverMissing:
@@ -47,4 +49,25 @@ func userErrorText(key engine.UserErrorKey, args []string, fallback string) stri
 
 func (a *App) errorText() string {
 	return userErrorText(a.snap.ErrorKey, a.snap.ErrorArgs, a.snap.Error)
+}
+
+// errorBarNeeded keeps the old failed-phase bar for a real message, and adds
+// the connect and refused-add keys over a healthy stream. A takeover is the
+// error phase with no message, so it must not draw an empty bar.
+func errorBarNeeded(s engine.Snapshot) bool {
+	return (phaseOf(s) == phaseError && (s.Error != "" || s.ErrorKey != "")) ||
+		connectionErrorKey(s.ErrorKey)
+}
+
+// connectionErrorKey reports whether the key is a connect or refused-add
+// failure. Those surface over a healthy stream; save and latency errors do
+// not, because the session they describe is still running.
+func connectionErrorKey(key engine.UserErrorKey) bool {
+	switch key {
+	case engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrLocalReceiver,
+		engine.ErrStereoMembersOffline, engine.ErrFairPlay, engine.ErrEndpointMoved,
+		engine.ErrSessionOpen:
+		return true
+	}
+	return false
 }

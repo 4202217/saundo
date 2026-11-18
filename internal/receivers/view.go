@@ -16,6 +16,10 @@ type View struct {
 	Local       bool
 	AutoConnect bool
 	DelayMS     int
+	// Volume is the target's remembered level in percent, filled by the engine.
+	Volume float64
+	// Channel is the stored stereo side, normalized to stereo, left, or right.
+	Channel     string
 	Stereo      bool
 	PasswordSet bool
 	// Device is the merged wire description behind the row, for the
@@ -40,6 +44,7 @@ func (t Target) View(hasPassword bool) View {
 		Local:       t.Device.Local,
 		AutoConnect: e.AutoConnect,
 		DelayMS:     e.DelayMS,
+		Channel:     ParseChannel(e.Channel),
 		Stereo:      t.Device.IsStereoGroup() || e.IsGroup(),
 		PasswordSet: hasPassword,
 		Device:      t.Device,

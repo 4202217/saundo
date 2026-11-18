@@ -12,8 +12,8 @@ func TestFirstLaunchAdoptsMuteSentinel(t *testing.T) {
 	if h.e.volume != 0 || h.e.setsValue.Volume != 0 {
 		t.Fatalf("volume = %f, stored = %f, want 0", h.e.volume, h.e.setsValue.Volume)
 	}
-	if _, ok := h.e.setsValue.VolumeByDevice[testDeviceID]; ok {
-		t.Fatal("launch adoption wrote a per-device volume")
+	if got := h.e.setsValue.VolumeByDevice[testDeviceID]; got != 0 {
+		t.Fatalf("per-device volume = %f, want the adopted 0", got)
 	}
 }
 
@@ -49,8 +49,8 @@ func TestFirstLaunchKeepsRememberedVolume(t *testing.T) {
 	if got := h.e.setsValue.VolumeByDevice[testDeviceID]; got != 42 {
 		t.Fatalf("per-device volume = %f, want 42", got)
 	}
-	if len(h.fake.volumes) != 1 || h.fake.volumes[0] != 42 {
-		t.Fatalf("transport volume calls = %v, want [42]", h.fake.volumes)
+	if !h.plan.targets[0].volumeSet || h.plan.targets[0].volume != 42 {
+		t.Fatalf("planned volume = %v set=%v, want 42 set", h.plan.targets[0].volume, h.plan.targets[0].volumeSet)
 	}
 }
 

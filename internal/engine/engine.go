@@ -14,7 +14,6 @@ import (
 	"saundo/internal/airplay/creds"
 	"saundo/internal/airplay/device"
 	raopio "saundo/internal/airplay/io"
-	"saundo/internal/airplay/ptp"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
 	"saundo/internal/audio/ring"
@@ -33,9 +32,16 @@ type Snapshot struct {
 	SelectedID    string
 	State         sender.State
 	ConnectedName string
-	Error         string
-	ErrorKey      UserErrorKey
-	ErrorArgs     []string
+	// ActiveTargets lists the live or opening cohort's registry keys in target
+	// order; the first is the primary target (SelectedID). While a failed or
+	// retrying session waits, it lists the wanted set instead. Empty when idle.
+	ActiveTargets []string
+	// Targets carries each live target's per-device audio controls. Empty when
+	// idle.
+	Targets   []TargetControl
+	Error     string
+	ErrorKey  UserErrorKey
+	ErrorArgs []string
 	// CredentialReset is true when the saved credentials could not be read
 	// and were moved aside this run. The flyout explains the re-pair.
 	CredentialReset  bool
@@ -92,12 +98,25 @@ type Snapshot struct {
 	LogLines            []string
 }
 
+// Active reports whether the key belongs to the live or opening cohort, or to
+// the wanted set while a retry waits.
+func (s Snapshot) Active(key string) bool {
+	for _, k := range s.ActiveTargets {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
 type commandKind uint8
 
 const (
 	cmdConnect commandKind = iota
 	cmdDisconnect
+	cmdDisconnectTarget
 	cmdVolume
+	cmdTargetVolume
 	cmdPin
 	cmdDismissPassword
 	cmdDismissCredentialReset
@@ -160,15 +179,17 @@ type captureStart struct {
 	err error
 }
 
-// transport is one live sender session. The production implementation wraps
-// sender.Sender with its net host and PTP clock; tests replace it.
+// transport is one live sender session. The production implementation is a
+// cohort of one or more senders sharing one start gate and at most one PTP
+// role; tests replace it.
 type transport interface {
 	Events() <-chan raopio.Event
-	// Dead closes when the transport is beyond saving (a stereo member
-	// died, a launch failed) and closeSession must run. Nil for transports
-	// that never signal this.
+	// Dead closes when the transport is beyond saving (a member died, a
+	// launch failed) and closeSession must run. Nil for transports that never
+	// signal this.
 	Dead() <-chan struct{}
-	Start(host string, port uint16, name string)
+	// Start opens every member's handshake. Endpoints and auth ride the plan.
+	Start()
 	Stop()
 	Active() bool
 	State() sender.State
@@ -181,111 +202,30 @@ type transport interface {
 	// Pushing reports whether the realtime stream is currently sending RTP.
 	Pushing() bool
 	SetIdentity(id sender.Identity)
-	SetAuth(auth device.Auth, airplay2 bool, deviceID, credsJSON, password string)
-	SetFamily(family device.Family)
-	SetMemberAuth(m device.Device, credsJSON, password string)
 	Rings() []*ring.Buffer
-	SetPTPClock(clock sender.PTPClock)
-	AttachRing(rb *ring.Buffer)
 	SetInputFormat(rate int)
-	SetLatency(ms int)
 	SetVolume(pct float64)
+	// SetTargetVolume applies a volume to one target's members; a pair shares
+	// it and a single receiver gets its own.
+	SetTargetVolume(key string, pct float64)
+	// SetTargetChannel applies a stereo map to one target's members without a
+	// session rebuild.
+	SetTargetChannel(key string, mode sender.ChannelMode)
 	SetStrictReceiverAuth(strict bool)
 	SubmitPin(code string)
 	WaitingForPin() bool
 	InitialVolumePercent() (float64, bool)
+	// InitialVolumePercentFor is the first report among one target's members.
+	InitialVolumePercentFor(key string) (float64, bool)
 	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)
 	SetLampArtwork(data []byte, mime string, on bool)
 	SetPlaybackState(playing bool)
 	PTP() (active, ready bool, offsetMS float64)
-	// Stats returns one sender.Stats per member session. A single receiver
-	// returns one; a stereo pair returns both, in member order.
+	// Stats returns one sender.Stats per member session, in plan order.
 	Stats() []sender.Stats
 	// DroppedEvents is how many host notifications the event queue discarded
 	// for this session.
 	DroppedEvents() uint64
-}
-
-// session is the production transport.
-type session struct {
-	host     *raopio.Host
-	sender   *sender.Sender
-	ptp      *ptp.Follower
-	dead     chan struct{}
-	deadOnce sync.Once
-}
-
-func (s *session) Events() <-chan raopio.Event { return s.host.Events() }
-func (s *session) Dead() <-chan struct{}       { return s.dead }
-
-func (s *session) signalDead() {
-	s.deadOnce.Do(func() { close(s.dead) })
-}
-func (s *session) Start(host string, port uint16, name string) {
-	s.sender.Start(host, port, name)
-}
-func (s *session) Stop()                          { s.sender.Stop() }
-func (s *session) Active() bool                   { return s.sender.Active() }
-func (s *session) State() sender.State            { return s.sender.State() }
-func (s *session) HandleEvent(ev raopio.Event)    { s.sender.HandleEvent(ev) }
-func (s *session) Tick()                          { s.sender.Tick() }
-func (s *session) NextDeadline() time.Time        { return s.sender.NextDeadline() }
-func (s *session) SetPaused(paused bool) bool     { return s.sender.SetPaused(paused) }
-func (s *session) Pushing() bool                  { return s.sender.Pushing() }
-func (s *session) SetIdentity(id sender.Identity) { s.sender.SetIdentity(id) }
-func (s *session) SetAuth(a device.Auth, ap2 bool, id, creds, pw string) {
-	s.sender.SetAuth(a, ap2, id, creds, pw)
-}
-func (s *session) SetFamily(family device.Family) { s.sender.SetFamily(family) }
-func (s *session) SetMemberAuth(m device.Device, credsJSON, password string) {
-	s.sender.SetAuth(m.Auth, m.Auth.IsHAP(), m.ID, credsJSON, password)
-	s.sender.SetFamily(m.Family)
-}
-func (s *session) Rings() []*ring.Buffer         { return nil }
-func (s *session) SetPTPClock(c sender.PTPClock) { s.sender.SetPTPClock(c) }
-func (s *session) AttachRing(rb *ring.Buffer)    { s.sender.AttachRing(rb) }
-func (s *session) SetInputFormat(rate int)       { s.sender.SetInputFormat(rate) }
-func (s *session) SetLatency(ms int)             { s.sender.SetLatency(ms) }
-func (s *session) SetVolume(pct float64)         { s.sender.SetVolume(pct) }
-func (s *session) SetStrictReceiverAuth(v bool)  { s.sender.SetStrictReceiverAuth(v) }
-func (s *session) SubmitPin(code string)         { s.sender.SubmitPin(code) }
-func (s *session) WaitingForPin() bool           { return s.sender.WaitingForPin() }
-func (s *session) InitialVolumePercent() (float64, bool) {
-	return s.sender.InitialVolumePercent()
-}
-func (s *session) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
-	s.sender.SetNowPlaying(title, artist, album, cover, coverMIME)
-}
-func (s *session) SetLampArtwork(data []byte, mime string, on bool) {
-	s.sender.SetLampArtwork(data, mime, on)
-}
-func (s *session) SetPlaybackState(playing bool) { s.sender.SetPlaybackState(playing) }
-func (s *session) PTP() (active, ready bool, offsetMS float64) {
-	if s.ptp == nil {
-		return false, false, 0
-	}
-	st := s.ptp.Stats()
-	return true, st.Ready, st.OffsetNS / 1e6
-}
-func (s *session) Stats() []sender.Stats { return []sender.Stats{s.sender.Stats()} }
-func (s *session) DroppedEvents() uint64 { return s.host.Dropped() }
-
-// ptpFeatureBit is the receiver feature that advertises PTP support.
-const ptpFeatureBit = 1 << 41
-
-// usesPTP reports whether the receiver needs the sender as a PTP peer. HomePod
-// software 27 and macOS AirPlay receivers advertise the PTP bit and silently
-// ignore an NTP-timed stream; both use the same follower.
-func usesPTP(d device.Device) bool {
-	if !d.Auth.IsHAP() {
-		return false
-	}
-	if !strings.HasPrefix(d.Model, "AudioAccessory") && !strings.HasPrefix(d.Model, "Mac") {
-		return false
-	}
-	// An unknown features value fails closed: these families keep their own
-	// PTP grandmaster, and an NTP-timed stream is silently ignored.
-	return !d.Features.Known() || d.Features.Has(ptpFeatureBit)
 }
 
 // maxReconnectAttempts bounds automatic retries before giving up.
@@ -347,14 +287,20 @@ type Engine struct {
 	memberDropBase map[*ring.Buffer]uint64
 	discovery      *discovery.Service
 	tr             transport
-	stopSession    func()
-	capture        captureSource
-	captureInfo    chan captureInfo
-	captureResult  chan captureStart
-	mute           localMute
-	// The mute worker owns every endpoint and guard-file call. The loop posts
-	// the latest desired state and applies generation-checked results, so a
-	// wedged audio service cannot freeze ticks or commands.
+	// plan is the live or opening cohort; zero when idle. It carries the
+	// session's credentials and is cleared on close.
+	plan sessionPlan
+	// wantedKeys is the user's requested target set in order; the first is
+	// primary. It outlives the plan across a failed launch, so Retry on any
+	// active row retries the whole set, and only Disconnect, a takeover, and
+	// shutdown clear it. It holds registry keys, never credentials.
+	wantedKeys    []string
+	capture       captureSource
+	captureInfo   chan captureInfo
+	captureResult chan captureStart
+	mute          localMute
+	// The mute worker owns every endpoint and guard-file call; the loop
+	// applies generation-checked results.
 	muteReq      chan muteRequest
 	muteStatus   chan muteStatus
 	muteStop     chan struct{}
@@ -363,10 +309,6 @@ type Engine struct {
 	muteStopOnce sync.Once
 	muteRunning  atomic.Bool
 	muteGen      int
-	// holdLocalMute keeps the connection mute in place across an in-place
-	// session restart, such as a latency change. restartSession sets it and
-	// the connect it wraps consumes it, so no other close can see it.
-	holdLocalMute bool
 
 	commands       chan command
 	quit           chan struct{}
@@ -376,7 +318,7 @@ type Engine struct {
 	started        atomic.Bool
 	stopping       bool
 	now            func() time.Time
-	newSession     func(d device.Device) (transport, func(), error)
+	newCohort      func(sessionPlan) (transport, error)
 	captureStartFn func(capture.Config) (captureSource, error)
 
 	// The endpoint mute is injected so tests never touch the machine's audio.
@@ -460,6 +402,9 @@ type Engine struct {
 	pauseUnsupported     bool
 	autoTried            bool
 
+	// track is the last Now Playing payload, replayed to a rebuilt cohort.
+	track trackInfo
+
 	// lampJPEG renders a preset; tests replace it. lampImage is the encoded
 	// image for lampImagePreset, kept off the sender's tick path.
 	lampJPEG          func(preset string) ([]byte, error)
@@ -536,7 +481,7 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 	}
 	e.pinExistingCredentials()
 	e.noteCredentialQuarantine()
-	e.newSession = e.openSession
+	e.newCohort = e.openCohort
 	e.captureStartFn = startCaptureDefault
 	e.captureSink = ring.NewFanout(e.ring)
 	e.level = analyze.New(0)
@@ -559,82 +504,6 @@ func startCaptureDefault(cfg capture.Config) (captureSource, error) {
 		return nil, err
 	}
 	return src, nil
-}
-
-// openSession builds the production transport for one receiver.
-func (e *Engine) openSession(d device.Device) (transport, func(), error) {
-	e.receiverLatency = 0
-	if d.Host == "" || d.Port == 0 {
-		return nil, nil, fmt.Errorf("receiver %q has no address", d.Name)
-	}
-	if d.IsStereoGroup() {
-		return e.openGroupSession(d)
-	}
-	usePTP := usesPTP(d)
-	host := raopio.NewHost()
-	var clock *ptp.Follower
-	if usePTP {
-		c, err := ptp.New(d.Host)
-		if err != nil {
-			host.Close()
-			return nil, nil, fmt.Errorf("PTP: %w", err)
-		}
-		c.Start()
-		clock = c
-	}
-	sess := &session{host: host, ptp: clock, dead: make(chan struct{})}
-	s := sender.New(host, e.sessionEvents(sess), e.senderLogFor(d.Name))
-	s.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
-	entry, _ := e.reg.Get(d.ID)
-	s.SetDuplicates(receivers.DuplicatesFor(entry))
-	s.SetPrefill(2)
-	s.AttachRing(e.ring)
-	// One gate for the session: it owns the single start trim and the start
-	// epoch. A lone receiver keeps the newest capture cushion and starts as
-	// soon as its stream is accepted.
-	s.SetStartGate(sender.NewStartGate(sender.StartGateConfig{
-		Members: 1,
-		Cushion: sender.DefaultStartCushion,
-		Trim:    e.ring,
-	}))
-	if clock != nil {
-		s.SetPTPClock(clock)
-	}
-	sess.sender = s
-	return sess, func() {
-		s.Stop()
-		if clock != nil {
-			clock.Stop()
-		}
-		host.Close()
-	}, nil
-}
-
-// sessionEvents wires one single-receiver sender. The terminal callbacks also
-// signal dead, so the engine goroutine runs closeSession through the same
-// branch a stereo group uses, never from inside the sender callback.
-func (e *Engine) sessionEvents(sess *session) sender.Events {
-	return sender.Events{
-		Launched: func(ok bool, err string) {
-			if !ok {
-				sess.signalDead()
-			}
-			e.onLaunched(ok, err)
-		},
-		Closed: func() {
-			sess.signalDead()
-			e.onClosed()
-		},
-		Preempted: func(reason string) {
-			sess.signalDead()
-			e.onPreempted(reason)
-		},
-		PinRequired:            e.onPinRequired,
-		CredentialsObtained:    e.onCredentials,
-		StateChanged:           e.onStateChanged,
-		VolumeChanged:          e.onReceiverVolume,
-		ReceiverLatencyChanged: e.onReceiverLatency,
-	}
 }
 
 // Start launches discovery, capture, and the event loop.
@@ -683,7 +552,8 @@ func (e *Engine) LevelFrame(delay time.Duration) analyze.Frame {
 // Refresh asks discovery to browse now.
 func (e *Engine) Refresh() { e.send(command{kind: cmdRefresh}) }
 
-// Connect starts a session with the device ID.
+// Connect starts a session with the device ID, or adds that target to the
+// live cohort. An active key is a no-op.
 func (e *Engine) Connect(deviceID string) {
 	e.send(command{kind: cmdConnect, deviceID: deviceID})
 }
@@ -891,11 +761,11 @@ func (e *Engine) run() {
 			}
 		case <-deadCh:
 			timer.Stop()
-			// The transport signaled it is beyond saving. closeSession does
-			// the teardown here, on the engine goroutine, outside
-			// HandleEvent — the sender's single-goroutine contract holds and
-			// the stop cannot re-enter a sender callback.
+			// The transport signaled it is beyond saving: closeSession does
+			// the teardown here, outside HandleEvent, so the stop cannot
+			// re-enter a sender callback.
 			e.closeSession(false)
+			e.publish()
 		case devs := <-updates:
 			timer.Stop()
 			e.setDevices(devs)
@@ -1080,6 +950,7 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 func (e *Engine) shutdown() {
 	e.stopping = true
 	e.closeSession(false)
+	e.wantedKeys = nil
 	// Force the final unmute through the worker and wait for it, so quitting
 	// never leaves the endpoint muted. closeSession already asked when it
 	// believed a mute was active; this covers a dropped status.
@@ -1100,8 +971,9 @@ func (e *Engine) shutdown() {
 }
 
 // closeSession tears the session down. holdLocalMute keeps the connection
-// mute in place for an in-place restart, where the user's session continues
-// over a new stream; every other close ends the mute with the session.
+// mute in place for a rebuild, where the user's session continues over a new
+// cohort; every other close ends the mute with the session. wantedKeys is not
+// cleared here: a close during a rebuild must keep the requested set.
 func (e *Engine) closeSession(holdLocalMute bool) {
 	if !holdLocalMute {
 		e.restoreLocalMute()
@@ -1109,11 +981,11 @@ func (e *Engine) closeSession(holdLocalMute bool) {
 	e.detachMemberRings()
 	e.resetIdle()
 	e.sessionStartedAt = time.Time{}
-	if e.stopSession != nil {
-		stop := e.stopSession
+	if e.tr != nil {
+		tr := e.tr
 		e.tr = nil
-		e.stopSession = nil
-		stop()
+		e.plan = sessionPlan{}
+		tr.Stop()
 	}
 }
 
@@ -1163,59 +1035,15 @@ func (e *Engine) detachMemberRings() {
 func (e *Engine) handleCommand(cmd command) {
 	switch cmd.kind {
 	case cmdConnect:
-		e.autoTried = true
-		if t, ok := e.target(cmd.deviceID); ok {
-			e.userDisconnect = false
-			e.reconnectCount = 0
-			// A user connect starts a fresh retry budget. Without this reset,
-			// a connect made after the automatic attempts were spent fails
-			// once and re-enters the give-up branch, so retry never resumes.
-			e.reconnectNum = 0
-			e.connectAuto = false
-			if e.tr != nil && e.tr.Active() {
-				// A connect that replaces a live session is a switch: the
-				// user's session continues on the new receiver, so it keeps
-				// the connection mute like an in-place restart.
-				e.restartSession(t.Device)
-			} else {
-				e.connect(t.Device)
-			}
-		} else {
-			e.fail(ErrDeviceMissing)
-			e.publish()
-		}
+		e.connectTargets(cmd.deviceID)
 	case cmdDisconnect:
-		e.autoTried = true
-		e.userDisconnect = true
-		e.reconnectCount = 0
-		// A cancel or a disconnect ends the attempt, so its failure is stale.
-		// Clear it before reconnectPendingOff publishes the idle snapshot.
-		e.clearError()
-		e.takenOver = false
-		e.reconnectWanted = false
-		e.reconnectPendingOff()
-		if e.tr != nil && e.tr.Active() {
-			e.tr.Stop()
-		}
-		e.closeSession(false)
-		e.connectedName = ""
-		e.pinRequired = false
-		e.clearPasswordPrompt()
-		e.publish()
+		e.disconnectAll()
+	case cmdDisconnectTarget:
+		e.leaveTarget(cmd.deviceID)
 	case cmdVolume:
-		e.volume = clamp(cmd.value, 0, 100)
-		e.setsValue.Volume = e.volume
-		if e.selectedID != "" {
-			if e.setsValue.VolumeByDevice == nil {
-				e.setsValue.VolumeByDevice = make(map[string]float64)
-			}
-			e.setsValue.VolumeByDevice[e.selectedID] = e.volume
-		}
-		e.markSettingsDirty()
-		if e.tr != nil {
-			e.tr.SetVolume(e.volume)
-		}
-		e.publish()
+		e.applyTargetVolume(e.selectedID, cmd.value)
+	case cmdTargetVolume:
+		e.applyTargetVolume(cmd.deviceID, cmd.value)
 	case cmdPin:
 		if e.tr != nil {
 			e.tr.SubmitPin(cmd.text)
@@ -1282,11 +1110,6 @@ func (e *Engine) handleCommand(cmd command) {
 		e.publish()
 	case cmdLatency:
 		e.setsValue.LatencyMS = int(cmd.value)
-		if e.tr != nil {
-			// The active receiver keeps its own DSP/DAC delay: the base is
-			// only half of the value the SETUP carries.
-			e.tr.SetLatency(e.latencyFor(e.selectedID))
-		}
 		e.markSettingsDirty()
 		if cmd.reconnect && e.tr != nil && e.tr.Active() {
 			// A PIN wait is pairing progress, not a live stream: restarting
@@ -1302,7 +1125,9 @@ func (e *Engine) handleCommand(cmd command) {
 			} else {
 				e.userDisconnect = false
 				e.connectAuto = false
-				e.restartSession(d)
+				// A sender applies latency only at stream SETUP, so the whole
+				// cohort rebuilds with the new per-member values and epoch.
+				e.rebuildSession()
 			}
 		}
 		e.publish()
@@ -1384,6 +1209,7 @@ func (e *Engine) handleCommand(cmd command) {
 		}
 		e.publish()
 	case cmdNowPlaying:
+		e.track.remember(cmd.text, cmd.name, cmd.album, cmd.cover, cmd.coverMIME)
 		if e.tr != nil {
 			e.tr.SetNowPlaying(cmd.text, cmd.name, cmd.album, cmd.cover, cmd.coverMIME)
 			e.publish()
@@ -1395,163 +1221,6 @@ func (e *Engine) handleCommand(cmd command) {
 	case cmdRemoveReceiver:
 		e.handleRemoveReceiver(cmd.deviceID)
 	}
-}
-
-// restartSession rebuilds the live session in place: a latency change, a
-// receiver delay edit, or a switch to another receiver. The connection mute
-// belongs to the user's session, not to the transport, so the local output
-// stays muted across the rebuild; connect restores it when the new session
-// fails to open.
-func (e *Engine) restartSession(d device.Device) {
-	e.holdLocalMute = true
-	e.connect(d)
-}
-
-// connect starts a session with d. It keeps reconnectPending: only a
-// successful launch or a user disconnect clears it.
-func (e *Engine) connect(d device.Device) {
-	// An in-place restart wraps this connect and asks the old session to
-	// leave the connection mute alone; consume the flag here so a rejected
-	// connect cannot leak it into a later close.
-	holdLocalMute := e.holdLocalMute
-	e.holdLocalMute = false
-	// A receiver on this host cannot be a target: the sender and receiver
-	// would share one audio path, and the receiver refuses the session
-	// anyway. Discovery and merge mark the classified device; the sender's
-	// socket check covers a manual row whose host is this machine.
-	if d.Local {
-		e.fail(ErrLocalReceiver)
-		e.logf("refusing the local receiver %s", d.Name)
-		e.publish()
-		return
-	}
-	// A new connect supersedes the previous session's PIN dialog; a pairing
-	// that needs a code raises PinRequired again on its own.
-	e.pinRequired = false
-	e.pinDevice = ""
-	// A new attempt starts clean. The previous receiver's failure must not
-	// keep the flyout in its error phase while this attempt runs.
-	e.clearError()
-	e.takenOver = false
-	if d.IsStereoGroup() && (!d.Online || len(d.Members) != 2) {
-		e.fail(ErrStereoMembersOffline)
-		e.publish()
-		return
-	}
-	if d.Auth == device.AuthLegacyPin {
-		e.fail(ErrFairPlay, d.Name)
-		e.logf("FairPlay receiver %s is not supported", d.Name)
-		e.publish()
-		return
-	}
-	d = e.pinGroupMembers(d)
-	// A device id with stored credentials is pinned to the endpoint it was
-	// paired with. Discovery cannot authenticate an advertisement, so a
-	// different advertised address is refused before any key material is
-	// handed to the sender.
-	if entry, ok := e.reg.Get(d.ID); ok && entry.PairedHost != "" && entry.PairedPort != 0 &&
-		(d.Host != entry.PairedHost || d.Port != entry.PairedPort) {
-		e.fail(ErrEndpointMoved, d.Name)
-		e.logf("refusing %s: advertised %s:%d, paired %s:%d", d.Name, d.Host, d.Port, entry.PairedHost, entry.PairedPort)
-		e.publish()
-		return
-	}
-	password := ""
-	if !d.IsStereoGroup() && e.hasPassword(d.ID) {
-		password = e.passwordFor(d.ID)
-	}
-	if !d.IsStereoGroup() && needsReceiverPassword(d.Auth) {
-		if !e.hasPassword(d.ID) || password == "" {
-			// No stored password, or one the DPAPI file could not decrypt:
-			// prompt instead of attempting the permissive path.
-			if e.hasPassword(d.ID) {
-				e.logf("stored receiver password for %s is unreadable; prompting again", d.ID)
-			}
-			e.passwordRequired = true
-			e.passwordDevice = d.Name
-			e.passwordDeviceID = d.ID
-			e.passwordTargetID = d.ID
-			e.clearError()
-			e.logf("AirPlay password required for %s", d.Name)
-			e.publish()
-			return
-		}
-	}
-	if d.IsStereoGroup() {
-		// A member that needs a receiver password and has none would burn
-		// the reconnect budget on 401 digest challenges; prompt for it the
-		// same way a single receiver would.
-		for _, m := range d.Members {
-			// memberPassword falls back to the pair's own key, so a password
-			// stored once for both members already satisfies this member.
-			if !needsReceiverPassword(m.Auth) || e.memberPassword(m) != "" {
-				continue
-			}
-			e.passwordRequired = true
-			e.passwordDevice = m.Name
-			e.passwordDeviceID = m.ID
-			e.passwordTargetID = d.ID
-			e.clearError()
-			e.logf("AirPlay password required for %s (stereo member)", m.Name)
-			e.publish()
-			return
-		}
-	}
-	e.clearPasswordPrompt()
-	e.closeSession(holdLocalMute)
-	e.lampSkipLoggedFor = ""
-	e.prepareLampImage()
-	// The device being connected becomes the selection, so snapshots,
-	// per-device volume, and reconnect all follow the live session.
-	e.selectedID = d.ID
-	e.activeHost, e.activePort = d.Host, d.Port
-	e.activeMembers = d.Members
-	tr, stop, err := e.newSession(d)
-	if err != nil {
-		if holdLocalMute {
-			// The restart never produced a session, so the mute it was
-			// holding has no session left to belong to.
-			e.restoreLocalMute()
-		}
-		e.fail(ErrSessionOpen, err.Error())
-		e.logf("session open failed: %v", err)
-		e.publish()
-		return
-	}
-	e.tr = tr
-	e.stopSession = stop
-	// AirPlay 2 realtime runs over HAP pairing or an open _airplay receiver
-	// with no pairing. A _raop-only receiver keeps the plaintext AP1 path.
-	airplay2 := d.Auth.IsHAP()
-	tr.SetIdentity(sender.Identity{Name: e.setsValue.Name, DeviceID: e.setsValue.DeviceID, Model: "iPhone14,3"})
-	if d.IsStereoGroup() {
-		for _, m := range d.Members {
-			tr.SetMemberAuth(m, e.creds.Load(m.ID), e.memberPassword(m))
-		}
-	} else {
-		tr.SetAuth(d.Auth, airplay2, d.ID, e.creds.Load(d.ID), password)
-		tr.SetFamily(d.Family)
-	}
-	e.noteCredentialQuarantine()
-	if rings := tr.Rings(); len(rings) > 0 {
-		e.attachMemberRings(rings)
-	}
-	tr.SetLatency(e.latencyFor(d.ID))
-	tr.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
-	if e.captureRate > 0 {
-		tr.SetInputFormat(e.captureRate)
-	}
-	if d.IsStereoGroup() {
-		e.logf("stereo group %q: streaming to %d members", d.Name, len(d.Members))
-	} else if d.GroupName != "" {
-		e.logf("note: %s belongs to AirPlay group %q; audio plays on this device only", d.Name, d.GroupName)
-	}
-	e.logf("connecting to %s (%s) auth=%s ap2=%v", d.Name, d.Host, d.Auth, airplay2)
-	tr.Start(d.Host, d.Port, d.Name)
-	if v, ok := e.setsValue.VolumeByDevice[d.ID]; ok {
-		tr.SetVolume(v)
-	}
-	e.publish()
 }
 
 // planReconnect schedules the next retry with the backoff schedule. After
@@ -1579,19 +1248,20 @@ func (e *Engine) reconnectPendingOff() {
 	e.publish()
 }
 
-// attemptReconnect retries the selected device; if it is gone, it waits for
-// discovery to bring it back. It consumes the pending retry time. A retry
-// that comes due while a live session exists is stale — the user connected
-// again after it was scheduled — so it is pushed out instead of tearing down
-// that session's handshake or PIN wait.
+// attemptReconnect retries the wanted target set; keys that no longer resolve
+// are dropped with a log line, and when none resolve it waits for the primary
+// target. It consumes the pending retry time. A retry that comes due while a
+// live session exists is stale — the user connected again after it was
+// scheduled — so it is pushed out instead of tearing down that session's
+// handshake or PIN wait.
 func (e *Engine) attemptReconnect() {
 	if e.tr != nil && e.tr.Active() {
 		e.reconnectAt = e.now().Add(5 * time.Second)
 		return
 	}
 	e.reconnectAt = time.Time{}
-	d, ok := e.find(e.selectedID)
-	if !ok {
+	keys := e.pruneWanted(e.wantedKeys)
+	if len(keys) == 0 {
 		// The wait is indefinite by design; the log line is not. Throttle it
 		// so a device that never returns logs once a minute, not every 5 s.
 		e.reconnectAt = e.now().Add(5 * time.Second)
@@ -1602,14 +1272,46 @@ func (e *Engine) attemptReconnect() {
 		return
 	}
 	e.lastMissingLogAt = time.Time{}
+	// A target that no longer passes a command guard (local, FairPlay, a
+	// stereo member gone, a moved endpoint) is a synchronous refusal: surface
+	// it, keep the wanted set, and let the backoff try again.
+	if key, err := e.validateWanted(keys); err != nil {
+		if errors.Is(err, errAwaitInput) {
+			// The prompt is already set. Waiting for the user is not a
+			// failure; the retry resumes when the user acts.
+			e.logf("reconnect: %s needs the user's input; waiting", key)
+			e.publish()
+			return
+		}
+		e.failPlan(err)
+		e.logf("reconnect: %s refused: %v", key, err)
+		if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
+			e.planReconnect()
+		}
+		e.publish()
+		return
+	}
+	e.clearPasswordPrompt()
+	e.wantedKeys = keys
 	e.reconnectCount++
 	e.connectAuto = true
-	e.connect(d)
-	// connect can reject synchronously: a guard, a pin mismatch, or a failed
-	// session open. Those paths set lastError and never reach the asynchronous
-	// callbacks that arm the backoff, so re-arm here or the loop stops for
-	// good. A password prompt is not a failure and clears lastError; it waits
-	// for the user instead.
+	plan, err := e.buildPlan(keys)
+	if err != nil {
+		// A guard or clock conflict is deterministic; rebuilding the same
+		// plan cannot succeed. Surface it and re-arm the backoff rather than
+		// stopping the retry loop.
+		e.failPlan(err)
+		e.logf("reconnect: plan refused: %v", err)
+		if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
+			e.planReconnect()
+		}
+		e.publish()
+		return
+	}
+	e.startPlan(plan, false)
+	// startPlan can reject synchronously on a failed cohort open. That path
+	// sets lastError and never reaches the asynchronous callbacks that arm the
+	// backoff, so re-arm here or the loop stops for good.
 	if e.lastError != "" && e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
 		e.planReconnect()
 	}
@@ -1675,10 +1377,18 @@ func (e *Engine) applyLamp() {
 	e.tr.SetPlaybackState(playing)
 }
 
-// lampTargetCapable fails closed: a missing target, an unknown model, or an
-// unknown software version is not capable. A stereo pair is capable when any
-// member is; the group transport filters the rest per member.
+// lampTargetCapable fails closed: an unknown model or unknown software version
+// is not capable. A cohort is capable when any of its members is; the cohort
+// transport filters the rest per member.
 func (e *Engine) lampTargetCapable() bool {
+	if e.plan.live() {
+		for _, m := range e.plan.members {
+			if device.TopDisplayCapable(m.device) {
+				return true
+			}
+		}
+		return false
+	}
 	d, ok := e.find(e.selectedID)
 	if !ok {
 		return false
@@ -1695,6 +1405,7 @@ func (e *Engine) lampTargetCapable() bool {
 }
 
 func (e *Engine) onLaunched(ok bool, err string) {
+	e.plan.joinKey = "" // the attempt ended: no row is the user's joiner now
 	if ok {
 		now := e.now()
 		e.sessionStartedAt = now
@@ -1711,7 +1422,10 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		if e.lastPushAt.IsZero() {
 			e.lastPushAt = now
 		}
-		e.connectedName = e.nameFor(e.selectedID)
+		e.connectedName = e.plan.connectedName()
+		if e.connectedName == "" {
+			e.connectedName = e.nameFor(e.selectedID)
+		}
 		if e.setsValue.LastDeviceID != e.selectedID {
 			e.setsValue.LastDeviceID = e.selectedID
 			e.markSettingsDirty()
@@ -1721,22 +1435,14 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.reconnectWanted = true
 		e.reconnectNum = 0
 		e.reconnectAt = time.Time{}
-		if _, remembered := e.setsValue.VolumeByDevice[e.selectedID]; !remembered && e.tr != nil {
-			// Adopt the receiver's own volume the first time so connecting
-			// never jumps the device to the sender's default.
-			if p, ok := e.tr.InitialVolumePercent(); ok {
-				e.volume = clamp(p, 0, 100)
-				e.setsValue.Volume = e.volume
-				e.markSettingsDirty()
-			}
-		}
+		e.adoptInitialVolumes()
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
 		// The sender arms its pacer before reporting the launch. If the
 		// capture is already silent, stop it here so the stream never pushes a
 		// stale cushion, then derive the phase from the actual push state. The
-		// phase is computed before the lamp, so an automatic reconnect already
-		// past the threshold goes straight to dark with no state 1 flash.
+		// phase is computed before the lamp, so a reconnect past the threshold
+		// goes straight to dark with no state 1 flash.
 		if e.tr != nil && e.tr.Pushing() && now.Sub(e.silence.LastLoud()) >= audioPauseAfter {
 			if e.tr.SetPaused(true) {
 				e.silence.SetPaused(true)
@@ -1792,8 +1498,9 @@ func (e *Engine) onPreempted(reason string) {
 	e.receiverLatency = 0
 	e.sessionStartedAt = time.Time{}
 	e.endDropSession()
-	// The receiver belongs to another sender now; nothing of this session can
-	// stay on, and the closed control channel cannot light the display.
+	// The receiver belongs to another sender now, and the closed control
+	// channel cannot light the display. The wanted set stays so the active
+	// rows keep the Reconnect action; only a user click retries.
 	e.resetIdle()
 	e.clearError()
 	e.restoreLocalMute()
@@ -2052,21 +1759,6 @@ func (e *Engine) resetCaptureSink() {
 	}
 }
 
-// onReceiverVolume adopts the receiver's own volume when its hardware knob
-// moves. It mirrors the value into the per-device memory and the UI.
-func (e *Engine) onReceiverVolume(pct float64) {
-	e.volume = clamp(pct, 0, 100)
-	e.setsValue.Volume = e.volume
-	if e.selectedID != "" {
-		if e.setsValue.VolumeByDevice == nil {
-			e.setsValue.VolumeByDevice = make(map[string]float64)
-		}
-		e.setsValue.VolumeByDevice[e.selectedID] = e.volume
-	}
-	e.markSettingsDirty()
-	e.publish()
-}
-
 // onReceiverLatency records the receiver's own arrival-to-render latency. It
 // is diagnostic: the configured presentation latency stays the scheduler's
 // budget, and the receiver's output latency is not added to it.
@@ -2111,51 +1803,6 @@ func (e *Engine) setDevices(devs []device.Device) {
 		return
 	}
 	e.publish()
-}
-
-// maybeAutoConnect connects the launch target once, when it is addressable:
-// a manual receiver immediately, a discovered one on the first snapshot that
-// reports it online. A user connect or disconnect ends the launch phase, and
-// a failure falls through to the ordinary reconnect policy.
-func (e *Engine) maybeAutoConnect() bool {
-	if e.autoTried {
-		return false
-	}
-	key, ok := receivers.AutoTarget(e.reg)
-	if !ok {
-		e.autoTried = true
-		return false
-	}
-	if e.tr != nil || e.reconnectWanted {
-		e.autoTried = true
-		return false
-	}
-	target, found := e.target(key)
-	if !found {
-		return false
-	}
-	d := target.Device
-	if !d.Online {
-		// The registry remembers the address, so a launch does not have to
-		// wait for mDNS. Discovery keeps running and replaces this view.
-		cached, ok := receivers.CachedDevice(target.Entry, e.hasPassword(target.Entry.Key))
-		if !ok {
-			return false
-		}
-		d = cached
-	}
-	if d.Local {
-		// A stored flag can outlive the receiver becoming local. Skip it
-		// instead of publishing a launch failure every start.
-		e.autoTried = true
-		e.logf("auto-connect target %s is the local receiver; skipping", d.Name)
-		return false
-	}
-	e.autoTried = true
-	e.userDisconnect = false
-	e.connectAuto = false
-	e.connect(d)
-	return true
 }
 
 // rememberDiscovered persists first sightings, keeps the last address and
@@ -2260,9 +1907,9 @@ func (e *Engine) rememberDiscovered() {
 		}
 	}
 	// An active session keeps its row even when discovery has already dropped
-	// it; the reconnect policy owns that receiver until the user disconnects.
-	if (e.tr != nil || e.reconnectWanted) && e.selectedID != "" {
-		live[e.selectedID] = true
+	// it; the reconnect policy owns those receivers until the user disconnects.
+	for _, key := range e.activeKeys() {
+		live[key] = true
 	}
 	for _, key := range receivers.PruneStaleGroups(&e.reg, live, now, receivers.GroupGrace) {
 		e.logf("pruned stale stereo group %s", key)
@@ -2324,15 +1971,19 @@ func membersEqual(a, b []receivers.Member) bool {
 // Presentation rules live in receivers; the engine supplies inputs.
 func (e *Engine) rebuildTargets() {
 	targets := receivers.Merge(e.reg, e.discovered, func(k string) bool { return e.passwords[k] })
-	active := ""
-	if e.tr != nil || e.reconnectWanted {
-		active = e.selectedID
+	active := make(map[string]bool)
+	for _, key := range e.activeKeys() {
+		active[key] = true
 	}
 	targets = receivers.Manageable(targets, active)
 	e.devices = receivers.Visible(targets, active)
 	e.receiversViews = make([]receivers.View, len(targets))
 	for i, t := range targets {
-		e.receiversViews[i] = t.View(e.passwords[t.Entry.Key])
+		v := e.receiverView(t)
+		if v.Stereo {
+			v.Channel = receivers.ChannelStereo
+		}
+		e.receiversViews[i] = v
 	}
 	e.refreshDiscoverySeeds()
 }
@@ -2697,6 +2348,8 @@ func (e *Engine) buildSnapshot() Snapshot {
 		SelectedID:          e.selectedID,
 		State:               state,
 		ConnectedName:       e.connectedName,
+		ActiveTargets:       e.activeKeys(),
+		Targets:             e.targetControls(),
 		Error:               e.lastError,
 		ErrorKey:            e.lastErrorKey,
 		ErrorArgs:           e.lastErrorArgs,
@@ -2760,21 +2413,43 @@ func (e *Engine) publish() {
 }
 
 // buildDiagnostics folds the active transport's per-member counters into the
-// page model. The group shape comes from the selected target, not from the
-// stats' length, so a pair whose member is missing still reads as a pair.
+// page model. The group shape comes from the plan, not from the stats' length,
+// so a pair whose member is missing still reads as a pair. GroupSize counts
+// senders, because the stats are per sender.
 func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 	kind, size, name := GroupNone, 0, ""
-	if dev, ok := e.find(e.selectedID); ok {
-		if dev.IsStereoGroup() {
+	switch {
+	case len(e.plan.targets) > 1:
+		kind = GroupCohort
+		size = len(e.plan.members)
+		name = e.plan.connectedName()
+	case len(e.plan.targets) == 1:
+		t := e.plan.targets[0]
+		if t.stereo {
 			kind = GroupStereo
-			size = len(dev.Members)
-			name = dev.GroupName
+			size = t.count
+			name = t.groupName
 			if name == "" {
-				name = dev.Name
+				name = t.name
 			}
 		} else {
 			kind = GroupSingle
 			size = 1
+		}
+	default:
+		// Idle keeps showing the last target's shape from the merged rows.
+		if dev, ok := e.find(e.selectedID); ok {
+			if dev.IsStereoGroup() {
+				kind = GroupStereo
+				size = len(dev.Members)
+				name = dev.GroupName
+				if name == "" {
+					name = dev.Name
+				}
+			} else {
+				kind = GroupSingle
+				size = 1
+			}
 		}
 	}
 	var uptime time.Duration
@@ -2789,9 +2464,10 @@ func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 		members = e.tr.Stats()
 	}
 	overflow := dropped
-	if kind == GroupStereo && len(e.memberRings) > 0 {
-		// The group's 欠载 / 溢出 row sums the members; DroppedSamples stays
-		// the max because stability is a session state, not a total.
+	if len(e.memberRings) > 0 {
+		// Member rings exist for every cohort, including one sender. The
+		// group's 欠载 / 溢出 row sums the members; DroppedSamples stays the
+		// max because stability is a session state, not a total.
 		overflow = e.memberDropped
 	}
 	d := aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, overflow, now)

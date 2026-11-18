@@ -33,14 +33,16 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   apps are muted, and the note says other apps keep playing. Launch
   auto-connect is not here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
-  manually added row with 启动时自动连接 (per receiver), hidden, and a
-  0–2000 ms delay slider (500 ms debounced restart); a password row only
+  manually added row with 启动时自动连接 (per receiver), hidden, a volume
+  slider, and a 声道 segment (立体声 / 左 / 右 for a single receiver, a
+  disabled 立体声 on a discovered pair); the per-device delay slider stays out
+  of settings. A password row only
   when the receiver can use one (a Mac, a manual row, or a saved password),
   masked, saved/cleared through the OS secret store (DPAPI on Windows,
   Keychain-backed AES on macOS); add/edit/password/
   remove dialogs (`receivers_dialogs.go`). A receiver on this host is the
   exception: it is forced into the hidden group with a 本机 chip, no switch,
-  no expander, and no delay or password settings. The flyout and this list
+  no expander, and no channel or password settings. The flyout and this list
   show
   manual receivers and online discovered receivers; an offline discovered
   receiver is hidden and returns with its saved settings. The active
@@ -181,8 +183,8 @@ change in the flyout).
   (latency presets, receiver delay) with the 300/500 ms debounce — one
   restart with the final value is correct; one per click is a bug. The
   connection mute is held across that in-place restart
-  (`engine.go:1401-1413`); a mute dropping there is a bug, not the expected
-  release.
+  (`cohort.go:562-609`; `closeSession` in `engine.go:965-978`); a mute
+  dropping there is a bug, not the expected release.
 - Per-app claims need macOS 14.4+; on Windows the picker, its status states,
   and the per-app mute copy are unreachable. In per-app mute mode no
   `mute-guard.json` is written, so the forced-kill guard step needs system
@@ -199,5 +201,5 @@ change in the flyout).
   but the settings preview shows the live or sample card.
 - The receiver track info is always pushed while streaming; the display
   switch does not gate it.
-- Passwords never render back — dots only (`receivers_page.go:523-527`). A
+- Passwords never render back — dots only (`receivers_page.go:486-492`). A
   page showing a stored password verbatim is a bug.

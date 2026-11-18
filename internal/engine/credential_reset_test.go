@@ -11,6 +11,36 @@ import (
 	"saundo/internal/settings"
 )
 
+// TestConnectSurfacesACredentialQuarantine pins the connect-time notice: the
+// plan loads the credentials, so a file that becomes unreadable mid-run is
+// moved aside there and startPlan must surface it. Startup already covers the
+// corrupt-at-launch case.
+func TestConnectSurfacesACredentialQuarantine(t *testing.T) {
+	dir := t.TempDir()
+	sets := settings.NewStoreAt(filepath.Join(dir, "settings.json"))
+	cfg := sets.Load()
+	if err := sets.Save(cfg); err != nil {
+		t.Fatal(err)
+	}
+	credsPath := filepath.Join(dir, "credentials.dat")
+	regStore := receivers.NewStoreAt(filepath.Join(dir, "receivers.json"))
+	h := newHarnessWithStores(t, sets, creds.NewStoreAt(credsPath), regStore)
+	h.addDeviceOnline()
+	if err := os.WriteFile(credsPath, []byte("not a protected blob"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	h.connect()
+
+	snap := h.e.Snapshot()
+	if !snap.CredentialReset {
+		t.Fatal("a connect-time credential quarantine stayed hidden")
+	}
+	if !strings.Contains(strings.Join(snap.LogLines, "\n"), "credentials file was unreadable") {
+		t.Fatalf("the connect-time quarantine was not logged; lines: %q", snap.LogLines)
+	}
+}
+
 // TestCredentialResetNoticeAndRecovery pins the issue 35 recovery surface:
 // an unreadable file raises the notice, a fresh pairing writes into the
 // rebuilt store and clears it, and the dialog's dismiss also clears it.

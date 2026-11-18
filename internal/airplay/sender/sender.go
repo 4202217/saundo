@@ -337,14 +337,16 @@ type Sender struct {
 	// startWaitUntil bounds how long a ready member waits for its peers.
 	startWaitUntil time.Time
 
-	clockStart    time.Time
-	startTs       uint64
-	framesSent    uint64
-	latency       uint32
-	seq           uint16
-	firstAudio    bool
-	paused        bool
-	pauseWanted   bool
+	clockStart  time.Time
+	startTs     uint64
+	framesSent  uint64
+	latency     uint32
+	seq         uint16
+	firstAudio  bool
+	paused      bool
+	pauseWanted bool
+	// channel maps the captured stereo pair onto both outputs.
+	channel       ChannelMode
 	pendingVolume float64
 
 	ring      *ring.Buffer
@@ -654,8 +656,8 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	for i := range s.backlogSeq {
 		s.backlogSeq[i] = -1
 	}
-	s.pendingVolume = noVolume
-
+	// A volume set before Start is the next session's initial level; Start
+	// must not clear it.
 	s.wipeSecrets()
 	s.ap2 = nil
 	s.pairStage = pairNone
@@ -936,8 +938,6 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		}
 	}
 }
-
-func (s *Sender) now() time.Time { return s.clock() }
 
 // resetStartState drops per-session wait state so a stopped sender reports no
 // pending start deadline. startGate is configuration and is kept.

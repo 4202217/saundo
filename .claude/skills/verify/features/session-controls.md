@@ -71,27 +71,30 @@ page, and the diagnostics log row lives on the settings 关于 page.
   (`settings_window.go:551-568`; `internal/engine/mute.go`). On macOS with a
   per-app selection the switch reads 连接后静音所选应用 and tap-mutes the
   selected apps instead; no guard file is written in that mode. The mute is
-  held across an in-place latency or receiver-delay restart and across a
-  receiver switch while streaming, and it is restored if the switch fails
-  (`engine.go:1105-1110,1165-1178,1401-1413,1506-1510`).
-- Receiver switch: while streaming, another online receiver row offers 连接;
-  choosing it routes `cmdConnect` through `restartSession` and rebuilds in
-  place, so the mute and the session's settings survive the gap
-  (`flyout.go:257-275,293-294`; `engine.go:1165-1178`). While a connect is in
-  progress the other rows are disabled, and a switch that cannot open its new
-  session restores the local output.
+  held across a cohort rebuild for a latency or receiver-delay edit or an
+  added target, and it is restored if the rebuild fails
+  (`startPlan` in `cohort.go`; `closeSession` in `engine.go`).
+- Receiver add: while streaming, another online receiver row offers 连接;
+  choosing it adds that receiver to the session and rebuilds the whole cohort
+  from a new plan, so the mute and the session's settings survive the gap
+  (`connectTargets` and `startPlan` in `cohort.go`; the row action in
+  `flyout.go`). An active row offers 断开连接 and ends every target. A
+  rejected add (clock conflict, local receiver, offline pair, FairPlay)
+  publishes its reason while the cohort keeps streaming. While a connect is
+  in progress the other rows are disabled, and an add that cannot open its new
+  cohort restores the local output.
 - Takeover: a clean control close during streaming is terminal. The flyout
   footer reads 已被其他设备接管 and the active receiver row offers
-  重新连接 (`flyout.go:667-675`; the row action at
-  `:281-286`; `docs/ui.md`).
+  重新连接 (`flyout.go:502-510`; the row action at
+  `flyout_devices.go:307-325`; `docs/ui.md`).
 - Idle standby: after the configured silence threshold the engine sends
   playback state 2, the top display goes dark, and the flyout lamp card
-  shows the 待机 chip (`engine.go:1016-1080`; see
-  [ambient-light.md](ambient-light.md)).
+  shows the 待机 chip (`engine.go:874-936`; the dark gate at `:841-847`;
+  see [ambient-light.md](ambient-light.md)).
 - Silence suspend: after 5 s of digital silence the pacer suspends (zero
   audio packets, sync/feedback/volume keep running); the first audible block
   resumes with a re-anchored RTP timeline and a 50 ms cushion trim
-  (`engine.go:1016-1080`; the meter Push is `silence.go:40-64`; resume
+  (`engine.go:874-936`; the meter Push is `silence.go:40-64`; resume
   `stream.go:67-101`). AP2 only; an AP1 session keeps the continuous silence
   stream.
 - Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log

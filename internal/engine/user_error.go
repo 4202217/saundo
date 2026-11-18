@@ -16,9 +16,13 @@ const (
 	ErrFairPlay             UserErrorKey = "fairPlay"
 	ErrEndpointMoved        UserErrorKey = "endpointMoved"
 	ErrSessionOpen          UserErrorKey = "sessionOpen"
-	ErrReconnectStopped     UserErrorKey = "reconnectStopped"
-	ErrReceiverMissing      UserErrorKey = "receiverMissing"
-	ErrDeletePassword       UserErrorKey = "deletePassword"
+	// ErrClockConflict rejects a clock mix the process cannot host: a set of
+	// standalone PTP receivers beside a sender-side PTP master. Args are one
+	// target name from each family.
+	ErrClockConflict    UserErrorKey = "clockConflict"
+	ErrReconnectStopped UserErrorKey = "reconnectStopped"
+	ErrReceiverMissing  UserErrorKey = "receiverMissing"
+	ErrDeletePassword   UserErrorKey = "deletePassword"
 )
 
 // UserErrorKeys lists every key the UI must resolve. The app's resolver test
@@ -34,6 +38,7 @@ var UserErrorKeys = []UserErrorKey{
 	ErrFairPlay,
 	ErrEndpointMoved,
 	ErrSessionOpen,
+	ErrClockConflict,
 	ErrReconnectStopped,
 	ErrReceiverMissing,
 	ErrDeletePassword,

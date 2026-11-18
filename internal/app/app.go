@@ -86,6 +86,10 @@ type App struct {
 	snap  engine.Snapshot
 	selID string
 
+	// mutedVolume remembers the level a target's speaker button muted from,
+	// so its next click restores it. It is session state, not a setting.
+	mutedVolume map[string]float64
+
 	pinOpen bool
 	pinCode string
 
@@ -93,8 +97,6 @@ type App struct {
 	passwordPrompt string
 
 	credentialOpen bool
-
-	volume float64
 
 	captureNames  []string
 	captureIDs    []string
@@ -127,9 +129,6 @@ type App struct {
 	receiverDialog     receiverDialogState
 	receiverDialogOpen bool
 	receiverDraft      receiverDraft
-	receiverDelaySeq   uint64
-	receiverDelayTimer *time.Timer
-	receiverDelayPend  map[string]int
 
 	readNowPlaying      func() (nowplaying.Snapshot, error)
 	pushNowPlaying      func(title, artist, album string, cover []byte, coverMIME string)
@@ -227,7 +226,6 @@ func Run() error {
 		captureIDs:     []string{""},
 		captureLabels:  []string{locales.CaptureFollowSystem()},
 		captureChoice:  locales.CaptureFollowSystem(),
-		volume:         80,
 		power:          powerHold{acquire: mygo.Power.KeepRunning},
 	}
 	a.log.Printf("saundo %s", Version)
@@ -257,7 +255,6 @@ func Run() error {
 	mygo.Theme.SetSource(appearanceSource(cfg.Theme))
 	a.beta = cfg.Beta
 	mygo.Updater.SetPrereleases(cfg.Beta)
-	a.volume = cfg.Volume
 	a.selID = cfg.LastDeviceID
 	a.nameDraft = cfg.Name
 	a.strict = cfg.StrictReceiverAuth
@@ -315,9 +312,6 @@ func Run() error {
 		}
 		if a.latencyHoldTimer != nil {
 			a.latencyHoldTimer.Stop()
-		}
-		if a.receiverDelayTimer != nil {
-			a.receiverDelayTimer.Stop()
 		}
 		a.power.stop()
 		a.eng.Stop()
@@ -598,40 +592,6 @@ func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
 	a.fitFlyout()
 }
 
-func (a *App) hasNowSession(aumid string) bool {
-	if aumid == "" {
-		return false
-	}
-	for _, s := range a.nowSnap.Sessions {
-		if s.AUMID == aumid {
-			return true
-		}
-	}
-	return false
-}
-
-func (a *App) nowMediaIndex() int {
-	if len(a.nowSnap.Sessions) == 0 {
-		return 0
-	}
-	for i, s := range a.nowSnap.Sessions {
-		if s.AUMID != "" && s.AUMID == a.nowMediaAUMID {
-			return i
-		}
-	}
-	return snapIndex(a.nowSnap)
-}
-
-func (a *App) nowSession() (nowplaying.Session, bool) {
-	if len(a.nowSnap.Sessions) > 0 {
-		return a.nowSnap.Sessions[a.nowMediaIndex()], true
-	}
-	if a.nowOK && a.nowTrack.Title != "" {
-		return nowplaying.Session{Title: a.nowTrack.Title, Artist: a.nowTrack.Artist, Album: a.nowTrack.Album}, true
-	}
-	return nowplaying.Session{}, false
-}
-
 func (a *App) refreshNowArtwork() {
 	s, ok := a.nowSession()
 	key := ""
@@ -790,17 +750,6 @@ func (a *App) onEngineChange(snap engine.Snapshot) {
 
 func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.snap = snap
-	// A delay draft stays visible until the engine's row carries it, so the
-	// slider never snaps back to the old value between the command and the
-	// next snapshot.
-	for key, ms := range a.receiverDelayPend {
-		for _, v := range snap.Receivers {
-			if v.Key == key && v.DelayMS == ms {
-				delete(a.receiverDelayPend, key)
-				break
-			}
-		}
-	}
 	a.strict = snap.StrictAuth
 	a.reconnect = snap.Reconnect
 	a.lampOff = snap.LampOff
@@ -824,7 +773,6 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	if snap.Name != "" {
 		a.nameDraft = snap.Name
 	}
-	a.volume = snap.Volume
 	a.syncCaptureChoice()
 	if snap.PinRequired && !a.pinOpen {
 		a.pinOpen = true
@@ -846,15 +794,6 @@ func (a *App) applySnapshot(snap engine.Snapshot) {
 	a.syncSelection()
 	a.rebuildTray()
 	a.fitFlyout()
-}
-
-// hasNowMedia reports whether the media card has a session to draw.
-func (a *App) hasNowMedia() bool {
-	if !a.cfg.ShowNowPlayingPanel {
-		return false
-	}
-	_, ok := a.nowSession()
-	return ok
 }
 
 // rebuildCaptureLabels gives each capture option a unique display label. The
@@ -1044,17 +983,6 @@ func (a *App) migrateLegacyAppSelection() {
 	}
 }
 
-func (a *App) syncSelection() {
-	for _, d := range a.snap.Devices {
-		if d.ID == a.selID {
-			return
-		}
-	}
-	if len(a.snap.Devices) > 0 {
-		a.selID = a.snap.Devices[0].ID
-	}
-}
-
 // setLaunchAtStart persists the toggle and asks the system to start the app
 // at login. A failed registration reverts the switch.
 func (a *App) setLaunchAtStart(on bool) {
@@ -1104,7 +1032,7 @@ func (a *App) submitPassword() {
 	}
 	a.eng.SetReceiverPassword(id, password)
 	a.eng.Connect(target)
-	a.selID = target
+	a.selectDevice(target)
 	a.passwordOpen = false
 	a.passwordPrompt = ""
 }

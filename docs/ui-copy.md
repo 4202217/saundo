@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-17 -->
+<!-- reviewed-through: 2026-11-18 -->
 
 # UI copy standard
 
@@ -15,6 +15,8 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | The media card | 媒体卡片 | media card | 媒体卡 (short form) |
 | Ambient light | 氛围灯 | ambient light | 顶屏灯光 as the feature name |
 | The light's target | 顶屏 | top display | 屏幕 |
+| A target's volume | 音量 | volume | 音量大小, 输出音量 |
+| A target's stereo side | 声道 | channel | 左声道, 右声道, 单声道 |
 | A receiver on the machine running saundo | 本机 | local | 自身接收器, this device, this Mac as the chip |
 
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is named 系统声音 / system audio, never 接收器 or 设备. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
@@ -33,6 +35,12 @@ The tray menu's receiver rows keep the flyout's 离线 status. The session actio
 | Where the latency mode is changed | 可在音频页调整 | Adjust on Audio | — |
 
 The two latency values measure different stages. Never draw them as one bar, never add them, and never present the receiver's value as a total.
+
+## Per-device controls
+
+A target is one receiver or one stereo pair. Volume and channel belong to the target. The settings receiver row keeps the volume slider and the channel segment; the per-device delay row was removed from settings at the user's request. In the flyout, each session member's row carries its own volume slider under the name and an icon-only channel button before it; the row's model line yields while the device is a member. A row the engine is joining or reopening is plain and its model line reads 正在连接… / Connecting… while joining, 正在重连… / Reconnecting… while an automatic retry reopens it. The joining row's 取消 / Cancel removes just that target; a member's 断开连接 / Disconnect removes only that row's target; the device section head's 全部断开 / Disconnect all ends the whole session. The slider's label names its target: `Volume · HomePods` / `音量 · HomePods`. The channel button has no visible text: its tooltip and accessible name read `Channel: {current} · Click for {next}` / `声道：{current} · 点击切换到 {next}`, and a stereo pair reads `Channel: {current} · A stereo pair always plays stereo` / `声道：{current} · 立体声对固定为立体声`. The button's solid side is the current side. The speaker glyph is a button with no visible label; its tooltip and accessible name read `Mute {device}` / `静音 {device}`, or `Unmute {device}` / `取消静音 {device}` at zero volume.
+
+The channel choices are `Stereo` / `立体声`, `Left` / `左`, and `Right` / `右`. Left or right copies that input channel into both outputs. The settings row hints this with `Left or right copies that channel to both outputs` / `左或右会把该声道复制到两个输出`; as a row hint it carries no terminal punctuation. A stereo pair always plays stereo: its row shows a disabled `立体声`, never `左` or `右`.
 
 ## One state, one phrase
 
@@ -96,6 +104,7 @@ Every other protocol or implementation term needs a plain-language replacement b
 
 - `TestCatalogHasNoDeadKeys` fails when a catalog key has no caller.
 - `TestCatalogBannedTerms` fails when Chinese copy contains a banned synonym or an implementation term.
+- `TestPerDeviceControlCopyBudgets` keeps the new labels within their one-line budgets.
 - `TestLatencyText` pins the unit rule.
 
 A new UI string lands with its key, both languages, the surface that shows it, and the gate that covers its rule. Deleting a surface deletes its keys in the same change.

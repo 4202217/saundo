@@ -129,7 +129,9 @@ The latency modes resolve to a millisecond value before SETUP. Low is 200 ms, st
 
 A macOS receiver adds a 66150-sample scheduling latency (see [devices.md](devices.md)).
 
-**Volume.** `SET_PARAMETER` with `Content-Type: text/parameters` and body `volume: <dBFS>` sets the receiver's own absolute volume. The domain is `[-144, 0]` dBFS: `0` is full scale, `-30` is slider 0%, and `-144` is the mute sentinel; saundo maps 0–100% to `0.3·pct − 30` dB and sends `-144` at 0%. AP2 carries the message on the encrypted control channel without a `Session` header; AP1 sends the `Session` header. `GET /info` before session SETUP and the 1 Hz poll while streaming report `initialVolume`. Only a finite numeric value in `[-144, 0]` is known. A missing, unreadable, bool, or non-numeric value is unknown and the sender sends no volume, so the receiver keeps its own; a value below `-144` clamps to `-144`; a positive value is unknown, not full scale. A remembered per-device volume wins at connect; otherwise a known `initialVolume` is used, and the poll mirrors the receiver's knob back into the UI.
+**Volume.** `SET_PARAMETER` with `Content-Type: text/parameters` and body `volume: <dBFS>` sets the receiver's own absolute volume. The domain is `[-144, 0]` dBFS: `0` is full scale, `-30` is slider 0%, and `-144` is the mute sentinel; saundo maps 0–100% to `0.3·pct − 30` dB and sends `-144` at 0%. AP2 carries the message on the encrypted control channel without a `Session` header; AP1 sends the `Session` header. `GET /info` before session SETUP and the 1 Hz poll while streaming report `initialVolume`. Only a finite numeric value in `[-144, 0]` is known. A missing, unreadable, bool, or non-numeric value is unknown and the sender sends no volume, so the receiver keeps its own; a value below `-144` clamps to `-144`; a positive value is unknown, not full scale. Volume belongs to the target, a receiver or a stereo pair: a remembered per-target volume wins at connect, a target without one adopts a known `initialVolume` at launch, and the poll mirrors that receiver's knob back into its own target. A pair's two members share the pair's value.
+
+**Channel mix.** The stereo side is a sender-side transform, not a wire field. After the resampler produces the 352-frame 44.1 kHz block and before ALAC, `applyChannel` maps the block: `stereo` leaves the interleaved pair untouched, `left` copies the left sample into both slots, and `right` copies the right sample into both slots. RTP timestamps, ALAC framing, sync packets, and the configured latency do not change, so a live channel change affects the next packet without a session rebuild. A stereo pair always plays stereo. The preference is stored per receiver in `receivers.json` and read as stereo when empty or unknown.
 
 ## 5. Event channel and keep-alive
 
@@ -195,6 +197,8 @@ HomePod software 27 and macOS receivers keep their own PTP grandmaster and silen
 - The receiver's PTP clock is boot-relative, not Unix epoch; only the measured offset matters.
 - The handshake deadline extends to 30 seconds while waiting for the clock: after a 30-minute session the receiver needed more than 10 seconds to re-establish PTP.
 
+A session may hold any number of standalone PTP receivers. Their followers share one UDP 319/320 socket pair (`ptp.Followers`): replies are demultiplexed by source IPv4 address, each peer keeps its own source identity, offset, and readiness, and every subscription and delay request carries the same sender clock ID. Each member's stream SETUP waits for that member's clock. Each receiver still maps the shared RTP timeline onto its own clock, so two standalone HomePods align only as well as their two grandmasters; the live two-HomePod run decides whether that is good enough.
+
 Sync packets are 28 bytes, every 100 ms:
 
 ```
@@ -205,7 +209,7 @@ be64 ptpClockID
 
 ### PTP — master (stereo pairs)
 
-A stereo pair expects the sender to supply the timeline: one PTP master binds UDP 319/320 for both members, sends Announce/Sync/Follow_Up, answers Delay_Req/Pdelay_Req, and grants unicast subscriptions. The master's per-member readiness gates each session's stream SETUP. A standalone HomePod keeps the follower role.
+A stereo pair expects the sender to supply the timeline: one PTP master binds UDP 319/320 for every member of every timed pair in the session, sends Announce/Sync/Follow_Up, answers Delay_Req/Pdelay_Req, and grants unicast subscriptions. The master serves any number of distinct IPv4 peers; its per-member readiness gates each session's stream SETUP. A standalone HomePod keeps the follower role. Both role families bind the same ports, so a session runs at most one: two or more standalone PTP receivers share the follower set and are allowed, while a follower set beside a master is rejected before a socket opens.
 
 ## 8. Stereo session topology
 
@@ -215,7 +219,9 @@ A HomePod stereo pair is not one session:
 - Open one AP2 session **per member**; each session SETUP carries `groupUUID = tsid`.
 - The Now Playing control plane (track metadata, artwork, playback state) fans out to every member's session, like audio, timing, and volume. The follower's top display follows the pair's HomeKit/tightSync media-system sync, not its own session's artwork stream; the session's first light is the one image it takes from its own session. That first light is a one-shot race, so a pair member re-sends the current cover 2 s later (`internal/airplay/sender` `coverRetry`).
 - SETPEERS is not the display-sync seed. On a pair's PTP session the receiver treats SETPEERS as a no-op; the display sync comes from the HomeKit/tightSync media-system layer. The sender still sends it before the stream SETUP (the round trip hides inside the PTP wait, and the reply gates the stream SETUP on the clock's readiness). A standalone PTP receiver has no peers to announce and skips it: the follower activates at the RECORD reply, and the pair's per-member readiness still gates each stream SETUP (§7).
-- Capture fans out into one ring per member (`ring.Fanout`); the group reports streaming only when every member's session launched.
+- Capture fans out into one ring per member (`ring.Fanout`); the cohort reports streaming only when every member's session launched.
+- A session may hold 1..N targets, each one receiver or one pair. Every member of every target shares one `StartGate`, so one epoch covers a mixed NTP/PTP cohort; per-member latency comes from that target's registry key.
+- Adding a target while streaming rebuilds the whole cohort: every member reconnects and starts on one fresh epoch. The playing rooms hear a gap, which keeps one gate and one epoch per session.
 
 ## 9. Session lifecycle and start gate
 
@@ -230,10 +236,11 @@ Idle
 
 A session starts at the live edge: capture runs from launch, so the ring holds seconds of pre-connect audio, and replaying it from the oldest end is wrong. One `StartGate` per session owns the start:
 
-- A member arrives when its receiver accepts the stream (AP1 RECORD, AP2 stream SETUP) and waits; the last arrival seals the shared epoch.
-- The first `Begin` from the engine's Tick performs the one trim that keeps the newest 50 ms cushion (`DefaultStartCushion`) — the session ring for a single receiver, or every member ring through the fanout in one best-effort call for a pair (a capture push can land between member trims; the shared epoch, not the trim, is what is atomic). The trim is policy, not capture overflow, so it does not increment the dropped-sample counter.
-- Every member begins from the same epoch in that Tick, so a pair's rings start from one epoch and the members arm their pacers in lockstep.
-- Sync timestamps are anchored to that shared epoch: the published RTP value is `latency + frames since epoch`, not the number of packets actually sent, so a late pacer tick does not become a pair offset. Audio packet timestamps remain `latency + framesSent`.
+- A member arrives when its receiver accepts the stream (AP1 RECORD, AP2 stream SETUP) and waits; the last arrival seals the shared epoch. The gate's member count is the cohort's sender count, so N-1 arrivals never start playback.
+- The first `Begin` from the engine's Tick performs the one trim that keeps the newest 50 ms cushion (`DefaultStartCushion`) across every member ring through the fanout in one best-effort call (a capture push can land between member trims; the shared epoch, not the trim, is what is atomic). The trim is policy, not capture overflow, so it does not increment the dropped-sample counter.
+- Every member begins from the same epoch in that Tick, so a cohort's rings start from one epoch and the members arm their pacers in lockstep.
+- Sync timestamps are anchored to that shared epoch: the published RTP value is `latency + frames since epoch`, not the number of packets actually sent, so a late pacer tick does not become an offset between rooms. Audio packet timestamps remain `latency + framesSent`, with the member's own presentation latency.
+- A latency edit or a receiver-delay edit rebuilds the cohort from the same target keys, because a sender applies latency only at stream SETUP; the new plan carries each member's new value.
 
 ## 10. Top-display artwork (Sound Glow)
 

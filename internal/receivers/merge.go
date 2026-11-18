@@ -180,14 +180,14 @@ func manualModel(t Type) string {
 }
 
 // Manageable is the list both surfaces show: manual entries always, online
-// receivers, and the active session even when it just went offline so its
+// receivers, and every active target even when it just went offline so its
 // controls stay reachable. A remembered receiver that is offline has nothing
 // to configure or connect to; its entry stays in the registry and returns to
 // the list when the device is seen again.
-func Manageable(targets []Target, activeKey string) []Target {
+func Manageable(targets []Target, active map[string]bool) []Target {
 	out := targets[:0]
 	for _, t := range targets {
-		if t.Entry.IsManual() || t.Device.Online || t.Entry.Key == activeKey {
+		if t.Entry.IsManual() || t.Device.Online || active[t.Entry.Key] {
 			out = append(out, t)
 		}
 	}
@@ -195,12 +195,12 @@ func Manageable(targets []Target, activeKey string) []Target {
 }
 
 // Visible is the flyout list: every target whose entry is shown, minus the
-// hidden and the disabled. The active session's receiver stays even hidden,
-// so its row, volume, and controls remain reachable.
-func Visible(targets []Target, activeKey string) []device.Device {
+// hidden and the disabled. Every active target stays even when hidden, so its
+// row, volume, and controls remain reachable.
+func Visible(targets []Target, active map[string]bool) []device.Device {
 	out := make([]device.Device, 0, len(targets))
 	for _, t := range targets {
-		if t.Entry.Key != activeKey && t.Entry.Hidden {
+		if !active[t.Entry.Key] && t.Entry.Hidden {
 			continue
 		}
 		out = append(out, t.Device)

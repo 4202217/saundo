@@ -255,7 +255,6 @@ func TestNewMasterRejectsBadPeers(t *testing.T) {
 	cases := [][]string{
 		nil,
 		{},
-		{"192.168.1.10", "192.168.1.11", "192.168.1.12"},
 		{"192.168.1.10", "192.168.1.10"},
 		{"192.168.1.10", "::ffff:192.168.1.10"},
 		{""},
@@ -267,6 +266,22 @@ func TestNewMasterRejectsBadPeers(t *testing.T) {
 		if err == nil {
 			m.Stop()
 			t.Errorf("NewMaster(%q) accepted invalid peers", peers)
+		}
+	}
+}
+
+// TestNewMasterAcceptsManyPeers pins the lifted cap: every member of every
+// synchronized stereo pair is a peer, with no protocol limit.
+func TestNewMasterAcceptsManyPeers(t *testing.T) {
+	peers := []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"}
+	m, err := NewMaster(peers)
+	if err != nil {
+		t.Skipf("PTP ports 319/320 already in use: %v", err)
+	}
+	defer m.Stop()
+	for _, peer := range peers {
+		if m.ClockFor(peer) == nil {
+			t.Fatalf("ClockFor(%q) = nil; the peer was not accepted", peer)
 		}
 	}
 }

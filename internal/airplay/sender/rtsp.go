@@ -615,7 +615,7 @@ func (s *Sender) maybeBegin() {
 	now := s.now()
 	if !s.startWaitUntil.IsZero() && now.After(s.startWaitUntil) {
 		s.awaitingStart = false
-		s.fail("Timed out waiting for both speakers to start together")
+		s.fail("Timed out waiting for every speaker to start together")
 		return
 	}
 	epoch, ok := s.activeGate.Begin(now)

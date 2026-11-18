@@ -13,77 +13,9 @@ import (
 	"saundo/internal/airplay/device"
 	"saundo/internal/audio/analyze"
 	"saundo/internal/engine"
-	"saundo/internal/lamp"
 	"saundo/internal/nowplaying"
 	"saundo/internal/settings"
 )
-
-const (
-	// flyoutHeight is the height with three device rows, no latency row, no
-	// media card, and no error bar; the no-media panel is compact and the
-	// media card adds its own height when a session exists.
-	flyoutWidth  = 420
-	flyoutHeight = 439
-
-	// errorBarHeight is the connection error bar under the device card.
-	errorBarHeight = 48
-
-	// The media card fills the space the old 62-DIP Now Playing row used, and
-	// adds its own height when shown.
-	nowPlayingRowHeight  = 62
-	nowPlayingCardHeight = 150
-
-	// The device card shows one row per device, up to deviceRows, and the
-	// empty state's box when there is none.
-	deviceRows        = 3
-	deviceRowHeight   = 56
-	deviceEmptyHeight = 141
-
-	// latencySwitchHeight is the four-segment row and its divider.
-	latencySwitchHeight = 44
-)
-
-// deviceCardHeight is the height of the device card for n devices.
-func deviceCardHeight(n int) float32 {
-	if n <= 0 {
-		return deviceEmptyHeight
-	}
-	return float32(min(n, deviceRows))*deviceRowHeight + 2
-}
-
-// flyoutHeightFor is the window height for the visible device count, the
-// current media state, and the permanent ambient section. The device card and
-// the playback card touch through the body's gap; there is no flexible
-// spacer. A shown media card adds its height, and the no-media panel is
-// shorter by the same amount. The ambient section is always present.
-func flyoutHeightFor(n int, showLatencySwitch, hasMedia bool) int {
-	h := flyoutHeight - int(deviceCardHeight(deviceRows)-deviceCardHeight(n)) - nowPlayingRowHeight
-	if hasMedia {
-		h += nowPlayingCardHeight
-	}
-	if showLatencySwitch {
-		h += latencySwitchHeight
-	}
-	h += lampSectionHeight
-	return h
-}
-
-// flyoutHeightForState adds the error bar and the template grid while they
-// are shown. The window is anchored by its bottom edge, so this grows it
-// upward.
-func flyoutHeightForState(n int, showLatencySwitch, hasMedia, lampCover, lampExpanded, errorBar, credentialBar bool) int {
-	h := flyoutHeightFor(n, showLatencySwitch, hasMedia)
-	if errorBar {
-		h += errorBarHeight
-	}
-	if credentialBar {
-		h += errorBarHeight
-	}
-	if !lampCover && lampExpanded {
-		h += lampGridHeight(len(lamp.All()))
-	}
-	return h
-}
 
 func (a *App) view(c *ui.Context) {
 	p := design(c)
@@ -119,183 +51,12 @@ func (a *App) flyoutHeader(c *ui.Context, p palette) {
 	})
 }
 
-func (a *App) deviceSection(c *ui.Context, p palette) {
-	devices := a.snap.Devices
-	sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)), false, nil)
-	a.deviceCard(c, p, devices)
-	if a.errorBarShown() {
-		ui.Row(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).Background(p.redSoft).Children(func() {
-			ui.Text(c, locales.FlyoutConnectFailed(a.errorText())).FontSize(11.5).TextColor(p.red).SingleLine().Ellipsis("…")
-		})
-	}
-	if a.snap.CredentialReset {
-		a.credentialBar(c, p)
-	}
-}
-
-// errorBarShown reports whether the device section carries the connection
-// error bar.
-func (a *App) errorBarShown() bool {
-	return phaseOf(a.snap) == phaseError && (a.snap.Error != "" || a.snap.ErrorKey != "")
-}
-
-func (a *App) deviceCard(c *ui.Context, p palette, devices []device.Device) {
-	card := ui.Column(c).Height(deviceCardHeight(len(devices))).Radius(10).
-		Background(p.card).Border(1, p.line).Clip().Label(locales.DeviceListLabel())
-	card.Children(func() {
-		if len(devices) == 0 {
-			a.emptyDevices(c, p)
-			return
-		}
-		rows := func() {
-			ui.Column(c).Children(func() {
-				for i, d := range devices {
-					a.deviceRow(c, p, d, i < len(devices)-1)
-				}
-			})
-		}
-		if len(devices) > deviceRows {
-			ui.Scroll(c).Fill().Children(rows)
-			return
-		}
-		rows()
-	})
-}
-
-func (a *App) emptyDevices(c *ui.Context, p palette) {
-	ui.Column(c).Fill().Center().Gap(4).Padding(18).Children(func() {
-		face := ui.Icon(c, faceSearch).Size(28, 28).TextColor(p.faint)
-		t := face.Loop("pulse", 1200*time.Millisecond, ui.EaseInOut)
-		face.Opacity(0.55 + 0.45*(1-abs32(2*t-1)))
-		emptyCopy(c, p, locales.FlyoutSearching(), locales.FlyoutSearchHint(), true)
-		b := ui.ButtonBase(c).Padding(2, 6).Radius(6).Cursor(ui.CursorPointer).Label(locales.FlyoutSearchAgain())
-		b.OnClick(func() { a.eng.Refresh() })
-		hoverFill(b, p.pill, 6, 0)
-		b.Children(func() {
-			ui.Text(c, locales.FlyoutSearchAgain()).FontSize(12.5).TextColor(p.accent).SingleLine()
-		})
-	})
-}
-
-func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool) {
-	ph := phaseOf(a.snap)
-	selected := d.ID == a.selID
-	active := d.ID == a.snap.SelectedID && ph != phaseIdle
-
-	row := ui.Row(c).Height(56).Padding(9, 12).Gap(10).
-		Key(d.ID).Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
-	if divider {
-		row.BorderWidth(0, 0, 1, 0).BorderColor(p.line2)
-	}
-	// The row's 140 ms color transition needs the background in the build;
-	// a hover drawn in Paint would snap.
-	switch {
-	case selected:
-		row.Background(p.sel)
-	case row.Hovered():
-		row.Background(p.cardHover)
-	default:
-		row.Background(ui.Transparent)
-	}
-
-	row.Children(func() {
-		pick := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Gap(10).
-			AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(d.Name)
-		pick.OnClick(func() { a.selID = d.ID })
-		pick.Children(func() {
-			deviceGlyph(c, p, d, selected)
-
-			ui.Column(c).Grow(1).Gap(1).Children(func() {
-				ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-				ui.Text(c, deviceSubtitle(d)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-			})
-		})
-
-		a.rowAction(c, p, d, ph, active)
-	})
-}
-
-// deviceGlyph is the round silhouette with the online dot, shared by the
-// flyout rows and the settings summary.
-func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
-	color := p.fg2
-	if selected {
-		color = p.accent
-	}
-	g := ui.Box(c).Size(30, 30).Radius(15).Center().Shrink(0).Background(p.pill)
-	if selected {
-		g.Background(p.card)
-	}
-	g.Children(func() {
-		ui.Icon(c, deviceIcon(d.Model, d.IsStereoGroup())).Size(16, 16).TextColor(color)
-		if d.Online {
-			ring := p.card
-			if selected {
-				ring = p.sel
-			}
-			ui.Box(c).Size(9, 9).Radius(4.5).Background(p.green).
-				Shadow(0, 0, 0, 2, ring).
-				Attach(ui.AnchorBottomRight, ui.AnchorBottomRight).Right(-1).Bottom(-1)
-		}
-	})
-}
-
-// rowActionKind is the control a receiver row offers. It is a pure function
-// of the session phase, the row's active flag, and reachability, so the
-// flyout and its test agree on when a row can start a connection.
-type rowActionKind uint8
-
-const (
-	actionConnect rowActionKind = iota
-	actionConnectDisabled
-	actionCancel
-	actionRetry
-	actionDisconnect
-	actionOffline
-)
-
-func actionFor(ph phase, active, online bool) rowActionKind {
-	switch {
-	case active && ph == phaseConnecting:
-		return actionCancel
-	case active && ph == phaseError:
-		return actionRetry
-	case active:
-		return actionDisconnect
-	case !online:
-		return actionOffline
-	case ph == phaseConnecting:
-		// One session at a time. An attempt in progress must finish or be
-		// cancelled before another receiver can take the session.
-		return actionConnectDisabled
-	}
-	// While streaming, another row's connect switches the session to that
-	// receiver; the engine rebuilds in place and keeps the local mute.
-	return actionConnect
-}
-
-func (a *App) rowAction(c *ui.Context, p palette, d device.Device, ph phase, active bool) {
-	switch actionFor(ph, active, d.Online) {
-	case actionCancel:
-		textButton(c, p, locales.ActionCancel(), iconClose, p.ctl, func() { a.disconnect() })
-	case actionRetry:
-		label := locales.ActionRetry()
-		if a.snap.TakenOver {
-			label = locales.ActionReconnect()
-		}
-		textButton(c, p, label, iconRefresh, p.accent, func() { a.connectDevice(d.ID) })
-	case actionDisconnect:
-		textButton(c, p, locales.ActionDisconnect(), iconUnlink, p.fg2, func() { a.disconnect() })
-	case actionOffline:
-		textButton(c, p, locales.ActionOffline(), iconSlash, p.muted, nil)
-	case actionConnectDisabled:
-		textButton(c, p, locales.ActionConnect(), iconLink, p.faint, nil)
-	default:
-		textButton(c, p, locales.ActionConnect(), iconLink, p.accent, func() { a.connectDevice(d.ID) })
-	}
-}
-
 func (a *App) playbackSection(c *ui.Context, p palette) {
+	// Volume lives on the device rows now; with no media and no latency row
+	// the section would only hold its own head, so it is left out.
+	if !a.hasNowMedia() && !a.showLatencySwitch {
+		return
+	}
 	note := locales.FlyoutFormat()
 	if phaseOf(a.snap) == phaseStreaming {
 		note += " · " + a.syncText()
@@ -307,18 +68,13 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 	card.Children(func() {
 		if a.hasNowMedia() {
 			a.nowPlayingCard(c, p)
+		}
+		if a.hasNowMedia() && a.showLatencySwitch {
 			rowLine(c, p)
 		}
 		if a.showLatencySwitch {
 			ui.Column(c).Padding(8, 12, 8, 12).Children(func() { a.latencySwitch(c, p) })
-			rowLine(c, p)
 		}
-		ui.Row(c).Padding(10, 12, 10, 22).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, iconVolume).Size(16, 16).TextColor(p.fg2).Margin(0, 0, 0, -2)
-			slider(c, p, &a.volume, 0, 100, locales.VolumeLabel(), func(v float64) { a.eng.SetVolume(v) }).Grow(1)
-			ui.Text(c, locales.FlyoutVolumeValue(a.volume)).FontSize(11.5).TextColor(p.muted).
-				FontFeatures("tnum").Width(34).TextAlign(ui.End).SingleLine()
-		})
 	})
 }
 
@@ -672,13 +428,6 @@ func (a *App) phaseLabel() string {
 		return locales.StatusConnectionFailed()
 	}
 	return a.statusText()
-}
-
-func (a *App) connectDevice(id string) {
-	a.cancelLatencyApply()
-	a.finishLatencyApply()
-	a.selID = id
-	a.eng.Connect(id)
 }
 
 // currentDevice is the device the interface speaks for: the one connecting

@@ -82,6 +82,10 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		// advertisement: accept the new endpoint.
 		entry.PairedHost, entry.PairedPort = "", 0
 	}
+	if patch.Channel != nil && entry.IsGroup() && receivers.ParseChannel(*patch.Channel) != receivers.ChannelStereo {
+		// A stereo pair always plays stereo; ignore a non-stereo side.
+		patch.Channel = nil
+	}
 	delayBefore := entry.DelayMS
 	if patch.AutoConnect != nil {
 		// The flag chooses the next launch's target; it never starts a
@@ -101,6 +105,11 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		e.fail(ErrSaveReceiver, err.Error())
 	}
 	e.rebuildTargets()
+	if patch.Channel != nil {
+		// A channel edit is a per-packet mix, not a SETUP value, so the live
+		// target's members take it without a rebuild.
+		e.applyReceiverChannel(key)
+	}
 	e.publish()
 
 	delayAfter := entry.DelayMS
@@ -108,13 +117,17 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		delayAfter = applied.DelayMS
 	}
 	if patch.DelayMS != nil && delayBefore != delayAfter && e.isLive(key) {
-		if target, ok := e.target(key); ok {
+		// A delay while a reconnect waits only updates the registry: the next
+		// retry's buildPlan recomputes every member's latency. With a live
+		// cohort the sender applies latency only at stream SETUP, so the whole
+		// cohort rebuilds with the new per-member values.
+		if e.tr != nil {
 			e.userDisconnect = false
 			// A delay edit is a user action even when it lands while an
 			// automatic reconnect is still connecting. Start the standby
 			// clock at the new session so the light shows the restart.
 			e.connectAuto = false
-			e.restartSession(target.Device)
+			e.rebuildSession()
 		}
 	}
 }
@@ -144,10 +157,23 @@ func (e *Engine) handleRemoveReceiver(key string) {
 		e.setsValue.LastDeviceID = ""
 		e.markSettingsDirty()
 	}
-	if e.selectedID == key {
-		e.selectedID = ""
+	wanted := false
+	for _, k := range e.wantedKeys {
+		if k == key {
+			wanted = true
+			break
+		}
+	}
+	if e.selectedID == key || e.plan.has(key) || wanted {
+		// The removed receiver cannot stay in a live cohort or a pending
+		// request. End the session the way Disconnect does; a surviving
+		// target cannot keep playing a plan the user just deleted a member of.
+		if e.selectedID == key {
+			e.selectedID = ""
+		}
 		e.userDisconnect = true
 		e.reconnectPendingOff()
+		e.wantedKeys = nil
 		if e.tr != nil {
 			e.tr.Stop()
 		}
@@ -179,10 +205,18 @@ func (e *Engine) savePassword(key, password string) error {
 }
 
 // isLive reports whether the engine is working with this receiver right
-// now: a session, or a reconnect waiting to bring it back.
+// now: a member of the live cohort, or a wanted key while a reconnect waits.
 func (e *Engine) isLive(key string) bool {
-	if e.tr != nil && e.selectedID == key {
-		return true
+	if e.tr != nil {
+		return e.plan.has(key)
 	}
-	return e.reconnectWanted && e.selectedID == key
+	if !e.reconnectWanted {
+		return false
+	}
+	for _, k := range e.wantedKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }

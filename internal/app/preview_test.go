@@ -295,12 +295,28 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	idle.snap.State = sender.StateIdle
 	idle.snap.ConnectedName = ""
 	idle.snap.PTPActive = false
+	idle.snap.ActiveTargets = nil
+	idle.snap.Targets = nil
 	save("flyout-idle", idle.view, flyoutWidth, visibleFlyoutHeight(idle), false)
 
 	connecting := fixture()
 	connecting.snap.State = sender.StateHandshake
 	connecting.snap.ConnectedName = ""
+	connecting.snap.Targets[0].State = engine.TargetJoining
 	save("flyout-connecting", connecting.view, flyoutWidth, visibleFlyoutHeight(connecting), false)
+
+	// The join: an established member keeps its mixer while the added target
+	// is plain with the connecting state and the cancel action.
+	joining := fixture()
+	joining.snap.State = sender.StateHandshake
+	joining.snap.ConnectedName = ""
+	joining.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	joining.snap.Targets = []engine.TargetControl{
+		{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember},
+		{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo", State: engine.TargetJoining},
+	}
+	save("flyout-joining-light", joining.view, flyoutWidth, visibleFlyoutHeight(joining), false)
+	save("flyout-joining-dark", joining.view, flyoutWidth, visibleFlyoutHeight(joining), true)
 
 	failed := fixture()
 	failed.snap.State = sender.StateIdle

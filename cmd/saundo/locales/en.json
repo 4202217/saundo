@@ -163,6 +163,7 @@
       }
     }
   },
+  "errorClockConflict": "A stereo pair cannot join standalone PTP receivers.",
   "errorReconnectStopped": "Stopped after {count} reconnect attempts.",
   "@errorReconnectStopped": {
     "placeholders": {
@@ -205,6 +206,16 @@
       }
     }
   },
+  "volumeFor": "Volume · {device}",
+  "muteFor": "Mute {device}",
+  "unmuteFor": "Unmute {device}",
+  "@volumeFor": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "flyoutNowPlayingNoMedia": "No media detected",
   "flyoutNowPlayingSessionFailed": "Could not read the system media information",
   "flyoutNowPlayingSession": "System media",
@@ -225,6 +236,7 @@
   "actionCancel": "Cancel",
   "actionRetry": "Retry",
   "actionReconnect": "Reconnect",
+  "disconnectAll": "Disconnect all",
   "actionDisconnect": "Disconnect",
   "actionOffline": "Offline",
   "actionConnect": "Connect",
@@ -274,7 +286,7 @@
   "settingsNavNowPlaying": "Now Playing",
   "pageGeneralDesc": "Sender identity, startup, and appearance.",
   "pageConnectionDesc": "Connection, latency, and stability.",
-  "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver delay compensation.",
+  "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and channel.",
   "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio, or one or more apps.",
   "pageCaptureSystemDesc": "System audio.",
@@ -352,8 +364,7 @@
   "receiverEnableSwitch": "Show in the tray panel; off moves the row to the hidden group",
   "receiverAutoToggle": "Connect at launch",
   "receiverAutoToggleDesc": "One receiver at a time; enabling one turns the others off",
-  "receiverDelayTitle": "DSP/DAC delay",
-  "receiverDelayDesc": "Compensate the receiver's hardware audio delay",
+  "receiverChannelDesc": "Left or right copies that channel to both outputs",
   "receiverPasswordTitle": "Receiver password",
   "receiverPasswordSaved": "Saved · used for AirPlay password authentication",
   "receiverPasswordUnset": "Not saved · fill in when the receiver asks",
@@ -495,6 +506,12 @@
   "captureFollowSystem": "Follow system default",
   "captureAllSystem": "Entire system",
   "volumeLabel": "Volume",
+  "channelLabel": "Channel",
+  "channelStereo": "Stereo",
+  "channelLeft": "Left",
+  "channelRight": "Right",
+  "channelTooltip": "Channel: {current} · Click for {next}",
+  "channelPairTooltip": "Channel: {current} · A stereo pair always plays stereo",
   "settingsNavUpdates": "Updates",
   "pageUpdatesDesc": "Versions, automatic checks, and installation.",
   "pageAboutDesc": "Version, project links, license, and diagnostic log.",

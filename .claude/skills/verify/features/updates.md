@@ -43,8 +43,8 @@ flag is in memory only.
   installer process runs). On macOS it stages the new bundle and a helper
   swaps it after the app quits, so the Dock keeps one tile. A separate
   立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:633-649`, chip at
-  `:636-648`) shares state with the settings page; clicking it opens the
+- Update chip in the flyout **footer** (`flyout.go:465-485`, chip at
+  `:471-483`) shares state with the settings page; clicking it opens the
   更新 page. A waiting update also draws a dot on the 更新 sidebar item
   (`settings_window.go:143-146`). The tray has no check action: its stateful
   row appears only while an update is available, downloading, or ready and

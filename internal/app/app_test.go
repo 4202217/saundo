@@ -55,7 +55,6 @@ func withLocale(t *testing.T, tag string) {
 func previewApp() *App {
 	a := &App{
 		cfg:               settings.Default(),
-		volume:            65,
 		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureIDs:        []string{"", "{endpoint}"},
 		captureLabels:     []string{locales.CaptureFollowSystem(), "Speakers"},
@@ -82,6 +81,8 @@ func previewApp() *App {
 			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 		},
 		SelectedID:        "AA:BB:CC:DD:EE:01",
+		ActiveTargets:     []string{"AA:BB:CC:DD:EE:01"},
+		Targets:           []engine.TargetControl{{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember}},
 		State:             sender.StateStreaming,
 		ConnectedName:     "HomePods",
 		Volume:            65,
@@ -236,7 +237,7 @@ func TestSettingsPagesRender(t *testing.T) {
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
 		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
-		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
+		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
 		{pageCapture, capturePageCopy()},
@@ -782,6 +783,7 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.snap.Error = "接收器没有响应"
 	a.snap.ConnectedName = ""
+	a.snap.Targets[0].State = engine.TargetFailed
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{"重试", "连接失败：接收器没有响应", "连接失败"} {
 		if !tt.HasText(want) {
@@ -798,29 +800,83 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	}
 }
 
+// TestFailedAddShowsTheErrorBarWhileStreaming pins the multi-target add: a
+// rejected add publishes its key while the live cohort keeps streaming, and
+// the user must see why the row did nothing.
+func TestFailedAddShowsTheErrorBarWhileStreaming(t *testing.T) {
+	a := previewApp()
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01"}
+	a.snap.State = sender.StateStreaming
+	a.snap.Error = string(engine.ErrClockConflict)
+	a.snap.ErrorKey = engine.ErrClockConflict
+	if !a.errorBarShown() {
+		t.Fatal("a rejected add while streaming hid the error bar")
+	}
+	if got := userErrorText(a.snap.ErrorKey, a.snap.ErrorArgs, a.snap.Error); got != locales.ErrorClockConflict() {
+		t.Fatalf("error text = %q, want the clock-conflict copy", got)
+	}
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	if want := locales.FlyoutConnectFailed(locales.ErrorClockConflict()); !tt.HasText(want) {
+		t.Fatalf("streaming snapshot is missing the failed add %q; texts: %q", want, tt.Texts())
+	}
+}
+
+// TestFlyoutMarksEveryActiveTarget pins the multi-target rows: each active
+// target offers Disconnect while another online row offers Connect.
+func TestFlyoutMarksEveryActiveTarget(t *testing.T) {
+	a := previewApp()
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	a.snap.Targets = append(a.snap.Targets,
+		engine.TargetControl{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo", State: engine.TargetMember})
+	a.snap.Devices[2].Online = true
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	count := func(label string) int {
+		n := 0
+		for _, text := range tt.Texts() {
+			if text == label {
+				n++
+			}
+		}
+		return n
+	}
+	// Each button contributes its label twice: the accessibility label and
+	// the child text.
+	if got := count(locales.ActionDisconnect()); got != 4 {
+		t.Fatalf("Disconnect labels = %d, want two active rows", got/2)
+	}
+	if got := count(locales.ActionConnect()); got != 2 {
+		t.Fatalf("Connect labels = %d, want one inactive row", got/2)
+	}
+}
+
 // TestRowActionKeepsOtherReceiversConnectable pins the failed-session escape
 // and the live switch: the failed row keeps retry, the engine is idle after a
 // failure, and a streaming session moves to another receiver by connecting
 // its row.
 func TestRowActionKeepsOtherReceiversConnectable(t *testing.T) {
 	cases := []struct {
-		name   string
-		ph     phase
-		active bool
-		online bool
-		want   rowActionKind
+		name    string
+		state   engine.TargetState
+		hasRole bool
+		session sender.State
+		online  bool
+		want    rowActionKind
 	}{
-		{"failed row retries", phaseError, true, true, actionRetry},
-		{"other row connects after failure", phaseError, false, true, actionConnect},
-		{"connecting keeps other rows disabled", phaseConnecting, false, true, actionConnectDisabled},
-		{"streaming switches to another row", phaseStreaming, false, true, actionConnect},
-		{"offline row stays offline", phaseError, false, false, actionOffline},
-		{"idle row connects", phaseIdle, false, true, actionConnect},
+		{"failed row retries", engine.TargetFailed, true, sender.StateIdle, true, actionRetry},
+		{"other row connects after failure", engine.TargetInactive, false, sender.StateIdle, true, actionConnect},
+		{"connecting keeps other rows disabled", engine.TargetInactive, false, sender.StateHandshake, true, actionConnectDisabled},
+		{"streaming switches to another row", engine.TargetInactive, false, sender.StateStreaming, true, actionConnect},
+		{"offline row stays offline", engine.TargetInactive, false, sender.StateIdle, false, actionOffline},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := actionFor(tc.ph, tc.active, tc.online); got != tc.want {
-				t.Fatalf("actionFor(%v, %v, %v) = %v, want %v", tc.ph, tc.active, tc.online, got, tc.want)
+			snap := engine.Snapshot{State: tc.session}
+			if tc.hasRole {
+				snap.Targets = []engine.TargetControl{{ID: "X", State: tc.state}}
+			}
+			d := device.Device{ID: "X", Online: tc.online}
+			if got := rowActionFor(snap, d); got != tc.want {
+				t.Fatalf("rowActionFor = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -841,20 +897,23 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	noMedia := map[int]int{0: 348, 1: 265, 2: 321, 3: 377, 5: 377}
-	withMedia := map[int]int{0: 498, 1: 415, 2: 471, 3: 527, 5: 527}
-	for _, tc := range []struct {
-		media bool
-		want  map[int]int
-	}{{false, noMedia}, {true, withMedia}} {
-		for devices, want := range tc.want {
-			want += lampSectionHeight
-			if got := flyoutHeightFor(devices, false, tc.media); got != want {
-				t.Errorf("flyoutHeightFor(%d, false, media=%v) = %d, want %d", devices, tc.media, got, want)
-			}
-			if got := flyoutHeightFor(devices, true, tc.media); got != want+latencySwitchHeight {
-				t.Errorf("flyoutHeightFor(%d, true, media=%v) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
-			}
+	// The empty case leaves the playback section out: its head and borders are
+	// worth playbackSectionHeight, which the shown cases pay.
+	hidden := map[int]int{0: 284, 1: 211, 2: 277, 3: 343, 5: 343}
+	for devices, want := range hidden {
+		if got := flyoutHeightFor(devices, false, false); got != want+lampSectionHeight {
+			t.Errorf("flyoutHeightFor(%d, false, false) = %d, want %d", devices, got, want+lampSectionHeight)
+		}
+		shown := want + playbackSectionHeight + latencySwitchHeight + lampSectionHeight
+		if got := flyoutHeightFor(devices, true, false); got != shown {
+			t.Errorf("flyoutHeightFor(%d, true, false) = %d, want %d", devices, got, shown)
+		}
+		media := want + playbackSectionHeight + nowPlayingCardHeight + lampSectionHeight
+		if got := flyoutHeightFor(devices, false, true); got != media {
+			t.Errorf("flyoutHeightFor(%d, false, true) = %d, want %d", devices, got, media)
+		}
+		if got := flyoutHeightFor(devices, true, true); got != media+latencySwitchHeight {
+			t.Errorf("flyoutHeightFor(%d, true, true) = %d, want %d", devices, got, media+latencySwitchHeight)
 		}
 	}
 }
@@ -1285,12 +1344,13 @@ func writePreview(t *testing.T, tt *ui.Tester, path string) {
 func TestFlyoutLatencySwitchCanHide(t *testing.T) {
 	a := previewApp()
 	a.showLatencySwitch = false
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), false, a.hasNowMedia()))
+	a.cfg.ShowNowPlayingPanel = false
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if tt.HasText("低延迟") {
 		t.Fatalf("hidden switch still shows the mode row: %q", tt.Texts())
 	}
-	if !tt.HasText("延迟 200 ms") {
-		t.Fatalf("the ALAC line lost the latency: %q", tt.Texts())
+	if _, ok := tt.Find(locales.FlyoutPlayback()); ok {
+		t.Fatalf("empty playback section is still drawn: %q", tt.Texts())
 	}
 }
 
@@ -1298,7 +1358,7 @@ func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
 	a := previewApp()
 	a.latencyMode = "custom"
 	a.latencyCustom = 700
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if !tt.HasText("延迟 700 ms") || !tt.HasText("自定义") {
 		t.Fatalf("custom latency not shown: %q", tt.Texts())
 	}
@@ -1306,7 +1366,7 @@ func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
 
 func TestFlyoutLatencySegmentSelects(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	if err := tt.Click("标准"); err != nil {
 		t.Fatal(err)
@@ -1385,7 +1445,7 @@ func TestLatencySpinnerKeepsALACLineAnchored(t *testing.T) {
 	withLocale(t, "zh-CN")
 	a := previewApp()
 	const note = "ALAC · 44.1 kHz · PTP · 已同步 · 延迟 200 ms"
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	before, ok := tt.Find(note)
 	if !ok {
@@ -1782,7 +1842,8 @@ func TestNowPlayingPanelHiddenWhenOff(t *testing.T) {
 			t.Fatalf("panel still shows %q with the master off", gone)
 		}
 	}
-	if got, want := visibleFlyoutHeight(a), flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false); got != want {
+	want := flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false)
+	if got := visibleFlyoutHeight(a); got != want {
 		t.Fatalf("flyout height = %d, want the no-card height %d", got, want)
 	}
 }

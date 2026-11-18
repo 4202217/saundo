@@ -140,8 +140,8 @@ There are four primary concurrency roles:
 - The engine goroutine, which owns session lifecycle, timers, the settings merge, and snapshot publishing, and drives the sans-i/o sender through
   `NextDeadline`, `Tick`, and `HandleEvent`.
 - The host I/O goroutines: `internal/airplay/io`'s `Host` reads the protocol
-  sockets, `internal/airplay/ptp` runs its own loop, and a stereo group adds
-  one forwarder per member.
+  sockets, `internal/airplay/ptp` runs its own loop, and a cohort adds one
+  forwarder per member.
 - The capture goroutine, which owns WASAPI capture and ring-buffer writes.
 
 The engine also runs a mute worker and a level-analysis worker, both fed by bounded queues so the audio thread never blocks on them.
@@ -182,6 +182,52 @@ because an NTP-timed stream would be silently ignored.
 The sender talks to it through a narrow `PTPClock` interface, so NTP stays the
 path for Apple TV.
 
+**One cohort, one start epoch.** A session is data: an immutable
+`sessionPlan` of 1..N targets, where a target is one receiver or a stereo
+pair. `buildPlan` derives the whole session from the selected registry keys:
+target order, one member per sender, per-member latency from the target's
+registry key, pair identity (`groupUUID` and SETPEERS peers), auth material,
+the duplicate policy, and the one clock role. `cohortTransport` then applies
+the plan at construction: one `raopio.Host`, `sender.Sender`, and capture ring
+per member, one `StartGate` over every member, one merged event channel routed
+by peer host, and one forwarder per member. The single-receiver session and the
+stereo `groupTransport` are deleted, so one target and many take the same
+path. The last arrival seals one epoch and the one trim covers the whole
+capture fanout, so NTP and PTP members begin together. Connecting a target
+while a session streams rebuilds the whole cohort from the new plan; the
+already-playing rooms hear a gap, which the design accepts in exchange for one
+gate and one epoch.
+
+**Per-target volume and channel.** Volume and stereo side belong to the
+target, not the session. The plan carries both: a stereo pair shares one
+volume and is forced to stereo, while a single receiver may play its left or
+right input into both outputs. The mix runs per packet in the sender after
+resampling and before ALAC, so a live channel change reaches the next packet
+without a rebuild; a volume change is a `SET_PARAMETER` on that target's
+members. The per-device delay remains the sync control across device types: a
+delay change still rebuilds the cohort, and the app's latency hold masks the
+restart. The engine keeps the per-device delay data and its `UpdateReceiver`
+delay path. The settings receiver row keeps the volume slider and the channel
+segment; the per-device delay row was removed from settings at the user's
+request; the flyout keeps the selected-target volume slider and the latency
+switch.
+
+**One PTP role family per session.** A session runs at most one of the two PTP
+role families, because both bind UDP 319/320: a follower set for any number of
+standalone PTP receivers, or the sender as grandmaster for every member of
+every synchronized stereo pair. NTP receivers join either. `clockPlanFor` is
+the only writer of the role, and the plan rejects a follower set beside a
+master with a user-facing error before any socket opens. `ptp.Followers` opens
+the socket pair once and demultiplexes replies by source IPv4 address; every
+peer keeps its own grandmaster, offset, and readiness, and each member's stream
+SETUP waits for that member's clock. The master serves any number of distinct
+IPv4 peers.
+
+Each standalone receiver maps the one shared RTP timeline onto its own clock,
+so two HomePods align only as well as their two grandmasters. The live
+two-HomePod run is the test that decides whether that is good enough; a shared
+clock would be a different protocol question.
+
 **No old Go libraries.** SRP, TLV8, bplist, ALAC, WASAPI, and Core Audio are implemented in-house or ported from C++/Rust. Only discovery uses hashicorp/mdns, for the multicast browse, plus miekg/dns for a directed query to the ARP neighbor table and remembered receiver addresses when multicast does not reach the machine. This avoids dependence on unmaintained go-wca and zeroconf.
 
 **OS secret stores for credentials.** Long-term keys never touch disk in plaintext: DPAPI on Windows, the login Keychain on macOS, where a 32-byte master key encrypts the credential JSON with AES-256-GCM. Logs never contain PINs, long-term keys, or session keys.
@@ -190,7 +236,20 @@ path for Apple TV.
 
 **Minimal 200 OK.** Event-channel response headers are strictly minimal. This is a failure mode the C++ blueprint already hit.
 
-**Connect selects the device being connected.** The snapshot's selected ID, the connected name, the UI badge, the remembered volume, and the reconnect target all follow the device the user connected to, and `lastDeviceId` persists only after the session reaches streaming — a failed attempt never becomes the next auto-connect target.
+**Connect adds a target; Disconnect ends the cohort.** A session holds 1..N
+targets that all share one start epoch. `SelectedID` remains the primary
+target, the first key: it drives the latency page, per-device volume memory,
+the tray selection, and the reconnect fallback. `Snapshot.ActiveTargets`
+carries the cohort's keys in target order and `Snapshot.Active` answers a row,
+and `ConnectedName` joins the target names with ` + `. A Connect on a
+streaming cohort adds the target and rebuilds every member from a new plan; a
+Connect on an active key is a no-op. Validation and the plan run before
+anything stops, so a rejected add publishes its error and leaves the live
+cohort playing. One Disconnect ends every target. The wanted key set survives
+a failed launch, so Retry on any active row retries the whole request, and
+only Disconnect, a takeover, and shutdown clear it. `lastDeviceId` persists
+only after the session reaches streaming — a failed attempt never becomes the
+next auto-connect target.
 
 **Capture discontinuities are not errors.** Loopback sets `DATA_DISCONTINUITY` when the render stream pauses, the device is reconfigured, or spuriously; capture ignores the flag, and a successful capture notification clears any stale error instead of leaving one on screen.
 

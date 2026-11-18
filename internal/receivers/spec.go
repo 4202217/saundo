@@ -119,6 +119,7 @@ type Patch struct {
 	Hidden      *bool
 	AutoConnect *bool
 	DelayMS     *int
+	Channel     *string
 	Password    *string
 }
 
@@ -146,6 +147,9 @@ func (p Patch) Apply(e Entry) Entry {
 	}
 	if p.DelayMS != nil {
 		e.DelayMS = ClampedDelay(*p.DelayMS)
+	}
+	if p.Channel != nil {
+		e.Channel = ParseChannel(*p.Channel)
 	}
 	return e
 }

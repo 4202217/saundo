@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-17 -->
+<!-- reviewed-through: 2026-11-18 -->
 
 # Implementation overview
 
@@ -33,9 +33,9 @@ level-analysis worker, both behind bounded queues:
   caller of sender methods. It drains the command channel, runs the timers
   (reconnect backoff, silence suspend, capture restart), renders the
   ambient-light JPEG off the sender's tick path, and publishes a
-  `Snapshot` on every state change. A stereo group whose member dies
+  `Snapshot` on every state change. A cohort member that dies
   signals the loop through the transport's `Dead` channel, and the loop
-  runs `closeSession` itself, so the group teardown also happens on this
+  runs `closeSession` itself, so the cohort teardown also happens on this
   goroutine — never inside a sender callback and never on another
   goroutine.
 - **The sender** (`internal/airplay/sender`) is sans-i/o and owns no
@@ -44,7 +44,7 @@ level-analysis worker, both behind bounded queues:
   bind/send/close) and `Host`, the Go net implementation whose reader
   goroutines push connection, data, and close events through one `Events`
   channel; the engine loop pulls timers with `NextDeadline` and `Tick`. PTP
-  runs its own loop, and a stereo group adds one forwarder per member.
+  runs its own loop, and a cohort adds one forwarder per member.
 - **The capture goroutine** owns the platform capture leaf (WASAPI on
   Windows, the Core Audio tap on macOS), converts and resamples, and writes
   the ring buffer or the stereo fanout. It never touches the network.
@@ -88,7 +88,7 @@ flyout cannot move the preview away from the top display.
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`; its creation in `settings_window_create.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; the same path on both platforms, each updating from its own signed manifest), the tray flyout window creation (`flyout_window.go`), window sizing and the text-scale zoom (`window_scale.go`), the tray menu model and native menu (`tray_menu.go`), the settings preview's sample card (`now_playing_preview.go`), tray and menu icons, receiver glyphs (the filled set in `icons_sf_gen.go`), the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy, the capture retry backoff, snapshots |
+| `internal/engine` | UI-agnostic session controller: command handling, the session plan and its cohort transport (`plan.go`, `cohort.go`), per-target volume and channel commands and the target control projection (`target_controls.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy, the capture retry backoff, snapshots |
 | `internal/discovery` | mDNS browse through a logger that drops the client's repeated IPv6 bind failures, plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking (the window is at least one directed-pass period plus its timeout), and local marking when an advertised address belongs to this host (`device.Device.Local`) |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), the Windows per-app process-loopback leaf (`app_windows.go`, not offered in the product; see platforms.md), the macOS Core Audio process tap aggregated with the output device, including the selected apps' stereo mixdown resolved from bundle IDs and its own local mute (`capture_darwin.go`, `SetProcessMuted`), and its device mute (`mute_darwin.go`), format conversion (`convert.go`), the 30-second device-retry backoff, and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/darwin` | The macOS FFI layer, pure Go through purego: the Objective-C bridge (`objc.go`), the login-Keychain SecItem calls (`keychain.go`), Core Audio bindings (`coreaudio.go`), and LaunchServices app identity (`appinfo.go`). Serves the darwin leaves only; the UI keeps to mygo |
@@ -98,8 +98,8 @@ flyout cannot move the preview away from the top display.
 | `internal/airplay/crypto` | Wire primitives: SHA-512/HMAC/HKDF, ChaCha20-Poly1305, X25519/Ed25519, SRP-6a, TLV8, bplist, Digest |
 | `internal/airplay/alac` | Uncompressed ALAC frame encoder (`EncodeUncompressed`) |
 | `internal/airplay/io` | Package `raopio`: the `IO` seam, event types, and the Go net `Host` |
-| `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
-| `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
+| `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), the stereo-to-mono channel mix (`channel.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
+| `internal/airplay/ptp` | `Follower` for one receiver that keeps its own grandmaster (`ptp.go`), `Followers` for several standalone receivers over one shared socket pair (`followers.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON on Windows (`dpapi_windows.go`), Keychain-master-key AES-256-GCM on macOS (`dpapi_darwin.go`) |
 | `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), and the top-display capability gate (`TopDisplayCapable`) used by the engine's lamp and stereo-group paths |
 | `internal/lamp` | Six three-color palette templates whose 600×600 carriers are flat color fields, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette JPEG cache |
@@ -110,13 +110,17 @@ flyout cannot move the preview away from the top display.
 | `internal/diagnostics` | Rolling in-memory log with 5 MB file rotation |
 
 The `Engine` methods are the UI's whole surface: `Start`, `Stop`,
-`Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetVolume`, `SubmitPIN`,
+`Snapshot`, `Refresh`, `Connect`, `Disconnect`, `SetVolume`, `SetTargetVolume`, `SubmitPIN`,
 `DismissPasswordPrompt`, `DismissCredentialReset`, `SetReceiverPassword`, `SetCaptureEndpoint`,
 `SetCaptureApps`, `SetLatency`, `ApplyLatency`, `SetLatencySettings`,
 `SetStrictAuth`, `SetName`, `SetReconnect`,
 `SetMuteLocal`, `SetNowPlaying`, `LevelFrame`, `SetLamp`, `SetStandby`, `SetTrayAnimation`, and the receiver-management commands
 `AddReceiver`, `UpdateReceiver`, `RemoveReceiver`, `SetReceiverAutoConnect`,
-`SetReceiverHidden`, `SetReceiverDelay`. `SetLatency` applies on the next
+`SetReceiverHidden`, `SetReceiverDelay`. `SetTargetVolume` stores and applies
+one target's volume; `SetVolume` remains the primary-target command for old
+callers. `UpdateReceiver` with a `Channel` patch saves the side and applies it
+to the live target's members; a stereo pair ignores a non-stereo value.
+`SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one; `SetLatencySettings` keeps the
 app-only latency mode fields in the engine settings copy. User-facing
 failures carry a `UserErrorKey` plus arguments in
@@ -126,8 +130,20 @@ against the catalog, so the engine never builds a localized sentence.
 preset)` saves the global `lamp.off`/`lamp.cover`/`lamp.preset` choice, applies
 it to a live session, and is reapplied when a session starts streaming. The
 snapshot carries both lists: `Devices` (the flyout, with hidden receivers
-filtered out while the active session's row stays) and `Receivers` (every row
-with its settings, no secrets — only whether a password exists); it also
+filtered out while every active target's row stays) and `Receivers` (every row
+with its settings, no secrets — only whether a password exists); `SelectedID`
+stays the primary target, `ActiveTargets` lists the live or wanted keys in
+target order, `Active(key)` answers a row, and `ConnectedName` joins the
+target names with ` + `. `Targets` carries one `TargetControl` per active key
+(name, volume, channel, stereo flag, and its `TargetState`), and `Target(id)`
+answers one; a wanted key keeps an entry while a retry waits, so every active
+row has a state, and the list is empty while idle. `TargetState` names the
+row's role in the current attempt: `TargetJoining` for the key the user's
+connect started or added (`sessionPlan.joinKey`, dropped when the launch
+resolves), `TargetMember` for every other planned key, `TargetReopening` for a
+wanted key while an automatic retry waits, and `TargetFailed` once it stops.
+A rebuild carries the join key only while that target stays planned.
+`Snapshot.Volume` stays the primary target's value for old surfaces. It also
 carries `LampOff`, `LampCover`, and `LampPreset`, which both lamp surfaces
 read, and `Standby` (the live dark phase) with the configured
 `StandbyEnabled` and `StandbyMinutes`.
@@ -140,7 +156,10 @@ owns the group rules: Wi-Fi, late ticks, and buffer take the worst member,
 resends and underruns sum, the overflow figure sums the members' session
 drops, and stability uses the max drop the connection card already shows. A
 stereo pair reports the oldest member's sync age, and `SyncValid` is false
-when any member has not sent a timing packet. The engine folds the model on
+when any member has not sent a timing packet. The group shape comes from the
+plan: one stereo target reports `GroupStereo`, one single `GroupSingle`, and
+more than one target `GroupCohort` with the sender count as its size. The
+engine folds the model on
 each snapshot publish; no UI consumes it yet. The
 Wi-Fi object is the
 stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and
@@ -152,10 +171,10 @@ retryable failure. `Sender` reports it through `Events.Preempted`;
 `Engine.onPreempted` sets `Snapshot.TakenOver` and clears the pending
 reconnect, and the session's dead signal makes the engine goroutine run
 `closeSession`, which stops the transport outside the sender callback. A
-stereo group forwards each member's preemption to the same callback, so one
-member's takeover stops the pair. A user connect or disconnect clears the
-flag. A close carrying an error stays on the normal failure path and signals
-dead the same way.
+cohort forwards each member's preemption to the same callback, so one
+member's takeover stops the whole cohort. A user connect or disconnect clears
+the flag. A close carrying an error stays on the normal failure path and
+signals dead the same way.
 
 The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
@@ -177,49 +196,85 @@ the first launch and is not pruned at upgrade.
 
 The engine's SETUP latency for a receiver is the global base plus that
 receiver's DSP/DAC delay, clamped to 20–4000 ms. The app composes the
-flyout's ALAC line from the same two values for the active receiver; a delay
-change to the active receiver restarts its session, debounced 500 ms like the
-custom latency control. The app holds the
+flyout's ALAC line from the same two values for the active receiver. A delay
+change to the active receiver restarts its session; the engine keeps the
+per-device delay data and the `UpdateReceiver` delay path for a later UI. The
+per-device delay is the sync control across device types. The settings
+receiver row keeps the volume slider and the channel segment; the per-device
+delay row was removed from settings at the user's request. The flyout's live
+device rows carry each target's volume slider and an icon-only channel button;
+the playback card keeps the latency switch and is left out when it has
+neither media nor that row.
+
+Volume and stereo side are per target. `buildPlan` resolves each target's
+volume from `VolumeByDevice` and its channel from the registry entry, forcing
+stereo for a pair. A remembered volume reaches the members at cohort
+construction; a target with no remembered value adopts each member's reported
+`initialVolume` when the session launches. Each flyout device row's slider
+controls that target and names it; a hardware knob report updates only that
+target's value. The row's speaker button mutes by taking the target volume to
+zero and restores the level it remembered in the app (`mutedVolume`, session
+state only). The row's channel button cycles stereo → left → right and saves
+the patch. A row's 断开连接 sends `DisconnectTarget`: the engine drops that key,
+rebuilds the cohort with the rest while holding the mute, and the last key
+takes the full-disconnect path. The flyout draws a member's mixer for as long
+as the target is a member, so a rebuild never takes an established row's
+controls away, and its action column keeps one width. The row's action is a
+table on the published `TargetState`: the joiner offers 取消, a member and a
+reopening target offer 断开连接, a failed target offers 重试, and a device with
+no role falls back to the phase (connect, disabled connect, or offline). The app
+keeps no session markers; the engine's plan carries the joiner
+(`sessionPlan.joinKey`) and clears it when the launch resolves. A channel change saves to the registry and calls
+`SetTargetChannel` on the live target's members without a rebuild, because the
+sender mixes each packet after resampling and before ALAC. A pair ignores a
+non-stereo channel patch. The app holds the
 last streaming snapshot for up to 3 s while an apply restarts, so the flyout
 keeps its streaming faces; only the latency row changes and a spinner follows
 the playback label. Preset clicks debounce the restart for 300 ms and custom
 edits for 500 ms, so rapid switching coalesces into one restart with the final
-mode. The connection mute survives that restart: an in-place restart keeps the
-local output muted across the rebuild, because the mute belongs to the user's
-session rather than to the transport. Only a restart that cannot open its new
-session restores it. A connect that replaces a live session is a switch to
-another receiver and takes the same path: `cmdConnect` routes it through
-`restartSession` while a transport is active, so the mute survives the gap. The
-flyout offers Connect on the other online rows in every phase but connecting;
-with a live session that click takes the `restartSession` switch path. A
-connection attempt in progress keeps them disabled. A switch whose new session
-cannot open restores the endpoint, whether the failure is synchronous or
-reported at launch.
+mode. The connection mute survives a rebuild: a latency change or an added
+target keeps the local output muted across the gap, because the mute belongs
+to the user's session rather than to the transport. Only a rebuild that cannot
+open its new cohort restores it. A Connect on another online row while the
+cohort streams adds that receiver and rebuilds every member from a new plan
+with fresh per-member latency; an active row offers Disconnect. Adding a
+target that cannot run — an unsupported clock mix, a local receiver, an
+offline pair, or a FairPlay receiver — publishes its error and leaves the live
+cohort playing, and the error bar shows it even while the session keeps
+streaming. The wanted key set survives a failed launch, so Retry on any active
+row retries the whole request. A rebuild whose new cohort cannot open restores
+the endpoint, whether the failure is synchronous or reported at launch.
 
 ## A connect, end to end
 
 1. The UI calls `Engine.Connect(id)`; the command reaches the engine
-   goroutine. With a live session the command is a switch: the engine
-   rebuilds through the in-place path, so the connection mute survives the
-   gap.
-2. The engine resolves the target — a device or a collapsed stereo group
-   (`openSession` / `openGroupSession`) — checks stored credentials, and
-   picks the pairing path from the device's auth kind. For the launch
-   auto-connect, the registry's cached address, members, features, and auth
-   let the engine connect before discovery answers; discovery refreshes the
-   view in parallel.
+   goroutine. With a live cohort the command adds the target: the engine
+   validates it, rebuilds the plan for every wanted target, and opens one new
+   cohort, so the connection mute survives the gap. An active key is a no-op.
+2. The engine resolves the target — a device or a collapsed stereo group —
+   checks stored credentials, and picks the pairing path from the device's
+   auth kind. `buildPlan` then derives every member, its latency, volume and
+   channel, pair identity, and the one clock role. For the launch auto-connect, the
+   registry's cached address, members, features, and auth let the engine
+   connect before discovery answers; discovery refreshes the view in
+   parallel. A remembered pair whose members both advertise as standalone
+   receivers is skipped (`autoconnect.go`), because the user unpaired it; the
+   launch starts idle so one receiver can be connected and the other added.
 3. The sender runs the protocol: pair-setup (transient / on-screen PIN /
    receiver password) → pair-verify → encrypted control channel →
    `GET /info` → session SETUP (a password-protected Mac answers 401 and
    gets the Digest replay) → event channel → `RECORD` → PTP readiness
    (a standalone PTP receiver skips SETPEERS; a pair member still sends it) →
    stream SETUP → streaming.
-4. Capture starts, or the fanout attaches one ring per pair member; the
-   `StartGate` trims every ring to the newest 50 ms cushion and seals the
-   shared start epoch; RTP flows at 44100 frames per second. The ring holds
+4. Capture starts, or the fanout attaches one ring per cohort member; the one
+   `StartGate` waits for every member, trims every ring to the newest 50 ms
+   cushion, and seals the shared start epoch; RTP flows at 44100 frames per
+   second. The ring holds
    eight seconds at 48 kHz stereo, enough for the 5 second silence policy.
-5. While streaming: feedback every 2 s, receiver-volume polling, sync
-   packets, and event-channel replies run on the sender's timers; after 5 s
+5. While streaming: feedback every 2 s, receiver-volume polling per member,
+   sync packets, and event-channel replies run on the sender's timers; a
+   volume knob report updates only its target, and a channel change reaches
+   the next packet. After 5 s
    of digital silence the engine suspends the pacer until the next audible
    block, and after the configured idle threshold counted from the last RTP
    push it turns the top display dark; the next audible block restores both.
@@ -247,7 +302,7 @@ reported at launch.
 All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saundo/` on macOS:
 
 - `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, the per-app capture selection (`captureAppIds`, `captureAppNames`), and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
-- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, last address, cached member addresses, feature/auth bits, the last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
+- `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, or manually added receiver, with hidden, auto-connect, delay, the stereo channel preference (`channel`: `stereo`, `left`, or `right`; empty and unknown read as stereo), last address, cached member addresses, feature/auth bits, the last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — protected credential JSON keyed by receiver
   `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM. A file that fails to decrypt is moved to `credentials.dat.corrupt-<UTC time>` and a fresh store is created in its place; the next connect logs the quarantined path and says a receiver may need to be paired again.
 - `mute-guard.json` — written before the engine mutes the local render
