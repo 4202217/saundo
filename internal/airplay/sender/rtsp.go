@@ -222,16 +222,17 @@ func parseDigestChallenge(wa string) (realm, nonce string) {
 	return extract("realm="), extract("nonce=")
 }
 
-// handleAP2DigestChallenge answers a 401 on an AP2 request. The password
-// challenge is HTTP Digest, so the realm and nonce are cached and the same
-// request is replayed with an Authorization header. A 401 on the replay
-// itself fails rather than looping.
+// handleAP2DigestChallenge answers a 401 on an AP2 request: the challenge is
+// HTTP Digest, so the request is replayed with an Authorization header. A 401
+// on the replay itself fails rather than looping.
 func (s *Sender) handleAP2DigestChallenge(p pendingReq, headers map[string]string) {
 	if s.digestPassword == "" {
+		s.passwordRejected = true
 		s.fail(fmtError("%s requires the receiver's AirPlay password. Save it in the app's settings for this receiver, then connect again.", s.name))
 		return
 	}
 	if p.authRetry || p.replay == nil {
+		s.passwordRejected = true
 		s.fail("The password was not accepted by the device")
 		return
 	}
@@ -275,10 +276,12 @@ func (s *Sender) handleResponse(method string, code int, headers map[string]stri
 
 	if code == 401 {
 		if s.digestPassword == "" {
+			s.passwordRejected = true
 			s.fail("The device requires a password")
 			return
 		}
 		if s.digestRetried {
+			s.passwordRejected = true
 			s.fail("The password was not accepted by the device")
 			return
 		}
@@ -568,11 +571,9 @@ func volumeDBInRange(db float64) (float64, bool) {
 	return db, true
 }
 
-// readyToStream runs when the receiver accepts the stream: RECORD on AP1, the
-// stream SETUP reply on AP2. It fixes the RTP latency, disarms the handshake
-// timer, and marks this member ready at the start gate. It does not start
-// playback: the start happens from Tick, so every member of a pair is released
-// in the same engine Tick.
+// readyToStream runs when the receiver accepts the stream (RECORD on AP1,
+// SETUP on AP2): it fixes the RTP latency and marks the member ready at the
+// start gate. Playback starts from Tick, so a pair releases in one Tick.
 func (s *Sender) readyToStream() {
 	if s.streamAccepted {
 		return
@@ -690,8 +691,7 @@ func (s *Sender) beginPlayback(epoch time.Time) {
 	}
 }
 
-// InitialVolumePercent returns the receiver's volume from /info as a percent,
-// for restoring it after a temporary change.
+// InitialVolumePercent returns the receiver's volume from /info as a percent.
 func (s *Sender) InitialVolumePercent() (float64, bool) {
 	if s.ap2 == nil || !s.ap2.hasInitial {
 		return 0, false

@@ -46,6 +46,8 @@ A multi-target session names itself as `{name} + {name}` wherever one identity i
 
 A member that leaves while the rest continue reads `{name} 已断开，其他设备继续播放` / `{name} disconnected; the other devices keep playing`; a join in progress reads `正在加入 {name}，其他设备会短暂暂停` / `Adding {name}; the other devices pause briefly`. The notice's dismiss action is 忽略 / Dismiss, and its only other action is 重试 / Retry on the loss.
 
+A refused saved password reads `{device} 的密码未被接收器接受。` / `The receiver did not accept the password for {device}.` The masked password dialog that opens is the same one used on first connect; the error explains why it reopened.
+
 ## One state, one phrase
 
 | State | Long form | Short form |

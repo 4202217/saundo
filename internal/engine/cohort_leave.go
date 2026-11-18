@@ -95,7 +95,7 @@ func (e *Engine) leaveTarget(key string) {
 // were in the session, the rest continue without it and the lost target leaves
 // the wanted set, so no retry drags the survivors down. A session whose only
 // target died keeps the existing close-and-retry path.
-func (e *Engine) sessionLost(key string) {
+func (e *Engine) sessionLost(key string, auth bool) {
 	if key != "" && len(e.wantedKeys) > 1 && slices.Contains(e.wantedKeys, key) {
 		remaining := make([]string, 0, len(e.wantedKeys)-1)
 		for _, k := range e.wantedKeys {
@@ -108,7 +108,11 @@ func (e *Engine) sessionLost(key string) {
 			if name == "" {
 				name = key
 			}
-			e.notice = SessionNotice{Kind: NoticeMemberLost, DeviceID: key, Name: name, Remaining: len(remaining)}
+			if !auth {
+				// A rejected password explains itself with the prompt; a
+				// member that merely vanished needs the lost notice.
+				e.notice = SessionNotice{Kind: NoticeMemberLost, DeviceID: key, Name: name, Remaining: len(remaining)}
+			}
 			e.logf("cohort: %s left the session; continuing with %d target(s)", name, len(remaining))
 			// The session continues, so the retry onClosed scheduled must not
 			// fire into the new cohort.

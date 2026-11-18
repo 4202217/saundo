@@ -710,6 +710,18 @@ func (msgs Messages) ErrorFairPlay(device string) string {
 	return Catalog.Format(msgs.locale, "errorFairPlay", map[string]any{"device": device})
 }
 
+// ErrorPasswordRejected says "The receiver did not accept the password for {device}."
+// in the language the app shows.
+func ErrorPasswordRejected(device string) string {
+	return In(i18n.Locale()).ErrorPasswordRejected(device)
+}
+
+// ErrorPasswordRejected says "The receiver did not accept the password for {device}."
+// in the language of msgs.
+func (msgs Messages) ErrorPasswordRejected(device string) string {
+	return Catalog.Format(msgs.locale, "errorPasswordRejected", map[string]any{"device": device})
+}
+
 // ErrorEndpointMoved says "{device}'s address changed since pairing, so the connection was refused."
 // in the language the app shows.
 func ErrorEndpointMoved(device string) string { return In(i18n.Locale()).ErrorEndpointMoved(device) }

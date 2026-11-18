@@ -43,6 +43,8 @@ type cohortTransport struct {
 	// lostKey is the target whose member closed first, read on the dead arm so
 	// the rest of the session can continue without it.
 	lostKey string
+	// failure is the member whose handshake failed, when one did.
+	failure LaunchFailure
 
 	onLaunched        func(ok bool, err string)
 	onClosed          func()
@@ -250,6 +252,7 @@ func (c *cohortTransport) forward(m *cohortMember) {
 func (c *cohortTransport) Events() <-chan raopio.Event { return c.events }
 func (c *cohortTransport) Dead() <-chan struct{}       { return c.dead }
 func (c *cohortTransport) LostTarget() string          { return c.lostKey }
+func (c *cohortTransport) Failure() LaunchFailure      { return c.failure }
 func (c *cohortTransport) Rings() []*ring.Buffer {
 	rings := make([]*ring.Buffer, 0, len(c.members))
 	for _, m := range c.members {
@@ -557,6 +560,13 @@ func (c *cohortTransport) memberLaunched(idx int, ok bool, err string) {
 		}
 		c.launchReported = true
 		c.failed = true
+		m := c.members[idx]
+		if m.sender.PasswordRejected() {
+			// A bad password is not a transient failure: drop this member from
+			// the session and let the engine prompt for a new password.
+			c.failure = LaunchFailure{TargetKey: m.targetKey, DeviceID: m.device.ID, Name: m.device.Name, Auth: true}
+			c.lostKey = m.targetKey
+		}
 		if c.onLaunched != nil {
 			c.onLaunched(false, fmt.Sprintf("%s：%s", c.members[idx].device.Name, err))
 		}

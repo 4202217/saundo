@@ -112,6 +112,14 @@
   "errorLocalReceiver": "本机正在运行声渡，不能作为接收器。",
   "errorStereoMembersOffline": "立体声组需要两台成员都在线。",
   "errorFairPlay": "{device} 使用当前应用不支持的音频格式。",
+  "errorPasswordRejected": "{device} 的密码未被接收器接受。",
+  "@errorPasswordRejected": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "errorEndpointMoved": "{device} 的地址与配对时不一致，已拒绝连接。",
   "errorSessionOpen": "无法建立会话：{error}",
   "errorClockConflict": "立体声对不能和独立的 PTP 接收器放在一起。",

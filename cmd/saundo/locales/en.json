@@ -157,6 +157,14 @@
   "errorLocalReceiver": "Saundo is running on this computer, so it cannot be a receiver.",
   "errorStereoMembersOffline": "Both stereo members must be online.",
   "errorFairPlay": "{device} uses an audio format this app does not support.",
+  "errorPasswordRejected": "The receiver did not accept the password for {device}.",
+  "@errorPasswordRejected": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "@errorFairPlay": {
     "placeholders": {
       "device": {

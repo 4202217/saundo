@@ -27,6 +27,7 @@ type fakeTransport struct {
 	stopped        bool
 	state          sender.State
 	lost           string
+	failure        LaunchFailure
 	identity       sender.Identity
 	strict         bool
 	inputRates     []int
@@ -60,6 +61,7 @@ func newFakeTransport(ev sender.Events) *fakeTransport {
 func (f *fakeTransport) Events() <-chan raopio.Event { return f.evs }
 func (f *fakeTransport) Dead() <-chan struct{}       { return nil }
 func (f *fakeTransport) LostTarget() string          { return f.lost }
+func (f *fakeTransport) Failure() LaunchFailure      { return f.failure }
 func (f *fakeTransport) Start()                      { f.started = true }
 func (f *fakeTransport) Stop() {
 	f.stopped = true

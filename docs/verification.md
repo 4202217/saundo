@@ -1071,6 +1071,40 @@ matrix renders `flyout-notice-light` and `flyout-notice-dark`. Pins:
 `TestSessionNoticeJoinCopy`, `TestSessionNoticeAddsItsHeight`. Not run: the
 notice in a live two-receiver session.
 
+## 2026-11-18 — a refused password prompts instead of retrying
+
+Adding a receiver with a saved but wrong password to a live cohort used to take
+the whole session down and burn the five-step reconnect ladder. The MacBook Air
+answered the stream SETUP with 401, the digest replay with another 401, and the
+cohort closed; every retry rebuilt both members and failed on the same
+password, and the run ended with 自动重连 5 次后停止 instead of a password error
+(log 21:41:05 to 21:41:46, `session failed: MacBook Air：The password was not
+accepted by the device`). The sender now marks a refused password from both the
+RTSP digest replay and the HAP pairing rejection (`PasswordRejected`), the
+cohort records that member's target and device, and the engine treats the
+failure as auth: no retry is scheduled, `ErrPasswordRejected` is published, and
+the password prompt opens for that receiver. The dead arm drops the refused
+member and rebuilds the survivors, so the rest keep playing; a single-target
+session keeps the prompt without a ladder.
+
+Checks: `mingw32-make check` passed (379 messages, 138 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/airplay/sender ./internal/engine ./internal/app`
+passed. Pins: `TestHAPPasswordWrongPasswordFailsWithoutPrompt`,
+`TestRejectedPasswordPromptsInsteadOfRetrying`,
+`TestRejectedPasswordOnTheOnlyTargetDoesNotRetry`. Not run: the same add with a
+wrong saved password on real hardware after the fix.
+
+## 2026-11-18 — password rejection live pass
+
+The user re-ran the add-with-wrong-password case on the rebuilt app and
+confirmed it. The log shows HomePod R streaming, the MacBook Air refused at
+21:57:43 with `session failed: MacBook Air did not accept the password`, and
+HomePod R streaming again 1.7 s later with no retry ladder; after the correct
+password the same pair reached `streaming to HomePod R + MacBook Air` at
+21:57:56. A second rejection at 21:58:16 repeated the pattern. This supersedes
+the "not run" line in the previous entry; its pins still hold.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim

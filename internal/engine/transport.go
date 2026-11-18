@@ -8,6 +8,15 @@ import (
 	"saundo/internal/audio/ring"
 )
 
+// LaunchFailure names the member whose handshake failed. Auth marks a receiver
+// that refused the saved password, which retrying cannot fix.
+type LaunchFailure struct {
+	TargetKey string
+	DeviceID  string
+	Name      string
+	Auth      bool
+}
+
 // transport is one live sender session. The production implementation is a
 // cohort of one or more senders sharing one start gate and at most one PTP
 // role; tests replace it.
@@ -21,6 +30,9 @@ type transport interface {
 	// the other members playing instead of retrying the whole cohort. Empty
 	// when the failure has no single owner (a launch failure).
 	LostTarget() string
+	// Failure names the member whose launch failed this attempt, empty when
+	// the failure has no single owner.
+	Failure() LaunchFailure
 	// Start opens every member's handshake. Endpoints and auth ride the plan.
 	Start()
 	Stop()

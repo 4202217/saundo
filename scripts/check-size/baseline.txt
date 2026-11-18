@@ -4,7 +4,7 @@
 # ratchets down. Raising a number is an explicit override that shows up in
 # review. New files must stay at or below 800 lines. Generated files and
 # _test.go files are exempt.
-internal/engine/engine.go	2441
+internal/engine/engine.go	2323
 internal/app/app.go	1187
 internal/app/settings_window.go	1018
 internal/airplay/sender/sender.go	1147

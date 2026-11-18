@@ -52,8 +52,7 @@ const (
 	feedbackInterval       = 25 * time.Second
 	ap2Feedback            = 2 * time.Second
 	volumePollInterval     = time.Second
-	// startWaitTimeout bounds how long a ready pair member waits for its peer.
-	// It outlasts the 30 s PTP re-synchronization window.
+	// startWaitTimeout outlasts the 30 s PTP re-synchronization window.
 	startWaitTimeout = 40 * time.Second
 	inBufMaxFrames   = 8192
 	defaultLatency   = 22050 + 44100
@@ -238,8 +237,7 @@ type Sender struct {
 
 	identity   Identity
 	strictAuth bool
-	// latencyMS is the presentation latency in milliseconds, applied to the
-	// PTP stream SETUP (latencyMin/latencyMax) and the sync packets.
+	// latencyMS is applied to the PTP stream SETUP and the sync packets.
 	latencyMS int
 	// nextLatencySamples carries the SETUP latency to startStreaming.
 	nextLatencySamples int64
@@ -403,6 +401,8 @@ type Sender struct {
 	digestRealm   string
 	digestNonce   string
 	digestRetried bool
+	// passwordRejected marks a handshake the receiver refused for a bad password.
+	passwordRejected bool
 }
 
 // New returns a sender that sends through io and reports through events.
@@ -656,8 +656,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	for i := range s.backlogSeq {
 		s.backlogSeq[i] = -1
 	}
-	// A volume set before Start is the next session's initial level; Start
-	// must not clear it.
+	// A volume set before Start is the next session's initial level.
 	s.wipeSecrets()
 	s.ap2 = nil
 	s.pairStage = pairNone
@@ -673,6 +672,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.pairSetupSessionKey = nil
 	s.digestRealm, s.digestNonce = "", ""
 	s.digestRetried = false
+	s.passwordRejected = false
 
 	timingPort, timingErr := s.io.UDPBind(raopio.UDPTiming)
 	controlPort, controlErr := s.io.UDPBind(raopio.UDPControl)

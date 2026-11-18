@@ -23,6 +23,9 @@ const (
 	ErrReconnectStopped UserErrorKey = "reconnectStopped"
 	ErrReceiverMissing  UserErrorKey = "receiverMissing"
 	ErrDeletePassword   UserErrorKey = "deletePassword"
+	// ErrPasswordRejected means the receiver refused the saved password.
+	// Args are its display name.
+	ErrPasswordRejected UserErrorKey = "passwordRejected"
 )
 
 // UserErrorKeys lists every key the UI must resolve. The app's resolver test
@@ -42,6 +45,7 @@ var UserErrorKeys = []UserErrorKey{
 	ErrReconnectStopped,
 	ErrReceiverMissing,
 	ErrDeletePassword,
+	ErrPasswordRejected,
 }
 
 // fail records a keyed user error. The key is also the fallback string, so

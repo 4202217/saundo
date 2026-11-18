@@ -21,7 +21,7 @@ func TestMemberDeathKeepsOthersPlaying(t *testing.T) {
 	h.launch()
 	before := h.sessions
 
-	h.e.sessionLost(b.ID)
+	h.e.sessionLost(b.ID, false)
 	if h.sessions != before+1 {
 		t.Fatalf("sessions = %d, want one rebuild without %s", h.sessions, b.ID)
 	}
@@ -51,7 +51,7 @@ func TestPrimaryDeathPromotesTheRemainingTarget(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
 	h.launch()
 
-	h.e.sessionLost(testDeviceID)
+	h.e.sessionLost(testDeviceID, false)
 	snap := h.e.Snapshot()
 	if snap.SelectedID != b.ID {
 		t.Fatalf("primary = %q, want the surviving target %q", snap.SelectedID, b.ID)
@@ -69,7 +69,7 @@ func TestMemberDeathOfTheOnlyTargetKeepsTheRetry(t *testing.T) {
 	h.connect()
 	h.launch()
 
-	h.e.sessionLost(testDeviceID)
+	h.e.sessionLost(testDeviceID, false)
 	if h.e.tr != nil || h.e.plan.live() {
 		t.Fatalf("session survived its only target: tr=%v plan=%v", h.e.tr, h.e.plan.live())
 	}
@@ -89,7 +89,7 @@ func TestMemberDeathPublishesANotice(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
 	h.launch()
 
-	h.e.sessionLost(b.ID)
+	h.e.sessionLost(b.ID, false)
 	snap := h.e.Snapshot()
 	n := snap.Notice
 	if n.Kind != NoticeMemberLost || n.DeviceID != b.ID || n.Remaining != 1 {

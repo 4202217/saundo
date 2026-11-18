@@ -113,7 +113,12 @@ sidebar, not a flyout row.
   plays. The session must show PTP and 已同步.
 - A Mac with Require Password answers the AP2 session SETUP with 401 first;
   the log line `digest challenge, re-sending SETUP with auth` is success,
-  not failure.
+  not failure. A saved password the receiver refuses stops the retry ladder:
+  the password dialog reopens, `ErrPasswordRejected` shows under the card, and
+  adding that receiver to a live cohort leaves the other targets playing.
+  Pinned by `TestHAPPasswordWrongPasswordFailsWithoutPrompt`,
+  `TestRejectedPasswordPromptsInsteadOfRetrying`, and
+  `TestRejectedPasswordOnTheOnlyTargetDoesNotRetry`.
 - Pairing 470 means the receiver wants a PIN it did not show; the app falls
   back from transient to on-screen PIN once.
 - Multicast is intermittent on some LANs; one successful browse does not
