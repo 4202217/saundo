@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-17 -->
+<!-- reviewed-through: 2026-11-18 -->
 
 # Verification
 
@@ -1244,3 +1244,26 @@ one took it from 1627.
   `TestStandalonePTPSessionSkipsSetPeers`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`.
+
+## 2026-11-18 — Apple Music's idle thumbnail is not a cover
+
+An idle Apple Music session reports the title `未在播放` and a 300×300 PNG in
+the cover slot. The image is a white rounded frame and a note at alpha 63 over
+a transparent field, not a cover. Drawn at the card's 52-DIP poster the frame
+lands on one device pixel at 175% scaling and reads as a white line around the
+poster; compositing the captured bytes on the card's `#2d2d33` at 91×91 gives
+an edge pixel of 95,95,99 against the screenshot's 92,92,96, so the line is
+the image, not the card's drawing. The earlier tile-background fix addressed a
+sliver from the app's own image tile and could not cover this case.
+
+`internal/nowplaying` now drops a thumbnail with no pixel at alpha ≥ 0.5 at
+both read boundaries (SMTC and the macOS adapter), so the session reads as
+having no cover and the card falls back to its own placeholder tile. The
+captured thumbnail is `internal/nowplaying/testdata/apple-music-idle.png`. A
+live `Read` with the app's two sessions open reports the Chrome cover intact
+(32,101 bytes) and the Apple Music session at zero artwork. Decode plus scan
+costs 0.3 ms for the 150×83 Chrome thumbnail and 6.6 ms for a synthetic
+1500×1500 PNG, once per 2 s poll. Checks: `go test ./internal/nowplaying -run
+TestUsableArtwork` passed 4 tests. Live check on the rebuilt app: with Apple
+Music idle and current, the flyout drew the card's own placeholder tile with
+no frame around it (user's capture, 2026-11-18).
