@@ -1217,3 +1217,26 @@ one took it from 1627.
   baselines re-stamped with `check-ui sketch -force`. Gates:
   `check-ui tokens`, `check-ui words`, `gofmt -l` green. Pins:
   `.claude/skills/ui-mockup/SKILL.md`, `scripts/check-ui/tokens.go`.
+- 2026-11-19, the mock flow's own gaps got their fixes, ranked by the
+  investigation the same day. 1. The state-coverage gate: `check-ui states`
+  pins every `SurfaceFlyout` scenario in `ui_catalog_flyout.go` to either
+  `flyoutReach` (the sketch URL that draws it, 22 rows, each read off the
+  scenario's catalog render) or `flyoutGaps` (4 reviewed gaps: noDevice,
+  mac, hover, the enter probe); a new scenario with neither fails, a row
+  naming a state or URL value the template's header doc no longer declares
+  fails, and a row the catalog dropped fails. It joined `check-ui all`, the
+  Makefile check chain, and the skill's gate list, closing the rot that let
+  the template lose six shipped states while every gate stayed green.
+  Pins: `TestFlyoutSketchCoversCatalog`, `TestSeededCatalogScenarioFails`,
+  `TestSeededStateDriftFails`, `TestSeededURLDocDriftFails`,
+  `TestSeededStaleRowFails`, `scripts/check-ui/states.go`. 2. Round
+  attribution: a change born from a design round names its topic folder in
+  the commit body (`Round:` field, ui-mockup SKILL.md); 24 of 36 recorded
+  rounds were unattributable from git alone. 3. Instrument split: dialogs
+  and the tray menu panel are native-preview surfaces only and never take a
+  sketch template (SKILL.md, Choose the instrument). 4. The double-edit
+  ledger for the deferred site/sketch component extraction lives in
+  `docs/ui.md` (app+template twice, site+app once, site+template never),
+  and each future double edit adds one line here. 5. The SKILL.md measured-
+  geometry section no longer re-states the height-rule numbers the token
+  gate enforces; it points at `flyoutHeightForState`.

@@ -65,6 +65,8 @@ func run(root string, args []string) error {
 		return runCatalog(root)
 	case "tokens":
 		return runTokens(root)
+	case "states":
+		return runStates(root)
 	case "words":
 		return runWords(root)
 	case "wasm":
@@ -87,7 +89,7 @@ func run(root string, args []string) error {
 }
 
 func usage() error {
-	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui all | check-ui catalog | check-ui tokens | check-ui words | check-ui wasm | check-ui sketch -topic <topic> [-surface settings|flyout] [-force] | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui subset -baseline <manifest> -states <stems> [-src <dir>] -out <dir> | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
+	return fmt.Errorf("usage: check-ui render -out <dir> [-only <prefixes>] [-renderer <name>] | check-ui all | check-ui catalog | check-ui tokens | check-ui states | check-ui words | check-ui wasm | check-ui sketch -topic <topic> [-surface settings|flyout] [-force] | check-ui baseline -a <manifest> -b <manifest> [-out <manifest>] | check-ui subset -baseline <manifest> -states <stems> [-src <dir>] -out <dir> | check-ui rebaseline -baseline <manifest> -against <manifest> [-out <manifest>] | check-ui diff -baseline <manifest> -against <manifest> [-strict]")
 }
 
 // runAll runs the fast gates that belong in the milestone check. The render,
@@ -100,6 +102,7 @@ func runAll(root string) error {
 	}{
 		{"catalog", runCatalog},
 		{"tokens", runTokens},
+		{"states", runStates},
 		{"words", runWords},
 		{"wasm", runWasm},
 	}

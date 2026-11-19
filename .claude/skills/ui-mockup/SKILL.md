@@ -25,7 +25,7 @@ The UI has one fixture and one state catalog. Every instrument reads them. A sta
 
 The browser is not pixel truth. It uses browser fonts and WebGL 2. The platform renderer is the visual truth. The live app is the only authority for the tray, system windows, and audio.
 
-The sketch and the site are hand-built second implementations. The token gate pins their palette, checked metrics, flyout height rule, and window sizes. The wording gate pins the flyout copy the site carries. Nothing pins shape.
+The sketch and the site are hand-built second implementations. The token gate pins their palette, checked metrics, flyout height rule, and window sizes. The wording gate pins the flyout copy the site carries. The states gate pins the flyout template's state coverage against the catalog. Layout inside a state is still unpinned.
 
 ## When to use
 
@@ -41,7 +41,7 @@ The release refreshes both templates and regenerates the baseline. A later sketc
 ## Choose the instrument
 
 - **Native preview.** The decision will ship and the surface runs in the browser target: the flyout, the settings window, a dialog, or the tray menu panel. It runs the real views with the catalog. The human clicks the wasm build. The agent inspects `render.Still` PNGs from the same catalog.
-- **HTML sketch.** The shape is still open, two or three layouts are defensible, or the question is about a surface no instrument draws in-product: the native tray menu chrome, window chrome, file dialogs, global shortcuts. It is the cheapest way to compare directions.
+- **HTML sketch.** The shape is still open, two or three layouts are defensible, or the question is about chrome no instrument draws in-product: the native tray menu chrome, window chrome, file dialogs, global shortcuts. It is the cheapest way to compare directions. The templates cover the flyout and the settings window only. The catalog's dialog and tray-menu surfaces run in the native preview, so a dialog or the tray menu panel never takes a sketch template; sketching one is a wrong turn.
 - **Platform render.** The shape is chosen and the question is what the shipping renderer draws. Render the catalog states through `render.Still`, not the browser.
 - **Verify.** The claim is about the shipped app. Use the feature page under `.claude/skills/verify/features/`.
 
@@ -132,6 +132,7 @@ go run ./scripts/check-ui render -out .audit/preview/<topic>/matrix
 
 # The gates.
 go run ./scripts/check-ui tokens
+go run ./scripts/check-ui states
 go run ./scripts/check-ui words
 go run ./scripts/check-ui catalog
 go run ./scripts/check-ui wasm
@@ -153,10 +154,10 @@ The platform command writes one appearance per scenario. A `ThemeBoth` scenario 
 
 ## Measured geometry
 
-These are the shipped values. The flyout template's height rule and the token gate pin them.
+These are the shipped values. The token gate pins the palette and the checked metrics, and the states gate pins the flyout template's state coverage against the catalog, so read the numbers where the gate enforces them instead of here.
 
 - Settings: 720x500 page area, minimum 640x420, a 190-wide sidebar with nine pages, a 32-DIP title bar, and a 14/20 page inset.
-- Flyout: 420 wide. Its height follows `flyoutHeightForState`: base 439 for three device rows, 62 less because the media card replaces the old Now Playing row, 90 for the permanent ambient section, +150 while a media session exists, +44 for the latency row, +48 for the connection error bar, +48 for the credential-recovery notice, and +53 for the expanded ambient grid. Three device rows are 56 each. The empty state is 141. The device card and the playback card touch through the body's 8-DIP gap.
+- Flyout: 420 wide. Its height follows `flyoutHeightForState` in `internal/app/flyout.go`, and the token gate pins every constant in that rule to the sketch's copy, so read the rule there. The device card and the playback card touch through the body's 8-DIP gap.
 - Tray menu panel: 260 wide. Each row is 30 DIP, 40 with a subtitle. A separator is 13 DIP, a 1-DIP line with 6 DIP above and below. The panel adds 12 DIP of padding.
 
 ## Sketch rules
@@ -223,7 +224,7 @@ mingw32-make build
 
 The canonical diff compares the 24 committed PNGs. Files outside the canonical set are named and not compared. The full matrix is for eyeballing. If the approved change touched a canonical state, run `go run ./scripts/check-ui rebaseline -baseline docs/ui-baseline/manifest.json -against .audit/ui/<topic>/manifest.json` only when the visual change is the one under review. Never edit the baseline manifest or its PNGs by hand.
 
-Rebuild only when it will not interrupt an active stream. Leave the change uncommitted unless the user asks to commit. When they do, use the `AGENTS.md` fields and name the tests that pin the new state.
+Rebuild only when it will not interrupt an active stream. Leave the change uncommitted unless the user asks to commit. When they do, use the `AGENTS.md` fields and name the tests that pin the new state. A change born from a design round adds one field to the commit body: `Round:` the topic folder under `.audit/mockups/`. The round's artifacts are untracked, so that line is the only link between the shipped change and the evidence behind it.
 
 ## Site fidelity
 
@@ -237,7 +238,7 @@ The landing page is a second product implementation, not a mock. Its automated g
 
 There is no stored reference PNG pair to compare. The page may change its story, such as how many receiver rows it shows, but not its anatomy.
 
-The page and the sketch keep separate HTML copies. The token gate keeps their copied numbers in sync, and the wording gate keeps the page's flyout copy in sync. Extracting the site's flyout into a component shared with the sketch is deferred. The trigger is a drift the gates cannot express: the same structural rule changes in both copies for one design decision, twice, or a component edit that has to be made in both copies each round. Until then, the gate is cheaper than the component.
+The page and the sketch keep separate HTML copies. The token gate keeps their copied numbers in sync, and the wording gate keeps the page's flyout copy in sync. Extracting the site's flyout into a component shared with the sketch is deferred. The trigger is a drift the gates cannot express: the same structural rule changes in both copies for one design decision, twice, or a component edit that has to be made in both copies each round. Until then, the gate is cheaper than the component. Each double edit is one line in `docs/verification.md`, and the running count lives in `docs/ui.md`; a trigger nobody counts never fires.
 
 ## Stop conditions
 
