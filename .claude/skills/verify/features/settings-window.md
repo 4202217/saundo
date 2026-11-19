@@ -49,7 +49,9 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   apps are muted, and the note says other apps keep playing. Launch
   auto-connect is not here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
-  manually added row with 启动时自动连接 (per receiver), hidden, a volume
+  manually added row with 启动时自动连接 (multi-select — every flagged
+  receiver connects at launch as one cohort; 可勾选多台；启动时会一起连接),
+  hidden, a volume
   slider, and a 声道 segment (立体声 / 左 / 右 for a single receiver, a
   disabled 立体声 on a discovered pair); the per-device delay slider stays out
   of settings. A password row only

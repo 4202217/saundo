@@ -268,32 +268,18 @@ func TestVisibleFiltersHiddenAndKeepsActive(t *testing.T) {
 	}
 }
 
-func TestAutoTargetPicksTheSingleFlag(t *testing.T) {
+func TestAutoTargetsListsEveryFlag(t *testing.T) {
 	reg := Registry{Entries: []Entry{
 		{Key: "AA:00", Kind: KindDiscovered},
 		{Key: "AA:01", Kind: KindDiscovered, AutoConnect: true},
+		{Key: "AA:02", Kind: KindDiscovered, AutoConnect: true},
 	}}
-	key, ok := AutoTarget(reg)
-	if !ok || key != "AA:01" {
-		t.Fatalf("auto target = %q %v, want AA:01", key, ok)
+	keys := AutoTargets(reg)
+	if len(keys) != 2 || keys[0] != "AA:01" || keys[1] != "AA:02" {
+		t.Fatalf("auto targets = %v, want both flags in registry order", keys)
 	}
-	if _, ok := AutoTarget(Registry{}); ok {
-		t.Fatal("empty registry chose a target")
-	}
-}
-
-func TestSingleAutoConnectKeepsOneFlag(t *testing.T) {
-	reg := Registry{Entries: []Entry{
-		{Key: "AA:00", Kind: KindDiscovered, AutoConnect: true},
-		{Key: "AA:01", Kind: KindDiscovered},
-	}}
-	reg.SingleAutoConnect("AA:01", true)
-	if reg.Entries[0].AutoConnect || !reg.Entries[1].AutoConnect {
-		t.Fatalf("two auto-connect flags: %+v", reg.Entries)
-	}
-	reg.SingleAutoConnect("AA:01", false)
-	if reg.Entries[1].AutoConnect {
-		t.Fatal("flag did not clear")
+	if got := AutoTargets(Registry{}); len(got) != 0 {
+		t.Fatalf("empty registry chose %v", got)
 	}
 }
 

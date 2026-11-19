@@ -205,15 +205,17 @@ signals dead the same way.
 
 The registry remembers every first sighting, including a stereo pair under
 its `stereo:<tsid>` key, so its hidden, delay, password, and auto-connect
-settings survive the pair going offline. Exactly one entry carries
-`AutoConnect`, and that row anchors the launch: the engine connects it once —
-immediately for a manual row or a remembered row with a cached address,
-members, features, and auth, and otherwise on the first snapshot that reports
-the discovered row online. When the anchor belongs to the last session's
-combination (`settings.LastTargets`, recorded in target order at every
-launch), the whole combination opens as one cohort in that order; an anchor
-outside the combination launches alone, and a combination member that no
-longer resolves or has no endpoint yet drops until a later launch. A user
+settings survive the pair going offline. Any number of entries can carry
+`AutoConnect`, and the flagged set is what a launch connects: the engine
+opens them as one cohort in registry order. The set launches immediately
+when every flagged row is addressable — a manual row, a discovered row
+online, or a remembered row with a cached address, members, features, and
+auth — and otherwise on the first snapshot that completes the set; a row
+that no longer resolves or is structurally unusable (a stale unpaired
+group, the local receiver) drops with a line, and a set reduced to nothing
+leaves the launch idle. `settings.LastTargets` — the last session's target
+keys, recorded in target order at every launch — seeds the UI's
+pre-session selection. A user
 connect or disconnect ends the launch wait, and a failed
 launch falls into the ordinary reconnect policy. The global
 `settings.AutoConnect` flag is a migration input only.

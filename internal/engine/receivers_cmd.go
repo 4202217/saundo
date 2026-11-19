@@ -90,10 +90,10 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 	}
 	delayBefore := entry.DelayMS
 	if patch.AutoConnect != nil {
-		// The flag chooses the next launch's target; it never starts a
-		// connection mid-session, and toggling it ends a pending launch wait.
+		// The flagged set is the next launch's target list; it never starts
+		// a connection mid-session, and toggling it ends a pending launch
+		// wait.
 		e.autoTried = true
-		e.reg.SingleAutoConnect(key, *patch.AutoConnect)
 	}
 	e.reg.Put(patch.Apply(entry))
 	e.clearError()

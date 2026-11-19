@@ -2,24 +2,23 @@ package engine
 
 import (
 	"errors"
-	"slices"
 
 	"saundo/internal/receivers"
 )
 
-// maybeAutoConnect connects the launch set once, when its anchor is
-// addressable. The registry's single auto-connect entry anchors the attempt;
-// when that row belongs to the last session's combination, the whole
-// combination launches as one cohort, and otherwise the anchor launches
-// alone. A manual row connects immediately, a discovered one on the first
-// snapshot that reports it online. A user connect or disconnect ends the
-// launch phase, and a failure falls through to the ordinary reconnect policy.
+// maybeAutoConnect connects the flagged receiver set once, when every row in
+// it is addressable: the registry's auto-connect flags are the launch set,
+// the same rows a user click would use, and they open as one cohort in
+// registry order. A manual row is addressable immediately, a discovered one
+// on the first snapshot that reports it online, and a remembered one through
+// its cached endpoint. A user connect or disconnect ends the launch phase,
+// and a failure falls through to the ordinary reconnect policy.
 func (e *Engine) maybeAutoConnect() bool {
 	if e.autoTried {
 		return false
 	}
-	anchor, ok := receivers.AutoTarget(e.reg)
-	if !ok {
+	flagged := receivers.AutoTargets(e.reg)
+	if len(flagged) == 0 {
 		e.autoTried = true
 		return false
 	}
@@ -27,67 +26,44 @@ func (e *Engine) maybeAutoConnect() bool {
 		e.autoTried = true
 		return false
 	}
-	keys, views, pending := e.autoConnectSet(anchor)
+	keys, views, pending := e.autoConnectSet(flagged)
 	if pending {
-		return false // the anchor is not addressable yet; wait for discovery
+		return false // a flagged row has no endpoint yet; wait for discovery
 	}
-	// The anchor resolved into an attempt or a skip; either ends the phase.
+	// Every flagged row resolved into an attempt, a drop, or a skip; either
+	// way the launch phase ends here.
 	e.autoTried = true
 	if len(keys) == 0 {
 		return false
 	}
-	e.connectLaunch(keys, views, anchor)
+	e.connectLaunch(keys, views, keys[0])
 	return true
 }
 
-// autoConnectSet resolves the launch attempt: the anchor plus, when the
-// anchor belongs to the last session's combination, the rest of that
-// combination in its recorded order. Every kept key resolves to a wire view;
-// an offline remembered row reads from its cached endpoint, the same view a
-// user click on the offline row would validate. A member that no longer
-// resolves or has no endpoint yet drops with a line and waits for a later
-// launch. The anchor's own absence or missing endpoint reports pending, so
-// the caller waits for discovery, and a stale unpaired group or the local
-// receiver ends the attempt with nothing to open.
-func (e *Engine) autoConnectSet(anchor string) (keys []string, views map[string]receivers.Target, pending bool) {
-	set := []string{anchor}
-	if slices.Contains(e.setsValue.LastTargets, anchor) {
-		set = append([]string(nil), e.setsValue.LastTargets...)
-	}
-	views = make(map[string]receivers.Target, len(set))
-	keys = make([]string, 0, len(set))
-	for _, key := range set {
+// autoConnectSet resolves the flagged launch set. Every kept key resolves to
+// a wire view; an offline remembered row reads from its cached endpoint, the
+// same view a user click on the offline row would validate. A row that no
+// longer resolves or is structurally unusable (a stale unpaired group, the
+// local receiver) drops with a line; a row that merely has no endpoint yet
+// reports pending, so the caller waits for discovery rather than launching
+// a partial set.
+func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[string]receivers.Target, pending bool) {
+	views = make(map[string]receivers.Target, len(flagged))
+	keys = make([]string, 0, len(flagged))
+	for _, key := range flagged {
 		t, found := e.target(key)
 		if !found {
-			if key == anchor {
-				return nil, nil, true
-			}
 			e.logf("auto-connect: dropping %s; it is no longer remembered", key)
 			continue
 		}
 		d := t.Device
-		stalePair := t.Entry.IsGroup() && !d.Online && e.pairIsStandalone(t.Entry)
-		if key == anchor {
-			// The anchor's own quirks end the whole attempt, as before.
-			if stalePair {
-				e.logf("auto-connect target %s is a stale stereo pair; skipping", t.Entry.DisplayName())
-				return nil, nil, false
-			}
-			if d.Local {
-				e.logf("auto-connect target %s is the local receiver; skipping", d.Name)
-				return nil, nil, false
-			}
-		} else {
-			if stalePair {
-				e.logf("auto-connect: dropping %s; it is a stale stereo pair", t.Entry.DisplayName())
-				continue
-			}
-			if d.Local {
-				// A stored flag can outlive the receiver becoming local; a
-				// member that became one cannot join a cohort.
-				e.logf("auto-connect: dropping %s; it is the local receiver", d.Name)
-				continue
-			}
+		if t.Entry.IsGroup() && !d.Online && e.pairIsStandalone(t.Entry) {
+			e.logf("auto-connect: %s is a stale stereo pair; skipping", t.Entry.DisplayName())
+			continue
+		}
+		if d.Local {
+			e.logf("auto-connect: %s is the local receiver; skipping", d.Name)
+			continue
 		}
 		if !d.Online {
 			// The registry remembers the address, so a launch does not have
@@ -97,21 +73,13 @@ func (e *Engine) autoConnectSet(anchor string) (keys []string, views map[string]
 			// from a user click.
 			cached, ok := receivers.CachedDevice(t.Entry, e.hasPassword(t.Entry.Key))
 			if !ok {
-				if key == anchor {
-					return nil, nil, true
-				}
-				e.logf("auto-connect: dropping %s; it has no remembered endpoint yet", d.Name)
-				continue
+				return nil, nil, true
 			}
 			t.Device = cached
 			d = cached
 		}
 		if d.Host == "" || d.Port == 0 {
-			if key == anchor {
-				return nil, nil, true
-			}
-			e.logf("auto-connect: dropping %s; it has no address yet", d.Name)
-			continue
+			return nil, nil, true
 		}
 		keys = append(keys, key)
 		views[key] = t
@@ -121,9 +89,9 @@ func (e *Engine) autoConnectSet(anchor string) (keys []string, views map[string]
 
 // connectLaunch opens the auto-connect cohort. It mirrors the user-click
 // path's guards and reset without the single-key intent policy: every key
-// validates against its resolved view, one plan opens, and the anchor is the
-// joiner whose row offers the cancel.
-func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target, anchor string) {
+// validates against its resolved view, one plan opens, and the first flagged
+// key is the joiner whose row offers the cancel.
+func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target, joiner string) {
 	// A launch supersedes the previous attempt's state: a stale PIN dialog,
 	// a takeover notice, and the old failure all end here.
 	e.userDisconnect = false
@@ -152,7 +120,7 @@ func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target,
 		e.publish()
 		return
 	}
-	plan.joinKey = anchor
+	plan.joinKey = joiner
 	e.startPlan(plan, false)
 }
 

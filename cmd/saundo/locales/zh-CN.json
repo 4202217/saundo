@@ -327,7 +327,7 @@
   "receiverChipHidden": "已隐藏",
   "receiverEnableSwitch": "在托盘面板中显示；关闭后移入“已隐藏”组",
   "receiverAutoToggle": "启动时自动连接",
-  "receiverAutoToggleDesc": "同一时间仅一台；启用一台会关闭其他接收器",
+  "receiverAutoToggleDesc": "可勾选多台；启动时会一起连接",
   "receiverChannelDesc": "左或右会把该声道复制到两个输出",
   "receiverPasswordTitle": "接收器密码",
   "receiverPasswordSaved": "已保存 · 用于 AirPlay 密码认证",

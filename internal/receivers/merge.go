@@ -208,16 +208,16 @@ func Visible(targets []Target, active map[string]bool) []device.Device {
 	return out
 }
 
-// AutoTarget picks the receiver this launch connects to: the single entry
-// carrying the auto-connect flag. It returns false when no entry asks to
-// auto-connect.
-func AutoTarget(reg Registry) (string, bool) {
+// AutoTargets lists the flagged launch set in registry order: every entry
+// carrying the auto-connect flag. Empty when no entry asks to auto-connect.
+func AutoTargets(reg Registry) []string {
+	var keys []string
 	for _, e := range reg.Entries {
 		if e.AutoConnect {
-			return e.Key, true
+			keys = append(keys, e.Key)
 		}
 	}
-	return "", false
+	return keys
 }
 
 // NormalizeHost lowercases and trims a manual host so "LivingRoom.local "

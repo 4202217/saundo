@@ -69,7 +69,6 @@ func MigrateSettings(sets *settings.Store, secret PasswordStore, reg *Store) (Mi
 				}
 				e.AutoConnect = true
 				stored.Put(e)
-				stored.SingleAutoConnect(cfg.LastDeviceID, true)
 				if err := reg.Save(stored); err == nil {
 					cfg.AutoConnect = false
 					res.SeededAuto = true

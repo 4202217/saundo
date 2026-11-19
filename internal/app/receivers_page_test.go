@@ -223,7 +223,7 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	a.receiverOpen = map[string]bool{"m:ab12": true, "AA:00": true, "AA:02": true}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"启动时自动连接", "同一时间仅一台",
+		"启动时自动连接", locales.ReceiverAutoToggleDesc(),
 		"接收器密码", "已保存 · 用于 AirPlay 密码认证", "更改", "••••••",
 		"编辑",
 	} {

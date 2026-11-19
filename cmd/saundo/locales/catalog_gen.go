@@ -2114,11 +2114,11 @@ func (msgs Messages) ReceiverAutoToggle() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggle", nil)
 }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off"
+// ReceiverAutoToggleDesc says "Flag as many as you like; they connect together at launch"
 // in the language the app shows.
 func ReceiverAutoToggleDesc() string { return In(i18n.Locale()).ReceiverAutoToggleDesc() }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off"
+// ReceiverAutoToggleDesc says "Flag as many as you like; they connect together at launch"
 // in the language of msgs.
 func (msgs Messages) ReceiverAutoToggleDesc() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)

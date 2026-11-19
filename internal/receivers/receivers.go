@@ -207,19 +207,6 @@ func PruneStaleGroups(reg *Registry, seen map[string]bool, now time.Time, grace 
 	return removed
 }
 
-// SingleAutoConnect keeps the one-target invariant: every entry but key
-// loses AutoConnect, and key gains it when on. The engine calls it inside
-// one Store.Update, so the file never holds two auto-connect targets.
-func (r *Registry) SingleAutoConnect(key string, on bool) {
-	for i := range r.Entries {
-		if r.Entries[i].Key == key {
-			r.Entries[i].AutoConnect = on
-		} else if on {
-			r.Entries[i].AutoConnect = false
-		}
-	}
-}
-
 func (e Entry) IsManual() bool { return e.Kind == KindManual }
 
 // IsGroup reports whether the entry is a remembered stereo pair. Settings on

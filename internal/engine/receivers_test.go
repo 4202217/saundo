@@ -274,10 +274,31 @@ func TestAutoConnectSkipsAStaleStereoPair(t *testing.T) {
 	}
 }
 
-// TestAutoConnectRestoresTheLastCombination pins the multi-device launch: the
-// flagged row anchors the attempt, and when it belongs to the last session's
-// combination the whole combination opens as one cohort in its recorded order.
-func TestAutoConnectRestoresTheLastCombination(t *testing.T) {
+// TestAutoConnectLaunchesEveryFlaggedReceiver pins the multi-device launch:
+// every flagged row connects as one cohort in registry order, the same rows
+// a user click would use.
+func TestAutoConnectLaunchesEveryFlaggedReceiver(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	second := secondDevice()
+	h.e.reg.Put(receivers.Entry{Key: second.ID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	h.e.setDevices([]device.Device{onlineDevice(), second})
+
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the flagged set launched", h.sessions)
+	}
+	if got := h.e.plan.keys(); len(got) != 2 || got[0] != testDeviceID || got[1] != second.ID {
+		t.Fatalf("plan = %v, want both flagged receivers in registry order", got)
+	}
+	if h.e.plan.joinKey != testDeviceID {
+		t.Fatalf("join key = %q, want the first flagged row", h.e.plan.joinKey)
+	}
+}
+
+// TestAutoConnectLeavesUnflaggedReceiversOut pins the flags as the whole
+// launch contract: an unflagged receiver stays out of the launch set even
+// when it was in the last session's combination.
+func TestAutoConnectLeavesUnflaggedReceiversOut(t *testing.T) {
 	h := newHarnessWithRegistry(t)
 	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
 	second := secondDevice()
@@ -285,31 +306,10 @@ func TestAutoConnectRestoresTheLastCombination(t *testing.T) {
 	h.e.setDevices([]device.Device{onlineDevice(), second})
 
 	if h.sessions != 1 {
-		t.Fatalf("sessions = %d, want the combination launched", h.sessions)
-	}
-	if got := h.e.plan.keys(); len(got) != 2 || got[0] != testDeviceID || got[1] != second.ID {
-		t.Fatalf("plan = %v, want the recorded combination in order", got)
-	}
-	if h.e.plan.joinKey != testDeviceID {
-		t.Fatalf("join key = %q, want the anchor", h.e.plan.joinKey)
-	}
-}
-
-// TestAutoConnectLaunchesTheAnchorAlone pins the rule that keeps a re-flagged
-// row authoritative: a combination that does not contain the anchor leaves the
-// anchor to launch alone, and the combination returns after the next session.
-func TestAutoConnectLaunchesTheAnchorAlone(t *testing.T) {
-	h := newHarnessWithRegistry(t)
-	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
-	second := secondDevice()
-	h.e.setsValue.LastTargets = []string{second.ID, "AA:BB:CC:DD:EE:FF"}
-	h.e.setDevices([]device.Device{onlineDevice(), second})
-
-	if h.sessions != 1 {
-		t.Fatalf("sessions = %d, want the anchor alone", h.sessions)
+		t.Fatalf("sessions = %d, want the flagged row only", h.sessions)
 	}
 	if got := h.e.plan.keys(); len(got) != 1 || got[0] != testDeviceID {
-		t.Fatalf("plan = %v, want the anchor only", got)
+		t.Fatalf("plan = %v, want the flagged row only", got)
 	}
 }
 
@@ -390,7 +390,14 @@ func TestAutoConnectManualTargetIsImmediate(t *testing.T) {
 	if key == "" {
 		t.Fatal("no manual row")
 	}
-	h.e.reg.SingleAutoConnect(key, true)
+	entry := receivers.Entry{}
+	if e, ok := h.e.reg.Get(key); ok {
+		entry = e
+	} else {
+		entry = receivers.Entry{Key: key, Kind: receivers.KindDiscovered}
+	}
+	entry.AutoConnect = true
+	h.e.reg.Put(entry)
 	// The run loop's first act; no discovery cycle has reported yet.
 	h.e.maybeAutoConnect()
 	if h.sessions != 1 {
@@ -565,7 +572,7 @@ func TestSetReceiverHiddenFiltersFlyoutKeepsActive(t *testing.T) {
 	}
 }
 
-func TestTogglingAutoConnectClearsOthers(t *testing.T) {
+func TestTogglingAutoConnectKeepsOtherFlags(t *testing.T) {
 	h := newHarnessWithRegistry(t)
 	first := device.Device{ID: testDeviceID, Name: "客厅 HomePod", Host: "192.0.2.10", Port: 7000,
 		Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true}
@@ -577,11 +584,20 @@ func TestTogglingAutoConnectClearsOthers(t *testing.T) {
 		patch: receivers.Patch{AutoConnect: &on}})
 	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: second.ID,
 		patch: receivers.Patch{AutoConnect: &on}})
-	if e, _ := h.e.reg.Get(testDeviceID); e.AutoConnect {
-		t.Fatal("the previous auto-connect flag survived")
+	if e, _ := h.e.reg.Get(testDeviceID); !e.AutoConnect {
+		t.Fatal("the first flag did not survive the second toggle")
 	}
 	if e, _ := h.e.reg.Get(second.ID); !e.AutoConnect {
-		t.Fatal("the new flag did not land")
+		t.Fatal("the second flag did not land")
+	}
+	off := false
+	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: testDeviceID,
+		patch: receivers.Patch{AutoConnect: &off}})
+	if e, _ := h.e.reg.Get(testDeviceID); e.AutoConnect {
+		t.Fatal("the first flag did not clear")
+	}
+	if e, _ := h.e.reg.Get(second.ID); !e.AutoConnect {
+		t.Fatal("clearing one flag cleared the other")
 	}
 }
 

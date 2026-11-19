@@ -99,8 +99,8 @@ func TestStaleGroupPrunedAfterGraceAndLosesAutoConnect(t *testing.T) {
 	if _, ok := h.e.reg.Get(oldKey); ok {
 		t.Fatal("stale group survived the grace period")
 	}
-	if key, ok := receivers.AutoTarget(h.e.reg); ok {
-		t.Fatalf("auto-connect survived on %q", key)
+	if keys := receivers.AutoTargets(h.e.reg); len(keys) != 0 {
+		t.Fatalf("auto-connect survived on %v", keys)
 	}
 	stored, err := h.e.recvStore.Load()
 	if err != nil {
