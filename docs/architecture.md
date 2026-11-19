@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-14 -->
+<!-- reviewed-through: 2026-11-17 -->
 
 # saundo Architecture and Technology Selection
 
@@ -137,8 +137,11 @@ The diagram shows the Windows leaves. macOS replaces WASAPI with the Core Audio 
 There are four primary concurrency roles:
 
 - The mygo UI main thread.
-- The engine goroutine, which owns session lifecycle, timers, the settings merge, and snapshot publishing.
-- The sender event-loop goroutine, which owns all protocol sockets and timers.
+- The engine goroutine, which owns session lifecycle, timers, the settings merge, and snapshot publishing, and drives the sans-i/o sender through
+  `NextDeadline`, `Tick`, and `HandleEvent`.
+- The host I/O goroutines: `internal/airplay/io`'s `Host` reads the protocol
+  sockets, `internal/airplay/ptp` runs its own loop, and a stereo group adds
+  one forwarder per member.
 - The capture goroutine, which owns WASAPI capture and ring-buffer writes.
 
 The engine also runs a mute worker and a level-analysis worker, both fed by bounded queues so the audio thread never blocks on them.
@@ -155,9 +158,10 @@ The wire-level protocol — discovery and auth selection, pairing, the encrypted
 
 **Single process, no sidecar.** Protocol, capture, and UI live in one process. One less IPC layer and simpler debugging.
 
-**ALAC first, no PCM.** Modern receivers require ALAC. Implement only
-uncompressed ALAC frames, not the compression algorithm. The encoder is about
-40 lines.
+**ALAC for AP2, raw PCM only for AP1.** Modern receivers require ALAC on the
+realtime stream. Implement only uncompressed ALAC frames, not the compression
+algorithm; the encoder is about 40 lines. The plaintext AP1 fallback for
+`_raop`-only receivers sends big-endian int16 PCM, and AP1 is not a target.
 
 **Receiver family is separate from pairing method.** `device.Auth` selects the
 pairing flow; `device.Family` selects the audio key, latency profile, and
@@ -171,8 +175,10 @@ was verified against HomePod and Apple TV, but a standalone HomePod on software
 27 keeps its own PTP grandmaster and ignores an NTP-timed stream. A macOS
 AirPlay receiver behaves the same way: it advertises feature bit 41, accepts an
 NTP session SETUP, then silently ignores the stream SETUP. The Go port therefore
-runs a PTP follower (ported from AirFlash's `clock.rs`) when the receiver
-advertises feature bit 41 and its model starts with `AudioAccessory` or `Mac`.
+runs a PTP follower (ported from AirFlash's `clock.rs`) when the receiver's
+model starts with `AudioAccessory` or `Mac` and it either advertises feature
+bit 41 or reports no usable features value; that last case fails closed,
+because an NTP-timed stream would be silently ignored.
 The sender talks to it through a narrow `PTPClock` interface, so NTP stays the
 path for Apple TV.
 

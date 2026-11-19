@@ -302,6 +302,10 @@ func readArtwork(props uintptr) ([]byte, string) {
 	n := int(length)
 	out := make([]byte, n)
 	copy(out, unsafe.Slice(data, n))
+	if !usableArtwork(out) {
+		artDebugf("artwork is a placeholder: %d bytes", len(out))
+		return nil, ""
+	}
 	artDebugf("artwork ok: %d bytes", len(out))
 	return out, sniffImage(out)
 }

@@ -92,15 +92,27 @@ func (a *App) notesLoading() bool {
 	return a.historyState == historyLoading && changelogURL(i18n.Locale()) != updateChangelog
 }
 
+// notesThemeCache keeps the Markdown theme between frames. The key carries
+// the appearance and the contrast mix because both move the colors the theme
+// reads; a key on the appearance alone kept the old hairlines and headings
+// after the desktop's high-contrast setting changed.
+type notesThemeCache struct {
+	theme    *markdown.Theme
+	dark     bool
+	contrast bool
+}
+
+func (c *notesThemeCache) forPalette(p palette) *markdown.Theme {
+	if c.theme == nil || c.dark != p.dark || c.contrast != p.contrast {
+		c.theme, c.dark, c.contrast = notesTheme(p), p.dark, p.contrast
+	}
+	return c.theme
+}
+
 // notesHistory renders the offered version in full, then one folded row per
 // older version, newest first.
 func (a *App) notesHistory(c *ui.Context, p palette) {
-	// The view runs every frame; the dialog's Markdown theme depends only
-	// on the appearance and is kept across frames.
-	if a.mdTheme == nil || a.mdThemeDark != p.dark {
-		a.mdTheme, a.mdThemeDark = notesTheme(p), p.dark
-	}
-	a.md.Theme = a.mdTheme
+	a.md.Theme = a.mdThemeCache.forPalette(p)
 	entries := a.notesEntries()
 	pending := a.notesLoading()
 	a.notesHeading(c, p, entries[0])

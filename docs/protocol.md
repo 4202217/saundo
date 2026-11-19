@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-16 -->
+<!-- reviewed-through: 2026-11-17 -->
 
 # AirPlay 2 wire protocol
 
@@ -12,7 +12,9 @@ When real-device behavior contradicts this page, capture logs and packets first 
 
 Browse mDNS for `_raop._tcp` and `_airplay._tcp`. Parse `deviceid`, `features`, `sf`, `pw`, `am`, and `model` from the TXT records, and merge the two services' advertisements into one device. Choose authentication:
 
-- `pw=true`: password authentication (`AuthPassword`).
+- A non-HAP receiver with `pw=true`: password authentication
+  (`AuthPassword`). A receiver with HAP feature bits and `pw=true` selects HAP
+  password pairing instead.
 - `am=AirPort*`: auth-setup (`AuthSetup`, untested path).
 - HAP feature bits: Apple TV uses on-screen PIN; HomePod uses transient by default; a receiver with `sf` bit 7 (Require Password) uses HAP password pairing. The model, not the pairing method, selects the family profile (§2.5): a password-gated HomePod is not a Mac.
 - No auth bit: plain RTSP.
@@ -89,17 +91,21 @@ After `pair-verify`, switch the control channel to ChaCha20-Poly1305 immediately
 Order (a wrong order usually produces "connected but silent" or a drop after 30 seconds):
 
 1. `GET /info` on the encrypted control channel.
-2. `SETUP rtsp://<sender-address>/<sessionId>` with a binary plist body: `deviceID`, `sessionUUID`, `timingPort`, `timingProtocol` (`NTP` or `PTP`), `isMultiSelectAirPlay`, `groupContainsGroupLeader`, `macAddress`, `model`, `name`, `osBuildVersion`, `osName`, `osVersion`, `senderSupportsRelay`, `sourceVersion`, `statsCollectionEnabled`.
+2. `SETUP rtsp://<sender-address>/<sessionId>` with a binary plist body: `deviceID`, `sessionUUID`, `timingPort` (NTP only), `timingProtocol` (`NTP` or `PTP`), `isMultiSelectAirPlay`, `groupContainsGroupLeader`, `macAddress`, `model`, `name`, `osBuildVersion`, `osName`, `osVersion`, `senderSupportsRelay`, `sourceVersion`, `statsCollectionEnabled`.
 3. The response contains `eventPort`.
-4. Connect the event channel (§5); the receiver initiates the reverse connection.
+4. Connect the event channel (§5): the sender opens a TCP connection to the
+   receiver's `eventPort`, and the receiver pushes events over it.
 5. `RECORD` with an empty body and standard RTSP headers; it goes after session SETUP and before stream SETUP.
-6. On a PTP session, SETPEERS is a no-op; activate the PTP follower as soon as RECORD is answered and wait for the clock to be ready (§7) before the stream SETUP.
+6. On a PTP session the receiver ignores SETPEERS: a standalone receiver skips
+   it, while a pair member still sends it before the stream SETUP. Activate the
+   PTP follower as soon as RECORD is answered and wait for the clock to be
+   ready (§7) before the stream SETUP.
 7. `SETUP` stream with the ALAC plist (table below).
 8. The response provides `dataPort` and `controlPort`. It may also carry `arrivalToRenderLatencyMs`, the receiver's own arrival-to-render latency in milliseconds. The value is diagnostic; it is not the sender's presentation latency and is not added to it. Do not send another RECORD; start streaming.
 
 **Wi-Fi metrics.** The response's first stream object may also carry `wiFiMetrics` (capital F) with `rssi` (integer dBm), `ssid` (string), and `wifiBand` (`1` = 2.4 GHz, `2` = 5 GHz, `3` = 6 GHz). It is a device-side snapshot that can be up to 30 minutes old, not a live signal reading; a session that starts within 30 seconds, or a receiver with metrics collection off, omits it. saundo parses the object during the stream SETUP and records it in the engine snapshot; an absent object is unknown, and the app never polls `/metrics` or `/info` for it. The band enumeration is the receiver's; a value outside 1–3 reads unknown. The live capture that confirms this object is pending (see [verification.md](verification.md)).
 
-**Digest challenge.** A password-protected Mac answers the session SETUP with 401 and `WWW-Authenticate: Digest realm="airplay"`. Replay the identical request with the RFC 2069 digest — username `AirPlay`, no qop — adding `Authorization`. The replay returns 200.
+**Digest challenge.** A password-protected Mac answers the session SETUP with 401 and `WWW-Authenticate: Digest realm="airplay"`. Replay the request with a fresh `CSeq` and the RFC 2069 digest — username `AirPlay`, no qop — adding `Authorization`; the digest is recomputed for the new header set. The replay returns 200.
 
 Stream SETUP fields:
 
@@ -119,7 +125,7 @@ Stream SETUP fields:
 | `supportsDynamicStreamID` | `false` |
 | `streamConnectionID` | Numeric session id |
 
-The latency modes resolve to a millisecond value before SETUP. Low is 200 ms, standard is 1500 ms, stable is 2000 ms, and custom is 20 to 2000 ms. The base plus a receiver's DSP/DAC delay clamps to 20 to 4000 ms, and the sender sends that value unchanged. A live change restarts the session so the new latency reaches the stream SETUP and the sender re-anchors the timeline.
+The latency modes resolve to a millisecond value before SETUP. Low is 200 ms, standard is 1500 ms, stable is 2000 ms, and custom is 20 to 2000 ms, default 700 ms. The base plus a receiver's DSP/DAC delay clamps to 20 to 4000 ms, and the sender sends that value unchanged. A live change restarts the session so the new latency reaches the stream SETUP and the sender re-anchors the timeline.
 
 A macOS receiver adds a 66150-sample scheduling latency (see [devices.md](devices.md)).
 
@@ -127,7 +133,7 @@ A macOS receiver adds a 66150-sample scheduling latency (see [devices.md](device
 
 ## 5. Event channel and keep-alive
 
-The event channel is a reverse encrypted TCP connection: the receiver connects back and pushes events such as `POST /command` and `updateInfo`. Decrypt each event and reply; an unanswered channel tears the session down after about 25–30 seconds.
+The event channel is an encrypted TCP connection that the sender opens to the receiver's `eventPort`; the receiver pushes events such as `POST /command` and `updateInfo` over it. Decrypt each event and reply; an unanswered channel tears the session down after about 25–30 seconds.
 
 The reply must be exactly:
 
@@ -140,9 +146,9 @@ CSeq: <n>\r\n
 
 The request's `CSeq` only when present. Do not add `Content-Length`, `Audio-Latency`, or any other header — one extra header corrupts the receiver timeline, which looks like a healthy connection with no audio.
 
-Event keys: HKDF-SHA512("Events-Salt", "Events-Write-Encryption-Key" / "Events-Read-Encryption-Key", sharedSecret, 32). Because the connection is reversed, swap the receive and send keys. Transient pairing stops at M4, before the reference derives event keys, so the port derives them from the SRP shared secret there — a superset of the reference behavior that lets the app answer the channel if a HomePod or Mac opens it.
+Event keys: HKDF-SHA512("Events-Salt", "Events-Write-Encryption-Key" / "Events-Read-Encryption-Key", sharedSecret, 32). Because the sender is the dialer, the event keys swap the receive and send directions relative to the control channel. Transient pairing stops at M4, before the reference derives event keys, so the port derives them from the SRP shared secret there — a superset of the reference behavior that lets the app answer the channel if a HomePod or Mac opens it.
 
-Also send `POST /feedback RTSP/1.0` with `CSeq`, `User-Agent`, `DACP-ID`, `Active-Remote`, `Client-Instance`, and `Content-Length: 0`:
+Also send `POST /feedback RTSP/1.0` on AP2 with `CSeq`, `User-Agent`, `DACP-ID`, `Active-Remote`, `Client-Instance`, and `Content-Length: 0`. AP1 sends it through the standard RTSP request builder, which omits `Content-Length` for the empty body and adds `X-Apple-Client-Name`:
 
 - AirPlay 2: every **2 seconds** (pyatv `FEEDBACK_INTERVAL`, verified against HomePod 27).
 - AirPlay 1: one probe, then every 25 seconds while the receiver answers 200.
@@ -181,10 +187,10 @@ Used for receivers that accept it. A 20-byte sync packet (type `0xD4`) carries t
 
 ### PTP — follower
 
-HomePod software 27 and macOS receivers keep their own PTP grandmaster and silently ignore an NTP-timed stream: they accept an NTP session SETUP and RECORD, then never answer the stream SETUP. When the receiver advertises feature bit 41 (models `AudioAccessory*`, `Mac*`), the session runs PTP:
+HomePod software 27 and macOS receivers keep their own PTP grandmaster and silently ignore an NTP-timed stream: they accept an NTP session SETUP and RECORD, then never answer the stream SETUP. When those models advertise feature bit 41, or their features value did not parse (fail closed), the session runs PTP:
 
 - Session SETUP carries `timingProtocol: PTP`, `timingPeerInfo`, and `timingPeerList` with the sender's clock ID.
-- After RECORD, activate the follower without a SETPEERS round trip; the stream SETUP waits until the clock is ready.
+- After RECORD, a standalone receiver activates the follower without a SETPEERS round trip; a pair member still announces its peers. The stream SETUP waits until the clock is ready either way.
 - The follower binds UDP 319 and 320, subscribes to Sync, Delay_Resp, and Announce (Follow_Up arrives paired with Sync without its own grant), answers peer-delay requests, and estimates the offset from Sync/Follow_Up pairs plus Delay_Resp. Readiness requires three exchanges over at least 250 ms with a fresh offset. If the ports are firewall-blocked, the session fails before the stream SETUP with a firewall hint.
 - The receiver's PTP clock is boot-relative, not Unix epoch; only the measured offset matters.
 - The handshake deadline extends to 30 seconds while waiting for the clock: after a 30-minute session the receiver needed more than 10 seconds to re-establish PTP.
@@ -207,7 +213,7 @@ A HomePod stereo pair is not one session:
 
 - Group members share `tsid`; `igl=1` marks the leader (`gcgl` only says the group contains its leader). Discovery collapses the members into one logical target, `stereo:<tsid>`, named from `gpn` (decode its RFC 1035 `\DDD` escapes first), leader first; the group is online only when both members are online.
 - Open one AP2 session **per member**; each session SETUP carries `groupUUID = tsid`.
-- The Now Playing control plane (track metadata, artwork, playback state) fans out to every member's session, like audio, timing, and volume. The follower's top display follows the pair's HomeKit/tightSync media-system sync, not its own session's artwork stream; the session's first light is the one image it takes from its own session. That first light is a one-shot race, so a pair member re-sends the session's first cover 2 s later (`internal/airplay/sender` `coverRetry`).
+- The Now Playing control plane (track metadata, artwork, playback state) fans out to every member's session, like audio, timing, and volume. The follower's top display follows the pair's HomeKit/tightSync media-system sync, not its own session's artwork stream; the session's first light is the one image it takes from its own session. That first light is a one-shot race, so a pair member re-sends the current cover 2 s later (`internal/airplay/sender` `coverRetry`).
 - SETPEERS is not the display-sync seed. On a pair's PTP session the receiver treats SETPEERS as a no-op; the display sync comes from the HomeKit/tightSync media-system layer. The sender still sends it before the stream SETUP (the round trip hides inside the PTP wait, and the reply gates the stream SETUP on the clock's readiness). A standalone PTP receiver has no peers to announce and skips it: the follower activates at the RECORD reply, and the pair's per-member readiness still gates each stream SETUP (§7).
 - Capture fans out into one ring per member (`ring.Fanout`); the group reports streaming only when every member's session launched.
 
@@ -225,19 +231,18 @@ Idle
 A session starts at the live edge: capture runs from launch, so the ring holds seconds of pre-connect audio, and replaying it from the oldest end is wrong. One `StartGate` per session owns the start:
 
 - A member arrives when its receiver accepts the stream (AP1 RECORD, AP2 stream SETUP) and waits; the last arrival seals the shared epoch.
-- The first `Begin` from the engine's Tick performs the one trim that keeps the newest 50 ms cushion (`DefaultStartCushion`) — the session ring for a single receiver, or every member ring through the fanout in one call under its push lock for a pair. The trim is policy, not capture overflow, so it does not increment the dropped-sample counter.
-- Every member begins from the same epoch in that Tick, so a pair's rings keep the same content window and the members arm their pacers in lockstep.
+- The first `Begin` from the engine's Tick performs the one trim that keeps the newest 50 ms cushion (`DefaultStartCushion`) — the session ring for a single receiver, or every member ring through the fanout in one best-effort call for a pair (a capture push can land between member trims; the shared epoch, not the trim, is what is atomic). The trim is policy, not capture overflow, so it does not increment the dropped-sample counter.
+- Every member begins from the same epoch in that Tick, so a pair's rings start from one epoch and the members arm their pacers in lockstep.
 - Sync timestamps are anchored to that shared epoch: the published RTP value is `latency + frames since epoch`, not the number of packets actually sent, so a late pacer tick does not become a pair offset. Audio packet timestamps remain `latency + framesSent`.
 
 ## 10. Top-display artwork (Sound Glow)
 
 HomePod software 27.2 renders the current Now Playing cover on its top display once the user enables Sound Glow in the HomePod settings. Without that setting the display stays blank even though every request succeeds.
 
-The top display renders the artwork already attached to the Now Playing item. One `SET_PARAMETER` with `Content-Type: image/jpeg` and the raw JPEG body on the encrypted control channel, with the same `Session` and `RTP-Info` headers as track metadata, makes the image the Now Playing cover and repaints the top display:
+The top display renders the artwork already attached to the Now Playing item. One `SET_PARAMETER` with `Content-Type: image/jpeg` and the raw JPEG body on the encrypted control channel, with the same `RTP-Info` header as track metadata (AP2 omits `Session`; only AP1 sets it), makes the image the Now Playing cover and repaints the top display:
 
 ```
 SET_PARAMETER rtsp://<sender-address>/<session> RTSP/1.0
-Session: <session>
 RTP-Info: seq=<n>;rtptime=<ts>
 Content-Type: image/jpeg
 Content-Length: <n>
@@ -252,7 +257,7 @@ Content-Length: <n>
 
   ```
   POST /command RTSP/1.0
-  Session: <session>
+  RTP-Info: seq=<n>;rtptime=<ts>
   Content-Type: application/x-apple-binary-plist
   Content-Length: <n>
 

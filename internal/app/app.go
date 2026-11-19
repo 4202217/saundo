@@ -70,8 +70,7 @@ type App struct {
 	autoDownload  bool
 	quit          chan struct{}
 	md            markdown.Options
-	mdTheme       *markdown.Theme
-	mdThemeDark   bool
+	mdThemeCache  notesThemeCache
 	notesOpen     bool
 	notesEntered  bool
 	notesRange    bool

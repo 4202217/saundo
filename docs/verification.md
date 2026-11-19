@@ -494,6 +494,201 @@ idle/streaming/empty/error in zh-CN and English, light and dark, plus the
 media-off and ambient template/expanded states); every render was inspected
 for clipping, overflow, and wrapped copy, and none was found.
 
+## 2026-11-17 — 0.6.4 commit range review
+
+Range `v0.6.3..HEAD`: 41 commits, oldest `0672dd1`, tip `ecaf44e`.
+Classified from the diff, not the subject alone. A user-visible commit names
+the `CHANGELOG.md` 0.6.4 line that describes it. A merge commit has no
+content of its own, so the commits it brings in are classified here.
+
+- `ecaf44e` app: media card head at an 18-DIP icon and a 20-DIP switch —
+  user-visible; "The media card's head places its app icon, name, and
+  session switch on one top-aligned line..."
+- `3c0d7cc` merge PR #50 — merge; its commits are below.
+- `a16d5fc` docs: mygo guides in the code map — internal.
+- `75b47bf` docs: release range review step — internal.
+- `4c12210` app: top-align the media card head — user-visible; the same
+  media-card-head line as `ecaf44e`.
+- `8a0f6bc` merge PR #49 `app/tray-menu` — merge; its commits are below.
+- `8f5079a` merge PR #48 `fix/ambient-ring` — merge; its commits are below.
+- `bd42208` app: tray menu around quick actions — user-visible; "Media
+  controls in the tray menu..." and "The tray menu is rebuilt around the
+  session..."
+- `42ab568` landing: no vignette on the light pod — internal (site only).
+- `cc89459` docs: outside comparison sources dropped — internal (docs and
+  site copy).
+- `b62c4ac` docs: settings e2e driving block — internal.
+- `215261b` merge PR #47 — merge.
+- `b4429b6` docs: e2e wording platform-neutral — internal.
+- `bd7a68d` merge PR #46 — merge.
+- `108a482` docs: e2e UI driving on macOS — internal.
+- `d4ffc31` sender: stereo follower before its first light — user-visible;
+  "A cold start to a stereo pair lights both top displays..."
+- `34d9dca` verify: mygo automation plugin — internal.
+- `e0eaf3c` build: mygo v0.9.1 — internal (the documented render diff is
+  subpixel; the bump is a prerequisite for the render plugin).
+- `7337398` merge: mygo audit app fixes — merge.
+- `03a98a0` merge: landing glow lattice — merge.
+- `6c1c580` app: desktop text scale and mygo identities — user-visible;
+  "The interface follows the desktop text scale..."
+- `a26a8e4` build: `time.Sleep` ban in sans-I/O — internal.
+- `a9df430` build: dependency allowlist — internal.
+- `aad9751` build: channel gate across files — internal.
+- `2099d6a` docs: skills point at the Makefile — internal.
+- `b142fb6` build: release runbook in step with the gates — internal.
+- `d73ea15` build: architecture rules as gates — internal (test-only
+  refactors in engine and receivers).
+- `bee1aaa` landing: glow noise lattice floor — internal (site only).
+- `47d4103` sender: SETPEERS seeds the pair member sync — user-visible;
+  "Ambient light changes made during playback reach the second HomePod's
+  top display again..."
+- `d285983` build: rename landing to site — internal (structure).
+- `f4d9ae6` build: landing deploy to Pages — internal (site only).
+- `91b39eb` landing: modernize page, glow renderer — internal (site only).
+- `de0f660` landing: bilingual landing page — internal (site only).
+- `57aa077` engine: a user connect restarts the reconnect budget —
+  user-visible; "Retry after the automatic reconnect attempts are used up
+  starts a fresh backoff..."
+- `6735e3d` receivers: stereo member OS version for the cold-start light —
+  user-visible; the same cold-start line as `d4ffc31`.
+- `28bce7f` docs: tray-toggle feature in the verified docs — internal.
+- `a1ae9d4` docs: verification log compressed — internal.
+- `271b576` docs: every doc checked against 0.6.3 — internal.
+- `e059453` app: tray receiver rows toggle on click — user-visible in
+  principle, superseded inside this range by `bd42208`; the shipped
+  behavior is the "The tray menu is rebuilt around the session..." line.
+- `6737a5b` docs: 0.6.3 draft and publish recorded — internal.
+- `0672dd1` engine: mute worker stopped in the guard tests — internal
+  (test).
+
+Code review: subset ran (7 commits) -> fixed in `12c6fdf` and `844e475`;
+the result entry is below.
+
+## 2026-11-17 — release 0.6.4 UI review
+
+The copy inventory (`cmd/saundo/locales/en.json`, `zh-CN.json`) and the
+rendered preview matrix (`.audit/release-0.6.4/previews/`, 254 PNGs across
+both locales, light and dark, every settings page, the dialogs, the flyout
+states, and 1.25x text) were reviewed against `docs/ui-copy.md` and
+`docs/ui.md` before the changelogs. The new tray strings follow the
+terminology table (接收器, 托盘面板, 取消连接 / 断开连接 / 重试连接,
+关闭氛围灯 / 开启氛围灯, 上次 / Last used, single-color ✔); the catalog
+gates are green and no string truncates. The media card head was checked at
+both locales and themes and at 1.25x text with no clipping. Outcome: clean —
+no P0 or terminology finding, so no product fix commit.
+
+## 2026-11-17 — 0.6.4 verification skill audit
+
+All six feature pages were read against source (one reader per page) and
+`go run ./scripts/verify-map` resolves every name and path. Outcome:
+changed — the proven corrections landed as their own commit, `verify: the
+feature map matches the 0.6.4 tree`: the tray media rows (no track title),
+row order past six receivers, the ambient submenu, the reconnect budget reset
+on a user connect, the tray as a second connect entry point, text-scale
+window sizing and the page-switch scroll, the update surface's removed tray
+check action, and the citations that moved with the recent app changes.
+The live pass did not run: the release instance (pid 6532) is up and the e2e
+build shares the single-instance lock, so stopping the user's instance needs
+consent. The doctor passed read-only. Coverage gap: live driving of the six
+pages (tracked under Currently pending). No product defect was found.
+
+## 2026-11-17 — 0.6.4 release
+
+- Version `0.6.4`; the release commit is `build: release 0.6.4` and the tag
+  `v0.6.4` is created locally. At the maintainer's request this release is
+  not pushed: no workflow run, draft, publish, or public-feed check happened
+  in this run, so the draft and feed steps remain for the push.
+- Docs audit: `architecture.md`, `implementation.md`, `platforms.md`,
+  `protocol.md`, `devices.md`, `ui.md`, and `ui-copy.md` were reviewed
+  against the tree and corrected where the code and the documents disagreed:
+  the runtime roles and socket owner, the AP1 raw-PCM scope, the PTP
+  fail-closed gate, SETPEERS on a pair member's PTP session, the event
+  channel's direction, the AP2 request headers, the flyout heights and tray
+  ambient row, and the check summaries in `AGENTS.md` and `platforms.md`.
+  Reviewed-through dates bumped to 2026-11-17.
+- Gate: `mingw32-make check` green — gofmt, 364 catalog messages, `go vet`
+  under the default, `updateharness`, and `e2e` tags, `mygo vet`, check-arch
+  "architecture seams hold", check-size "120 files within their line budget",
+  all package tests, verify map "map ok", and check-platforms on
+  windows/amd64 and darwin/arm64.
+- Candidate: `go tool mygo build -platform windows/amd64` produced
+  `saundo-setup-0.6.4-amd64.exe`, `saundo-0.6.4-windows-amd64.tar.gz`, deltas
+  from 0.6.1, 0.6.2, and 0.6.3, and `update-windows-amd64.json` carrying
+  version 0.6.4, the English 0.6.4 notes, and an 88-character signature. The
+  candidate was not installed: the running instance holds the
+  single-instance lock.
+- Maintainer's pre-release test: the release request (2026-11-17) authorized
+  the release and carried no separate hands-on statement for this build, so
+  none is recorded. A pre-push install and smoke run remains owed.
+
+## 2026-11-17 — 0.6.4 critical-path code review (post-tag)
+
+The critical-path code review rule landed after `v0.6.4` was tagged. The
+0.6.4 range touches `internal/airplay/sender`, `internal/engine`, and
+`internal/app/update*.go`, so the subset review is owed before the local tag
+is pushed. Code review: not run -> the rule did not exist when the release
+commit was cut. The next release's range review carries the line.
+
+## 2026-11-17 — 0.6.4 critical-path code review result
+
+`/code-review` ran on `v0.6.3...v0.6.4`, restricted to `internal/airplay`,
+`internal/engine`, `internal/capture`, `internal/app/update*.go`, and
+`internal/app/migrate.go`: 7 commits, 25 files. Code review: subset ran
+(7 commits) -> fixed in `12c6fdf` and `844e475`.
+
+Standards findings. Hard: the sender comment and two test comments still
+taught the refuted SETPEERS display-sync mechanism that `d4ffc31` corrected
+in the docs (fixed in `12c6fdf`); commit `6735e3d` mixes the OSVersion cache
+fix with reply-label diagnostics, which cannot be split after the tag and is
+recorded as a history exception. Judgement: the update notes dialog cached
+its Markdown theme on the appearance only, so high contrast left stale
+hairlines, muted copy, and headings (fixed in `844e475`); the 2 s
+stop-with-timeout select is duplicated in `mute.go` and `silence.go` (kept:
+two call sites); `onCoverRetry` logs `cover: first-light retry` even when
+`sendCover` skipped an empty image (kept: the retry is armed only after a
+cover and the line is diagnostics); `Features.Persisted` travels as a pair
+into the receiver cache (kept: that pair is the store's shape).
+
+Spec findings. The high-contrast notes theme (c1) and the SETPEERS comments
+(c2) are the fixes above. Partial: `6735e3d` said every RTSP reply carries
+the method, content type, and byte count, but only `sendRequest` labels the
+request, so AP2 and pairing replies log the method alone (kept as a
+diagnostics gap; extend the label at the next attribution run). Scope:
+the notes-theme cache was not named in a commit body and now carries
+`844e475`.
+
+`mingw32-make check` is green after the fixes (`check-size` 120 files,
+`app.go` baseline lowered to 1259). The candidate build was not rebuilt:
+it would no longer match `v0.6.4`. The tag stays on `04fdd96`; the two
+fixes are after it and nothing is pushed.
+
+## 2026-11-17 — 0.6.4 re-cut
+
+The first `v0.6.4` tag (`04fdd96`) was pushed and its release workflow was
+canceled before any release was created; the tag was deleted locally and
+remotely, and the release commit was re-cut on top of the critical-path
+fixes (`12c6fdf`, `844e475`). The version, both changelogs, and both READMEs
+are unchanged; the tag now includes the fixes, and the range review carries
+the `Code review:` line the new preflight requires. The candidate built from
+the first cut is stale; CI builds the published assets from the new tag.
+
+## 2026-11-17 — 0.6.4 draft and publish
+
+Workflow `44022602002` succeeded on tag `v0.6.4` (`117508a`): `check`,
+`check-macos`, `draft`, `build`, and `build-macos` all green. The draft
+carried the Windows installer, both update archives, both signed manifests,
+`install.ps1`, `install.sh`, the dmg, `SHA256SUMS`, and the deltas from
+0.6.1-0.6.3. `gh release download` plus `sha256sum -c SHA256SUMS` passed for
+every asset. Both manifests carry version 0.6.4, the English 0.6.4 notes,
+and an 88-character signature. The bilingual release notes were set from
+`scripts/release-notes.sh`, and the release was published at
+2026-11-17T05:21:56Z. The public feed serves `update-windows-amd64.json` and
+`update-darwin-arm64.json` at version 0.6.4 with signatures; the installer
+and dmg return 200. A live update from 0.6.3 was not run, and the
+maintainer's pre-release test of the candidate remains unrecorded. The first
+`v0.6.4` tag (`04fdd96`) was canceled before any release existed; this
+release is the re-cut at `117508a`, which includes the code review fixes.
+
 ## 2026-11-17: Phase 3 site projection and replica gates
 
 The landing page's flyout replica reads `site/assets/demo-data.js`,
@@ -1240,3 +1435,26 @@ one took it from 1627.
   and each future double edit adds one line here. 5. The SKILL.md measured-
   geometry section no longer re-states the height-rule numbers the token
   gate enforces; it points at `flyoutHeightForState`.
+
+## 2026-11-18 — Apple Music's idle thumbnail is not a cover
+
+An idle Apple Music session reports the title `未在播放` and a 300×300 PNG in
+the cover slot. The image is a white rounded frame and a note at alpha 63 over
+a transparent field, not a cover. Drawn at the card's 52-DIP poster the frame
+lands on one device pixel at 175% scaling and reads as a white line around the
+poster; compositing the captured bytes on the card's `#2d2d33` at 91×91 gives
+an edge pixel of 95,95,99 against the screenshot's 92,92,96, so the line is
+the image, not the card's drawing. The earlier tile-background fix addressed a
+sliver from the app's own image tile and could not cover this case.
+
+`internal/nowplaying` now drops a thumbnail with no pixel at alpha ≥ 0.5 at
+both read boundaries (SMTC and the macOS adapter), so the session reads as
+having no cover and the card falls back to its own placeholder tile. The
+captured thumbnail is `internal/nowplaying/testdata/apple-music-idle.png`. A
+live `Read` with the app's two sessions open reports the Chrome cover intact
+(32,101 bytes) and the Apple Music session at zero artwork. Decode plus scan
+costs 0.3 ms for the 150×83 Chrome thumbnail and 6.6 ms for a synthetic
+1500×1500 PNG, once per 2 s poll. Checks: `go test ./internal/nowplaying -run
+TestUsableArtwork` passed 4 tests. Live check on the rebuilt app: with Apple
+Music idle and current, the flyout drew the card's own placeholder tile with
+no frame around it (user's capture, 2026-11-18).

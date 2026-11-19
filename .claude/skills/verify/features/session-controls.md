@@ -40,8 +40,9 @@ page, and the diagnostics log row lives on the settings 关于 page.
   transport controls (prev / play-pause / next) sit at the row's left as
   bare foreground-colored 12-DIP glyphs on 24-DIP hit areas, 2 DIP apart
   and starting on the card's content column; only the hovered button draws
-  its 24-DIP circle, and each calls `nowplaying.Control`. The row then shows elapsed, cover-field fill (only
-  while 封面配色 is on), thumb, and remaining. A session with no timeline
+  its 24-DIP circle, and each calls `nowplaying.Control`. The row then shows
+  elapsed, the cover-field fill (solid `p.fg` when 封面配色 is off; only the
+  cover-sampled gradient is gated), thumb, and remaining. A session with no timeline
   keeps the same row as an empty track: no fill, thumb, times, or copy.
   Refreshed every 2 s from the platform Now Playing source (SMTC on Windows,
   the MediaRemote adapter on macOS; `nowplaying.Read`); only controls the
@@ -60,13 +61,14 @@ page, and the diagnostics log row lives on the settings 关于 page.
   setting.
 - Capture source: 系统声音 follows the platform default output (WASAPI on
   Windows, the Core Audio tap on macOS), pins a specific endpoint, or, on
-  macOS 14.4+, captures one or more selected apps (`settings_window.go:875-914`;
-  a queued async restart supersedes the in-flight one). The settings 采集状态
+  macOS 14.4+, captures one or more selected apps (`settings_window.go:813-849`;
+  the app picker at `:985-1045`; a queued async restart supersedes the
+  in-flight one). The settings 采集状态
   row names the endpoint and rate; the flyout does not.
 - Mute local output: the 连接 page's 连接后静音本机输出 switch mutes the
   local render endpoint while streaming and restores it on disconnect, quit,
   or switch-off, with a guard file for a crash
-  (`settings_window.go:609-643`; `internal/engine/mute.go`). On macOS with a
+  (`settings_window.go:551-568`; `internal/engine/mute.go`). On macOS with a
   per-app selection the switch reads 连接后静音所选应用 and tap-mutes the
   selected apps instead; no guard file is written in that mode. The mute is
   held across an in-place latency or receiver-delay restart and across a
@@ -80,8 +82,8 @@ page, and the diagnostics log row lives on the settings 关于 page.
   session restores the local output.
 - Takeover: a clean control close during streaming is terminal. The flyout
   footer reads 已被其他设备接管 and the active receiver row offers
-  重新连接 (`flyout.go:716-719`; the row action at
-  `:280-284`; `docs/ui.md`).
+  重新连接 (`flyout.go:667-675`; the row action at
+  `:281-286`; `docs/ui.md`).
 - Idle standby: after the configured silence threshold the engine sends
   playback state 2, the top display goes dark, and the flyout lamp card
   shows the 待机 chip (`engine.go:1016-1080`; see

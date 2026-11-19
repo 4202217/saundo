@@ -46,6 +46,8 @@ Classify every commit as user-visible or internal. Read the diff when the subjec
 
 Record the review in `docs/verification.md` in a dated section whose heading ends with `<version> commit range review`. The record names the range's oldest commit, its tip, and the count. It then lists every commit with its class and, for a user-visible commit, the changelog line that describes it. Leave the record uncommitted with the other release edits.
 
+Critical-path commits are read in full. A commit that touches any of `internal/airplay/` (crypto, sender, ptp, creds), `internal/engine/`, `internal/capture/`, `internal/app/update*.go`, or `internal/app/migrate.go` is reviewed diff by diff, not classified from its subject. When the range contains one, run `/code-review` on that subset before the docs audit and add one line to the same section: `Code review: subset ran (N commits) -> no P0`, `Code review: subset ran (N commits) -> fixed in <commit>`, or `Code review: not run -> <why it was impossible>`. A P0, or an unresolved Standards finding on the subset, lands as its own fix commit before the release commit; `mingw32-make check` and the candidate build then run again. `scripts/release-check.sh` fails when a critical-path commit is in the range and the section has no `Code review:` line.
+
 ## 2. Docs audit, UI review, mockup templates, and changelogs
 
 Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release commit.
@@ -215,4 +217,4 @@ For rollback, signing, and GPL compliance, follow `docs/releasing.md`. Do not ro
 
 ## Report
 
-State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the commit range review (the range, its count, and the user-visible commits), the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, the regenerated site data, the canonical diff, and the mockup template refresh (changed, already current, or the recorded gap) with its baseline and render directory. If you stopped, name the failing gate and the file or command that proves it.
+State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the commit range review (the range, its count, and the user-visible commits), the code review outcome (subset, its commit count, and any fixed finding), the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, the regenerated site data, the canonical diff, and the mockup template refresh (changed, already current, or the recorded gap) with its baseline and render directory. If you stopped, name the failing gate and the file or command that proves it.

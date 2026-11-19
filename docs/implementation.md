@@ -38,12 +38,13 @@ level-analysis worker, both behind bounded queues:
   runs `closeSession` itself, so the group teardown also happens on this
   goroutine — never inside a sender callback and never on another
   goroutine.
-- **The sender event loop** (`internal/airplay/sender`) owns all protocol
-  sockets and timers. It is sans-i/o: `internal/airplay/io` (package
+- **The sender** (`internal/airplay/sender`) is sans-i/o and owns no
+  goroutine: the engine goroutine drives it. `internal/airplay/io` (package
   `raopio`) defines the six-method `IO` seam (TCP connect/send/close, UDP
-  bind/send/close) and `Host`, the Go net implementation that pushes
-  connection events, received packets, and ticks back in through one
-  `Events` channel.
+  bind/send/close) and `Host`, the Go net implementation whose reader
+  goroutines push connection, data, and close events through one `Events`
+  channel; the engine loop pulls timers with `NextDeadline` and `Tick`. PTP
+  runs its own loop, and a stereo group adds one forwarder per member.
 - **The capture goroutine** owns the platform capture leaf (WASAPI on
   Windows, the Core Audio tap on macOS), converts and resamples, and writes
   the ring buffer or the stereo fanout. It never touches the network.
@@ -51,8 +52,8 @@ level-analysis worker, both behind bounded queues:
 The app also polls the platform Now Playing source every two seconds
 (`internal/nowplaying`): SMTC on Windows, the MediaRemote adapter on macOS.
 It feeds the Now Playing card and its transport buttons. Capture blocks are measured
-into level and five-band frames (`internal/audio/analyze`) on the capture
-goroutine; `Engine.LevelFrame` reads them back with the presentation delay so
+into level and five-band frames (`internal/audio/analyze`) on the engine's
+level pump goroutine, fed by a 100 ms ring from capture; `Engine.LevelFrame` reads them back with the presentation delay so
 the card's meter follows the audio being heard. The bands gate energy below
 -50 dBFS and stop the per-band AGC at a floor 18 dB above the gate, and the
 envelopes ignore changes under 0.02 of the bar's range, so dither and room
@@ -87,7 +88,7 @@ flyout cannot move the preview away from the top display.
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `cmd/saundo/preview` | Browser preview entry point (`main_js.go`, js/wasm only): `mygo dev -web` runs the real app views behind the `preview` tag. `RunPreview` in `internal/app` selects `PreviewScenarios()` and applies each state directly; clicks inside a rendered view go through the typed action seam. The host build is a stub so `go build ./...` stays green |
-| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`; its creation in `settings_window_create.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; the same path on both platforms, each updating from its own signed manifest), the tray flyout window creation (`flyout_window.go`), window sizing and the text-scale zoom (`window_scale.go`), the settings preview's sample card (`now_playing_preview.go`), tray and menu icons, receiver glyphs (the filled set in `icons_sf_gen.go`), the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), the airgoplay→saundo data migration (`migrate.go`), and the preview harness: one fixture (`ui_fixture.go`), one state catalog (`ui_catalog*.go`), typed actions (`actions.go`, `act_on.go`, `act_off.go`), the fake handlers (`preview_actions.go`), and the wasm bridge (`preview_*.go`). The design language these implement is in [ui.md](ui.md) |
+| `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`; its creation in `settings_window_create.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; the same path on both platforms, each updating from its own signed manifest), the tray flyout window creation (`flyout_window.go`), the tray menu model and native menu (`tray_menu.go`), window sizing and the text-scale zoom (`window_scale.go`), the settings preview's sample card (`now_playing_preview.go`), tray and menu icons, receiver glyphs (the filled set in `icons_sf_gen.go`), the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), the airgoplay→saundo data migration (`migrate.go`), and the preview harness: one fixture (`ui_fixture.go`), one state catalog (`ui_catalog*.go`), typed actions (`actions.go`, `act_on.go`, `act_off.go`), the fake handlers (`preview_actions.go`), and the wasm bridge (`preview_*.go`). The design language these implement is in [ui.md](ui.md) |
 | `internal/engine` | UI-agnostic session controller: command handling, transport lifecycle, stereo groups (`group.go`), receiver management (`receivers.go`, `receivers_cmd.go`), silence meter and suspend (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy, the capture retry backoff, snapshots |
 | `internal/discovery` | mDNS browse through a logger that drops the client's repeated IPv6 bind failures, plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking (the window is at least one directed-pass period plus its timeout), and local marking when an advertised address belongs to this host (`device.Device.Local`) |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), the Windows per-app process-loopback leaf (`app_windows.go`, not offered in the product; see platforms.md), the macOS Core Audio process tap aggregated with the output device, including the selected apps' stereo mixdown resolved from bundle IDs and its own local mute (`capture_darwin.go`, `SetProcessMuted`), and its device mute (`mute_darwin.go`), format conversion (`convert.go`), the 30-second device-retry backoff, and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
@@ -101,7 +102,7 @@ flyout cannot move the preview away from the top display.
 | `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
 | `internal/airplay/ptp` | `Follower` for receivers that keep their own grandmaster (`ptp.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON on Windows (`dpapi_windows.go`), Keychain-master-key AES-256-GCM on macOS (`dpapi_darwin.go`) |
-| `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), and the top-display capability gate (`TopDisplayCapable`) shared by discovery, engine, and UI |
+| `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), and the top-display capability gate (`TopDisplayCapable`) used by the engine's lamp and stereo-group paths |
 | `internal/lamp` | Six three-color palette templates whose 600×600 carriers are flat color fields, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the local-receiver rule (forced hidden, no auto-connect), the manual-receiver spec, the settings migration, the cached stereo members and cached-device builder, and the duplicate policy. Rows key by deviceid, `stereo:<tsid>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) with shell-resolved app names and icons (`appidentity_windows.go`); macOS reads the system session through the vendored MediaRemote adapter (`nowplaying_darwin.go`, `native/mediaremote-adapter`) with LaunchServices identity; transport commands (per-platform build split) |
@@ -212,7 +213,8 @@ reported at launch.
    receiver password) → pair-verify → encrypted control channel →
    `GET /info` → session SETUP (a password-protected Mac answers 401 and
    gets the Digest replay) → event channel → `RECORD` → PTP readiness
-   (SETPEERS is skipped on PTP) → stream SETUP → streaming.
+   (a standalone PTP receiver skips SETPEERS; a pair member still sends it) →
+   stream SETUP → streaming.
 4. Capture starts, or the fanout attaches one ring per pair member; the
    `StartGate` trims every ring to the newest 50 ms cushion and seals the
    shared start epoch; RTP flows at 44100 frames per second. The ring holds
@@ -280,8 +282,11 @@ vets both targets on either host and rejects platform imports outside tagged
 files; it runs inside `make check` and in CI. `go run ./scripts/check-arch`
 enforces the import seams, the concurrency rules, and the dependency allowlist
 from AGENTS.md.
-`go run ./scripts/check-size` holds the line budget. Both run inside
-`make check` and in CI.
+`go run ./scripts/check-size` holds the line budget, and `go run
+./scripts/verify-map` checks the verification skill's feature map against the
+tree. All three run inside `make check` and in CI, together with
+`go tool mygo i18n check` and `go vet` under the default, `updateharness`, and
+`e2e` tag sets.
 
 The preview harness is a tagged build, never a shipped one. The catalog, the
 typed action registry, and the wasm bridge carry the `preview` build tag;

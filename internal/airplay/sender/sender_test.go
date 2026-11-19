@@ -174,11 +174,11 @@ func TestStereoGroupSessionCarriesGroupUUIDAndPTPTimeline(t *testing.T) {
 	if got := r.rx.sessionSetup["groupUUID"]; got != tsid {
 		t.Fatalf("groupUUID = %v, want %q", got, tsid)
 	}
-	// A pair member announces its peers even on a PTP session: the member
-	// sync that carries Now Playing between the two top displays keys off the
-	// SETPEERS list, and skipping it left the follower's display stuck on its
-	// first light. Timing still comes from the sender's master; the peers
-	// body lists the members plus the sender's own address.
+	// A pair member announces its peers even on a PTP session: the reply
+	// releases the stream SETUP while the PTP clock becomes ready, and the
+	// round trip hides in the PTP wait. It is not the top-display sync seed
+	// (the 2026-11-15 attribution was corrected 2026-11-16); the peers body
+	// lists the members plus the sender's own address.
 	if len(r.rx.setPeersBody) == 0 {
 		t.Fatal("pair member sent no SETPEERS")
 	}
@@ -205,7 +205,8 @@ func TestStereoGroupSessionCarriesGroupUUIDAndPTPTimeline(t *testing.T) {
 
 // TestStandalonePTPSessionSkipsSetPeers pins the standalone shortcut: a PTP
 // session with no timing peers (a single HomePod) spends no round trip on
-// SETPEERS, because the announcement only seeds a pair's member sync.
+// SETPEERS, because a pair's reply is its SETUP gate and a standalone
+// receiver has no peers to announce.
 func TestStandalonePTPSessionSkipsSetPeers(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	r.sender.SetPTPClock(readyClock{})

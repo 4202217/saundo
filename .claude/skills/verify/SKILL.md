@@ -229,7 +229,7 @@ window. Animated windows may never settle; use `wait <selector>` or
   ```bash
   powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/skills/verify/scripts/capture-window.ps1 -Out /tmp/saundo-verify/flyout.png
   # settings window: -Class MyGoWindow -ProcId <pid> — its title follows the
-  # app locale (设置 · 声渡 under zh-CN, Settings · saundo under en)
+  # app locale (设置 · 声渡 under zh-CN, Settings · Saundo under en)
   ```
 - Act: real user paths only. Click the tray icon or the flyout's own
   buttons; the tray icon lives in the taskbar or the hidden-icons overflow,

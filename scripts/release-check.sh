@@ -81,7 +81,7 @@ required=(
   cmd/saundo/mygo.json cmd/saundo/locales/en.json cmd/saundo/locales/zh-CN.json
   internal/app/update.go internal/app/update_dialog.go internal/app/update_history.go
   .github/workflows/release.yml scripts/release-check.sh scripts/release-notes.sh
-  .claude/skills/release/SKILL.md .claude/skills/ui-mockup/SKILL.md
+  .claude/skills/release/SKILL.md .claude/skills/merge-pr/SKILL.md .claude/skills/ui-mockup/SKILL.md
   .claude/skills/ui-mockup/assets/mockup-template.html
   .claude/skills/ui-mockup/assets/flyout-template.html
 )
@@ -101,6 +101,9 @@ grep -Fq 'update window' SECURITY.md && fail "SECURITY.md says update window; us
 grep -q 'Docs audit' docs/releasing.md || fail "docs/releasing.md lacks a docs audit"
 grep -q '## Commit range review' docs/releasing.md || fail "docs/releasing.md lacks the commit range review"
 grep -qi 'commit range review' .claude/skills/release/SKILL.md || fail "the release skill lacks the commit range review step"
+grep -Fq 'Code review:' .claude/skills/release/SKILL.md || fail "the release skill lacks the critical-path code review rule"
+grep -q 'Critical-path code review' .claude/skills/merge-pr/SKILL.md || fail "the merge skill lacks the critical-path code review"
+grep -Fq 'Code review:' docs/releasing.md || fail "docs/releasing.md lacks the critical-path code review rule"
 grep -q '## UI mockup templates' docs/releasing.md || fail "docs/releasing.md lacks the UI mockup template refresh"
 grep -qi 'mockup templates' .claude/skills/release/SKILL.md || fail "the release skill lacks the UI mockup template step"
 grep -q 'ui-mockup/assets' docs/ui.md || fail "docs/ui.md does not point at the mockup templates"
@@ -110,6 +113,20 @@ grep -q 'Latency modes' docs/verification.md || fail "docs/verification.md lacks
 grep -q 'Tray animation' docs/verification.md || fail "docs/verification.md lacks tray animation"
 grep -q '更新 page' docs/verification.md || fail "docs/verification.md lacks the update page"
 grep -Fq "$version commit range review" docs/verification.md || fail "docs/verification.md lacks the $version commit range review"
+last="$(git tag --sort=-v:refname | head -n 1)"
+critical=""
+if [ -n "$last" ]; then
+  critical="$(git diff --name-only "$last"..HEAD -- internal/airplay internal/engine internal/capture 'internal/app/update*.go' internal/app/migrate.go 2>/dev/null | head -n 1)"
+fi
+if [ -n "$critical" ]; then
+  if awk -v v="$version" 'index($0, "## ") == 1 && index($0, v " commit range review") > 0 {on=1; next} /^## /{on=0} on' docs/verification.md | grep -q 'Code review:'; then
+    ok "the range review records a code review for the critical-path commits"
+  else
+    fail "the range touches a critical path; add 'Code review:' to the $version commit range review"
+  fi
+else
+  ok "no critical-path commits in $last..HEAD; the subset code review is not required"
+fi
 grep -q '1500' docs/protocol.md || fail "docs/protocol.md lacks the latency mode mapping"
 grep -q '2000' docs/protocol.md || fail "docs/protocol.md lacks the latency mode mapping"
 grep -Fq 'There is no standalone update window' docs/ui.md || fail "docs/ui.md must state there is no standalone update window"

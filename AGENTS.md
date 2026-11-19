@@ -32,14 +32,15 @@ If the architecture document conflicts with the reference implementation or real
 Make targets (Windows: Git Bash with `mingw32-make`; macOS: `make`, with cmake installed for the Now Playing adapter):
 
 ```bash
-mingw32-make check  # gofmt gate + go vet + mygo UI vet + architecture and size gates + go test + cross-platform gate — the milestone gate
+mingw32-make check  # gofmt gate + catalog and message checks + go vet under the default, updateharness, and e2e tags + mygo UI vet + architecture and size gates + go test + verification map + cross-platform gate — the milestone gate
 mingw32-make platforms  # build + vet windows/amd64 and darwin/arm64 on either host, reject leaked platform imports
 mingw32-make test   # go test ./...
+mingw32-make test-mac-update  # macOS only: the local update harness (build, check, install, quit, bundle swap)
 mingw32-make race   # go test -race ./... (needs a C toolchain for the race detector)
 mingw32-make vet    # go vet ./...
 mingw32-make uivet  # go tool mygo vet . (native UI lifetime checks)
 mingw32-make arch   # scripts/check-arch: import seams, sans-I/O go/AfterFunc/Sleep, time.After/time.Tick, channel capacity, dependency allowlist
-mingw32-make size   # scripts/check-size: grandfathered files may not grow, new non-test files stay at or below 800 lines
+mingw32-make size   # scripts/check-size: grandfathered files may not grow or shrink without lowering the baseline; new non-test files stay at or below 800 lines
 mingw32-make fmt    # gofmt -w .
 mingw32-make build  # CGO_ENABLED=0 build into bin/saundo.exe, GUI subsystem, version stamped from git describe, so a commit past a release sorts below it and the updater still offers that release; scripts/build.sh then stops the running app and starts the new build
 mingw32-make build-fast  # the same build without the NSIS installer, for the development loop
@@ -51,9 +52,13 @@ Without mingw32-make, run the commands directly:
 ```bash
 go test ./...
 go vet ./...
+go vet -tags updateharness ./cmd/saundo
+go vet -tags e2e ./cmd/saundo
+go tool mygo i18n check cmd/saundo
 go tool mygo vet .
 go run ./scripts/check-arch
 go run ./scripts/check-size
+go run ./scripts/verify-map
 gofmt -l .
 ```
 
@@ -72,13 +77,14 @@ the direct-dependency allowlist. `scripts/check-size` owns the line budget.
 system. A rule added here without a gate is judgment-only.
 
 - Keep the engine UI-agnostic. The UI talks to an `Engine` interface and channels. No IPC and no sidecar.
-- Keep the sender sans-i/o, following `airplay2-sender-cpp`: `RaopIo` has six methods (TCP connect/send/close, UDP bind/send/close). The sender owns no sockets, timers, or threads; the host pushes data, connection events, and ticks into it.
-- One sender event-loop goroutine owns all protocol sockets and timers. Capture runs in its own goroutine. The UI runs on mygo's main thread. Do not share mutable state; use bounded queues and command channels.
-- ALAC is mandatory on the realtime stream. Send uncompressed ALAC frames, never PCM. Use `internal/airplay/alac.EncodeUncompressed`.
+- Keep the sender sans-i/o, following `airplay2-sender-cpp`: `RaopIo` has six methods (TCP connect/send/close, UDP bind/send/close). The sender owns no sockets, timers, or threads; the host pushes connection, data, and close events into it, and the host loop pulls timers with `NextDeadline` and `Tick`.
+- One engine event-loop goroutine drives the sender and owns session timers; the host's I/O goroutines own the protocol sockets, and PTP runs its own loop. Capture runs in its own goroutine. The UI runs on mygo's main thread. Do not share mutable state; use bounded queues and command channels.
+- ALAC is mandatory on the AP2 realtime stream. Send uncompressed ALAC frames, never PCM there. Use `internal/airplay/alac.EncodeUncompressed`. The plaintext AP1 fallback for `_raop`-only receivers is the only raw-PCM path, and AP1 is not a target.
 - Use NTP for receivers that accept it. A HomePod on software 27 and a macOS
   AirPlay receiver keep their own PTP grandmaster and silently ignore an
-  NTP-timed stream: when feature bit 41 is set and the model starts with
-  `AudioAccessory` or `Mac`, run `internal/airplay/ptp.Follower`, advertise PTP
+  NTP-timed stream: when the model starts with `AudioAccessory` or `Mac` and
+  feature bit 41 is set, or its features value is unknown (fail closed), run
+  `internal/airplay/ptp.Follower`, advertise PTP
   in the session SETUP, send SETPEERS, wait for the clock to be ready, and use
   the 28-byte PTP sync packet. Keep timing behind the sender's `PTPClock`
   interface.
