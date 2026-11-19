@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-17 -->
+<!-- reviewed-through: 2026-11-19 -->
 
 # Verification
 
@@ -1192,3 +1192,28 @@ one took it from 1627.
   the catalog. The CPU matrix is unchanged: 243 files match the baseline.
   Pins: `TestPreviewScenariosApplyEveryState`, `TestPreviewRender`,
   `.claude/skills/ui-mockup/SKILL.md`.
+- 2026-11-19, the flyout sketch template follows the catalog: the template
+  could sketch six states while the catalog ships more, so a round about
+  connecting, taken-over, the unknown media session, the lamp's off and
+  no-media rows, the latency spinner, or the update chip started from a
+  baseline that could not draw them. The template now sketches all of it:
+  connecting (取消 row action, disabled 连接 on the other rows, accent
+  footer), taken-over (重新连接, red footer), the unknown session (no app
+  icon, placeholder poster, play transport, idle meter, timeline-less track,
+  `?session=unknown`), the cover placeholder and no-poster variants
+  (`?cover=placeholder|none`), the lamp off and no-media rows (`?lamp=off|
+  nomedia`, chip precedence off→standby→no-media as `lampStatusChip`, accent
+  power icon when off or standby), the four latency modes with the section
+  spinner (`?mode=` `?applying=`), and the footer update chip (`?update=1`).
+  Device-row subtitles follow `deviceSubtitle` — model · qualifier, never the
+  host — and the sample devices mirror the fixture (HomePods stereo group,
+  Apple TV PIN pairing, offline HomePod mini). Lamp defaults follow each
+  state's media, as the fixture renders them. The settings template checked
+  current against the shipped window: sidebar, row ladder, dialog notes, and
+  the receivers sample all match. Evidence: the app's CPU matrix under
+  `.audit/preview/template-update/matrix/` (258 files), 16 headless Chrome
+  renders of the updated template under `.audit/preview/template-update/
+  mockups/`, each inspected against its catalog PNG; the three topics'
+  baselines re-stamped with `check-ui sketch -force`. Gates:
+  `check-ui tokens`, `check-ui words`, `gofmt -l` green. Pins:
+  `.claude/skills/ui-mockup/SKILL.md`, `scripts/check-ui/tokens.go`.

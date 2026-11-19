@@ -87,7 +87,7 @@ git diff --no-index .audit/mockups/<topic>/baseline-settings.html .audit/mockups
 
 The overlay never carries tokens or shell geometry. The token gate owns those. With `-force`, the baseline is replaced and the working copy and overlay survive, so a release refresh does not cost a design round.
 
-The sketch takes one URL parameter set per state, language, and theme. The settings template selects `?view=target|normal|edge&lang=zh|en&dark=0|1&zoom=1|1.25|1.5`. The flyout template selects `?state=idle|streaming|standby|empty|error|credential&lang=zh|en&dark=0|1&latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5`.
+The sketch takes one URL parameter set per state, language, and theme. The settings template selects `?view=target|normal|edge&lang=zh|en&dark=0|1&zoom=1|1.25|1.5`. The flyout template selects `?state=idle|connecting|streaming|taken|standby|empty|error|credential&lang=zh|en&dark=0|1&latency=0|1&mode=low|standard|stable|custom&applying=0|1&media=0|1&session=sample|unknown&cover=art|placeholder|none&lamp=cover|nomedia|off|template|expanded&update=0|1&zoom=1|1.25|1.5`.
 
 Give the human an absolute `file://` URL with the parameters. On Windows, `cygpath -m "$(pwd)"` gives the path Chrome accepts. They switch states, languages, and themes in the page.
 
