@@ -67,6 +67,12 @@ jobs:
         run: |
           go run ./scripts/check-ui render -out .audit/ui/ci \
             -only "flyout-stream-light,flyout-stream-dark,flyout-connecting,flyout-error,flyout-empty,settings-general-light,settings-connection-dark,settings-receivers-expanded-light,settings-audio-custom-light,settings-lamp-cover-light,settings-nowplaying-live-light,dialog-receiver-add"
+      - name: Upload UI baseline render
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-baseline-render
+          path: .audit/ui/ci/
+          if-no-files-found: error
       - name: UI baseline diff
         run: go run ./scripts/check-ui diff -baseline docs/ui-baseline/manifest.json -against .audit/ui/ci/manifest.json
       - name: Verify map
