@@ -8,6 +8,7 @@ import (
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/receivers"
+	"saundo/internal/settings"
 )
 
 // The 接收器 settings page: the merged receiver list per mockup-final, with
@@ -283,7 +284,7 @@ func (a *App) receiverRowHead(c *ui.Context, p palette, v receivers.View, open, 
 		ui.Row(c).Gap(8).Shrink(0).AlignItems(ui.Center).Children(func() {
 			shown := !v.Hidden
 			toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
-				a.eng.SetReceiverHidden(v.Key, !next)
+				a.actReceiverHidden(v.Key, !next)
 				if !next {
 					a.receiverHiddenOpen = true
 				}
@@ -316,9 +317,11 @@ func (a *App) receiverRowBody(c *ui.Context, p palette, v receivers.View, hidden
 		settingRowColors(c, p, locales.ReceiverAutoToggle(), locales.ReceiverAutoToggleDesc(),
 			titleColor, subColor, func() {
 				toggle(c, p, &auto, locales.ReceiverAutoToggle(), func(next bool) {
-					a.eng.SetReceiverAutoConnect(v.Key, next)
+					a.actReceiverAuto(v.Key, next)
 				})
 			})
+		rowLine(c, p)
+		a.receiverDelayRow(c, p, v, hiddenGroup)
 		rowLine(c, p)
 		a.receiverAudioRows(c, p, v, hiddenGroup)
 		if receiverPasswordEditable(v) {
@@ -450,6 +453,96 @@ func (a *App) receiverEditButton(c *ui.Context, p palette, v receivers.View, hid
 // the head's 11 gap, and 6 more before the edit button.
 const receiverTailInset = 32 + 8 + 12 + 11 + 6
 
+// receiverDelayRow is the DSP/DAC slider with the 0/2000 scale and the
+// value on the subtitle line.
+func (a *App) receiverDelayRow(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {
+	delay := v.DelayMS
+	if draft, ok := a.receiverDelayPend[v.Key]; ok {
+		delay = draft
+	}
+	valueColor := p.fg2
+	if hiddenGroup {
+		valueColor = p.muted
+	}
+	ui.Column(c).Padding(8, 14).Children(func() {
+		ui.Row(c).Gap(12).AlignItems(ui.End).Children(func() {
+			ui.Column(c).Grow(1).Gap(2).Children(func() {
+				title := p.fg
+				sub := p.muted
+				if hiddenGroup {
+					title, sub = p.muted, p.faint
+				}
+				ui.Text(c, locales.ReceiverDelayTitle()).FontSize(12.5).FontWeight(500).TextColor(title)
+				ui.Text(c, locales.ReceiverDelayDesc()).FontSize(11.5).TextColor(sub)
+			})
+			ui.Text(c, settings.LatencyText(delay)).FontSize(11.5).TextColor(valueColor)
+		})
+		value := float64(delay)
+		sl := slider(c, p, &value, 0, receivers.MaxDelayMS, locales.ReceiverDelayTitle(), func(next float64) {
+			ms := receiverDelayValue(next)
+			if ms == delay {
+				return
+			}
+			a.scheduleReceiverDelay(v.Key, ms)
+		}).Step(10)
+		if hiddenGroup {
+			sl.Opacity(0.55)
+		}
+		ui.Row(c).Margin(2, 0, 0, 0).Children(func() {
+			ui.Text(c, settings.LatencyText(0)).FontSize(10.5).TextColor(p.faint)
+			ui.Spacer(c)
+			ui.Text(c, settings.LatencyText(2000)).FontSize(10.5).TextColor(p.faint)
+		})
+	})
+}
+
+// receiverDelayValue quantizes a slider position to the mockup's 10 ms
+// steps and the sender's 0..2000 ms window.
+func receiverDelayValue(v float64) int {
+	ms := int(v + 0.5)
+	if ms < 0 {
+		ms = 0
+	}
+	if ms > receivers.MaxDelayMS {
+		ms = receivers.MaxDelayMS
+	}
+	return (ms + 5) / 10 * 10
+}
+
+// scheduleReceiverDelay debounces the slider like the global latency apply:
+// one restart with the final value once the user stops dragging. The draft
+// stays in receiverDelayPend until the engine's row carries it.
+func (a *App) scheduleReceiverDelay(key string, ms int) {
+	if a.receiverDelayPend == nil {
+		a.receiverDelayPend = map[string]int{}
+	}
+	a.receiverDelayPend[key] = ms
+	a.receiverDelaySeq++
+	seq := a.receiverDelaySeq
+	if a.receiverDelayTimer != nil {
+		a.receiverDelayTimer.Stop()
+	}
+	a.receiverDelayTimer = time.AfterFunc(500*time.Millisecond, func() {
+		a.updateUI(func() {
+			if seq != a.receiverDelaySeq {
+				return
+			}
+			pending := make(map[string]int, len(a.receiverDelayPend))
+			for k, v := range a.receiverDelayPend {
+				pending[k] = v
+			}
+			// Only a change to the receiver the engine is working with
+			// restarts the session; that restart is what the hold masks.
+			if _, ok := pending[a.snap.SelectedID]; ok && phaseOf(a.snap) != phaseIdle {
+				a.beginLatencyApply()
+			}
+			for k, v := range pending {
+				a.actReceiverDelay(k, v)
+			}
+		})
+	})
+}
+
 // receiverAudioRows is the per-receiver audio group: the volume row and the
 // channel row, separated by the page's hairline like every other settings row.
 // A stereo pair always plays stereo, so its segment is a disabled 立体声.
@@ -489,9 +582,7 @@ func (a *App) receiverVolumeRow(c *ui.Context, p palette, v receivers.View, titl
 			ui.Text(c, locales.FlyoutVolumeValue(*volumeValue)).FontSize(12.5).TextColor(subColor)
 		})
 		sl := slider(c, p, volumeValue, 0, 100, locales.VolumeLabel(), func(next float64) {
-			if a.eng != nil {
-				a.eng.SetTargetVolume(v.Key, next)
-			}
+			a.actTargetVolume(v.Key, next)
 		})
 		if hiddenGroup {
 			sl.Opacity(0.55)
@@ -520,7 +611,7 @@ func (a *App) receiverChannelSegment(c *ui.Context, p palette, v receivers.View,
 		{label: locales.ChannelRight()},
 	}
 	track := segmented(c, p, &idx, items, 200, hiddenGroup, segmentCenter, locales.ChannelLabel())
-	if track.Changed() && a.eng != nil {
+	if track.Changed() {
 		mode := receivers.ChannelStereo
 		switch idx {
 		case 1:
@@ -528,7 +619,7 @@ func (a *App) receiverChannelSegment(c *ui.Context, p palette, v receivers.View,
 		case 2:
 			mode = receivers.ChannelRight
 		}
-		a.eng.UpdateReceiver(v.Key, receivers.Patch{Channel: &mode})
+		a.actReceiverUpdate(v.Key, receivers.Patch{Channel: &mode})
 	}
 }
 

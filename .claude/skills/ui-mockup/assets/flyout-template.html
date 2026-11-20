@@ -25,8 +25,10 @@
       --screenshot=.audit/previews/<topic>.png file:///.../flyout.html
 
   Headless shots can select a state from the URL:
-    ?state=idle|streaming|standby|empty|error|credential&lang=zh|en&dark=0|1
-    &latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5
+    ?state=idle|connecting|streaming|taken|standby|empty|error|credential
+    &lang=zh|en&dark=0|1&latency=0|1&mode=low|standard|stable|custom
+    &applying=0|1&media=0|1&session=sample|unknown&cover=art|placeholder|none
+    &lamp=cover|nomedia|off|template|expanded&update=0|1&zoom=1|1.25|1.5
 -->
 <style>
   * { box-sizing: border-box; }
@@ -165,7 +167,7 @@
   }
   .device-card { flex: none; }
   .device-row {
-    height: 56px; display: flex; align-items: center; gap: 10px;
+    height: 66px; display: flex; align-items: center; gap: 10px;
     padding: 9px 12px;
   }
   .device-row + .device-row { border-top: 1px solid var(--line2); }
@@ -196,9 +198,16 @@
   .row-action .icon { width: 12px; height: 12px; }
   .row-action.accent { color: var(--accent); }
   .row-action.strong { color: var(--fg2); }
+  .row-action.ctl { color: var(--ctl); }
   .row-action.muted { color: var(--muted); }
   .row-action.faint { color: var(--faint); }
   .row-action:hover { background: var(--pill); }
+  .spinner {
+    display: inline-flex; width: 10px; height: 10px; flex: none;
+    color: var(--accent); animation: spin 1s linear infinite;
+  }
+  .spinner svg { display: block; width: 100%; height: 100%; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .empty-card {
     height: 141px; display: flex; flex-direction: column;
@@ -313,7 +322,14 @@
   .lamp-card { margin-top: 2px; }
   .lamp-row { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
   .lamp-preview { width: 32px; height: 32px; flex: none; border-radius: 9px; }
+  .lamp-preview.tile {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--pill); color: var(--faint);
+  }
+  .lamp-preview.tile .icon { width: 17px; height: 17px; }
+  .lamp-preview.tile.dim { opacity: .35; }
   .lamp-name { font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .lamp-name.dim { color: var(--faint); }
   .lamp-copy { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
   .chip {
     height: 22px; padding: 0 9px; border-radius: 11px; flex: none;
@@ -321,6 +337,8 @@
     font-size: 11.5px; background: var(--card); border: 1px solid var(--line); color: var(--fg2);
   }
   .lamp-seg { width: 128px; flex: none; }
+  .lamp-seg.disabled button { color: var(--faint); }
+  .lamp-seg.disabled button.active { background: transparent; box-shadow: none; }
   .lamp-arrow {
     width: 26px; height: 26px; flex: none; border-radius: 7px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -371,6 +389,7 @@
   <div class="tool-group" id="stateGroup" role="group"></div>
   <button type="button" class="tool" id="mediaBtn">媒体卡</button>
   <button type="button" class="tool" id="lampBtn">灯带</button>
+  <button type="button" class="tool" id="updateBtn">更新角标</button>
   <span class="tool-label" id="zoomLabel">缩放</span>
   <div class="tool-group" id="zoomGroup" role="group">
     <button type="button" data-zoom="1" class="active">100%</button>
@@ -416,7 +435,10 @@ const ICON = {
   latencyStandard: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
   latencyStable: '<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></g></svg>',
   sliders: '<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></g><g fill="currentColor"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg>',
-  moon: '<svg viewBox="0 0 20 20" fill="none"><path d="M16 12.4A6.4 6.4 0 0 1 7.6 4a6.5 6.5 0 1 0 8.4 8.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+  moon: '<svg viewBox="0 0 20 20" fill="none"><path d="M16 12.4A6.4 6.4 0 0 1 7.6 4a6.5 6.5 0 1 0 8.4 8.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+  image: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 16.5 9.8 12l3.4 3 2.6-2.2 3.7 3.2"/></g></svg>',
+  close: '<svg viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+  spinner: '<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" opacity=".9"/></g></svg>'
 };
 function icon(name, cls = '') { return '<span class="icon ' + cls + '" aria-hidden="true">' + ICON[name] + '</span>'; }
 function esc(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -429,42 +451,58 @@ const COPY = {
   zh: {
     appName: '声渡', appSub: 'AIRPLAY 2',
     devices: '接收器', playback: '播放', volume: '音量',
-    connect: '连接', disconnect: '断开', offline: '离线', retry: '重试',
+    connect: '连接', disconnect: '断开连接', offline: '离线', retry: '重试',
+    cancel: '取消', reconnect: '重新连接',
     searching: '正在搜索附近的 AirPlay 接收器…',
     searchHint: '请确认接收器与本机在同一网络，且 AirPlay 已开启。',
     searchAgain: '重新搜索',
-    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步', latencyNote: '延迟 200 ms',
+    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步',
+    latencyNotes: ['延迟 200 ms', '延迟 1.5 s', '延迟 2 s', '延迟 700 ms'],
     appMusic: 'Apple Music', track: '夜航', trackArtist: '白鲸电台', elapsed: '2:08', remaining: '-1:56',
-    lamp: '氛围灯', turnOff: '关灯', turnOn: '开灯', lampOff: '已关灯',
+    appUnknown: '未知应用', unknownTitle: '触屏版 MacBook Pro', unknownSub: '未知来源',
+    lamp: '氛围灯', turnOff: '关灯', turnOn: '开灯', lampOff: '已关灯', lampNoMedia: '无媒体',
     lampCover: '封面', lampTemplate: '模板', presetDune: '沙丘',
     standby: '待机',
-    statusIdle: '未连接', statusStreaming: '正在通过 客厅 HomePod 播放', statusStandby: '已待机 · 播放声音即唤醒', statusError: '连接失败',
+    qualStereo2: '立体声组 2/2', qualPin: 'PIN 配对', qualAir2: 'AirPlay 2', qualAir1: 'AirPlay 1',
+    statusIdle: '未连接', statusConnecting: '正在连接…',
+    statusStreaming: '正在通过 HomePods 播放', statusStandby: '已待机 · 播放声音即唤醒',
+    statusTaken: '已被其他设备接管', statusError: '连接失败',
     errorBar: '连接失败：请求超时',
     credentialBar: '保存的配对已重置，需要重新配对。',
+    updateChip: '0.4.3 可用',
     latencyModes: ['低延迟', '标准', '稳定', '自定义']
   },
   en: {
     appName: 'Saundo', appSub: 'AIRPLAY 2',
     devices: 'Receivers', playback: 'Playback', volume: 'Volume',
     connect: 'Connect', disconnect: 'Disconnect', offline: 'Offline', retry: 'Retry',
+    cancel: 'Cancel', reconnect: 'Reconnect',
     searching: 'Searching for AirPlay receivers nearby…',
     searchHint: 'Make sure the receiver is on the same network and AirPlay is on.',
     searchAgain: 'Search again',
-    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced', latencyNote: 'Latency 200 ms',
+    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced',
+    latencyNotes: ['Latency 200 ms', 'Latency 1.5 s', 'Latency 2 s', 'Latency 700 ms'],
     appMusic: 'Apple Music', track: 'Night Ferry', trackArtist: 'Signal Coast', elapsed: '2:08', remaining: '-1:56',
-    lamp: 'Ambient light', turnOff: 'Turn off', turnOn: 'Turn on', lampOff: 'Off',
+    appUnknown: 'Unknown app', unknownTitle: 'Touchscreen MacBook Pro', unknownSub: 'Unknown source',
+    lamp: 'Ambient light', turnOff: 'Turn off', turnOn: 'Turn on', lampOff: 'Off', lampNoMedia: 'No media',
     lampCover: 'Cover', lampTemplate: 'Template', presetDune: 'Dune',
     standby: 'Standby',
-    statusIdle: 'Not connected', statusStreaming: 'Streaming to Living Room HomePod', statusStandby: 'Standby · wakes when sound plays', statusError: 'Connection failed',
+    qualStereo2: 'Stereo group 2/2', qualPin: 'PIN pairing', qualAir2: 'AirPlay 2', qualAir1: 'AirPlay 1',
+    statusIdle: 'Not connected', statusConnecting: 'Connecting…',
+    statusStreaming: 'Streaming to HomePods', statusStandby: 'Standby · wakes when sound plays',
+    statusTaken: 'Taken over by another device', statusError: 'Connection failed',
     errorBar: 'Connection failed: request timed out',
     credentialBar: 'Saved pairing was reset. Pair again.',
+    updateChip: '0.4.3 available',
     latencyModes: ['Low', 'Standard', 'Stable', 'Custom']
   }
 };
 
 const STATES = [
   { id: 'idle', zh: '空闲', en: 'Idle' },
+  { id: 'connecting', zh: '连接中', en: 'Connecting' },
   { id: 'streaming', zh: '播放', en: 'Streaming' },
+  { id: 'taken', zh: '被接管', en: 'Taken over' },
   { id: 'standby', zh: '待机', en: 'Standby' },
   { id: 'empty', zh: '空态', en: 'Empty' },
   { id: 'error', zh: '失败', en: 'Error' },
@@ -472,47 +510,67 @@ const STATES = [
 ];
 
 /* One entry per row; the height follows the count. Edit these for the
-   real fixture. `action` is connect, disconnect, offline, or retry. */
+   real fixture. `action` is connect, disconnect, offline, retry, cancel,
+   reconnect, or disabled. `qual` names the subtitle's qualifier chip-free
+   text, exactly as deviceSubtitle renders it: never the host. */
 const DEVICES = {
   idle: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, action: 'connect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, action: 'connect' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'connect' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
+  ],
+  connecting: [
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, selected: true, action: 'cancel' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'disabled' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
   ],
   streaming: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, selected: true, action: 'disconnect' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'connect' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
+  ],
+  taken: [
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, selected: true, action: 'reconnect' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'connect' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
   ],
   standby: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, selected: true, action: 'disconnect' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'connect' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
   ],
   empty: [],
   error: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'retry' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, selected: true, action: 'retry' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'connect' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
   ],
   credential: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePods', model: 'AudioAccessory5,1', qual: 'Stereo2', online: true, selected: true, action: 'disconnect' },
+    { name: 'Apple TV', model: 'AppleTV6,2', qual: 'Pin', online: true, action: 'connect' },
+    { name: 'HomePod mini', model: 'AudioAccessory5,1', qual: 'Air2', online: false, action: 'offline' }
   ]
 };
 
 /* Replace the notes with the stance, states, height rule, and rejects. */
 function notesHTML() {
   return '<h2>设计说明 · Design notes</h2>' +
-    '<p class="notes-intro">Flyout shell template. The width is 420 and the height follows the device count, the media card, the latency row, and the ambient section. Replace the sample devices and copy. The footer carries the face and the state only; the diagnostic log lives on the settings About page. A receiver on this machine never appears in the flyout.</p>' +
+    '<p class="notes-intro">Flyout shell template. The width is 420 and the height follows the device count, the media card, the latency row, and the ambient section. Replace the sample devices and copy. The footer carries the face and the state only; the diagnostic log lives on the settings About page. A receiver on this machine never appears in the flyout. The row subtitle is model · qualifier, never the host.</p>' +
     '<p class="kicker">状态 · STATES</p><ul>' +
       '<li><b>空闲</b> Three devices, none connected; the footer is muted.</li>' +
+      '<li><b>连接中</b> The connecting row turns 取消, the other rows\' 连接 is faint and disabled, and the footer names the attempt in accent.</li>' +
       '<li><b>播放</b> The first row is selected; the footer face and the ALAC line name the stream.</li>' +
+      '<li><b>被接管</b> Another sender claimed the receiver; the row action is 重新连接 and the footer names it in red.</li>' +
       '<li><b>待机</b> The stream is idle; the lamp row carries a 待机 chip, the power action reads 开灯, and the footer names the standby.</li>' +
       '<li><b>空态</b> No devices; the 141 high search card.</li>' +
       '<li><b>失败</b> The 48 high error bar sits under the device card; the row action is Retry.</li>' +
       '<li><b>配对重置</b> The saved pairing could not be read; the 48 high credential notice sits under the device card, below the error bar when both show, and opens a 380 wide dialog.</li>' +
+    '</ul>' +
+    '<p class="kicker">变体 · VARIANTS</p><ul>' +
+      '<li><b>媒体卡</b> 媒体=1 shows the card. 会话=unknown draws the session with no app icon, a placeholder poster, a play transport, and an empty track — no timeline, no clocks. 封面=placeholder|none swaps the poster.</li>' +
+      '<li><b>延迟</b> 模式=low|standard|stable|custom sets the active segment and the note (200 ms / 1.5 s / 2 s / 700 ms); 应用中=1 adds the section-head spinner.</li>' +
+      '<li><b>灯带</b> 灯带=cover|nomedia|off|template|expanded. nomedia is cover priority with nothing to read: an image-glyph tile and a 无媒体 chip. off dims the tile, faints the name, disables the segment, and turns the power icon accent.</li>' +
+      '<li><b>更新角标</b> 角标=1 puts the update chip in the footer next to the status.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
       '<li>439 base for three rows, -29 for the empty card, -56 per missing row, -62 for the old Now Playing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the error bar, +48 for the credential notice, +53 for the expanded grid.</li>' +
@@ -532,13 +590,24 @@ function notesHTML() {
 
 const params = new URLSearchParams(location.search);
 const initialView = params.get('state') || 'idle';
+/* The lamp defaults follow the states' media: only a streaming state with a
+   real session holds a readable cover, so the rest start at nomedia, as the
+   fixture renders. An unknown session has no artwork to read either. */
+const lampParam = params.get('lamp');
+const lampDefault = initialView === 'streaming' && params.get('session') !== 'unknown' ? 'cover' : 'nomedia';
 const state = {
   view: initialView,
   lang: params.get('lang') === 'en' ? 'en' : 'zh',
   dark: params.get('dark') === '1',
   latency: params.get('latency') === '1',
+  applying: params.get('applying') === '1',
+  mode: params.get('mode') || (params.get('applying') === '1' ? 'standard' : 'low'),
   media: params.has('media') ? params.get('media') === '1' : initialView === 'streaming',
-  lamp: params.get('lamp') || 'cover',
+  session: params.get('session') === 'unknown' ? 'unknown' : 'sample',
+  cover: ['placeholder', 'none'].includes(params.get('cover')) ? params.get('cover') : 'art',
+  lamp: ['nomedia', 'off', 'template', 'expanded'].includes(lampParam) ? lampParam
+    : lampParam === 'cover' ? 'cover' : lampDefault,
+  update: params.get('update') === '1',
   zoom: Number(params.get('zoom')) || 1
 };
 
@@ -548,8 +617,8 @@ function t(key) { return COPY[state.lang][key]; }
    439 base, 62 less for the old Now Playing row, 90 ambient, +150 media,
    +44 latency, +48 error, +48 credential notice, +53 for the expanded
    six-template grid. */
-const FLYOUT_BASE = 439, DEVICE_ROWS = 3, DEVICE_ROW_H = 56, DEVICE_EMPTY = 141;
-const NOW_ROW_H = 62, MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 48;
+const FLYOUT_BASE = 438, DEVICE_ROWS = 3, DEVICE_ROW_H = 66, DEVICE_EMPTY = 141;
+const NOW_ROW_H = 62, MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 52;
 function deviceCardHeight(n) { return n <= 0 ? DEVICE_EMPTY : Math.min(n, DEVICE_ROWS) * DEVICE_ROW_H + 2; }
 function lampGridHeight(count) {
   const rows = Math.min(Math.max(Math.ceil(count / 10), 1), 4);
@@ -593,21 +662,28 @@ function deviceIcon(model) {
   return 'speaker';
 }
 function actionIcon(action) {
-  return action === 'disconnect' ? 'unlink' : action === 'offline' ? 'slash' : action === 'retry' ? 'refresh' : 'link';
+  return action === 'disconnect' ? 'unlink' : action === 'offline' ? 'slash'
+    : action === 'retry' || action === 'reconnect' ? 'refresh' : action === 'cancel' ? 'close' : 'link';
 }
 function actionClass(action) {
-  return action === 'disconnect' ? 'strong' : action === 'offline' ? 'muted' : 'accent';
+  return action === 'disconnect' ? 'strong' : action === 'offline' ? 'muted'
+    : action === 'cancel' ? 'ctl' : action === 'disabled' ? 'faint' : 'accent';
+}
+function actionLabel(action) {
+  return action === 'disconnect' ? t('disconnect') : action === 'offline' ? t('offline')
+    : action === 'retry' ? t('retry') : action === 'reconnect' ? t('reconnect')
+    : action === 'cancel' ? t('cancel') : t('connect');
 }
 function deviceRowHTML(device) {
   const cls = device.selected ? ' selected' : '';
-  const sub = device.model + ' · ' + device.host;
+  const sub = device.model + ' · ' + t('qual' + device.qual);
   return '<div class="device-row' + cls + '">' +
     '<div class="device-pick">' +
       '<span class="glyph">' + icon(deviceIcon(device.model)) + (device.online ? '<i class="online"></i>' : '') + '</span>' +
       '<span class="namecol"><span class="name">' + esc(device.name) + '</span><span class="sub">' + esc(sub) + '</span></span>' +
     '</div>' +
     '<button type="button" class="row-action ' + actionClass(device.action) + '">' +
-      icon(actionIcon(device.action)) + esc(t(device.action)) +
+      icon(actionIcon(device.action)) + esc(actionLabel(device.action)) +
     '</button>' +
   '</div>';
 }
@@ -640,42 +716,67 @@ function deviceCount(n) {
   return n + (n === 1 ? ' receiver' : ' receivers');
 }
 function playbackNote() {
+  const modeIndex = ['low', 'standard', 'stable', 'custom'].indexOf(state.mode);
   let note = t('format');
   if (state.view === 'streaming' || state.view === 'credential') note += ' · ' + t('syncPTP');
-  return note + ' · ' + t('latencyNote');
+  return note + ' · ' + t('latencyNotes')[modeIndex];
+}
+function posterHTML() {
+  if (state.cover === 'none') return '';
+  if (state.cover === 'placeholder' || state.session === 'unknown') {
+    return '<span class="media-poster">' + icon('note') + '</span>';
+  }
+  return '<span class="media-poster" style="background:' + coverGlow() + '"></span>';
+}
+function meterHTML() {
+  if (state.session === 'unknown') {
+    // A paused session: five idle 3-DIP bars at the muted alpha.
+    return Array.from({ length: 5 }, (_, i) =>
+      '<i style="left:' + (i * 5) + 'px;top:10.5px;height:3px;background:rgba(128,128,128,.45)"></i>').join('');
+  }
+  const bars = [10, 16, 24, 14, 8];
+  return bars.map((h, i) => {
+    const top = (24 - h) / 2;
+    return '<i style="left:' + (i * 5) + 'px;top:' + top + 'px;height:' + h + 'px;background:var(--accent)"></i>';
+  }).join('');
 }
 function mediaCardHTML() {
   if (!state.media) return '';
-  const bars = [10, 16, 24, 14, 8];
-  const meter = bars.map((h, i) => {
-    const top = (24 - h) / 2;
-    return '<i style="left:' + (i * 5) + 'px;top:' + top + 'px;height:' + h + 'px"></i>';
-  }).join('');
+  const unknown = state.session === 'unknown';
+  const headName = unknown ? t('appUnknown') : t('appMusic');
+  const title = unknown ? t('unknownTitle') : t('track');
+  const sub = unknown ? t('unknownSub') : t('trackArtist');
+  const playIcon = unknown ? 'play' : 'pause';
+  const progress = unknown
+    ? '<span class="track"></span>'
+    : '<span class="clock">' + esc(t('elapsed')) + '</span>' +
+      '<span class="track" style="--p:.52"><span class="fill" style="background:linear-gradient(90deg,#818cf8,#4f46e5)"></span><span class="thumb"></span></span>' +
+      '<span class="clock">' + esc(t('remaining')) + '</span>';
   return '<div class="media-card">' +
-    '<div class="media-head">' + icon('note', 'app-icon') +
-      '<span class="media-app">' + esc(t('appMusic')) + '</span>' +
+    '<div class="media-head">' + (unknown ? '' : icon('note', 'app-icon')) +
+      '<span class="media-app">' + esc(headName) + '</span>' +
       '<button type="button" class="media-switch">' + icon('chevronRight') + '</button>' +
     '</div>' +
     '<div class="media-main">' +
-      '<span class="media-poster">' + icon('note') + '</span>' +
-      '<span class="media-copy"><span class="media-title">' + esc(t('track')) + '</span>' +
-      '<span class="media-sub">' + esc(t('trackArtist')) + '</span></span>' +
-      '<span class="meter">' + meter + '</span>' +
+      posterHTML() +
+      '<span class="media-copy"><span class="media-title">' + esc(title) + '</span>' +
+      '<span class="media-sub">' + esc(sub) + '</span></span>' +
+      '<span class="meter">' + meterHTML() + '</span>' +
     '</div>' +
     '<div class="media-progress">' +
       '<span class="transport">' +
         '<button type="button">' + icon('prev') + '</button>' +
-        '<button type="button">' + icon('pause') + '</button>' +
+        '<button type="button">' + icon(playIcon) + '</button>' +
         '<button type="button">' + icon('next') + '</button>' +
       '</span>' +
-      '<span class="clock">' + esc(t('elapsed')) + '</span>' +
-      '<span class="track" style="--p:.52"><span class="fill"></span><span class="thumb"></span></span>' +
-      '<span class="clock">' + esc(t('remaining')) + '</span>' +
+      progress +
     '</div>' +
   '</div>';
 }
 function playbackSectionHTML() {
+  const modeIndex = ['low', 'standard', 'stable', 'custom'].indexOf(state.mode);
   const head = '<div class="section-head"><span class="section-label">' + esc(t('playback')) + '</span>' +
+    (state.applying ? '<span class="spinner">' + ICON.spinner + '</span>' : '') +
     '<span class="section-note">' + esc(playbackNote()) + '</span></div>';
   let card = '<div class="card playback-card">';
   if (state.media) {
@@ -685,7 +786,7 @@ function playbackSectionHTML() {
   if (state.latency) {
     card += '<div class="latency"><div class="seg">' +
       ['latencyLow', 'latencyStandard', 'latencyStable', 'sliders'].map((name, i) =>
-        '<button type="button" class="' + (i === 0 ? 'active' : '') + '">' + icon(name) + esc(t('latencyModes')[i]) + '</button>').join('') +
+        '<button type="button" class="' + (i === modeIndex ? 'active' : '') + '">' + icon(name) + esc(t('latencyModes')[i]) + '</button>').join('') +
     '</div></div>';
     card += '<div class="line"></div>';
   }
@@ -696,22 +797,46 @@ function playbackSectionHTML() {
   return head + card;
 }
 function lampSectionHTML() {
-  const templateMode = state.lamp !== 'cover';
-  const expanded = state.lamp === 'expanded';
+  const mode = state.lamp;
+  const templateMode = mode === 'template' || mode === 'expanded';
+  const expanded = mode === 'expanded';
+  const standby = state.view === 'standby';
   const preset = LAMP_PRESETS[1];
   const name = templateMode ? preset[state.lang] || preset.en : t('lampCover');
-  const previewStyle = templateMode ? lampGlow(preset.colors) : coverGlow();
+  /* The chip's precedence matches lampStatusChip: off, then standby, then
+     cover priority with nothing to read. */
+  const chip = mode === 'off' ? t('lampOff') : standby ? t('standby')
+    : mode === 'nomedia' ? t('lampNoMedia') : '';
+  let previewStyle, previewTile = false;
+  if (templateMode) {
+    previewStyle = lampGlow(preset.colors);
+  } else if (mode === 'cover') {
+    previewStyle = coverGlow();
+  } else {
+    // nomedia and off: nothing to read yet, the image-glyph tile.
+    previewTile = true;
+  }
   const head = '<div class="section-head"><span class="section-label">' + esc(t('lamp')) + '</span>' +
-    '<button type="button" class="icon-btn" style="margin-left:auto">' + icon('power') + '</button></div>';
-  let row = '<div class="lamp-row">' +
-    '<span class="lamp-preview" style="background:' + previewStyle + '"></span>' +
-    '<span class="lamp-copy"><span class="lamp-name">' + esc(name) + '</span>' +
-      (state.view === 'standby' ? '<span class="chip">' + esc(t('standby')) + '</span>' : '') +
-    '</span>' +
-    '<span class="seg lamp-seg">' +
+    '<button type="button" class="icon-btn" style="margin-left:auto' +
+      (mode === 'off' || standby ? ';color:var(--accent)' : '') + '">' + icon('power') + '</button></div>';
+  const preview = previewTile
+    ? '<span class="lamp-preview tile' + (mode === 'off' ? ' dim' : '') + '">' + icon('image') + '</span>'
+    : '<span class="lamp-preview" style="background:' + previewStyle + '"></span>';
+  const seg = mode === 'off'
+    ? '<span class="seg lamp-seg disabled">' +
+      '<button type="button">' + esc(t('lampCover')) + '</button>' +
+      '<button type="button">' + esc(t('lampTemplate')) + '</button>' +
+    '</span>'
+    : '<span class="seg lamp-seg">' +
       '<button type="button" class="' + (templateMode ? '' : 'active') + '">' + esc(t('lampCover')) + '</button>' +
       '<button type="button" class="' + (templateMode ? 'active' : '') + '">' + esc(t('lampTemplate')) + '</button>' +
     '</span>';
+  let row = '<div class="lamp-row">' +
+    preview +
+    '<span class="lamp-copy"><span class="lamp-name' + (mode === 'off' ? ' dim' : '') + '">' + esc(name) + '</span>' +
+      (chip ? '<span class="chip">' + esc(chip) + '</span>' : '') +
+    '</span>' +
+    seg;
   if (templateMode) {
     row += '<button type="button" class="lamp-arrow' + (expanded ? ' open' : '') + '">' + icon('chevron') + '</button>';
   }
@@ -726,7 +851,9 @@ function lampSectionHTML() {
 function footerHTML() {
   const map = {
     idle: { face: 'faceIdle', status: 'statusIdle', cls: 'muted' },
+    connecting: { face: 'faceConnect', status: 'statusConnecting', cls: 'accent' },
     streaming: { face: 'faceStream', status: 'statusStreaming', cls: 'green' },
+    taken: { face: 'faceError', status: 'statusTaken', cls: 'red' },
     standby: { face: 'faceStream', status: 'statusStandby', cls: 'green' },
     empty: { face: 'faceSearch', status: 'statusIdle', cls: 'muted' },
     error: { face: 'faceError', status: 'statusError', cls: 'red' },
@@ -736,6 +863,7 @@ function footerHTML() {
   return '<footer class="flyout-foot">' +
     '<span class="face">' + ICON[f.face] + '</span>' +
     '<span class="status ' + f.cls + '">' + esc(t(f.status)) + '</span>' +
+    (state.update ? '<button type="button" class="update-chip">' + esc(t('updateChip')) + '</button>' : '') +
   '</footer>';
 }
 function flyoutHTML(devices, height) {
@@ -777,10 +905,12 @@ function render() {
   document.getElementById('mediaBtn').textContent = state.lang === 'zh' ? '媒体卡' : 'Media card';
   document.getElementById('mediaBtn').classList.toggle('active', state.media);
   const lampLabels = state.lang === 'zh'
-    ? { cover: '灯带·封面', template: '灯带·模板', expanded: '灯带·展开' }
-    : { cover: 'Light cover', template: 'Light template', expanded: 'Light grid' };
+    ? { cover: '灯带·封面', nomedia: '灯带·无媒体', off: '灯带·关灯', template: '灯带·模板', expanded: '灯带·展开' }
+    : { cover: 'Light cover', nomedia: 'Light no media', off: 'Light off', template: 'Light template', expanded: 'Light grid' };
   document.getElementById('lampBtn').textContent = lampLabels[state.lamp] || lampLabels.cover;
   document.getElementById('lampBtn').classList.toggle('active', state.lamp !== 'cover');
+  document.getElementById('updateBtn').textContent = state.lang === 'zh' ? '更新角标' : 'Update chip';
+  document.getElementById('updateBtn').classList.toggle('active', state.update);
   document.getElementById('stateGroup').innerHTML = STATES.map(item =>
     '<button type="button" data-state="' + item.id + '" class="' + (state.view === item.id ? 'active' : '') + '">' +
     esc(item[state.lang]) + '</button>').join('');
@@ -806,7 +936,12 @@ document.getElementById('mediaBtn').addEventListener('click', () => {
   render();
 });
 document.getElementById('lampBtn').addEventListener('click', () => {
-  state.lamp = state.lamp === 'cover' ? 'template' : state.lamp === 'template' ? 'expanded' : 'cover';
+  const cycle = ['cover', 'nomedia', 'off', 'template', 'expanded'];
+  state.lamp = cycle[(cycle.indexOf(state.lamp) + 1) % cycle.length];
+  render();
+});
+document.getElementById('updateBtn').addEventListener('click', () => {
+  state.update = !state.update;
   render();
 });
 document.getElementById('langBtn').addEventListener('click', () => {

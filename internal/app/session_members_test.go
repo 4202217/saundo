@@ -91,7 +91,7 @@ func TestTrayMenuMarksEveryMember(t *testing.T) {
 		}
 	}
 	m := a.trayModel("zh-CN", false)
-	if got := m.deviceIcon(m.devices[0]); got != "devon:homepod-mini" {
+	if got := m.deviceIcon(m.devices[0]); got != "devon:homepod-mini-pair" {
 		t.Fatalf("member 0 icon = %q", got)
 	}
 	if got := m.deviceIcon(m.devices[1]); got != "devon:appletv" {

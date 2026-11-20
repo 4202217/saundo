@@ -47,16 +47,32 @@ Audit the docs against the tree before the release commit. Fix drift in the same
 
 ## UI review
 
-Run `/ui-review` before the changelogs. Resolve every P0 and terminology finding; land the fixes as their own commit before the release commit. The changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the outcome in `docs/verification.md`.
+Run `/ui-review` before the changelogs. Resolve every P0 and terminology finding; land the fixes as their own commit before the release commit. The changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the outcome in `docs/verification.md`. The review renders the matrix and compares the canonical states with `docs/ui-baseline/manifest.json`; a changed canonical PNG is a finding, not a diff to explain away.
 
 ## UI mockup templates
 
 Refresh the ui-mockup skill after the UI review settles the interface and before the release commit. The two rendered templates are the baseline every later design round starts from, so a release must not leave them describing the previous UI.
 
-- Compare the templates with the shipped palette, widgets, and geometry: `internal/app/theme.go`, `ui_kit.go`, `flyout.go`, `settings_window.go`, and `receivers_page.go`.
-- Update [.claude/skills/ui-mockup/assets/mockup-template.html](../.claude/skills/ui-mockup/assets/mockup-template.html) and [flyout-template.html](../.claude/skills/ui-mockup/assets/flyout-template.html): tokens, widget sizes, shell geometry, sample content, and both locale strings. Update the skill's height rule and marked-block list when the surface changed.
-- Render the settings target, normal, and edge states and the flyout's idle, streaming, empty, and error states in zh-CN and English, light and dark, into `.audit/release-<version>/mockups/`. Toggle the flyout's media card and ambient states. Inspect every render for clipping, overflow, and wrapped copy.
-- Record the render directory in `docs/verification.md` in the template commit. Land this as its own commit before the release commit, like the UI review fixes.
+- Run `go run ./scripts/check-ui tokens`. It compares 44 palette tokens in both appearances, 31 metrics, the flyout height rule, and the drawn window sizes with `internal/app/theme.go`, `flyout.go`, `ui_kit.go`, `settings_window.go`, `lamp.go`, and `settings_window_create.go`. Update the templates until it passes. Do not relax the gate.
+- Update [.claude/skills/ui-mockup/assets/mockup-template.html](../.claude/skills/ui-mockup/assets/mockup-template.html) and [flyout-template.html](../.claude/skills/ui-mockup/assets/flyout-template.html): tokens, widget sizes, shell geometry, sample content, and both locale strings. Update the skill's measured geometry when the surface changed.
+- Copy the refreshed baseline into the release evidence and render from it:
+  ```bash
+  go run ./scripts/check-ui sketch -topic release-<version> -surface settings -force
+  go run ./scripts/check-ui sketch -topic release-<version> -surface flyout -force
+  ```
+  The files are in `.audit/mockups/release-<version>/`: `baseline-settings.html` and `baseline-flyout.html` are the approved renders, and each working copy starts identical.
+- Render the settings target, normal, and edge states and the flyout's idle, streaming, empty, and error states in zh-CN and English, light and dark, plus the flyout's media card and ambient states, into `.audit/mockups/release-<version>/`. Inspect every render for clipping, overflow, and wrapped copy.
+- Regenerate the site data and prove it current:
+  ```bash
+  SAUNDO_DEMO_OUT=../../site/assets/demo-data.js go test -tags preview -run TestExportReplicaData ./internal/app/
+  go test -tags preview -run 'TestReplicaDataIsCurrent|TestReplicaSharesTheFlyoutsWording' ./internal/app/
+  ```
+- Render the matrix and compare the canonical states:
+  ```bash
+  go run ./scripts/check-ui render -out .audit/ui/release-<version>
+  go run ./scripts/check-ui diff -baseline docs/ui-baseline/manifest.json -against .audit/ui/release-<version>/manifest.json
+  ```
+- Record the baseline and matrix directories and the gate output in `docs/verification.md` in the template commit. Land this as its own commit before the release commit, like the UI review fixes. No manual three-way comparison of the sketch, the site, and the app is needed.
 
 ## README
 
@@ -85,7 +101,7 @@ VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' cmd
 1. Bump `version` in `cmd/saundo/mygo.json`.
 2. Review every commit since the last release tag and record the classification in `docs/verification.md`.
 3. Run `/ui-review` and land its P0 and terminology fixes as their own commit.
-4. Refresh the UI mockup templates against the shipped interface and land them as their own commit.
+4. Refresh the UI mockup templates against the shipped interface, run `check-ui tokens`, copy the refreshed baseline with `check-ui sketch`, regenerate the site data, and land them as their own commit.
 5. Add the matching section to `CHANGELOG.md` and `CHANGELOG.zh-CN.md`.
 6. Update `README.md` and `README.zh-CN.md` with the release's user-visible changes.
 7. Run `/pstack:maintain-verification-skill` and land its proven corrections.

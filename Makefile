@@ -18,10 +18,12 @@ EXE := $(if $(filter windows,$(shell $(GO) env GOOS)),.exe,)
 .PHONY: build build-fast e2e-build test race vet uivet i18n fmt arch size check platforms test-mac-update
 
 build:
+	@case " $${GOFLAGS:-} " in *preview*) echo "build: GOFLAGS must not carry the preview tag" >&2; exit 2;; esac
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh
 
 # The same binary without the NSIS installer, for the development loop.
 build-fast:
+	@case " $${GOFLAGS:-} " in *preview*) echo "build: GOFLAGS must not carry the preview tag" >&2; exit 2;; esac
 	GO="$(GO)" VERSION="$(VERSION)" bash ./scripts/build.sh --fast
 
 # A non-installing build that links the mygo automation plugin, so the verify
@@ -46,9 +48,11 @@ vet:
 	$(GO) vet ./...
 
 # mygo's native UI checks: a ui.Element or ui.Context must not outlive the
-# build pass that made it, or be captured by a goroutine.
+# build pass that made it, or be captured by a goroutine. The preview views
+# only compile under the preview tag, so they need their own pass.
 uivet:
 	$(GO) tool mygo vet .
+	GOFLAGS=-tags=preview $(GO) tool mygo vet .
 
 # The catalogs must agree on every message and its placeholders.
 i18n:
@@ -69,6 +73,11 @@ size:
 fmt:
 	$(GOFMT) -w .
 
+# Render the UI state matrix and record a manifest. The canonical pixel gate
+# runs in CI; see docs/ui-baseline/README.md.
+ui-baseline:
+	$(GO) run ./scripts/check-ui render -out .audit/ui/baseline
+
 # Build and vet windows/amd64 and darwin/arm64 on any host, and reject
 # OS-specific imports outside platform-tagged files.
 platforms:
@@ -78,4 +87,4 @@ check:
 	@command -v "$(GOFMT)" >/dev/null 2>&1 || { echo "gofmt not found; set GOFMT=... or put Go on PATH"; exit 1; }
 	@unformatted="$$($(GOFMT) -l .)"; \
 	if [ -n "$$unformatted" ]; then echo "unformatted files:"; echo "$$unformatted"; exit 1; fi; \
-	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) vet -tags e2e ./cmd/saundo && $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms
+	$(GO) tool mygo i18n check cmd/saundo && $(GO) vet ./... && $(GO) vet -tags preview ./... && $(GO) vet -tags updateharness ./cmd/saundo && $(GO) vet -tags e2e ./cmd/saundo && $(GO) tool mygo vet . && GOFLAGS=-tags=preview $(GO) tool mygo vet . && $(GO) run ./scripts/check-arch && $(GO) run ./scripts/check-size && $(GO) test ./... && $(GO) test -tags preview ./internal/app -count=1 && $(GO) run ./scripts/check-ui catalog && $(GO) run ./scripts/check-ui tokens && $(GO) run ./scripts/check-ui states && $(GO) run ./scripts/check-ui words && $(GO) run ./scripts/check-ui wasm && $(GO) run ./scripts/verify-map && GO="$(GO)" $(GO) run ./scripts/check-platforms

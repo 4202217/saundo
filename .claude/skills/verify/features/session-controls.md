@@ -86,7 +86,7 @@ page, and the diagnostics log row lives on the settings 关于 page.
 - Takeover: a clean control close during streaming is terminal. The flyout
   footer reads 已被其他设备接管 and the active receiver row offers
   重新连接 (`flyout.go:502-510`; the row action at
-  `flyout_devices.go:307-325`; `docs/ui.md`).
+  `flyout.go:453`; `docs/ui.md`).
 - Idle standby: after the configured silence threshold the engine sends
   playback state 2, the top display goes dark, and the flyout lamp card
   shows the 待机 chip (`engine.go:874-936`; the dark gate at `:841-847`;
@@ -114,7 +114,7 @@ go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|Te
 go test -run 'TestMeterLevelBandsAndDelay|TestMeterGatesNoiseBelowTheFloor|TestMeterQuietToneKeepsBarsLow|TestFollowIgnoresSubBarChanges' -v ./internal/audio/analyze/
 go test -run 'TestSilenceMeterFeedsTheLevelMeter' -v ./internal/engine/
 SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/
-SAUNDO_PREVIEW_DIR="$EV/frames" go test -run TestRenderPreviews ./internal/app/
+go run ./scripts/check-ui render -out "$EV/frames"
 ```
 
 Live app: connect (see discovery-and-connect), then move the slider and

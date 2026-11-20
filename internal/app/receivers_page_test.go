@@ -13,62 +13,10 @@ import (
 	"saundo/internal/settings"
 )
 
-// applyReceiverFixtures swaps the preview App's device list for the
-// receiver fixture's rows, so the preview shows the page with realistic
-// receivers.
-func (a *App) applyReceiverFixtures() {
-	fixed := receiverFixture()
-	a.snap = fixed.snap
-}
-
-// receiverFixture is an App with one visible remembered HomePod, one hidden
-// HomePod mini, one online manual AirPort Express, and one stereo group,
-// mirroring the mockup's list.
+// receiverFixture is an App with the receivers page's sample rows.
 func receiverFixture() *App {
 	a := previewApp()
-	a.snap.SelectedID = "AA:00"
-	a.snap.ConnectedName = "客厅 HomePod"
-	a.snap.ActiveTargets = []string{"AA:00"}
-	a.snap.Targets = []engine.TargetControl{{
-		ID: "AA:00", Name: "客厅 HomePod", Volume: 65, Channel: receivers.ChannelStereo,
-		State: engine.TargetMember,
-	}}
-	a.selID = "AA:00"
-	a.snap.Devices = []device.Device{
-		{ID: "AA:00", Name: "客厅 HomePod", Host: "192.168.1.20", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
-	}
-	a.snap.Receivers = []receivers.View{
-		{
-			Key: "AA:00", Name: "客厅 HomePod", Kind: receivers.KindDiscovered,
-			Model: "AudioAccessory5,1", Online: true, AutoConnect: true, DelayMS: 0,
-			Channel: receivers.ChannelStereo,
-			Device:  a.snap.Devices[0],
-			Entry:   receivers.Entry{Key: "AA:00", Kind: receivers.KindDiscovered, Name: "客厅 HomePod", AutoConnect: true},
-		},
-		{
-			Key: "AA:01", Name: "卧室 HomePod mini", Kind: receivers.KindDiscovered,
-			Model: "AudioAccessory5,1", Hidden: true, DelayMS: 120,
-			Channel: receivers.ChannelStereo,
-			Device:  device.Device{ID: "AA:01", Name: "卧室 HomePod mini", Model: "AudioAccessory5,1"},
-			Entry:   receivers.Entry{Key: "AA:01", Kind: receivers.KindDiscovered, Name: "卧室 HomePod mini", Hidden: true, DelayMS: 120},
-		},
-		{
-			Key: "m:ab12", Name: "书房 AirPort Express", Kind: receivers.KindManual,
-			Type: receivers.TypeAirPortExpress, Address: "192.168.1.32:5000",
-			Model: "AirPort", Online: true, PasswordSet: true,
-			Channel: receivers.ChannelLeft,
-			Device:  device.Device{ID: "m:ab12", Name: "书房 AirPort Express", Model: "AirPort", Auth: device.AuthSetup, Online: true},
-			Entry:   receivers.Entry{Key: "m:ab12", Kind: receivers.KindManual, Type: receivers.TypeAirPortExpress, Name: "书房 AirPort Express", Host: "192.168.1.32", Port: 5000},
-		},
-		{
-			Key: "stereo:1", Name: "客厅立体声", Kind: receivers.KindDiscovered,
-			Model: "AudioAccessory5,1", Online: true, Stereo: true,
-			Channel: receivers.ChannelStereo,
-			Device: device.Device{ID: "stereo:1", Name: "客厅立体声", Model: "AudioAccessory5,1", StereoID: "1",
-				Members: []device.Device{{ID: "AA:10", Name: "L"}, {ID: "AA:11", Name: "R"}}, Online: true},
-			Entry: receivers.Entry{Key: "stereo:1", Kind: receivers.KindDiscovered, Name: "客厅立体声"},
-		},
-	}
+	applyReceiverRows(a)
 	return a
 }
 
@@ -96,17 +44,7 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 // AirPlay endpoint, already forced into the hidden group.
 func localReceiverFixture() *App {
 	a := previewApp()
-	a.page = pageReceivers
-	a.receiverHiddenOpen = true
-	const key = "02:8F:B8:25:3A:B2"
-	a.snap.Receivers = []receivers.View{{
-		Key: key, Name: "MacBook Air", Kind: receivers.KindDiscovered,
-		Model: "Mac14,2", Online: true, Hidden: true, Local: true,
-		Device: device.Device{ID: key, Name: "MacBook Air", Host: "192.168.31.200", Port: 7000,
-			Model: "Mac14,2", Online: true, Local: true},
-		Entry: receivers.Entry{Key: key, Kind: receivers.KindDiscovered, Name: "MacBook Air", Hidden: true},
-	}}
-	a.snap.Devices = nil
+	applyLocalReceiver(a)
 	return a
 }
 

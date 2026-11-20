@@ -63,7 +63,7 @@ approximation; the top display decides.
    template list in `.claude/skills/verify/features/ambient-light.md`.
 5. Run `go test ./internal/lamp/`, then `make check` and `make build`.
 6. Render and inspect the native previews:
-   `SAUNDO_PREVIEW_DIR=<absolute dir> go test ./internal/app -run TestRenderPreviews`,
+   `go run ./scripts/check-ui render -out <absolute dir>`,
    then open `settings-lamp-light-zh.png`.
 7. Eyeball the real HomePod. The top display is the final judge. Record the
    result in `docs/verification.md` and `docs/devices.md`.

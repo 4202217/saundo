@@ -24,9 +24,21 @@ system appearance. The header switches both; the choice is kept in
 
 `index.html` carries the markup, CSS, JavaScript, and the inline SVG symbols.
 `assets/` carries only what the page loads: the app icon, the two
-ambient-light WebP images, the two Geist fonts, and the JPG social card.
+ambient-light WebP images, the two Geist fonts, the JPG social card, and
+`demo-data.js`, the dataset generated from the app's preview fixture.
 `assets/src/` carries the working sources, the PNG base images plus the
 `og.png`/`og.jpeg` exports. The page never requests anything from `assets/src/`.
+
+`demo-data.js` is generated from `internal/app`'s preview fixture by
+`TestExportReplicaData`, and `TestReplicaDataIsCurrent` fails when the two
+disagree. It carries the receivers, three players with both languages for
+every track, each track's poster palette and cover-lamp blobs, the volume,
+the latency modes, the opening session state, and the six ambient templates.
+The page reads these values instead of hard-coding them; its only second copy
+is the small fallback used when the file does not load. If the file is
+missing, the page logs the missing dataset and starts from that fallback so
+the language toggle and the rest of the page still work; the generated dataset
+wins whenever it loads.
 
 `site/.audit/` holds local screenshots and probe scripts, and
 `site/motion-lab.html` is a local design lab. Both are ignored by git and
@@ -39,20 +51,29 @@ attribution is in `NOTICE`.
 ## Design notes
 
 The hero is the tray flyout, not a screenshot. It opens on a live session —
-glow already up, media paused, volume low — and when the panel sits in view
-it runs one scripted pass (play → Standard → volume → next track); any touch
-on the panel or the lamp controls hands control back, and `?demo=0` skips the
-run. It still answers the visitor: connects or disconnects a receiver, changes
-volume and latency, plays or pauses the media card, and switches the lamp.
-The tray media card and the bento media card render one shared media
-session: skipping tracks on either card updates both, and in cover mode the
-lamp palette follows the new artwork (five demo tracks, each with its own
-poster palette). The glow is gated on lamp × session — turning the lamp off
-or disconnecting the receiver fades it, and it returns with the state. The
-latency mode is one state behind the tray segment and
+glow already up, media paused, at the fixture's volume — and when the panel
+sits in view it runs one scripted pass (play → the dataset's Standard latency
+→ volume → next track); any touch on the panel or the lamp controls hands
+control back, and `?demo=0` skips the run. The volume step starts from the fixture's volume
+and moves at least 35 points, so a fixture change cannot shrink it to an
+invisible nudge. It still answers the visitor: connects or disconnects a
+receiver, changes volume and latency, plays or pauses the media card, and
+switches the lamp.
+The tray media card and the bento media card render one session at a time
+from the dataset's three players, each with its own track list and position:
+the transport moves inside the current player, and the card's arrow switches
+players and returns each player to where it was. The dataset carries six
+tracks, each with its own poster palette and cover-lamp blobs, so in cover
+mode the lamp preview and the glow follow the current artwork when the media
+changes. Every track also carries its English title and artist, so switching
+the page to English updates the tray, the bento card, and the cover-mode lamp
+name without a reload. The glow is gated on lamp × session — turning the lamp
+off or disconnecting the receiver fades it, and it returns with the state.
+The latency mode is one state behind the tray segment and
 the bento rail — either surface switches, both follow, and the ALAC line
-updates at once. The whole visual renders at `zoom: .85` on `.hero-visual` — panel, glow
-and caption scale as one object, and the layout height shrinks with it
+updates at once. The panel and its glow render inside `.hero-stage`, laid out
+at the app's own 420 DIP and scaled by `--fly-zoom` (at most .77) to fit the
+column; they scale as one object, and the layout height shrinks with them
 (`transform: scale` would strand empty space below). The real HomePod photograph belongs only to the ambient-light section:
 it is the render target, and the pod itself is a click target that cycles
 the light. On desktop the pod sits on the left; the right column carries the
@@ -74,8 +95,11 @@ margin trade off directly: a smaller pod means a wider right margin, so the
 pod stays at 480px unless the section layout changes.
 
 The ambient light uses the same three colors and template seeds as
-`internal/lamp/presets.go`. The left-hand picker, current name/chip, and
-visible swatches follow the earlier design exploration.
+`internal/lamp/presets.go`. The six visible swatches are built from the
+dataset's `templates` list in its order, so a preset color or order change
+reaches the section chooser and the tray's expanded grid alike. The left-hand
+picker, current name/chip, and visible swatches follow the earlier design
+exploration.
 The pod keeps the page's original translucent glow layer, and a soft aura
 outside the pod carries the current palette.
 
@@ -169,8 +193,8 @@ tab is hidden.
 Measured on the development machine with 4x CPU throttling, glow visible, and
 `?demo=0`: 10.5 FPS before and 59.5 FPS after at DPR 1; 10–12 FPS before and
 34–41 FPS after at DPR 2. On a warm local server at normal CPU, FCP is 192 ms,
-LCP is 208 ms, CLS is 0, and the page makes three subresource requests (two
-fonts and the icon).
+LCP is 208 ms, CLS is 0, and the page makes four subresource requests (two
+fonts, the icon, and the demo dataset).
 
 ## Deploy
 
@@ -209,7 +233,8 @@ There is no horizontal overflow at those widths; at 320 the long English
 `System Settings → Privacy & Security` label wraps instead of pushing the page
 wide. The English and Chinese titles, descriptions, OG tags, alt text, and
 ARIA labels switch together, and no visible string stays Chinese on the
-English page except the wordmark and the language toggle.
+English page except the wordmark and the language toggle. The hero panel and
+its glow scale together at 320 px, and both panel edges stay visible.
 
 The marquee was probed at 390, 1024, 1440, 1920, and 2560 px. The script
 emits 2, 2, 3, 3, and 4 tracks, every sampled animation position covers the
@@ -226,7 +251,7 @@ accessibility 92, best practices 100, SEO 100, agentic browsing 100; mobile
 accessibility 96, best practices 100, SEO 100. The desktop failures are the
 flyout's muted-text contrast (see above) and the transport buttons' measured
 20.4 px boxes. Those buttons carry transparent `::after` hot zones that
-extend the target to 36 px before the 0.85 zoom (30.6 px after), and mobile
+extend the target to 36 px before the 0.77 scale (27.7 px after), and mobile
 passes target size, so the 20.4 px reading is a tooling limit.
 `prefers-contrast: more` was checked to darken the muted flyout tokens.
 

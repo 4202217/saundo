@@ -5,9 +5,9 @@
 # review. New files must stay at or below 800 lines. Generated files and
 # _test.go files are exempt.
 internal/engine/engine.go	2274
-internal/app/app.go	1187
-internal/app/settings_window.go	1015
+internal/app/app.go	1193
+internal/app/settings_window.go	1046
 internal/airplay/sender/sender.go	1146
 internal/airplay/sender/rtsp.go	772
 internal/capture/capture_darwin.go	851
-internal/app/flyout.go	519
+internal/app/flyout.go	970

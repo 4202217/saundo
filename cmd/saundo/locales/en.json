@@ -450,6 +450,8 @@
   "receiverEnableSwitch": "Show in the tray panel; off moves the row to the hidden group",
   "receiverAutoToggle": "Connect at launch",
   "receiverAutoToggleDesc": "Flag as many as you like; they connect together at launch",
+  "receiverDelayTitle": "DSP/DAC delay",
+  "receiverDelayDesc": "Compensate the receiver's hardware audio delay",
   "receiverChannelDesc": "Left or right copies that channel to both outputs",
   "receiverPasswordTitle": "Receiver password",
   "receiverPasswordSaved": "Saved · used for AirPlay password authentication",

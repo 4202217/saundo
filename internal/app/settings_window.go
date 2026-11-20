@@ -237,14 +237,14 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 		settingRow(c, p, locales.SettingsSenderName(), locales.SettingsSenderNameDesc(), func() {
 			ui.Row(c).Gap(6).Children(func() {
 				if fieldInput(c, p, &a.nameDraft, locales.AppName(), locales.SettingsSenderName()).Submitted() {
-					a.eng.SetName(a.nameDraft)
+					a.actName()
 				}
-				chipButton(c, p, locales.SettingsSave(), func() { a.eng.SetName(a.nameDraft) })
+				chipButton(c, p, locales.SettingsSave(), func() { a.actName() })
 			})
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsLaunchAtStart(), locales.SettingsLaunchAtStartDesc(), func() {
-			toggle(c, p, &a.launchAtStart, locales.SettingsLaunchAtStart(), func(v bool) { a.setLaunchAtStart(v) })
+			toggle(c, p, &a.launchAtStart, locales.SettingsLaunchAtStart(), func(v bool) { a.actLaunch(v) })
 		})
 		rowLine(c, p)
 		settingRow(c, p, locales.SettingsTrayAnimation(), locales.SettingsTrayAnimationDesc(), func() {
@@ -255,7 +255,7 @@ func (a *App) generalPage(c *ui.Context, p palette) {
 			choice := a.languageLabel()
 			options := []string{locales.LanguageSystem(), locales.LanguageEnglish(), locales.LanguageChinese()}
 			if fieldSelect(c, p, &choice, options, locales.SettingsLanguage()).Changed() {
-				a.setLanguage(choice)
+				a.actLanguage(choice)
 			}
 		})
 		rowLine(c, p)
@@ -532,6 +532,37 @@ func (a *App) setAutoUpdate(on bool) {
 	a.saveSettings()
 }
 
+func (a *App) connectionPage(c *ui.Context, p palette) {
+	a.connectionSession(c, p)
+	pageCard(c, p, func() {
+		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
+			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.actReconnect(v) })
+		})
+		rowLine(c, p)
+		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
+			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.actStrict(v) })
+		})
+		rowLine(c, p)
+		title := locales.SettingsMuteLocal()
+		if a.processMuteMode() {
+			title = locales.SettingsMuteLocalApp()
+		}
+		settingRow(c, p, title, a.muteLocalSub(), func() {
+			toggle(c, p, &a.cfg.MuteLocalOnConnect, title, a.setMuteLocal)
+		})
+	})
+	if a.cfg.MuteLocalOnConnect {
+		note := locales.SettingsMuteLocalNote()
+		if a.processMuteMode() {
+			note = locales.SettingsMuteLocalAppNote()
+		}
+		ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
+			infoNote(c, p, note)
+		})
+	}
+}
+
+// processMuteMode reports whether the mute switch targets the captured app
 // rather than the whole output device.
 func (a *App) processMuteMode() bool {
 	return a.perAppSelected() && capture.ProcessMuteSupported()

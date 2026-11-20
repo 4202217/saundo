@@ -75,6 +75,7 @@ func assertTrayPlain(t *testing.T, items []*mygo.MenuItem) {
 
 func TestTrayMenuShape(t *testing.T) {
 	a := trayMenuApp()
+	a.snap.LampCover = false /* this shape test pins the template row; cover follows below */
 	m := a.trayModel("zh-CN", false)
 	items := a.trayMenuItems(m)
 	if len(items) != 15 {
@@ -129,8 +130,8 @@ func TestTrayMenuShape(t *testing.T) {
 	if items[14].Role != mygo.RoleQuit || items[14].Label != locales.TrayQuit() {
 		t.Fatalf("quit row is %+v, want the quit role", items[14])
 	}
-	if got := m.deviceIcon(m.devices[0]); got != "devon:homepod-mini" {
-		t.Fatalf("HomePod row icon key is %q, want devon:homepod-mini", got)
+	if got := m.deviceIcon(m.devices[0]); got != "devon:homepod-mini-pair" {
+		t.Fatalf("HomePod row icon key is %q, want devon:homepod-mini-pair", got)
 	}
 	if got := m.deviceIcon(m.devices[1]); got != "dev:appletv" {
 		t.Fatalf("Apple TV row icon key is %q, want dev:appletv", got)
@@ -257,6 +258,7 @@ func TestTrayMenuMediaControlSendsAction(t *testing.T) {
 
 func TestTrayMenuLampSubmenu(t *testing.T) {
 	a := trayMenuApp()
+	a.snap.LampCover = false /* the first half pins template mode; the second switches to cover */
 	m := a.trayModel("zh-CN", false)
 	items := a.trayMenuItems(m)
 	parent, _ := trayItem(items, locales.FlyoutLampSection())
@@ -516,58 +518,64 @@ func TestTrayMenuDeviceSubtitle(t *testing.T) {
 }
 
 func TestTrayMenuKey(t *testing.T) {
-	base := trayMenuApp()
+	/* The key test flips one field at a time. Every variant starts from the
+	   same template light, so the fixture's cover default cannot mask it. */
+	templateMode := func() *App {
+		a := trayMenuApp()
+		a.snap.LampCover = false
+		return a
+	}
+	base := templateMode()
 	key := base.trayModel("zh-CN", false).key()
-	if got := trayMenuApp().trayModel("zh-CN", false).key(); got != key {
+	if got := templateMode().trayModel("zh-CN", false).key(); got != key {
 		t.Fatalf("identical state keys differ: %+v and %+v", key, got)
 	}
-	online := trayMenuApp()
+	online := templateMode()
 	online.snap.Devices[2].Online = true
 	if online.trayModel("zh-CN", false).key() == key {
 		t.Fatal("flipping a device online left the key unchanged")
 	}
-	renamed := trayMenuApp()
+	renamed := templateMode()
 	renamed.snap.Devices[1].Name = "Living Room"
 	if renamed.trayModel("zh-CN", false).key() == key {
 		t.Fatal("renaming a device left the key unchanged")
 	}
-	lampOff := trayMenuApp()
+	lampOff := templateMode()
 	lampOff.snap.LampOff = true
 	if lampOff.trayModel("zh-CN", false).key() == key {
 		t.Fatal("flipping the light left the key unchanged")
 	}
 	lampCover := trayMenuApp()
-	lampCover.snap.LampCover = true
 	if lampCover.trayModel("zh-CN", false).key() == key {
 		t.Fatal("changing the light source left the key unchanged")
 	}
-	lampPreset := trayMenuApp()
+	lampPreset := templateMode()
 	lampPreset.snap.LampPreset = "moss"
 	if lampPreset.trayModel("zh-CN", false).key() == key {
 		t.Fatal("changing the light template left the key unchanged")
 	}
-	playing := trayMenuApp()
+	playing := templateMode()
 	playing.nowSnap.Sessions[0].Playing = false
 	if playing.trayModel("zh-CN", false).key() == key {
 		t.Fatal("pausing the media left the key unchanged")
 	}
-	track := trayMenuApp()
+	track := templateMode()
 	track.nowSnap.Sessions[0].Title = "Another"
 	if track.trayModel("zh-CN", false).key() != key {
 		t.Fatal("a track title the menu no longer shows changed the key")
 	}
-	cover := trayMenuApp()
+	cover := templateMode()
 	cover.nowArtKey = "cover"
 	if cover.trayModel("zh-CN", false).key() == key {
 		t.Fatal("changing the cover left the key unchanged")
 	}
-	update := trayMenuApp()
+	update := templateMode()
 	update.upd.phase = updateAvailable
 	update.upd.version = "9.9.9"
 	if update.trayModel("zh-CN", false).key() == key {
 		t.Fatal("offering an update left the key unchanged")
 	}
-	idle := trayMenuApp()
+	idle := templateMode()
 	idle.snap.State = sender.StateIdle
 	if idle.trayModel("zh-CN", false).key() == key {
 		t.Fatal("ending the session left the key unchanged")
@@ -577,6 +585,7 @@ func TestTrayMenuKey(t *testing.T) {
 // TestTrayMenuLampPresetOrder pins the template submenu to lamp.All().
 func TestTrayMenuLampPresetOrder(t *testing.T) {
 	a := trayMenuApp()
+	a.snap.LampCover = false /* this order test pins the template rows */
 	parent, _ := trayItem(a.trayMenuItems(a.trayModel("zh-CN", false)), locales.FlyoutLampSection())
 	sub := parent.Submenu
 	presets := lamp.All()

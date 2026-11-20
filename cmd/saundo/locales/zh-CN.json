@@ -328,6 +328,8 @@
   "receiverEnableSwitch": "在托盘面板中显示；关闭后移入“已隐藏”组",
   "receiverAutoToggle": "启动时自动连接",
   "receiverAutoToggleDesc": "可勾选多台；启动时会一起连接",
+  "receiverDelayTitle": "DSP/DAC 延迟",
+  "receiverDelayDesc": "补偿接收器的硬件音频延迟",
   "receiverChannelDesc": "左或右会把该声道复制到两个输出",
   "receiverPasswordTitle": "接收器密码",
   "receiverPasswordSaved": "已保存 · 用于 AirPlay 密码认证",

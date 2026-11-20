@@ -21,36 +21,6 @@ import (
 // is not noisy. Any underrun is notable by itself.
 const deviceUnhealthyRetransmit = 0.5
 
-func (a *App) connectionPage(c *ui.Context, p palette) {
-	a.connectionSession(c, p)
-	pageCard(c, p, func() {
-		settingRow(c, p, locales.SettingsReconnect(), locales.SettingsReconnectDesc(), func() {
-			toggle(c, p, &a.reconnect, locales.SettingsReconnect(), func(v bool) { a.eng.SetReconnect(v) })
-		})
-		rowLine(c, p)
-		settingRow(c, p, locales.SettingsStrictAuth(), locales.SettingsStrictAuthDesc(), func() {
-			toggle(c, p, &a.strict, locales.SettingsStrictAuth(), func(v bool) { a.eng.SetStrictAuth(v) })
-		})
-		rowLine(c, p)
-		title := locales.SettingsMuteLocal()
-		if a.processMuteMode() {
-			title = locales.SettingsMuteLocalApp()
-		}
-		settingRow(c, p, title, a.muteLocalSub(), func() {
-			toggle(c, p, &a.cfg.MuteLocalOnConnect, title, a.setMuteLocal)
-		})
-	})
-	if a.cfg.MuteLocalOnConnect {
-		note := locales.SettingsMuteLocalNote()
-		if a.processMuteMode() {
-			note = locales.SettingsMuteLocalAppNote()
-		}
-		ui.Column(c).Margin(8, 0, 0, 2).Children(func() {
-			infoNote(c, p, note)
-		})
-	}
-}
-
 // connectionSession draws the device list, a lost member's notice, and the
 // measured session card. Nothing is drawn without a session.
 func (a *App) connectionSession(c *ui.Context, p palette) {

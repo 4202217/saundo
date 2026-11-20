@@ -53,6 +53,9 @@ type Session struct {
 	Position    time.Duration
 	Duration    time.Duration
 	Updated     time.Time
+	// Artwork is the session's cover image. It is nil when the session has no
+	// cover or publishes only a decorative placeholder, such as Apple Music's
+	// idle frame and note.
 	Artwork     []byte
 	ArtworkMIME string
 }

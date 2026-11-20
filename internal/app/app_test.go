@@ -39,69 +39,11 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// visibleFlyoutHeight is the height a tester should use for this App's
-// current devices, latency row, and media card.
-func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset, a.noticeShown())
-}
-
 func withLocale(t *testing.T, tag string) {
 	t.Helper()
 	old := testLocale
 	testLocale = tag
 	t.Cleanup(func() { testLocale = old })
-}
-
-func previewApp() *App {
-	a := &App{
-		cfg:               settings.Default(),
-		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
-		captureIDs:        []string{"", "{endpoint}"},
-		captureLabels:     []string{locales.CaptureFollowSystem(), "Speakers"},
-		captureChoice:     locales.CaptureFollowSystem(),
-		appNames:          []string{locales.CaptureAllSystem(), "Spotify", "Music"},
-		appPIDs:           []uint32{0, 1234, 5678},
-		appIDs:            []string{"", "com.spotify.client", "com.apple.Music"},
-		appNameByID:       map[string]string{"com.spotify.client": "Spotify", "com.apple.Music": "Music"},
-		nameDraft:         "声渡",
-		latency:           200,
-		latencyMode:       "low",
-		latencyCustom:     700,
-		showLatencySwitch: true,
-		lampOff:           false,
-		lampPreset:        "dune",
-		standbyEnabled:    true,
-		standbyMinutes:    30,
-	}
-	a.selID = "AA:BB:CC:DD:EE:01"
-	a.snap = engine.Snapshot{
-		Devices: []device.Device{
-			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
-			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
-		},
-		SelectedID:        "AA:BB:CC:DD:EE:01",
-		Diagnostics:       engine.Diagnostics{HasStats: true, SessionUptime: 42 * time.Minute, Retransmits: 2, SentBlocks: 1000},
-		ActiveTargets:     []string{"AA:BB:CC:DD:EE:01"},
-		Targets:           []engine.TargetControl{{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember}},
-		State:             sender.StateStreaming,
-		ConnectedName:     "HomePods",
-		CaptureName:       "Speakers",
-		CaptureRate:       48000,
-		CaptureRunning:    true,
-		Name:              "声渡",
-		ReceiverLatencyMS: 70,
-		DroppedSamples:    0,
-		PTPActive:         true,
-		PTPReady:          true,
-		Reconnect:         true,
-		LampOff:           false,
-		LampPreset:        "dune",
-		StandbyEnabled:    true,
-		StandbyMinutes:    30,
-	}
-	a.reconnect = true
-	return a
 }
 
 func TestViewRendersDevicesAndStatus(t *testing.T) {
@@ -111,7 +53,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 		"声渡", "AIRPLAY 2", "接收器", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开连接", "离线", "音量", "65%", "正在通过 HomePods 播放",
 		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义",
-		"氛围灯", "沙丘",
+		"氛围灯", "封面",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("view is missing %q; texts: %q", want, tt.Texts())
@@ -237,7 +179,7 @@ func TestSettingsPagesRender(t *testing.T) {
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
 		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "AudioAccessory5,1 · 立体声 · 65%", "正在播放", "本次连接", "已连接时长", "42 分钟", "稳定性", "良好", "丢样 0 · 欠载 0", "网络重传", "0.2%", "重连", "0 次", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
-		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
+		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "HomePods", "启动时", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
 		{pageCapture, capturePageCopy()},

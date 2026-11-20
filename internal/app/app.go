@@ -89,6 +89,12 @@ type App struct {
 	// mutedVolume remembers the level a target's speaker button muted from.
 	mutedVolume map[string]float64
 
+	// receiver delay editing: debounced slider drafts. One restart with the
+	// final value fires once the user stops dragging.
+	receiverDelaySeq   uint64
+	receiverDelayTimer *time.Timer
+	receiverDelayPend  map[string]int
+
 	pinOpen bool
 	pinCode string
 

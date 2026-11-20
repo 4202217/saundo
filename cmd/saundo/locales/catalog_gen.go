@@ -2124,6 +2124,26 @@ func (msgs Messages) ReceiverAutoToggleDesc() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)
 }
 
+// ReceiverDelayTitle says "DSP/DAC delay"
+// in the language the app shows.
+func ReceiverDelayTitle() string { return In(i18n.Locale()).ReceiverDelayTitle() }
+
+// ReceiverDelayTitle says "DSP/DAC delay"
+// in the language of msgs.
+func (msgs Messages) ReceiverDelayTitle() string {
+	return Catalog.Format(msgs.locale, "receiverDelayTitle", nil)
+}
+
+// ReceiverDelayDesc says "Compensate the receiver's hardware audio delay"
+// in the language the app shows.
+func ReceiverDelayDesc() string { return In(i18n.Locale()).ReceiverDelayDesc() }
+
+// ReceiverDelayDesc says "Compensate the receiver's hardware audio delay"
+// in the language of msgs.
+func (msgs Messages) ReceiverDelayDesc() string {
+	return Catalog.Format(msgs.locale, "receiverDelayDesc", nil)
+}
+
 // ReceiverChannelDesc says "Left or right copies that channel to both outputs"
 // in the language the app shows.
 func ReceiverChannelDesc() string { return In(i18n.Locale()).ReceiverChannelDesc() }
