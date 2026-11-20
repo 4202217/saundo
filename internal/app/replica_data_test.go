@@ -7,14 +7,9 @@ package app
 // f3f6bf8 and rebuilt on Fixture and the catalog.
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"image"
 	"image/color"
-	"image/jpeg"
-	"image/png"
 	"os"
 	"sort"
 	"strings"
@@ -229,46 +224,6 @@ func replicaEnglishTrack(a *App, app string) (title, artist string, ok bool) {
 	return "", "", false
 }
 
-// replicaCoverLamp derives a track's cover colors and lamp through the app's
-// own lamp.CoverPreset, so the page reads the same clusters and blob scatter
-// the app's preview paints from the same artwork.
-func replicaCoverLamp(src image.Image) (*replicaLamp, []string) {
-	p, ok := lamp.CoverPreset(src)
-	if !ok {
-		return nil, nil
-	}
-	l := &replicaLamp{Cover: true, Base: hexColor(p.Base)}
-	for _, b := range p.Blobs() {
-		l.Blobs = append(l.Blobs, replicaBlob{
-			X: b.X, Y: b.Y, R: b.Radius, Color: hexColor(b.Color), Alpha: b.Alpha,
-		})
-	}
-	colors := make([]string, 0, len(p.Colors))
-	for _, c := range p.Colors {
-		colors = append(colors, hexColor(c))
-	}
-	return l, colors
-}
-
-// replicaCoverURI embeds the same artwork the native preview paints, so the
-// page shows the cover instead of a poster gradient that only approximates it.
-func replicaCoverURI(src image.Image) string {
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, src, &jpeg.Options{Quality: 86}); err != nil {
-		return ""
-	}
-	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
-}
-
-// replicaMarkURI embeds the source app's original mark for the card's icon.
-func replicaMarkURI(src image.Image) string {
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, src); err != nil {
-		return ""
-	}
-	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
-}
-
 // replicaTemplates lists the six ambient templates in display order, with the
 // names both catalogs give them.
 func replicaTemplates(art replicaArt) []replicaTemplate {
@@ -278,12 +233,6 @@ func replicaTemplates(art replicaArt) []replicaTemplate {
 		for _, c := range p.Colors {
 			colors = append(colors, hexColor(c))
 		}
-		blobs := make([]replicaBlob, 0, 6)
-		for _, b := range p.Blobs() {
-			blobs = append(blobs, replicaBlob{
-				X: b.X, Y: b.Y, R: b.Radius, Color: hexColor(b.Color), Alpha: b.Alpha,
-			})
-		}
 		out = append(out, replicaTemplate{
 			ID:     p.ID,
 			Name:   replicaLampPresetName("zh-CN", p.ID),
@@ -291,7 +240,7 @@ func replicaTemplates(art replicaArt) []replicaTemplate {
 			Colors: colors,
 			Seed:   p.Seed,
 			Base:   art.Templates[p.ID].Base,
-			Blobs:  blobs,
+			Blobs:  art.Templates[p.ID].Blobs,
 		})
 	}
 	return out

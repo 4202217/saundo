@@ -30,7 +30,8 @@ type replicaArtCover struct {
 }
 
 type replicaArtTemplate struct {
-	Base string `json:"base"`
+	Base  string        `json:"base"`
+	Blobs []replicaBlob `json:"blobs"`
 }
 
 func loadReplicaArt(t *testing.T) replicaArt {
