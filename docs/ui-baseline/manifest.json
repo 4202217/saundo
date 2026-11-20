@@ -1,80 +1,80 @@
 {
-  "commit": "c1994d953d0c2765287c87a17c24d1de9adaff89",
+  "commit": "ffe5bd3c7228edd83669b0b220fe42f09d456e81",
   "dirty": "clean",
   "renderer": "ui.Tester/raster",
-  "generated": "2026-11-20T01:50:28Z",
+  "generated": "2026-11-20T03:24:59Z",
   "files": [
     {
       "name": "dialog-receiver-add-en.png",
-      "sha256": "624427180e5547fab3ac46d3ab1827720223a19953c4a0e32584fa31ae462f29",
+      "sha256": "16dd6b3ae53ca37cbe01dbd373735c4d84e42dc00643eef8da8d96ebfcbbec9f",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "dialog-receiver-add-zh.png",
-      "sha256": "2c11ed96b7c541646945dfe1c15883b940d87f56cfea2d0ac047de169c9d4a30",
+      "sha256": "4491ca82f48bef6072c00df3b49b59d9de4ec5a91015cc4aa04c5bea04413a27",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "flyout-connecting-en.png",
-      "sha256": "5f0b576889f7d53102efcf2d090928d8a425dde8cb4e70055f55117e9f4c0c4b",
+      "sha256": "d606b45e9ccde76941067084a3be66672e05950d423b7889c26f61dfbf6e3708",
       "width": 840,
-      "height": 1022
+      "height": 1020
     },
     {
       "name": "flyout-connecting-zh.png",
-      "sha256": "06bf6a48bc684f8942abeff7b0fbad4e894f296148d5b34276e499bd1c66ef09",
+      "sha256": "8ef5bd7d5fa4fd4d7c6f1258f8bf52505cea0c004619f13d4af850f38676edec",
       "width": 840,
-      "height": 1022
+      "height": 1020
     },
     {
       "name": "flyout-empty-en.png",
-      "sha256": "45f18c1905bbeda23808cb4dc337bc8b884c9e583caa919d2ee1bd4df94f9275",
+      "sha256": "7ef1edb792bfe8dcd99114ee7560ff9fb5c13c639c6b0bd811f1ea689d7a1392",
       "width": 840,
-      "height": 964
+      "height": 902
     },
     {
       "name": "flyout-empty-zh.png",
-      "sha256": "67b97ebb126337f7eca78b6c4ec34df921320798a229ecefd3dfe3a8b1c67c7d",
+      "sha256": "284ef37a01369c1282d51e2e51cc497e3c5dea01fd9782fcd90560a0dd863742",
       "width": 840,
-      "height": 964
+      "height": 902
     },
     {
       "name": "flyout-error-en.png",
-      "sha256": "280e89fd25f19c70ce0c90fcfdb2cf8e40897c6116e4456ad4abb0640a25dedd",
+      "sha256": "5ad99e5401a83208299f5779652fddddfbda0899d2d381c41ae7be306010bc1b",
       "width": 840,
-      "height": 1118
+      "height": 1124
     },
     {
       "name": "flyout-error-zh.png",
-      "sha256": "8617819d11d02364a53f31ced0148154c44b4414cdc973300cc1418ac01fbd31",
+      "sha256": "91acc6470b2418157a0049a3ffd4402948de8081201b4492492f6987d05738c9",
       "width": 840,
-      "height": 1118
+      "height": 1124
     },
     {
       "name": "flyout-stream-dark-en.png",
-      "sha256": "1ed2911c4936c1120745e9805cd084927962adc99bf05cf7153819e69ff13fc5",
+      "sha256": "0093b93f6065588da2379bb6f3d7d3421a8ad68ef83f10a7e59643645c7bd063",
       "width": 840,
-      "height": 1322
+      "height": 1320
     },
     {
       "name": "flyout-stream-dark-zh.png",
-      "sha256": "cfc8e6505e6219f35c7631dcda7093e44ea38800354b5b8c4583efc4e92f3d7c",
+      "sha256": "3802930f0bb04835173f8698ec68363cd2e9bb0423dd462aaccec9de977f7d5f",
       "width": 840,
-      "height": 1322
+      "height": 1320
     },
     {
       "name": "flyout-stream-light-en.png",
-      "sha256": "cb5bab908c6e9c6ac95b520dcc2f4216d99915dc0f6893407e7435e9cbf6e4de",
+      "sha256": "749ef321c421952cd485337a9ae2aa018e075f72b31cb5983f2828964a21df8c",
       "width": 840,
-      "height": 1322
+      "height": 1320
     },
     {
       "name": "flyout-stream-light-zh.png",
-      "sha256": "0c2628e1aa355267223f23130bb3124b93e8c7f7430d54e29923e9dc6df96b4b",
+      "sha256": "d6886731691946f6ee9abeab285c0719945fbd9b4059d68aafb6f02d6bdd3f96",
       "width": 840,
-      "height": 1322
+      "height": 1320
     },
     {
       "name": "settings-audio-custom-light-en.png",
@@ -90,13 +90,13 @@
     },
     {
       "name": "settings-connection-dark-en.png",
-      "sha256": "88c470cca44d2d9af25ed8b39ee3ac3d7cfc46fddc7b3027327aefa6a8271b4e",
+      "sha256": "39b4f7e95c45547e27486097864482aae606aa5b13dc7ea3449b4561abd7ce10",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-connection-dark-zh.png",
-      "sha256": "0571616514acf1d883a7e3259c0e124c5589a9469a914ee6352624da171d0f5d",
+      "sha256": "d99c7410006d01d97624c35b828fef6a7a88bc3d01ef1759e252624e54386d27",
       "width": 1440,
       "height": 1000
     },
@@ -138,13 +138,13 @@
     },
     {
       "name": "settings-receivers-expanded-light-en.png",
-      "sha256": "051594b553c16978416835e858fd709d608bec07ea26ac4832c554f7b697094e",
+      "sha256": "d85bac2346169724527ffe47c9eac39a7c548f0383cfa649607be173ba5fd708",
       "width": 1440,
       "height": 1000
     },
     {
       "name": "settings-receivers-expanded-light-zh.png",
-      "sha256": "5c93a674fb24e699da5d53a3186700e28137e826336813fec1fc7cf61623a586",
+      "sha256": "dd0ad2c4555a71e87aff0894af7fe427f9a5f079e18ac5db4b4f66e434d906c2",
       "width": 1440,
       "height": 1000
     }
