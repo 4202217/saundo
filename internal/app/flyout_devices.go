@@ -51,11 +51,11 @@ func (a *App) hasNowMedia() bool {
 	return ok
 }
 
-// disconnectAllShown reports a live or wanted session, when the device head's
-// one-click disconnect applies. A per-target row action leaves the rest of
-// the cohort alone.
+// disconnectAllShown reports a session with at least two targets, when the
+// device head's one-click disconnect applies. One target's row already carries
+// 断开连接, so the head's action would only duplicate it.
 func (a *App) disconnectAllShown() bool {
-	return len(a.snap.ActiveTargets) > 0
+	return len(a.snap.ActiveTargets) > 1
 }
 
 // errorBarShown carries the error bar in a failed phase, or for a connect or
@@ -107,7 +107,6 @@ func (a *App) emptyDevices(c *ui.Context, p palette) {
 // it, and the connect action in its own centered column. A row that is not a
 // member keeps its name and a second line, centered in the same height.
 func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool) {
-	selected := d.ID == a.selID
 	target, hasTarget := a.snap.Target(d.ID)
 
 	row := ui.Row(c).Height(deviceRowHeight).Padding(9, 12).Gap(10).
@@ -125,13 +124,11 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 	}
 
 	// The row's 140 ms color transition needs the background in the build;
-	// a hover drawn in Paint would snap.
-	switch {
-	case selected:
-		row.Background(p.sel)
-	case row.Hovered():
+	// a hover drawn in Paint would snap. A session target is never tinted: the
+	// card's rows are peers, and the action tells the membership.
+	if row.Hovered() {
 		row.Background(p.cardHover)
-	default:
+	} else {
 		row.Background(ui.Transparent)
 	}
 
@@ -141,14 +138,14 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 		// is joining, reopening, or failed is plain: nothing offers volume
 		// before playback, and the row's height does not change.
 		if hasTarget && target.State == engine.TargetMember {
-			deviceGlyph(c, p, d, selected)
-			a.deviceMixer(c, p, d, target, selected)
+			deviceGlyph(c, p, d)
+			a.deviceMixer(c, p, d, target)
 		} else {
 			pick := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Gap(10).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(d.Name)
 			pick.OnClick(func() { a.selectDevice(d.ID) })
 			pick.Children(func() {
-				deviceGlyph(c, p, d, selected)
+				deviceGlyph(c, p, d)
 				// The plain row keeps the live row's rhythm: a 26 name line, a
 				// 2 gap, and a 20 second line. Shrink keeps the combo tag beside
 				// the name, spare width on the right.
@@ -208,7 +205,7 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 // deviceMixer is a member row's two-line content: the channel button and name,
 // then volume and percent. A stereo target draws no channel button — its two
 // members play one side each — so its name starts at the row's lead.
-func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.TargetControl, selected bool) {
+func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	ui.Column(c).Grow(1).Gap(2).Children(func() {
 		ui.Row(c).Height(26).Gap(8).AlignItems(ui.Center).Children(func() {
 			if !t.Stereo {
@@ -358,26 +355,15 @@ func (a *App) cycleChannel(t engine.TargetControl) {
 	a.eng.UpdateReceiver(t.ID, receivers.Patch{Channel: &next})
 }
 
-// deviceGlyph is the round silhouette with the online dot, shared by the
-// flyout rows and the settings summary.
-func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
-	color := p.fg2
-	if selected {
-		color = p.accent
-	}
+// deviceGlyph is the flyout row's round silhouette with the online dot; the
+// settings row draws its own at the page's inset.
+func deviceGlyph(c *ui.Context, p palette, d device.Device) {
 	g := ui.Box(c).Size(30, 30).Radius(15).Center().Shrink(0).Background(p.pill)
-	if selected {
-		g.Background(p.card)
-	}
 	g.Children(func() {
-		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(color)
+		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(p.fg2)
 		if d.Online {
-			ring := p.card
-			if selected {
-				ring = p.sel
-			}
 			ui.Box(c).Size(9, 9).Radius(4.5).Background(p.green).
-				Shadow(0, 0, 0, 2, ring).
+				Shadow(0, 0, 0, 2, p.card).
 				Attach(ui.AnchorBottomRight, ui.AnchorBottomRight).Right(-1).Bottom(-1)
 		}
 	})

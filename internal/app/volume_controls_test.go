@@ -221,13 +221,23 @@ func TestRowActionFollowsTargetState(t *testing.T) {
 }
 
 // TestFlyoutDisconnectAllButtonFollowsSession pins the device head's
-// one-click disconnect: shown while a target is live, absent when idle.
+// one-click disconnect: shown while two or more targets are live, absent for
+// a single target (its row already carries 断开连接) and when idle.
 func TestFlyoutDisconnectAllButtonFollowsSession(t *testing.T) {
 	a := previewApp()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
+	if tt.HasText(locales.DisconnectAll()) {
+		t.Fatalf("one-target flyout offers disconnect all; texts: %q", tt.Texts())
+	}
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	a.snap.Targets = append(a.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo", State: engine.TargetMember,
+	})
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
 	if !tt.HasText(locales.DisconnectAll()) {
-		t.Fatalf("live flyout is missing the disconnect-all action; texts: %q", tt.Texts())
+		t.Fatalf("two-target flyout is missing the disconnect-all action; texts: %q", tt.Texts())
 	}
 	a.snap.ActiveTargets = nil
 	a.snap.Targets = nil

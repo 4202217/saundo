@@ -6,13 +6,20 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"saundo/cmd/saundo/locales"
+	"saundo/internal/engine"
 )
 
 // TestDeviceHeadKeepsItsHeight pins the reserved action slot: the device head
 // measures the same with and without a live session, so the 全部断开 button
 // never resizes the panel when it appears.
 func TestDeviceHeadKeepsItsHeight(t *testing.T) {
+	// Two targets, so the head carries its 全部断开 action; one target would
+	// not show it, and the fixture would not cover both head states.
 	with := previewApp()
+	with.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	with.snap.Targets = append(with.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo", Stereo: false, State: engine.TargetMember,
+	})
 	tt := ui.NewTester(with.view, flyoutWidth, visibleFlyoutHeight(with))
 	tt.Frame()
 	labelWith, _ := tt.Find(locales.FlyoutDevices())
