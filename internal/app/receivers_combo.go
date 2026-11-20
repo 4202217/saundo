@@ -215,11 +215,11 @@ func (a *App) comboMapHalf(c *ui.Context, p palette, side string, m device.Devic
 	})
 }
 
-// comboMemberSubtitle names the combo's two sides in playback order. A combo
-// named with the derived default already carries both member names, so the
-// models stand in there — the name and the subtitle never repeat one string.
-// Two identical models read as one. The model also stands in while no member
-// name is known.
+// comboMemberSubtitle names a flyout combo's two sides in playback order. A
+// combo named with the derived default already carries both member names, so
+// the models stand in there — the name and the subtitle never repeat one
+// string. Two identical models read as one. The model also stands in while no
+// member name is known.
 func comboMemberSubtitle(name string, members []device.Device, fallback string) string {
 	render := func(pick func(m device.Device) string) string {
 		parts := make([]string, 0, len(members))
@@ -244,6 +244,47 @@ func comboMemberSubtitle(name string, members []device.Device, fallback string) 
 		return models
 	}
 	return fallback
+}
+
+// comboSubtitle names the settings combo's two sides in playback order, but a
+// member that is down wins: the collapsed row is the only cue that the combo
+// cannot start. A combo named with the derived default already carries both
+// member names, so its online count stands in there; the title and the second
+// line never repeat one string. Two identical names read as one.
+func comboSubtitle(name string, members []device.Device) string {
+	online := 0
+	for _, m := range members {
+		if m.Online {
+			online++
+		}
+	}
+	switch {
+	case online == 0:
+		return locales.ActionOffline()
+	case online < len(members):
+		// The collapsed row is the only cue that the combo cannot start.
+		return locales.DeviceComboOffline(len(members) - online)
+	}
+	if names := comboMemberNames(members); names != "" && names != name {
+		return names
+	}
+	return locales.DeviceComboOnline(online)
+}
+
+// comboMemberNames joins the member names in playback order, reading two
+// identical names once.
+func comboMemberNames(members []device.Device) string {
+	names := make([]string, 0, len(members))
+	for _, m := range members {
+		if m.Name == "" {
+			continue
+		}
+		if len(names) > 0 && names[len(names)-1] == m.Name {
+			continue
+		}
+		names = append(names, m.Name)
+	}
+	return strings.Join(names, " + ")
 }
 
 // comboOfflineMember names the offline members of a combo for the warning

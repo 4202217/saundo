@@ -391,10 +391,9 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 		a.closeReceiverDialog()
 		return
 	}
-	model := receiverModelLabel(v)
 	ui.Column(c).Children(func() {
 		dialogHead(c, p, iconSlash, locales.ReceiverRemoveConfirmTitle(),
-			locales.ReceiverRemoveConfirmSub(v.Name, model), true, nil)
+			locales.ReceiverRemoveConfirmSub(v.Name), true, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Gap(5).Children(func() {
 			ui.Text(c, locales.ReceiverRemoveHint1()).FontSize(11.5).TextColor(p.muted)
 			ui.Text(c, locales.ReceiverRemoveHint2()).FontSize(11.5).TextColor(p.muted)

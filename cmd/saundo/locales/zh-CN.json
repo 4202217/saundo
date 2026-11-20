@@ -67,13 +67,16 @@
   "statusStandby": "已待机 · 播放声音即唤醒",
   "statusDisconnected": "未连接",
   "statusConnectionFailed": "连接失败",
-  "deviceStereoGroup": "{model} · 立体声组 {n, number}/2",
-  "devicePinPairing": "{model} · PIN 配对",
-  "deviceNeedsPassword": "{model} · 需要密码",
-  "deviceUnsupported": "{model} · 暂不支持",
-  "deviceAuthSetup": "{model} · 需要认证",
-  "deviceAirPlay2": "{model} · AirPlay 2",
-  "deviceAirPlay1": "{model} · AirPlay 1",
+  "deviceStereoGroup": "立体声组 {n, number}/2",
+  "devicePinPairing": "PIN 配对",
+  "deviceNeedsPassword": "需要密码",
+  "devicePasswordSaved": "密码已保存",
+  "deviceAirPlay2": "AirPlay 2",
+  "deviceAirPlay1": "AirPlay 1",
+  "deviceUnsupported": "暂不支持",
+  "deviceAuthSetup": "需要认证",
+  "deviceComboOnline": "{n, number} 台在线",
+  "deviceComboOffline": "{n, number} 台离线",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "接收器列表",
   "flyoutRefreshDevices": "刷新接收器",
@@ -333,13 +336,10 @@
   "receiverRemove": "移除接收器",
   "receiverRemoveConfirm": "移除",
   "receiverRemoveConfirmTitle": "移除接收器？",
-  "receiverRemoveConfirmSub": "{name} · {model}",
+  "receiverRemoveConfirmSub": "{name}",
   "@receiverRemoveConfirmSub": {
     "placeholders": {
       "name": {
-        "type": "String"
-      },
-      "model": {
         "type": "String"
       }
     }

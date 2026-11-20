@@ -91,14 +91,16 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 		"接收器", "管理接收器、自动连接、显示与声道。",
 		locales.ReceiverGroupEnabled(), "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
 		"启动时", "手动添加", locales.ReceiverAddAction(), locales.ReceiverPairAddTitle(), "已隐藏", "卧室 HomePod mini",
-		"AudioAccessory5,1 · 192.168.1.20:7000",
-		"AirPort Express · 192.168.1.32:5000",
-		"AudioAccessory5,1 · 立体声组 2/2",
-		"AudioAccessory5,1 · 离线",
+		locales.DeviceAuthSetup(),
+		locales.DeviceStereoGroup(2),
+		locales.ActionOffline(),
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("receiver page is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	if tt.HasText("AudioAccessory5,1") {
+		t.Fatalf("a model code reached the receiver page; texts: %q", tt.Texts())
 	}
 }
 
@@ -587,7 +589,30 @@ func TestReceiverComboCreateDialogOpensAndNames(t *testing.T) {
 	}
 }
 
-func TestComboMemberSubtitleAvoidsRepeatingTheName(t *testing.T) {
+func TestComboSubtitleAvoidsRepeatingTheName(t *testing.T) {
+	members := []device.Device{
+		{Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
+		{Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
+	}
+	if got := comboSubtitle("客厅立体声", members); got != "HomePod L + HomePod R" {
+		t.Fatalf("custom-name sub = %q, want the member names", got)
+	}
+	if got := comboSubtitle("HomePod L + HomePod R", members); got != locales.DeviceComboOnline(2) {
+		t.Fatalf("derived-name sub = %q, want the online count", got)
+	}
+	if got := comboSubtitle("客厅立体声", nil); got != locales.ActionOffline() {
+		t.Fatalf("memberless sub = %q, want the offline state", got)
+	}
+	half := []device.Device{
+		{Name: "HomePod L", Online: true},
+		{Name: "HomePod R", Online: false},
+	}
+	if got := comboSubtitle("HomePod L + HomePod R", half); got != locales.DeviceComboOffline(1) {
+		t.Fatalf("half-offline sub = %q, want one offline member", got)
+	}
+}
+
+func TestComboMemberSubtitleKeepsTheModelFallback(t *testing.T) {
 	members := []device.Device{
 		{Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
 		{Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
@@ -600,6 +625,45 @@ func TestComboMemberSubtitleAvoidsRepeatingTheName(t *testing.T) {
 	}
 	if got := comboMemberSubtitle("客厅立体声", nil, "fallback"); got != "fallback" {
 		t.Fatalf("memberless sub = %q, want the fallback", got)
+	}
+}
+
+func TestFlyoutDeviceSubtitleKeepsTheModelLine(t *testing.T) {
+	mac := device.Device{ID: "mac:01", Model: "Mac14,2", Auth: device.AuthHAPPassword, Online: true}
+	if got, want := deviceSubtitle(mac), "Mac14,2 · "+locales.DeviceNeedsPassword(); got != want {
+		t.Fatalf("password sub = %q, want %q", got, want)
+	}
+	pair := device.Device{ID: "stereo:1", Model: "AudioAccessory5,1", StereoID: "1", Online: true,
+		Members: []device.Device{{ID: "AA:00"}, {ID: "AA:01"}}}
+	if got, want := deviceSubtitle(pair), "AudioAccessory5,1 · "+locales.DeviceStereoGroup(2); got != want {
+		t.Fatalf("pair sub = %q, want %q", got, want)
+	}
+}
+
+func TestReceiverSubtitleNamesOnlyThePasswordPresence(t *testing.T) {
+	needs := receivers.View{
+		Device: device.Device{Auth: device.AuthHAPPassword, Online: true},
+	}
+	if got := receiverSubtitle(needs); got != locales.DeviceNeedsPassword() {
+		t.Fatalf("no saved password sub = %q", got)
+	}
+	saved := needs
+	saved.PasswordSet = true
+	if got := receiverSubtitle(saved); got != locales.DevicePasswordSaved() {
+		t.Fatalf("saved password sub = %q", got)
+	}
+	ready := receivers.View{
+		Device: device.Device{Auth: device.AuthHAPTransient, Online: true},
+	}
+	if got := receiverSubtitle(ready); got != "" {
+		t.Fatalf("ready single sub = %q, want a blank line", got)
+	}
+	manual := receivers.View{
+		Kind: receivers.KindManual, Address: "192.0.2.1:7000",
+		Device: device.Device{Auth: device.AuthHAPTransient, Online: true},
+	}
+	if got := receiverSubtitle(manual); got != "192.0.2.1:7000" {
+		t.Fatalf("manual sub = %q, want the address", got)
 	}
 }
 

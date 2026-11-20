@@ -201,17 +201,13 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 // the section has rows, its create action at the right. A section without
 // rows leaves the action to its dashed row, so no head offers an action twice.
 func (a *App) receiverSectionHead(c *ui.Context, p palette, label string, count int, topMargin float32, withAction bool, actionLabel string, fn func()) {
-	head := ui.Row(c).Margin(topMargin, 0, 0, 0).FillWidth().Gap(7).AlignItems(ui.Center).Shrink(0)
-	head.Children(func() {
-		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-		if count > 0 {
-			countBadge(c, p, count)
-		}
-		if withAction {
-			ui.Spacer(c)
+	var action func()
+	if withAction {
+		action = func() {
 			rowAction(c, p, "section:"+label, actionLabel, iconPlus, p.accent, fn)
 		}
-	})
+	}
+	groupHead(c, p, label, count, topMargin, action)
 }
 
 // openComboCreate opens the create-combo dialog over the page.
@@ -412,52 +408,32 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 	})
 }
 
-// receiverSubtitle names the model and either its address or its absence.
-// The mockup keeps the address visible on a row, which the auth-oriented
-// flyout subtitle cannot, so the receiver page has its own line.
+// receiverSubtitle is the row's second line: the one fact its title and
+// chips do not already carry. A combo names its sides or their online count;
+// every other row is offline, an auth gate, a stereo pair's shape, a manual
+// row's address, or nothing at all.
 func receiverSubtitle(v receivers.View) string {
-	model := receiverModelLabel(v)
 	if v.Entry.IsCombo() {
-		sub := comboMemberSubtitle(v.Name, v.Device.Members, model)
-		if !v.Device.Online {
-			// The collapsed row is the only cue that the combo cannot start.
-			sub += " · " + locales.ActionOffline()
-		}
-		return sub
+		return comboSubtitle(v.Name, v.Device.Members)
 	}
 	if !v.Device.Online {
-		return model + " · " + locales.ActionOffline()
+		return locales.ActionOffline()
+	}
+	if line := authSubtitle(v.Device.Auth, v.PasswordSet); line != "" {
+		return line
 	}
 	if v.Stereo {
-		return locales.DeviceStereoGroup(model, len(v.Device.Members))
+		return locales.DeviceStereoGroup(len(v.Device.Members))
 	}
-	address := v.Address
-	if address == "" && v.Device.Host != "" {
-		address = v.Device.Host + ":" + receivers.PortText(v.Device.Port)
-	}
-	if address == "" {
-		return model
-	}
-	return model + " · " + address
-}
-
-// receiverModelLabel prefers the localized manual type name over the
-// internal fallback model a manual row carries.
-func receiverModelLabel(v receivers.View) string {
 	if v.IsManual() {
-		switch v.Type {
-		case receivers.TypeAirPortExpress:
-			return locales.ReceiverTypeExpress()
-		case receivers.TypeAirPlay1:
-			return locales.ReceiverTypeAP1()
-		case receivers.TypeAirPlay2:
-			return locales.ReceiverTypeAP2()
+		if v.Address != "" {
+			return v.Address
+		}
+		if v.Device.Host != "" {
+			return v.Device.Host + ":" + receivers.PortText(v.Device.Port)
 		}
 	}
-	if v.Model != "" {
-		return v.Model
-	}
-	return locales.DeviceDefaultModel()
+	return ""
 }
 
 // receiverEditButton is the side button on an expanded manual row. It is

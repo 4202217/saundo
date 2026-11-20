@@ -22,7 +22,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
   once).
 - 连接 page: two sections above the switches card. 已连接设备 lists every
-  target in the session: a 24-DIP glyph, the name, a second line of model · channel · volume, and the member state
+  target in the session: a 24-DIP glyph, the name, a second line of channel · volume, and the member state
   (正在播放, 正在连接…, 正在重连…, 连接失败) right-aligned and vertically
   centered. A retransmit share of at least 0.5% or any underrun joins the
   second line in the warning color; healthy devices show no counters. A
@@ -74,7 +74,9 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 - 立体声组合 section (`receiverComboRow`): created combos live in their own
   card under the same group-head style, so the combo's expanded body never
   runs into a single receiver's card. The row shows the stereo glyph, the
-  立体声组合 chip, and the two member names as the subtitle; the expanded
+  立体声组合 chip, and either the two member names or the online count as
+  the subtitle (the count when the name already carries both sides, or when
+  a member is down); the expanded
   body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
   member, the offline side dimmed, a swap button between them that flips the
   sides in place without a rebuild), a warning bar naming an offline member,
@@ -147,7 +149,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestConnectionPageDeviceHealthNotableOnly|TestConnectionPageSessionCardDegraded|TestConnectionPagePairRow|TestConnectionPageSpeaksForTheSession|TestReceiverComboRowRendersTheChannelMap|TestReceiverComboUnlinkOpensTheConfirmDialog|TestReceiverComboCreateDialogOpensAndNames|TestReceiverComboOfflineWarning|TestComboCreateRefusesAnIncompleteForm|TestComboMemberSubtitleAvoidsRepeatingTheName|TestFlyoutComboRowKeepsItsNameBesideTheTag|TestComboPickRowsExcludeTheOtherSide|TestReceiverPageShowsSaveErrors|TestStereoIconFollowsMembers' -v ./internal/app/
+go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestConnectionPageDeviceHealthNotableOnly|TestConnectionPageSessionCardDegraded|TestConnectionPagePairRow|TestConnectionPageSpeaksForTheSession|TestReceiverComboRowRendersTheChannelMap|TestReceiverComboUnlinkOpensTheConfirmDialog|TestReceiverComboCreateDialogOpensAndNames|TestReceiverComboOfflineWarning|TestComboCreateRefusesAnIncompleteForm|TestComboSubtitleAvoidsRepeatingTheName|TestReceiverSubtitleNamesOnlyThePasswordPresence|TestFlyoutComboRowKeepsItsNameBesideTheTag|TestComboPickRowsExcludeTheOtherSide|TestReceiverPageShowsSaveErrors|TestStereoIconFollowsMembers' -v ./internal/app/
 ```
 
 Settings defaults:

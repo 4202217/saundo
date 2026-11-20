@@ -19,7 +19,6 @@ import (
 
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/creds"
-	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/analyze"
 	"saundo/internal/capture"
@@ -1072,30 +1071,6 @@ func (a *App) statusText() string {
 	default:
 		return locales.StatusDisconnected()
 	}
-}
-
-func deviceSubtitle(d device.Device) string {
-	model := d.Model
-	if model == "" {
-		model = locales.DeviceDefaultModel()
-	}
-	if d.IsStereoGroup() {
-		return locales.DeviceStereoGroup(model, len(d.Members))
-	}
-	switch d.Auth {
-	case device.AuthHAPPIN:
-		return locales.DevicePinPairing(model)
-	case device.AuthHAPPassword, device.AuthPassword:
-		return locales.DeviceNeedsPassword(model)
-	case device.AuthLegacyPin:
-		return locales.DeviceUnsupported(model)
-	case device.AuthSetup:
-		return locales.DeviceAuthSetup(model)
-	}
-	if d.AirPlay2 {
-		return locales.DeviceAirPlay2(model)
-	}
-	return locales.DeviceAirPlay1(model)
 }
 
 // onLocaleChanged relabels the sentinel capture options, retitles the

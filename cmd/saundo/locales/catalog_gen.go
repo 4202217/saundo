@@ -396,76 +396,104 @@ func (msgs Messages) StatusConnectionFailed() string {
 	return Catalog.Format(msgs.locale, "statusConnectionFailed", nil)
 }
 
-// DeviceStereoGroup says "{model} · Stereo pair {n, number}/2"
+// DeviceStereoGroup says "Stereo pair {n, number}/2"
 // in the language the app shows.
-func DeviceStereoGroup(model string, n int) string {
-	return In(i18n.Locale()).DeviceStereoGroup(model, n)
+func DeviceStereoGroup(n int) string { return In(i18n.Locale()).DeviceStereoGroup(n) }
+
+// DeviceStereoGroup says "Stereo pair {n, number}/2"
+// in the language of msgs.
+func (msgs Messages) DeviceStereoGroup(n int) string {
+	return Catalog.Format(msgs.locale, "deviceStereoGroup", map[string]any{"n": n})
 }
 
-// DeviceStereoGroup says "{model} · Stereo pair {n, number}/2"
+// DevicePinPairing says "PIN pairing"
+// in the language the app shows.
+func DevicePinPairing() string { return In(i18n.Locale()).DevicePinPairing() }
+
+// DevicePinPairing says "PIN pairing"
 // in the language of msgs.
-func (msgs Messages) DeviceStereoGroup(model string, n int) string {
-	return Catalog.Format(msgs.locale, "deviceStereoGroup", map[string]any{"model": model, "n": n})
+func (msgs Messages) DevicePinPairing() string {
+	return Catalog.Format(msgs.locale, "devicePinPairing", nil)
 }
 
-// DevicePinPairing says "{model} · PIN pairing"
+// DeviceNeedsPassword says "Password required"
 // in the language the app shows.
-func DevicePinPairing(model string) string { return In(i18n.Locale()).DevicePinPairing(model) }
+func DeviceNeedsPassword() string { return In(i18n.Locale()).DeviceNeedsPassword() }
 
-// DevicePinPairing says "{model} · PIN pairing"
+// DeviceNeedsPassword says "Password required"
 // in the language of msgs.
-func (msgs Messages) DevicePinPairing(model string) string {
-	return Catalog.Format(msgs.locale, "devicePinPairing", map[string]any{"model": model})
+func (msgs Messages) DeviceNeedsPassword() string {
+	return Catalog.Format(msgs.locale, "deviceNeedsPassword", nil)
 }
 
-// DeviceNeedsPassword says "{model} · Password required"
+// DevicePasswordSaved says "Password saved"
 // in the language the app shows.
-func DeviceNeedsPassword(model string) string { return In(i18n.Locale()).DeviceNeedsPassword(model) }
+func DevicePasswordSaved() string { return In(i18n.Locale()).DevicePasswordSaved() }
 
-// DeviceNeedsPassword says "{model} · Password required"
+// DevicePasswordSaved says "Password saved"
 // in the language of msgs.
-func (msgs Messages) DeviceNeedsPassword(model string) string {
-	return Catalog.Format(msgs.locale, "deviceNeedsPassword", map[string]any{"model": model})
+func (msgs Messages) DevicePasswordSaved() string {
+	return Catalog.Format(msgs.locale, "devicePasswordSaved", nil)
 }
 
-// DeviceUnsupported says "{model} · Not supported"
+// DeviceAirPlay2 says "AirPlay 2"
 // in the language the app shows.
-func DeviceUnsupported(model string) string { return In(i18n.Locale()).DeviceUnsupported(model) }
+func DeviceAirPlay2() string { return In(i18n.Locale()).DeviceAirPlay2() }
 
-// DeviceUnsupported says "{model} · Not supported"
+// DeviceAirPlay2 says "AirPlay 2"
 // in the language of msgs.
-func (msgs Messages) DeviceUnsupported(model string) string {
-	return Catalog.Format(msgs.locale, "deviceUnsupported", map[string]any{"model": model})
+func (msgs Messages) DeviceAirPlay2() string {
+	return Catalog.Format(msgs.locale, "deviceAirPlay2", nil)
 }
 
-// DeviceAuthSetup says "{model} · Authentication required"
+// DeviceAirPlay1 says "AirPlay 1"
 // in the language the app shows.
-func DeviceAuthSetup(model string) string { return In(i18n.Locale()).DeviceAuthSetup(model) }
+func DeviceAirPlay1() string { return In(i18n.Locale()).DeviceAirPlay1() }
 
-// DeviceAuthSetup says "{model} · Authentication required"
+// DeviceAirPlay1 says "AirPlay 1"
 // in the language of msgs.
-func (msgs Messages) DeviceAuthSetup(model string) string {
-	return Catalog.Format(msgs.locale, "deviceAuthSetup", map[string]any{"model": model})
+func (msgs Messages) DeviceAirPlay1() string {
+	return Catalog.Format(msgs.locale, "deviceAirPlay1", nil)
 }
 
-// DeviceAirPlay2 says "{model} · AirPlay 2"
+// DeviceUnsupported says "Not supported"
 // in the language the app shows.
-func DeviceAirPlay2(model string) string { return In(i18n.Locale()).DeviceAirPlay2(model) }
+func DeviceUnsupported() string { return In(i18n.Locale()).DeviceUnsupported() }
 
-// DeviceAirPlay2 says "{model} · AirPlay 2"
+// DeviceUnsupported says "Not supported"
 // in the language of msgs.
-func (msgs Messages) DeviceAirPlay2(model string) string {
-	return Catalog.Format(msgs.locale, "deviceAirPlay2", map[string]any{"model": model})
+func (msgs Messages) DeviceUnsupported() string {
+	return Catalog.Format(msgs.locale, "deviceUnsupported", nil)
 }
 
-// DeviceAirPlay1 says "{model} · AirPlay 1"
+// DeviceAuthSetup says "Authentication required"
 // in the language the app shows.
-func DeviceAirPlay1(model string) string { return In(i18n.Locale()).DeviceAirPlay1(model) }
+func DeviceAuthSetup() string { return In(i18n.Locale()).DeviceAuthSetup() }
 
-// DeviceAirPlay1 says "{model} · AirPlay 1"
+// DeviceAuthSetup says "Authentication required"
 // in the language of msgs.
-func (msgs Messages) DeviceAirPlay1(model string) string {
-	return Catalog.Format(msgs.locale, "deviceAirPlay1", map[string]any{"model": model})
+func (msgs Messages) DeviceAuthSetup() string {
+	return Catalog.Format(msgs.locale, "deviceAuthSetup", nil)
+}
+
+// DeviceComboOnline says "{n, number} online"
+// in the language the app shows.
+func DeviceComboOnline(n int) string { return In(i18n.Locale()).DeviceComboOnline(n) }
+
+// DeviceComboOnline says "{n, number} online"
+// in the language of msgs.
+func (msgs Messages) DeviceComboOnline(n int) string {
+	return Catalog.Format(msgs.locale, "deviceComboOnline", map[string]any{"n": n})
+}
+
+// DeviceComboOffline says "{n, number} offline"
+// in the language the app shows.
+func DeviceComboOffline(n int) string { return In(i18n.Locale()).DeviceComboOffline(n) }
+
+// DeviceComboOffline says "{n, number} offline"
+// in the language of msgs.
+func (msgs Messages) DeviceComboOffline(n int) string {
+	return Catalog.Format(msgs.locale, "deviceComboOffline", map[string]any{"n": n})
 }
 
 // DeviceDefaultModel says "AirPlay"
@@ -2174,16 +2202,16 @@ func (msgs Messages) ReceiverRemoveConfirmTitle() string {
 	return Catalog.Format(msgs.locale, "receiverRemoveConfirmTitle", nil)
 }
 
-// ReceiverRemoveConfirmSub says "{name} · {model}"
+// ReceiverRemoveConfirmSub says "{name}"
 // in the language the app shows.
-func ReceiverRemoveConfirmSub(name string, model string) string {
-	return In(i18n.Locale()).ReceiverRemoveConfirmSub(name, model)
+func ReceiverRemoveConfirmSub(name string) string {
+	return In(i18n.Locale()).ReceiverRemoveConfirmSub(name)
 }
 
-// ReceiverRemoveConfirmSub says "{name} · {model}"
+// ReceiverRemoveConfirmSub says "{name}"
 // in the language of msgs.
-func (msgs Messages) ReceiverRemoveConfirmSub(name string, model string) string {
-	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name, "model": model})
+func (msgs Messages) ReceiverRemoveConfirmSub(name string) string {
+	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name})
 }
 
 // ReceiverRemoveHint1 says "Removes it from settings and the tray panel; the receiver itself is not changed."

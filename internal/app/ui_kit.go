@@ -87,6 +87,25 @@ func sectionHead(c *ui.Context, p palette, label, note string, busy bool, action
 	})
 }
 
+// groupHead is a settings page's section label above a card: the 11.5 / 600 /
+// letter-spaced muted group style, an optional count badge, and an optional
+// trailing row action. The row is one fixed 26 DIP whether or not it carries
+// an action, so the label and the card below it keep one baseline on every
+// page; without the fixed height the action would stretch the row and push
+// its centered label down.
+func groupHead(c *ui.Context, p palette, label string, count int, top float32, action func()) {
+	ui.Row(c).Margin(top, 0, 0, 0).FillWidth().Height(26).Gap(7).AlignItems(ui.Center).Shrink(0).Children(func() {
+		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		if count > 0 {
+			countBadge(c, p, count)
+		}
+		if action != nil {
+			ui.Spacer(c)
+			action()
+		}
+	})
+}
+
 // iconButton is a borderless 26px square holding one icon.
 func iconButton(c *ui.Context, p palette, icon *ui.SVG, label string, size float32, fn func()) {
 	b := ui.ButtonBase(c).Size(26, 26).Radius(7).Center().Cursor(ui.CursorPointer).Label(label)

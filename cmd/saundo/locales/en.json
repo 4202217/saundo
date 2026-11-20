@@ -74,23 +74,23 @@
   "statusStandby": "Standby · wakes when sound plays",
   "statusDisconnected": "Not connected",
   "statusConnectionFailed": "Connection failed",
-  "deviceStereoGroup": "{model} · Stereo pair {n, number}/2",
+  "deviceStereoGroup": "Stereo pair {n, number}/2",
   "@deviceStereoGroup": {
     "placeholders": {
-      "model": {
-        "type": "String"
-      },
       "n": {
         "type": "int"
       }
     }
   },
-  "devicePinPairing": "{model} · PIN pairing",
-  "deviceNeedsPassword": "{model} · Password required",
-  "deviceUnsupported": "{model} · Not supported",
-  "deviceAuthSetup": "{model} · Authentication required",
-  "deviceAirPlay2": "{model} · AirPlay 2",
-  "deviceAirPlay1": "{model} · AirPlay 1",
+  "devicePinPairing": "PIN pairing",
+  "deviceNeedsPassword": "Password required",
+  "devicePasswordSaved": "Password saved",
+  "deviceAirPlay2": "AirPlay 2",
+  "deviceAirPlay1": "AirPlay 1",
+  "deviceUnsupported": "Not supported",
+  "deviceAuthSetup": "Authentication required",
+  "deviceComboOnline": "{n, number} online",
+  "deviceComboOffline": "{n, number} offline",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "Receiver list",
   "flyoutRefreshDevices": "Refresh receivers",
@@ -448,13 +448,10 @@
   "receiverRemove": "Remove receiver",
   "receiverRemoveConfirm": "Remove",
   "receiverRemoveConfirmTitle": "Remove receiver?",
-  "receiverRemoveConfirmSub": "{name} · {model}",
+  "receiverRemoveConfirmSub": "{name}",
   "@receiverRemoveConfirmSub": {
     "placeholders": {
       "name": {
-        "type": "String"
-      },
-      "model": {
         "type": "String"
       }
     }
