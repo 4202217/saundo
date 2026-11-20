@@ -1,7 +1,9 @@
-// Command check-size keeps the codebase from growing more megaliths. Files
-// above the 800-line cap when the ratchet landed are grandfathered at their
-// current size; a new non-test, non-generated file may not cross the cap, and
-// a grandfathered file may not grow until its next seam is extracted.
+// Command check-size keeps the codebase from growing more megaliths. Size is
+// code lines: blank and comment-only lines are free, so a writer can explain
+// a seam without spending the lines the gate protects. Files above the
+// 800-line cap when the ratchet landed are grandfathered at their current
+// size; a new non-test, non-generated file may not cross the cap, and a
+// grandfathered file may not grow until its next seam is extracted.
 package main
 
 import (
@@ -141,9 +143,16 @@ func loadBaseline(path string) (map[string]int, error) {
 	return out, nil
 }
 
+// countLines counts lines of code: blank lines and comment-only lines do not
+// occupy budget, so a writer can explain a seam without spending the lines
+// the gate protects. A line of code with a trailing comment still counts once.
 func countLines(data []byte) int {
-	n := bytes.Count(data, []byte("\n"))
-	if len(data) > 0 && data[len(data)-1] != '\n' {
+	n := 0
+	for _, line := range bytes.Split(data, []byte("\n")) {
+		trimmed := bytes.TrimSpace(line)
+		if len(trimmed) == 0 || bytes.HasPrefix(trimmed, []byte("//")) {
+			continue
+		}
 		n++
 	}
 	return n
