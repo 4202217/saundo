@@ -460,11 +460,28 @@ func TestReplicaDataIsCurrent(t *testing.T) {
 	}
 	// A Windows checkout may hold the file with CRLF line endings; the
 	// generator writes LF, so compare the text rather than the bytes.
-	if strings.ReplaceAll(string(got), "\r\n", "\n") != want {
-		t.Fatalf("%s is stale: it no longer matches the app's demo fixture. Refresh it with\n"+
-			"  SAUNDO_DEMO_OUT=%s go test -tags preview -run TestExportReplicaData ./internal/app/",
-			replicaDataPath, replicaDataPath)
+	gotText := strings.ReplaceAll(string(got), "\r\n", "\n")
+	if gotText != want {
+		t.Fatalf("%s is stale: it no longer matches the app's demo fixture. First drift:\n%s\n"+
+			"  Refresh it with SAUNDO_DEMO_OUT=%s go test -tags preview -run TestExportReplicaData ./internal/app/",
+			replicaDataPath, firstDrift(want, gotText), replicaDataPath)
 	}
+}
+
+// firstDrift names the first lines that disagree, so a stale dataset or a
+// cross-arch render difference names its field instead of forcing a blind
+// regeneration.
+func firstDrift(want, got string) string {
+	w, g := strings.Split(want, "\n"), strings.Split(got, "\n")
+	for i := 0; i < len(w) && i < len(g); i++ {
+		if w[i] != g[i] {
+			return fmt.Sprintf("  line %d: fixture %q, disk %q", i+1, w[i], g[i])
+		}
+	}
+	if len(w) != len(g) {
+		return fmt.Sprintf("  fixture holds %d lines, disk holds %d", len(w), len(g))
+	}
+	return "  none found line-by-line; the bytes differ only outside the text"
 }
 
 // TestExportReplicaData writes the dataset the page loads.
