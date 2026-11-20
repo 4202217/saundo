@@ -3,6 +3,7 @@ package settings
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -61,7 +62,7 @@ func TestMissingVersionReadsAsCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(got, []byte(`"version": 1`)) {
+	if !bytes.Contains(got, []byte(fmt.Sprintf(`"version": %d`, SchemaVersion))) {
 		t.Fatalf("saved file lacks the schema version: %s", got)
 	}
 }

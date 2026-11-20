@@ -95,8 +95,9 @@ const (
 
 // SchemaVersion stamps every save. A file with a higher number was written by
 // a newer build; this build reads its known fields but never rewrites it.
-// Bump this whenever a persisted field is added, renamed, or removed.
-const SchemaVersion = 1
+// Bump this whenever a persisted field is added, renamed, or removed. 2 added
+// lastTargets, the launch combination the engine remembers.
+const SchemaVersion = 2
 
 type Settings struct {
 	Version             int                `json:"version"`
