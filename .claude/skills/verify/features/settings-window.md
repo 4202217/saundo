@@ -113,6 +113,15 @@ Headless UI pins the split and rendering:
 go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
 ```
 
+The settings states and dialogs have catalog IDs in
+`internal/app/ui_catalog_settings.go` and `internal/app/ui_catalog_dialogs.go`:
+`settings.general`, `settings.connection`, `settings.receivers`,
+`settings.audio`, `settings.lamp`, `settings.capture`, `settings.nowPlaying`,
+`settings.about`, and the `dialog.*` rows. `go run ./scripts/check-ui render
+-out <dir>` writes both languages, and `SAUNDO_PREVIEW_RENDER=<dir> go test
+-tags preview ./internal/app -run TestPreviewRender -count=1` writes the
+platform renders from the same rows. Use the ID as the evidence key.
+
 Settings defaults:
 
 ```bash

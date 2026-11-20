@@ -180,11 +180,11 @@ it on the clipboard).
 
 ```bash
 mkdir -p "$EV/frames"
-SAUNDO_PREVIEW_DIR="$EV/frames" go test -run TestRenderPreviews ./internal/app/
+go run ./scripts/check-ui render -out "$EV/frames"
 go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects' -v ./internal/app/
 ```
 
-`previewApp()` in `internal/app/app_test.go` is the fixture snapshot. A new
+`previewApp()` in `internal/app/ui_fixture.go` is the fixture snapshot. A new
 journey is a new Go test in the owning package: build the fixture, render
 with `ui.NewTester(a.view, w, h)`, click with stable handles — the visible
 locale string (`连接`, `断开`, `设置`) is the selector; never coordinates —

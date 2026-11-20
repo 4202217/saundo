@@ -20,7 +20,7 @@ func TestFlyoutLampCardStaysWhenOff(t *testing.T) {
 	a.snap.State = 0
 	a.selID = ""
 	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false))
-	for _, want := range []string{"氛围灯", "沙丘"} {
+	for _, want := range []string{"氛围灯", "封面"} {
 		if !tt.HasText(want) {
 			t.Fatalf("flyout is missing %q; texts: %q", want, tt.Texts())
 		}
@@ -33,7 +33,7 @@ func TestFlyoutLampCardStaysWhenOff(t *testing.T) {
 		t.Fatal("the power action did not turn the light off")
 	}
 	tt = ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false))
-	for _, want := range []string{"氛围灯", "沙丘", "已关灯"} {
+	for _, want := range []string{"氛围灯", "封面", "已关灯"} {
 		if !tt.HasText(want) {
 			t.Fatalf("flyout lost %q when the light turned off; texts: %q", want, tt.Texts())
 		}
@@ -66,6 +66,8 @@ func TestSettingsLampPowerTurnsTheLightOff(t *testing.T) {
 
 func TestFlyoutLampExpandsAndChoosesPreset(t *testing.T) {
 	a := previewApp()
+	a.lampCover = false /* the grid exists in template mode */
+	a.snap.LampCover = false
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	if _, ok := tt.Find("苔庭"); ok {
@@ -161,6 +163,8 @@ func TestLampOffIgnoresPriorityAndPreset(t *testing.T) {
 func TestSettingsLampPrioritySegmentTurnsCoverOn(t *testing.T) {
 	a := previewApp()
 	a.page = pageLamp
+	a.lampCover = false
+	a.snap.LampCover = false
 	a.cfg.Lamp = settings.LampSettings{Preset: "dune"}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	tt.Frame()
@@ -395,7 +399,7 @@ func TestLampSurfacesInEnglish(t *testing.T) {
 	a.snap.Standby = true
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{
-		"Ambient light", "Cover", "Template", "Dune",
+		"Ambient light", "Cover", "Template",
 		"Standby", "Turn on", "Standby · wakes when sound plays",
 	} {
 		if !tt.HasText(want) {

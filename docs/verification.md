@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-18 -->
+<!-- reviewed-through: 2026-11-19 -->
 
 # Verification
 
@@ -128,11 +128,6 @@ live state:
 - The macOS App Nap hold: `TestSessionActive` and
   `TestPowerHoldTransitions` cover the state machine, but no live Mac run
   has shown the process stays unsuppressed while the flyout is hidden.
-
-- The 0.6.4 verification-skill live pass: the six feature pages have source
-  coverage and a green map, but they were not driven live because the release
-  instance held the single-instance lock (the doctor passed read-only). Drive
-  them on the e2e build at the next session.
 
 ## Automated checks
 
@@ -694,6 +689,139 @@ maintainer's pre-release test of the candidate remains unrecorded. The first
 `v0.6.4` tag (`04fdd96`) was canceled before any release existed; this
 release is the re-cut at `117508a`, which includes the code review fixes.
 
+## 2026-11-17: Phase 3 site projection and replica gates
+
+The landing page's flyout replica reads `site/assets/demo-data.js`,
+generated from `Fixture("zh-CN")` and `Fixture("en")` with the catalog's
+`flyout.stream` scenario. The dataset carries the three receivers, three
+players and their track lists in both languages, each track's poster palette
+and cover-lamp blobs, volume, latency modes, opening phase and sync state, the
+six ambient templates, and the 17 `SiteDemo` catalog IDs.
+`TestReplicaDataIsCurrent` fails with the regenerate command when the fixture
+and the file part ways; `TestReplicaDataCarriesBothLanguages`,
+`TestReplicaDataGivesEveryTrackItsOwnPalette`, and
+`TestAuthNameSerializesEveryAuth` pin the projection. Source: the
+`worktree-render-demo` research branch at `f3f6bf8`, ported onto the shared
+fixture and catalog, not merged.
+
+`check-ui tokens` compares 15 `--fl-*` palette tokens in both appearances, 11
+DIP metrics pinned to the declarations the CSS anchors come from, and the 420
+px panel width. `check-ui words` renders the real flyout in zh-CN and English
+and requires its 97 catalog messages on the page; five remain declared in
+`replicaTextGaps`, and the list fails when a gap is fixed or when a declared
+gap is no longer rendered. `check-ui catalog` compares the catalog's
+`SiteDemo` rows with `scenarios` in the checked-in dataset. All three run in
+`make check`, both CI jobs, and both release check jobs; the CI and release
+jobs also vet the `updateharness` and `e2e` builds that `make check` runs.
+
+Gates: `gofmt -l .` printed nothing; `go vet ./...` and
+`go vet -tags preview ./...` passed; `go test ./... -count=1` and
+`go test -tags preview ./internal/app -count=1` passed; `check-ui catalog`,
+`tokens`, `words`, and `wasm` (26,417,305 bytes) passed; `mingw32-make check`
+passed including `check-platforms`. The CPU matrix wrote 254 files and 243
+match the Phase 0 baseline; the 11 other files are not compared.
+
+Fail-closed proofs: a changed light accent (`#4f46e6`) failed tokens with
+`light: --fl-accent is #4f46e6 on the site and #4f46e5 in theme.go`; changing
+the header's `Height(46)` to 47 while the two PIN/password `Height(46)`
+duplicates remained failed tokens with `no longer declares the header height
+where the CSS copies it`; changing 正在通过 to 正在向 failed words with
+`正在通过 {name} 播放` missing; renaming `HomePods` in the dataset failed
+`TestReplicaDataIsCurrent` with the regenerate command; adding
+`flyout.extra` to the dataset `scenarios` failed catalog with `flyout.extra is
+not a catalog row`; renaming the wording test made `check-ui words` fail with
+`TestReplicaSharesTheFlyoutsWording did not run`. All were restored.
+
+Browser: `site/` was served over HTTP and opened in headless Chrome. At
+1400x900 the HomePods row used `#g-homepod-mini` (model `AudioAccessory5,1`)
+and Apple TV used `#g-appletv`; the flyout showed 夜航/白鲸电台 under Apple
+Music at 2:08, 65%, PTP synced, 200 ms, the 沙丘 lamp, and 正在通过 HomePods
+播放. The six visible swatches matched the dataset's `templates` order and
+colors. The panel measured 323.4 px, the 420 DIP stage at `zoom:.77`, with a
+540 px glow. At 320 px the fit set `--fly-zoom:.6476`, the panel and stage
+measured 272 px with both edges at 24/296, the document width stayed 320, and
+the glow shrank to 455.8 px. `?lang=en` showed Night Ferry / Signal Coast in
+the tray and bento; cover mode named the ambient light Night Ferry, and after
+Next the lamp preview, `--amb-1`, glow, and name all moved to Sunset Highway /
+Neon Convoy. The source arrow cycled Apple Music -> Chrome -> Spotify ->
+Apple Music, the transport stayed inside each player, and Chrome returned to
+its stored 0:10 position. Standard selected the dataset's 1.5 s with no NaN.
+Without `demo=0`, the scripted pass moved volume from the dataset's 65 to 30
+in ten visible steps and selected the standard latency. With
+`assets/demo-data.js` removed, the page logged `saundo:
+assets/demo-data.js did not load; using the page's static demo fallback.`,
+kept its receivers, track, swatches, and language toggle working; after the
+dataset was restored, `assets/demo-data.js` returned 200 and the page had no
+console errors. Screenshots:
+`.audit/ui/phase3-fixes/screenshots/1400-zh-light.png`,
+`1400-en-cover-track2.png`, `1400-en-ambient-cover.png`, and
+`320-en-panel.png`.
+
+Pins: `TestReplicaDataIsCurrent`, `TestReplicaSharesTheFlyoutsWording`,
+`TestCatalog`, `TestRepositoryTokensMatch`,
+`TestSeededDeclarationDriftFails`, `TestSiteDemoProblemsCatchesDrift`,
+`TestReplicaDataCarriesBothLanguages`,
+`TestReplicaDataGivesEveryTrackItsOwnPalette`,
+`TestAuthNameSerializesEveryAuth`.
+
+## 2026-11-17: Phase 4 canonical baseline and CI pixel diff
+
+`docs/ui-baseline/manifest.json` pins 24 PNGs from 12 canonical state stems,
+each rendered in English and Simplified Chinese by the CPU matrix
+(`ui.Tester/raster`). The set covers the flyout playing light and dark,
+connecting, error, and empty; the general, connection dark, receivers
+expanded, audio custom, lamp cover, and Now Playing live settings pages; and
+the add-receiver dialog. The manifest and its PNGs agree byte for byte, and
+`check-ui diff` verifies that agreement before it compares a render. The
+Windows `check` jobs in `.github/workflows/ci.yml` and
+`.github/workflows/release.yml` render the canonical stems and run
+`check-ui diff -baseline docs/ui-baseline/manifest.json -against
+.audit/ui/ci/manifest.json`. The macOS jobs build and test but do not diff
+pixels: the baseline is per host, and Windows is the reference.
+`check-ui subset` cuts the committed set from a full stable manifest and
+refuses a stem with no file or a PNG whose bytes disagree with its record.
+`check-ui rebaseline` keeps the existing file set, updates the changed hashes,
+and copies the new PNGs beside the manifest.
+
+`TestPreviewRender` now passes `render.Options{Progress: ...}` and writes a
+`manifest.json` in its output directory with each file's SHA-256, size, and
+the renderer that drew it. The 2026-11-17 run wrote 108 PNGs to
+`.audit/ui/phase4-platform/manifest.json` with
+`Direct3D 11 (NVIDIA GeForce RTX 5070)`. An unreported renderer is recorded as
+`unknown`, never guessed.
+
+Gates: `gofmt -l .` printed nothing; `go vet ./...` and
+`go vet -tags preview ./...` passed; `go test ./... -count=1` and
+`go test -tags preview ./internal/app -count=1` passed; `check-ui catalog`,
+`tokens`, `words`, and `wasm` (26,417,305 bytes) passed; `mingw32-make check`
+passed, including `check-platforms` for windows/amd64 and darwin/arm64. The
+canonical render wrote 24 files and the diff printed
+`check-ui: 24 files match`.
+
+Fail-closed proofs. Flipping one pixel in
+`docs/ui-baseline/flyout-stream-light-en.png` made the diff print
+`docs/ui-baseline/manifest.json does not match the images beside it` and
+`changed flyout-stream-light-en.png`; the built tool exited 2 (`go run`
+reports the child's `exit status 2` and exits 1 itself). Renaming the manifest
+made it print `inconclusive: baseline: open ...` and exit 2. Changing the
+manifest's renderer to `not-the-matrix` made it print
+`renderer differs, baseline "not-the-matrix" against "ui.Tester/raster"` and
+exit 2. Changing the light accent from `#4f46e5` to `#4f46e6` made the render
+differ on 18 files, named one per line, and the diff failed; the changed files
+were the connecting, empty, error, and stream-light flyout states, the audio
+custom, lamp cover, Now Playing live, and receivers expanded settings pages,
+and the add-receiver dialog, each in both locales. The unchanged tree then
+printed `check-ui: 24 files match`. All seeds were restored.
+
+Pins: `TestSubsetSelectsStemsAndCopiesPNGs`,
+`TestSubsetRefusesAStemWithNoFile`,
+`TestSubsetRefusesASourceThatDisagreesWithTheManifest`,
+`TestDiffVerifiesTheBaselinePNGs`, `TestDiffRefusesAMissingBaseline`,
+`TestDiffRefusesARendererMismatch`,
+`TestRebaselineKeepsFileSetUpdatesHashesAndCopiesPNGs`,
+`TestReadManifestRejectsNoRenderer`,
+`TestRendererLabelNeverInventsAName`, `TestPreviewRender`.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
@@ -1244,6 +1372,69 @@ one took it from 1627.
   `TestStandalonePTPSessionSkipsSetPeers`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`.
+- 2026-11-17, one preview source and a fail-closed action seam: `Catalog()` is
+  the only preview state source. `PreviewScenarios()` selects the flyout,
+  settings, and dialog states for the wasm selector, `RunPreview` and every
+  preview test build `Fixture()`, and the duplicate preview fixture and media
+  filler are gone. Actions are typed `Action` constants with a handler
+  registry; in preview an unhandled action or a wrong argument type panics and
+  never runs the real closure (`TestEveryActionHasAHandler`,
+  `TestEveryHandlerIsAKnownAction`, `TestActionCallSitesAreRegistered`,
+  `TestMissingHandlerPanics`, `TestUnknownActionPanics`,
+  `TestWrongArgumentPanics`). `check-ui wasm` built the js/wasm preview
+  (26,389,374 bytes), `TestPreviewScenariosApplyEveryState` applied every
+  selectable scenario, and `TestPreviewRender` wrote 108 platform PNGs from
+  the catalog. The CPU matrix is unchanged: 243 files match the baseline.
+  Pins: `TestPreviewScenariosApplyEveryState`, `TestPreviewRender`,
+  `.claude/skills/ui-mockup/SKILL.md`.
+- 2026-11-19, the flyout sketch template follows the catalog: the template
+  could sketch six states while the catalog ships more, so a round about
+  connecting, taken-over, the unknown media session, the lamp's off and
+  no-media rows, the latency spinner, or the update chip started from a
+  baseline that could not draw them. The template now sketches all of it:
+  connecting (取消 row action, disabled 连接 on the other rows, accent
+  footer), taken-over (重新连接, red footer), the unknown session (no app
+  icon, placeholder poster, play transport, idle meter, timeline-less track,
+  `?session=unknown`), the cover placeholder and no-poster variants
+  (`?cover=placeholder|none`), the lamp off and no-media rows (`?lamp=off|
+  nomedia`, chip precedence off→standby→no-media as `lampStatusChip`, accent
+  power icon when off or standby), the four latency modes with the section
+  spinner (`?mode=` `?applying=`), and the footer update chip (`?update=1`).
+  Device-row subtitles follow `deviceSubtitle` — model · qualifier, never the
+  host — and the sample devices mirror the fixture (HomePods stereo group,
+  Apple TV PIN pairing, offline HomePod mini). Lamp defaults follow each
+  state's media, as the fixture renders them. The settings template checked
+  current against the shipped window: sidebar, row ladder, dialog notes, and
+  the receivers sample all match. Evidence: the app's CPU matrix under
+  `.audit/preview/template-update/matrix/` (258 files), 16 headless Chrome
+  renders of the updated template under `.audit/preview/template-update/
+  mockups/`, each inspected against its catalog PNG; the three topics'
+  baselines re-stamped with `check-ui sketch -force`. Gates:
+  `check-ui tokens`, `check-ui words`, `gofmt -l` green. Pins:
+  `.claude/skills/ui-mockup/SKILL.md`, `scripts/check-ui/tokens.go`.
+- 2026-11-19, the mock flow's own gaps got their fixes, ranked by the
+  investigation the same day. 1. The state-coverage gate: `check-ui states`
+  pins every `SurfaceFlyout` scenario in `ui_catalog_flyout.go` to either
+  `flyoutReach` (the sketch URL that draws it, 22 rows, each read off the
+  scenario's catalog render) or `flyoutGaps` (4 reviewed gaps: noDevice,
+  mac, hover, the enter probe); a new scenario with neither fails, a row
+  naming a state or URL value the template's header doc no longer declares
+  fails, and a row the catalog dropped fails. It joined `check-ui all`, the
+  Makefile check chain, and the skill's gate list, closing the rot that let
+  the template lose six shipped states while every gate stayed green.
+  Pins: `TestFlyoutSketchCoversCatalog`, `TestSeededCatalogScenarioFails`,
+  `TestSeededStateDriftFails`, `TestSeededURLDocDriftFails`,
+  `TestSeededStaleRowFails`, `scripts/check-ui/states.go`. 2. Round
+  attribution: a change born from a design round names its topic folder in
+  the commit body (`Round:` field, ui-mockup SKILL.md); 24 of 36 recorded
+  rounds were unattributable from git alone. 3. Instrument split: dialogs
+  and the tray menu panel are native-preview surfaces only and never take a
+  sketch template (SKILL.md, Choose the instrument). 4. The double-edit
+  ledger for the deferred site/sketch component extraction lives in
+  `docs/ui.md` (app+template twice, site+app once, site+template never),
+  and each future double edit adds one line here. 5. The SKILL.md measured-
+  geometry section no longer re-states the height-rule numbers the token
+  gate enforces; it points at `flyoutHeightForState`.
 
 ## 2026-11-18 — Apple Music's idle thumbnail is not a cover
 

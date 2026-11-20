@@ -111,7 +111,7 @@ go test -run 'TestViewRendersDevicesAndStatus|TestFlyoutLatencySegmentSelects|Te
 go test -run 'TestMeterLevelBandsAndDelay|TestMeterGatesNoiseBelowTheFloor|TestMeterQuietToneKeepsBarsLow|TestFollowIgnoresSubBarChanges' -v ./internal/audio/analyze/
 go test -run 'TestSilenceMeterFeedsTheLevelMeter' -v ./internal/engine/
 SAUNDO_SMTC=1 go test -run TestSMTCLiveSessions -v ./internal/nowplaying/
-SAUNDO_PREVIEW_DIR="$EV/frames" go test -run TestRenderPreviews ./internal/app/
+go run ./scripts/check-ui render -out "$EV/frames"
 ```
 
 Live app: connect (see discovery-and-connect), then move the slider and

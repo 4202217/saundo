@@ -1,0 +1,152 @@
+{
+  "commit": "c1994d953d0c2765287c87a17c24d1de9adaff89",
+  "dirty": "clean",
+  "renderer": "ui.Tester/raster",
+  "generated": "2026-11-20T01:50:28Z",
+  "files": [
+    {
+      "name": "dialog-receiver-add-en.png",
+      "sha256": "624427180e5547fab3ac46d3ab1827720223a19953c4a0e32584fa31ae462f29",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "dialog-receiver-add-zh.png",
+      "sha256": "2c11ed96b7c541646945dfe1c15883b940d87f56cfea2d0ac047de169c9d4a30",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "flyout-connecting-en.png",
+      "sha256": "5f0b576889f7d53102efcf2d090928d8a425dde8cb4e70055f55117e9f4c0c4b",
+      "width": 840,
+      "height": 1022
+    },
+    {
+      "name": "flyout-connecting-zh.png",
+      "sha256": "06bf6a48bc684f8942abeff7b0fbad4e894f296148d5b34276e499bd1c66ef09",
+      "width": 840,
+      "height": 1022
+    },
+    {
+      "name": "flyout-empty-en.png",
+      "sha256": "45f18c1905bbeda23808cb4dc337bc8b884c9e583caa919d2ee1bd4df94f9275",
+      "width": 840,
+      "height": 964
+    },
+    {
+      "name": "flyout-empty-zh.png",
+      "sha256": "67b97ebb126337f7eca78b6c4ec34df921320798a229ecefd3dfe3a8b1c67c7d",
+      "width": 840,
+      "height": 964
+    },
+    {
+      "name": "flyout-error-en.png",
+      "sha256": "280e89fd25f19c70ce0c90fcfdb2cf8e40897c6116e4456ad4abb0640a25dedd",
+      "width": 840,
+      "height": 1118
+    },
+    {
+      "name": "flyout-error-zh.png",
+      "sha256": "8617819d11d02364a53f31ced0148154c44b4414cdc973300cc1418ac01fbd31",
+      "width": 840,
+      "height": 1118
+    },
+    {
+      "name": "flyout-stream-dark-en.png",
+      "sha256": "1ed2911c4936c1120745e9805cd084927962adc99bf05cf7153819e69ff13fc5",
+      "width": 840,
+      "height": 1322
+    },
+    {
+      "name": "flyout-stream-dark-zh.png",
+      "sha256": "cfc8e6505e6219f35c7631dcda7093e44ea38800354b5b8c4583efc4e92f3d7c",
+      "width": 840,
+      "height": 1322
+    },
+    {
+      "name": "flyout-stream-light-en.png",
+      "sha256": "cb5bab908c6e9c6ac95b520dcc2f4216d99915dc0f6893407e7435e9cbf6e4de",
+      "width": 840,
+      "height": 1322
+    },
+    {
+      "name": "flyout-stream-light-zh.png",
+      "sha256": "0c2628e1aa355267223f23130bb3124b93e8c7f7430d54e29923e9dc6df96b4b",
+      "width": 840,
+      "height": 1322
+    },
+    {
+      "name": "settings-audio-custom-light-en.png",
+      "sha256": "8df5645f937e7b1e6a3bc15c5cc9d331946b534bac965567fcb4f47d8c2f7259",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-audio-custom-light-zh.png",
+      "sha256": "17feac0915c06dca89c5b5753fce31ba66e245a3274723c430d4d57208b35b82",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-connection-dark-en.png",
+      "sha256": "88c470cca44d2d9af25ed8b39ee3ac3d7cfc46fddc7b3027327aefa6a8271b4e",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-connection-dark-zh.png",
+      "sha256": "0571616514acf1d883a7e3259c0e124c5589a9469a914ee6352624da171d0f5d",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-general-light-en.png",
+      "sha256": "9c5b69b57fa3dee85615951a9c9c50d7423fb3342fc855b28d661fd4a6bcdf68",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-general-light-zh.png",
+      "sha256": "f1db5015a288e6ee4be90b3035cfe6d7262863f140655a15e37f5f8cfb19f2f7",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-lamp-cover-light-en.png",
+      "sha256": "f34eb65a9a9ce75387d28bb392d60e0d7f14ae6463f755e13cc354a439f58e7d",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-lamp-cover-light-zh.png",
+      "sha256": "c2f69abb9fa8366ce95c3912e4cc41f9d3c3d696e86866768d0962c08df1f8cd",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-nowplaying-live-light-en.png",
+      "sha256": "d217772bfc1f2ddc982725321b5b104ecc46227a8e5a7e2345f683807ddcf345",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-nowplaying-live-light-zh.png",
+      "sha256": "222aa8186a15e8aaa1451cad7aab1ea03aff5dfd133dc1e44d27b0a520dfaa9b",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-receivers-expanded-light-en.png",
+      "sha256": "051594b553c16978416835e858fd709d608bec07ea26ac4832c554f7b697094e",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "name": "settings-receivers-expanded-light-zh.png",
+      "sha256": "5c93a674fb24e699da5d53a3186700e28137e826336813fec1fc7cf61623a586",
+      "width": 1440,
+      "height": 1000
+    }
+  ]
+}

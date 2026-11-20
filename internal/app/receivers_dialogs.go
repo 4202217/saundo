@@ -326,9 +326,9 @@ func (a *App) submitReceiverDialog() {
 			empty := ""
 			patch.Password = &empty
 		}
-		a.eng.UpdateReceiver(a.receiverDialog.key, patch)
+		a.actReceiverUpdate(a.receiverDialog.key, patch)
 	} else {
-		a.eng.AddReceiver(spec)
+		a.actReceiverAdd(spec)
 	}
 	a.closeReceiverDialog()
 }
@@ -358,7 +358,7 @@ func (a *App) receiverPasswordDialog(c *ui.Context, p palette) {
 			func() {
 				if v.PasswordSet {
 					quietDangerButton(c, p, locales.ReceiverPasswordClear(), func() {
-						a.eng.SetReceiverPassword(key, "")
+						a.actReceiverPassword(key, "")
 						a.closeReceiverDialog()
 					})
 				} else {
@@ -372,7 +372,7 @@ func (a *App) receiverPasswordDialog(c *ui.Context, p palette) {
 						d.errorMsg = locales.ReceiverErrorPasswordRequired()
 						return
 					}
-					a.eng.SetReceiverPassword(key, d.password)
+					a.actReceiverPassword(key, d.password)
 					a.closeReceiverDialog()
 				})
 			},
@@ -401,7 +401,7 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 			func() {
 				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
 				primaryDangerButton(c, p, locales.ReceiverRemoveConfirm(), func() {
-					a.eng.RemoveReceiver(key)
+					a.actReceiverRemove(key)
 					a.closeReceiverDialog()
 				})
 			},

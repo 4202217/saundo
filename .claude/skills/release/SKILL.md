@@ -60,7 +60,34 @@ Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release co
 
 Run the UI review skill (`/ui-review`) before you write the changelogs. It inventories the copy, renders the preview matrix, and lists copy and layout findings by severity. Resolve every P0 and every terminology finding. Land the fixes as their own commit before the release commit; the changelogs describe the user-visible result. A red copy lint or an unresolved P0 stops the release. Record the preview matrix path and the UI review outcome in `docs/verification.md`.
 
-Refresh the UI mockup templates after the UI review settles the interface and before the changelogs. The two assets under `.claude/skills/ui-mockup/assets/` and the skill's height rule must describe the interface this release ships, not the previous one. Compare them with the shipped palette, widgets, and geometry in `internal/app/theme.go`, `ui_kit.go`, `flyout.go`, `settings_window.go`, and `receivers_page.go`; update tokens, widget sizes, shell geometry, sample content, and both locale strings. Render the settings target, normal, and edge states and the flyout's idle, streaming, empty, and error states in zh-CN and English, light and dark, plus the flyout's media card and ambient states, into `.audit/release-<version>/mockups/`. Inspect every screenshot for clipping, overflow, and wrapped copy, and record the render directory in `docs/verification.md`. Land the template update as its own commit before the release commit, like the UI review fixes. Follow the render recipe in `.claude/skills/ui-mockup/SKILL.md`.
+Refresh the UI mockup templates after the UI review settles the interface and before the changelogs. The two assets under `.claude/skills/ui-mockup/assets/` and the skill's measured geometry must describe the interface this release ships, not the previous one. Run `go run ./scripts/check-ui tokens` first. It compares 44 palette tokens in both appearances, 31 metrics, the flyout height rule, and the drawn window sizes with `theme.go`, `flyout.go`, `ui_kit.go`, `settings_window.go`, `lamp.go`, and `settings_window_create.go`. Update the templates until the gate passes. Do not edit the gate to accept a drift.
+
+Copy the refreshed baseline into the release evidence and render from it:
+
+```bash
+go run ./scripts/check-ui sketch -topic release-<version> -surface settings -force
+go run ./scripts/check-ui sketch -topic release-<version> -surface flyout -force
+```
+
+The copies live in `.audit/mockups/release-<version>/`. `baseline-settings.html` and `baseline-flyout.html` are the approved renders, and each working copy starts identical. Render the settings target, normal, and edge states and the flyout's idle, streaming, empty, and error states in zh-CN and English, light and dark, plus the flyout's media card and ambient states, into `.audit/mockups/release-<version>/`. Inspect every render for clipping, overflow, and wrapped copy.
+
+Regenerate the site data and prove it current, then run the replica gates:
+
+```bash
+SAUNDO_DEMO_OUT=../../site/assets/demo-data.js go test -tags preview -run TestExportReplicaData ./internal/app/
+go test -tags preview -run 'TestReplicaDataIsCurrent|TestReplicaSharesTheFlyoutsWording' ./internal/app/
+go run ./scripts/check-ui tokens
+go run ./scripts/check-ui words
+```
+
+Render the matrix and compare the canonical states:
+
+```bash
+go run ./scripts/check-ui render -out .audit/ui/release-<version>
+go run ./scripts/check-ui diff -baseline docs/ui-baseline/manifest.json -against .audit/ui/release-<version>/manifest.json
+```
+
+Record `.audit/mockups/release-<version>/`, `.audit/ui/release-<version>/`, and the gate output in `docs/verification.md`. Land the template update as its own commit before the release commit, like the UI review fixes. No manual three-way comparison of the sketch, the site, and the app is needed. The token gate, the dataset staleness test, the wording test, and the canonical diff are that comparison. Follow the render recipe in `.claude/skills/ui-mockup/SKILL.md`.
 
 Do not commit the docs, README, or changelog changes yet. The release commit comes after the maintainer's test is recorded.
 
@@ -190,4 +217,4 @@ For rollback, signing, and GPL compliance, follow `docs/releasing.md`. Do not ro
 
 ## Report
 
-State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the commit range review (the range, its count, and the user-visible commits), the code review outcome (subset, its commit count, and any fixed finding), the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, and the mockup template refresh (changed, already current, or the recorded gap) with its render directory. If you stopped, name the failing gate and the file or command that proves it.
+State which checks ran, what they printed, and which did not run. Name the release URL, the draft state, the feed result, the update test, the commit range review (the range, its count, and the user-visible commits), the code review outcome (subset, its commit count, and any fixed finding), the verification skill outcome, the UI review outcome (clean, changed, blocked), the preview matrix path, the regenerated site data, the canonical diff, and the mockup template refresh (changed, already current, or the recorded gap) with its baseline and render directory. If you stopped, name the failing gate and the file or command that proves it.

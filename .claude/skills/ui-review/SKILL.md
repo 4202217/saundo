@@ -32,9 +32,16 @@ gates still apply.
   generated `catalog_gen.go` is never edited by hand; after a catalog change
   run `go tool mygo generate cmd/saundo`.
 - Render the matrix in both languages:
-  `SAUNDO_PREVIEW_DIR=/tmp/saundo-ui-review go test ./internal/app -run TestRenderPreviews -count=1`
-  Add `SAUNDO_PREVIEW_ONLY=settings-audio,settings-lamp` to render only the
+  `go run ./scripts/check-ui render -out /tmp/saundo-ui-review`
+  Add `-only settings-audio,settings-lamp` to render only the
   pages a change touched.
+- Compare the canonical states with the committed baseline:
+  `go run ./scripts/check-ui diff -baseline docs/ui-baseline/manifest.json
+  -against /tmp/saundo-ui-review/manifest.json`
+  The diff names a changed canonical PNG and fails. Files outside the
+  canonical set are printed and not compared; inspect them in the matrix.
+  The catalog rows in `internal/app/ui_catalog*.go` are the state source, so
+  a finding names the scenario ID as well as the file.
 - Read the owning files: `ui_kit.go` for shared widgets, `flyout.go`,
   `settings_window.go`, `receivers_page.go`, `lamp.go`, the dialogs, and the
   tests that pin the strings.
@@ -73,8 +80,9 @@ headers, card radii, dialog heads, type sizes, units, and status treatments.
    the older inline variants.
 5. Docs. Update `docs/ui-copy.md`, `docs/ui.md`, and the dated evidence in
    `docs/verification.md`; bump the `reviewed-through` dates.
-6. Verify. `make check`, the preview matrix, then `make build`.
-   Drive the changed pages in the live app when the change is visual.
+6. Verify. `make check`, the preview matrix, the canonical diff, then
+   `make build`. Drive the changed pages in the live app when the change is
+   visual.
 
 ## 4. Independent review
 
@@ -128,6 +136,9 @@ user-visible result.
 - `catalog_gen.go` is generated. Edit the JSON, then run
   `go tool mygo generate cmd/saundo`.
 - The live capture script is DPI-aware; the headless matrix is the full visual.
+- The sketch templates copy the same tokens and metrics. `check-ui tokens`
+  fails when `mockup-template.html` or `flyout-template.html` moves away from
+  `theme.go` or the checked view declarations.
 - `mingw32-make` needs `$HOME/mingw64/bin` on PATH. The wrapper at
   `$HOME/bin/mingw32-make` covers a shell that started before the PATH change.
 - The preview matrix covers zh-CN and en; check both, light and dark.
