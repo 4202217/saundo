@@ -2157,3 +2157,39 @@ func capturePageCopy() []string {
 	}
 	return copy
 }
+
+// TestStereoIconFollowsMembers pins the pair glyph selection by the members'
+// own models: the glyph must not depend on which side a receiver plays, so a
+// combo's swap cannot change the row's icon.
+func TestStereoIconFollowsMembers(t *testing.T) {
+	member := func(model string) device.Device {
+		return device.Device{ID: model, Name: model, Model: model, Online: true}
+	}
+	group := func(m0, m1 device.Device) device.Device {
+		return device.Device{ID: "g", Model: m0.Model, StereoID: "g", Members: []device.Device{m0, m1}, Online: true}
+	}
+	cases := []struct {
+		name string
+		d    device.Device
+		want *ui.SVG
+	}{
+		{"mini plus mini", group(member("AudioAccessory5,1"), member("AudioAccessory5,1")), sfIcons["homepod-mini-pair"]},
+		{"homepod plus homepod", group(member("AudioAccessory6,1"), member("AudioAccessory6,1")), sfIcons["homepod-pair"]},
+		{"mini left of homepod", group(member("AudioAccessory5,1"), member("AudioAccessory6,1")), sfIcons["homepod-mini-combo"]},
+		{"homepod left of mini", group(member("AudioAccessory6,1"), member("AudioAccessory5,1")), sfIcons["homepod-mini-combo"]},
+		{"homepod plus appletv", group(member("AudioAccessory6,1"), member("AppleTV6,2")), sfIcons["homepod-pair"]},
+		{"appletv left of homepod", group(member("AppleTV6,2"), member("AudioAccessory6,1")), sfIcons["homepod-pair"]},
+		{"single receiver", member("AudioAccessory5,1"), sfIcons["homepod-mini"]},
+	}
+	for _, tc := range cases {
+		stereo := tc.d.IsStereoGroup()
+		if got := stereoIcon(tc.d, stereo); got != tc.want {
+			t.Errorf("%s: stereoIcon picked the wrong glyph", tc.name)
+		}
+	}
+	// A remembered stereo row without cached members keys off its own model.
+	offline := device.Device{ID: "stereo:1", Model: "AudioAccessory5,1"}
+	if got := stereoIcon(offline, true); got != sfIcons["homepod-mini-pair"] {
+		t.Error("stereo row without members lost its pair glyph")
+	}
+}

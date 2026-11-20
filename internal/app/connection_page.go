@@ -115,7 +115,7 @@ func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, las
 func connectionGlyph(c *ui.Context, p palette, d device.Device) {
 	g := ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.pill)
 	g.Children(func() {
-		ui.Icon(c, deviceIcon(d.Model, d.IsStereoGroup())).Size(13, 13).TextColor(p.fg2)
+		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(13, 13).TextColor(p.fg2)
 		if d.Online {
 			ui.Box(c).Size(8, 8).Radius(4).Background(p.green).
 				Shadow(0, 0, 0, 2, p.card).
@@ -291,20 +291,32 @@ func (a *App) sidebarIdentity(p palette) (name, sub string, dot ui.Color, tip st
 	d, ok := a.currentDevice()
 	name = locales.SidebarNoDevice()
 	group := false
+	combo := false
 	switch {
 	case len(members) > 1:
 		name = locales.SidebarSessionCount(members[0].Device.Name, len(members)-1)
 		tip = a.sessionName()
 	case len(members) == 1:
 		name, group = members[0].Device.Name, members[0].Device.IsStereoGroup()
+		if v, found := a.receiverViewFor(members[0].Device.ID); found && v.Entry.IsCombo() {
+			combo = true
+		}
 	case ok:
 		name, group = d.Name, d.IsStereoGroup()
+		if v, found := a.receiverViewFor(d.ID); found && v.Entry.IsCombo() {
+			combo = true
+		}
 	}
 	switch phaseOf(a.snap) {
 	case phaseStreaming:
 		sub, dot = locales.SummaryConnected(), p.green
 		if group {
 			sub = locales.SidebarConnectedStereo()
+		}
+		if combo {
+			// A software combo is not a native pair: the sidebar says so in
+			// the combo's own words.
+			sub = locales.SummaryConnected() + " · " + locales.ComboTag()
 		}
 	case phaseConnecting:
 		sub, dot = a.statusText(), p.accent

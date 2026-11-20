@@ -665,5 +665,40 @@
   "flyoutLampCollapse": "收起配色",
   "receiverEmptyTitle": "暂无接收器",
   "versionLocalTag": "本地构建",
-  "settingsShowInPanel": "托盘面板中显示"
+  "settingsShowInPanel": "托盘面板中显示",
+  "errorComboInvalid": "这两台接收器无法组成立体声组合。",
+  "receiverGroupCombo": "立体声组合",
+  "receiverPairAddTitle": "组成立体声组合",
+  "receiverPairAddSub": "两台接收器各播一个声道",
+  "comboChannelLocked": "立体声组合 · 左 + 右（已锁定）",
+  "comboMapLabel": "声道布局",
+  "comboSwapTip": "交换左右声道",
+  "comboUnlink": "解除组合",
+  "comboUnlinkTitle": "解除立体声组合",
+  "comboUnlinkSub": "「{name}」将拆回两台独立接收器。",
+  "@comboUnlinkSub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboUnlinkHint": "组合的音量不再适用；每台接收器保留自己的设置。",
+  "comboOfflineWarn": "「{name}」未连接，无法启动组合",
+  "@comboOfflineWarn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboDialogSub": "选择左、右声道各由哪台接收器播放。",
+  "comboCreate": "组合",
+  "comboErrorSame": "两侧不能选择同一台接收器",
+  "comboErrorPick": "请为两侧各选择一台接收器",
+  "comboPickEmpty": "选择接收器…",
+  "comboPickHint": "仅列出支持 AirPlay 2 的接收器",
+  "comboFieldLeft": "左声道",
+  "comboFieldRight": "右声道",
+  "comboTag": "立体声组合"
 }

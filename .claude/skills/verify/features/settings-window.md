@@ -69,6 +69,21 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   a title plus the discovery hint when nothing is found, or an all-hidden
   title plus the recovery hint when every row is hidden; the add row is the
   only plus.
+- 立体声组合 section (`receiverComboRow`): created combos live in their own
+  card under the same group-head style, so the combo's expanded body never
+  runs into a single receiver's card. The row shows the stereo glyph, the
+  立体声组合 chip, and the two member names as the subtitle; the expanded
+  body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
+  member, the offline side dimmed, a swap button between them that flips the
+  sides in place without a rebuild), a warning bar naming an offline member,
+  and one volume for both members. 解除组合 rides the head's tail while
+  expanded and opens the red confirm dialog. 组成立体声组合 below the add
+  row opens the create dialog: a 左/右 select per side with a swap button,
+  the derived 「A + B」 name suggestion, and 组合 at 40% until both sides are
+  chosen. Members drop from the list and the flyout while linked
+  (`TestReceiverComboRowRendersTheChannelMap`,
+  `TestReceiverComboUnlinkOpensTheConfirmDialog`,
+  `TestReceiverComboCreateDialogOpensAndNames`).
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 托盘面板中显示
   header switch that shows or hides the flyout's latency segment row

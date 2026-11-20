@@ -787,5 +787,40 @@
   "flyoutLampCollapse": "Hide colors",
   "receiverEmptyTitle": "No receivers yet",
   "versionLocalTag": "Local build",
-  "settingsShowInPanel": "Show in tray panel"
+  "settingsShowInPanel": "Show in tray panel",
+  "errorComboInvalid": "These receivers cannot form a stereo combo.",
+  "receiverGroupCombo": "Stereo combos",
+  "receiverPairAddTitle": "Create stereo combo",
+  "receiverPairAddSub": "One receiver per channel",
+  "comboChannelLocked": "Stereo combo · Left + Right (locked)",
+  "comboMapLabel": "Channel layout",
+  "comboSwapTip": "Swap left and right",
+  "comboUnlink": "Unlink",
+  "comboUnlinkTitle": "Unlink stereo combo",
+  "comboUnlinkSub": "{name} splits back into two standalone receivers.",
+  "@comboUnlinkSub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboUnlinkHint": "The combo volume stops applying; each receiver keeps its own settings.",
+  "comboOfflineWarn": "{name} is offline, so the combo cannot start",
+  "@comboOfflineWarn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboDialogSub": "Choose which receiver plays each side.",
+  "comboCreate": "Create",
+  "comboErrorSame": "The two sides cannot be the same receiver",
+  "comboErrorPick": "Choose a receiver for each side",
+  "comboPickEmpty": "Choose a receiver…",
+  "comboPickHint": "Only AirPlay 2 receivers are listed",
+  "comboFieldLeft": "Left channel",
+  "comboFieldRight": "Right channel",
+  "comboTag": "Stereo combo"
 }

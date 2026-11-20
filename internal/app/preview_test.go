@@ -542,6 +542,32 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	receiversHidden.receiverHiddenOpen = true
 	save("settings-receivers-hidden-light", receiversHidden.settingsView, 720, 500, false)
 
+	// The created stereo combo: its expanded card, the two dialogs over the
+	// page, and the flyout's combo row.
+	comboCard := comboFixture()
+	comboCard.page = pageReceivers
+	comboCard.receiverOpen = map[string]bool{"combo:01": true}
+	save("settings-receivers-combo-light", comboCard.settingsView, 720, 560, false)
+	save("settings-receivers-combo-dark", comboCard.settingsView, 720, 560, true)
+
+	comboCreate := receiverFixture()
+	comboCreate.page = pageReceivers
+	comboCreate.receiverDialog = receiverDialogState{kind: receiverDialogComboCreate, entered: true}
+	comboCreate.receiverDialogOpen = true
+	save("settings-receivers-combo-create-light", comboCreate.settingsView, 720, 560, false)
+	save("settings-receivers-combo-create-dark", comboCreate.settingsView, 720, 560, true)
+
+	comboUnlink := comboFixture()
+	comboUnlink.page = pageReceivers
+	comboUnlink.receiverDialog = receiverDialogState{kind: receiverDialogComboUnlink, key: "combo:01", entered: true}
+	comboUnlink.receiverDialogOpen = true
+	save("settings-receivers-combo-unlink-light", comboUnlink.settingsView, 720, 560, false)
+	save("settings-receivers-combo-unlink-dark", comboUnlink.settingsView, 720, 560, true)
+
+	comboFly := flyoutComboFixture()
+	save("flyout-combo-light", comboFly.view, flyoutWidth, visibleFlyoutHeight(comboFly), false)
+	save("flyout-combo-dark", comboFly.view, flyoutWidth, visibleFlyoutHeight(comboFly), true)
+
 	receiversLocal := localReceiverFixture()
 	receiversLocal.snap.SelectedID = ""
 	receiversLocal.snap.ConnectedName = ""

@@ -88,8 +88,8 @@ func TestErrorBarShowsOnlyConnectionFailuresWhileStreaming(t *testing.T) {
 func TestConnectionErrorKeysAreCatalogKeys(t *testing.T) {
 	for _, key := range []engine.UserErrorKey{
 		engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrLocalReceiver,
-		engine.ErrStereoMembersOffline, engine.ErrFairPlay, engine.ErrEndpointMoved,
-		engine.ErrSessionOpen,
+		engine.ErrStereoMembersOffline, engine.ErrComboInvalid, engine.ErrFairPlay,
+		engine.ErrEndpointMoved, engine.ErrSessionOpen, engine.ErrPasswordRejected,
 	} {
 		if !connectionErrorKey(key) {
 			t.Errorf("%q is not in the connection key list", key)

@@ -97,7 +97,7 @@ func (a *App) trayModel(locale string, dark bool) trayMenuModel {
 		m.selected = a.selID
 	}
 	for i, d := range a.snap.Devices {
-		m.devices[i] = trayMenuDevice{id: d.ID, name: d.Name, family: deviceIconKey(d.Model, d.IsStereoGroup()), online: d.Online}
+		m.devices[i] = trayMenuDevice{id: d.ID, name: d.Name, family: stereoIconKey(d, d.IsStereoGroup()), online: d.Online}
 	}
 	if s, ok := a.nowSession(); ok && a.cfg.PlaybackControls && a.nowHasControls(s) {
 		m.media = true

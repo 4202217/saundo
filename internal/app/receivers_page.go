@@ -23,6 +23,8 @@ const (
 	receiverDialogEdit
 	receiverDialogPassword
 	receiverDialogRemove
+	receiverDialogComboCreate
+	receiverDialogComboUnlink
 )
 
 // receiverDraft is the add/edit dialog's fields. The password never lives
@@ -76,21 +78,34 @@ func receiverTypeLabels() []string {
 	}
 }
 
-// receiverDialogState is one open dialog over the settings window.
+// receiverDialogState is one open dialog over the settings window. The combo
+// create dialog keeps its two slots and the name field here, so one dialog
+// shell serves every kind.
 type receiverDialogState struct {
 	kind receiverDialogKind
 	key  string
 	// entered drives the one-shot panel entrance pose.
 	entered bool
+	// comboLeft and comboRight are the two slot keys; comboName is the
+	// suggestion the user may edit, and comboError its validation line.
+	comboLeft  string
+	comboRight string
+	comboName  string
+	comboError string
 }
 
 func (a *App) receiversPage(c *ui.Context, p palette) {
-	var visible, hidden []receivers.View
+	var visible, hidden, singles, combos []receivers.View
 	for _, v := range a.snap.Receivers {
 		if v.Hidden {
 			hidden = append(hidden, v)
+			continue
+		}
+		visible = append(visible, v)
+		if v.Entry.IsCombo() {
+			combos = append(combos, v)
 		} else {
-			visible = append(visible, v)
+			singles = append(singles, v)
 		}
 	}
 	// Collapsing the group also collapses every row inside it, so reopening
@@ -103,30 +118,45 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 
 	// The 已启用 group head renders only when the list has rows, matching the
 	// hidden group's own non-empty rule. An empty page is plain prose where
-	// the list would be; the add row below keeps its margin in every state.
-	if len(visible) > 0 {
+	// the list would be; the add rows below keep their margin in every state.
+	// Created combos live in their own 立体声组合 section so the combo's long
+	// expanded body never runs into a single receiver's card.
+	if len(singles) > 0 {
 		ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-			countBadge(c, p, len(visible))
+			countBadge(c, p, len(singles))
 		})
 
 		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 		card.Children(func() {
-			for i, v := range visible {
-				a.receiverRow(c, p, v, false, i < len(visible)-1)
+			for i, v := range singles {
+				a.receiverRow(c, p, v, false, i < len(singles)-1)
 			}
 		})
-	} else if len(hidden) > 0 {
+	} else if len(combos) == 0 {
 		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			emptyCopy(c, p, locales.ReceiverEmptyAllHiddenTitle(), locales.ReceiverEmptyHiddenHint(), false)
+			if len(hidden) > 0 {
+				emptyCopy(c, p, locales.ReceiverEmptyAllHiddenTitle(), locales.ReceiverEmptyHiddenHint(), false)
+			} else {
+				emptyCopy(c, p, locales.ReceiverEmptyTitle(), locales.ReceiverDiscoveryHint(), false)
+			}
 		})
-	} else {
-		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			emptyCopy(c, p, locales.ReceiverEmptyTitle(), locales.ReceiverDiscoveryHint(), false)
+	}
+	if len(combos) > 0 {
+		ui.Row(c).Margin(12, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, locales.ReceiverGroupCombo()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+			countBadge(c, p, len(combos))
+		})
+		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
+		card.Children(func() {
+			for i, v := range combos {
+				a.receiverComboRow(c, p, v, false, i < len(combos)-1)
+			}
 		})
 	}
 
 	a.receiverAddRow(c, p)
+	a.receiverPairAddRow(c, p)
 
 	if len(hidden) > 0 {
 		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
@@ -196,8 +226,13 @@ func (a *App) receiverAddRow(c *ui.Context, p palette) {
 }
 
 // receiverRow is one card row: glyph, name with chips, enable switch,
-// chevron, and the expanded config. Hidden rows grey their parts.
+// chevron, and the expanded config. Hidden rows grey their parts. A combo
+// row owns its own renderer.
 func (a *App) receiverRow(c *ui.Context, p palette, v receivers.View, hiddenGroup, divider bool) {
+	if v.Entry.IsCombo() {
+		a.receiverComboRow(c, p, v, hiddenGroup, divider)
+		return
+	}
 	open := !v.Local && a.receiverOpen[v.Key]
 	row := ui.Column(c).Key(v.Key).Shrink(0).
 		Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
@@ -306,7 +341,7 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 		if hiddenGroup {
 			color = p.faint
 		}
-		ui.Icon(c, deviceIcon(v.Model, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
+		ui.Icon(c, stereoIcon(v.Device, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
 		if v.Online && !hiddenGroup {
 			ring := p.card
 			if open {
@@ -339,6 +374,9 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			if v.IsManual() {
 				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
 			}
+			if v.Entry.IsCombo() {
+				inlineChip(c, p, locales.ComboTag(), chipNeutral, v.Hidden)
+			}
 			if v.AutoConnect {
 				inlineChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
 			}
@@ -356,6 +394,9 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 // flyout subtitle cannot, so the receiver page has its own line.
 func receiverSubtitle(v receivers.View) string {
 	model := receiverModelLabel(v)
+	if v.Entry.IsCombo() {
+		return comboMemberSubtitle(v.Name, v.Device.Members, model)
+	}
 	if !v.Device.Online {
 		return model + " · " + locales.ActionOffline()
 	}

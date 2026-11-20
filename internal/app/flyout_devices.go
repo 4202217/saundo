@@ -153,11 +153,15 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 				// line, a 2 gap, and a 20 second line, so the name and model
 				// breathe the same way as the name and volume bar above.
 				ui.Column(c).Grow(1).Gap(2).Children(func() {
-					ui.Row(c).Height(26).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
+					ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
+						// The name grows to fill the line, so the tag rides the
+						// row's end and the name truncates only when the two
+						// genuinely cannot share the width.
+						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Grow(1)
+						a.comboTag(c, p, d)
 					})
 					ui.Row(c).Height(20).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, rowSubtitle(d, target, hasTarget)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
+						ui.Text(c, a.rowSubtitle(d, target, hasTarget)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 					})
 				})
 			})
@@ -166,16 +170,39 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 	})
 }
 
+// deviceIsCombo reports whether the row's stereo group is a user-created
+// combo rather than a native pair; the flyout marks it with the combo tag.
+func (a *App) deviceIsCombo(d device.Device) bool {
+	if !d.IsStereoGroup() {
+		return false
+	}
+	v, ok := a.receiverViewFor(d.ID)
+	return ok && v.Entry.IsCombo()
+}
+
+// comboTag renders the 立体声组合 tag a combo row carries beside its name,
+// on both the plain and the mixer layout.
+func (a *App) comboTag(c *ui.Context, p palette, d device.Device) {
+	if a.deviceIsCombo(d) {
+		inlineChip(c, p, locales.ComboTag(), chipNeutral, false)
+	}
+}
+
 // rowSubtitle is a plain row's second line: a target the engine is working on
-// says so, in the wording the session state already uses; every other row
-// keeps its model and address.
-func rowSubtitle(d device.Device, t engine.TargetControl, has bool) string {
+// says so, in the wording the session state already uses; a stereo combo
+// names its two sides; every other row keeps its model and address.
+func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) string {
 	if has {
 		switch t.State {
 		case engine.TargetJoining:
 			return locales.StatusConnecting()
 		case engine.TargetReopening:
 			return locales.StatusReconnecting()
+		}
+	}
+	if d.IsStereoGroup() {
+		if v, ok := a.receiverViewFor(d.ID); ok && v.Entry.IsCombo() {
+			return comboMemberSubtitle(d.Name, d.Members, deviceSubtitle(d))
 		}
 	}
 	return deviceSubtitle(d)
@@ -192,7 +219,10 @@ func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.Ta
 				Cursor(ui.CursorPointer).Label(d.Name)
 			name.OnClick(func() { a.selectDevice(d.ID) })
 			name.Children(func() {
-				ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
+				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Grow(1)
+					a.comboTag(c, p, d)
+				})
 			})
 		})
 		ui.Row(c).Height(20).Gap(8).AlignItems(ui.Center).Children(func() {
@@ -283,9 +313,12 @@ func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.
 }
 
 // channelLabelText names the current side and what a click does next. A pair
-// cannot change, so its label says why.
+// or a combo cannot change, so its label says why.
 func channelLabelText(t engine.TargetControl) string {
 	current := channelDisplay(t.Channel)
+	if t.Split {
+		return locales.ComboChannelLocked()
+	}
 	if t.Stereo {
 		return locales.ChannelPairTooltip(current)
 	}
@@ -343,7 +376,7 @@ func deviceGlyph(c *ui.Context, p palette, d device.Device, selected bool) {
 		g.Background(p.card)
 	}
 	g.Children(func() {
-		ui.Icon(c, deviceIcon(d.Model, d.IsStereoGroup())).Size(16, 16).TextColor(color)
+		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(color)
 		if d.Online {
 			ring := p.card
 			if selected {

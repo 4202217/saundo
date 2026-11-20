@@ -125,6 +125,7 @@ func TestCatalogUniqueValues(t *testing.T) {
 		"settingsSave": true, "receiverDialogSave": true,
 		"languageSystem": true, "themeSystem": true,
 		"receiverGroupHidden": true, "receiverChipHidden": true,
+		"comboTag": true, "receiverGroupCombo": true,
 		"receiverAddTitle": true, "receiverDialogTitleAdd": true,
 		"receiverPasswordTitle": true, "receiverAuthPassword": true, "receiverFieldPassword": true,
 		"updateAvailableTitle": true, "flyoutUpdateAvailable": true,

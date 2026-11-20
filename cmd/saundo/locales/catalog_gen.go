@@ -3897,3 +3897,213 @@ func SettingsShowInPanel() string { return In(i18n.Locale()).SettingsShowInPanel
 func (msgs Messages) SettingsShowInPanel() string {
 	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
 }
+
+// ErrorComboInvalid says "These receivers cannot form a stereo combo."
+// in the language the app shows.
+func ErrorComboInvalid() string { return In(i18n.Locale()).ErrorComboInvalid() }
+
+// ErrorComboInvalid says "These receivers cannot form a stereo combo."
+// in the language of msgs.
+func (msgs Messages) ErrorComboInvalid() string {
+	return Catalog.Format(msgs.locale, "errorComboInvalid", nil)
+}
+
+// ReceiverGroupCombo says "Stereo combos"
+// in the language the app shows.
+func ReceiverGroupCombo() string { return In(i18n.Locale()).ReceiverGroupCombo() }
+
+// ReceiverGroupCombo says "Stereo combos"
+// in the language of msgs.
+func (msgs Messages) ReceiverGroupCombo() string {
+	return Catalog.Format(msgs.locale, "receiverGroupCombo", nil)
+}
+
+// ReceiverPairAddTitle says "Create stereo combo"
+// in the language the app shows.
+func ReceiverPairAddTitle() string { return In(i18n.Locale()).ReceiverPairAddTitle() }
+
+// ReceiverPairAddTitle says "Create stereo combo"
+// in the language of msgs.
+func (msgs Messages) ReceiverPairAddTitle() string {
+	return Catalog.Format(msgs.locale, "receiverPairAddTitle", nil)
+}
+
+// ReceiverPairAddSub says "One receiver per channel"
+// in the language the app shows.
+func ReceiverPairAddSub() string { return In(i18n.Locale()).ReceiverPairAddSub() }
+
+// ReceiverPairAddSub says "One receiver per channel"
+// in the language of msgs.
+func (msgs Messages) ReceiverPairAddSub() string {
+	return Catalog.Format(msgs.locale, "receiverPairAddSub", nil)
+}
+
+// ComboChannelLocked says "Stereo combo · Left + Right (locked)"
+// in the language the app shows.
+func ComboChannelLocked() string { return In(i18n.Locale()).ComboChannelLocked() }
+
+// ComboChannelLocked says "Stereo combo · Left + Right (locked)"
+// in the language of msgs.
+func (msgs Messages) ComboChannelLocked() string {
+	return Catalog.Format(msgs.locale, "comboChannelLocked", nil)
+}
+
+// ComboMapLabel says "Channel layout"
+// in the language the app shows.
+func ComboMapLabel() string { return In(i18n.Locale()).ComboMapLabel() }
+
+// ComboMapLabel says "Channel layout"
+// in the language of msgs.
+func (msgs Messages) ComboMapLabel() string {
+	return Catalog.Format(msgs.locale, "comboMapLabel", nil)
+}
+
+// ComboSwapTip says "Swap left and right"
+// in the language the app shows.
+func ComboSwapTip() string { return In(i18n.Locale()).ComboSwapTip() }
+
+// ComboSwapTip says "Swap left and right"
+// in the language of msgs.
+func (msgs Messages) ComboSwapTip() string {
+	return Catalog.Format(msgs.locale, "comboSwapTip", nil)
+}
+
+// ComboUnlink says "Unlink"
+// in the language the app shows.
+func ComboUnlink() string { return In(i18n.Locale()).ComboUnlink() }
+
+// ComboUnlink says "Unlink"
+// in the language of msgs.
+func (msgs Messages) ComboUnlink() string {
+	return Catalog.Format(msgs.locale, "comboUnlink", nil)
+}
+
+// ComboUnlinkTitle says "Unlink stereo combo"
+// in the language the app shows.
+func ComboUnlinkTitle() string { return In(i18n.Locale()).ComboUnlinkTitle() }
+
+// ComboUnlinkTitle says "Unlink stereo combo"
+// in the language of msgs.
+func (msgs Messages) ComboUnlinkTitle() string {
+	return Catalog.Format(msgs.locale, "comboUnlinkTitle", nil)
+}
+
+// ComboUnlinkSub says "{name} splits back into two standalone receivers."
+// in the language the app shows.
+func ComboUnlinkSub(name string) string { return In(i18n.Locale()).ComboUnlinkSub(name) }
+
+// ComboUnlinkSub says "{name} splits back into two standalone receivers."
+// in the language of msgs.
+func (msgs Messages) ComboUnlinkSub(name string) string {
+	return Catalog.Format(msgs.locale, "comboUnlinkSub", map[string]any{"name": name})
+}
+
+// ComboUnlinkHint says "The combo volume stops applying; each receiver keeps its own settings."
+// in the language the app shows.
+func ComboUnlinkHint() string { return In(i18n.Locale()).ComboUnlinkHint() }
+
+// ComboUnlinkHint says "The combo volume stops applying; each receiver keeps its own settings."
+// in the language of msgs.
+func (msgs Messages) ComboUnlinkHint() string {
+	return Catalog.Format(msgs.locale, "comboUnlinkHint", nil)
+}
+
+// ComboOfflineWarn says "{name} is offline, so the combo cannot start"
+// in the language the app shows.
+func ComboOfflineWarn(name string) string { return In(i18n.Locale()).ComboOfflineWarn(name) }
+
+// ComboOfflineWarn says "{name} is offline, so the combo cannot start"
+// in the language of msgs.
+func (msgs Messages) ComboOfflineWarn(name string) string {
+	return Catalog.Format(msgs.locale, "comboOfflineWarn", map[string]any{"name": name})
+}
+
+// ComboDialogSub says "Choose which receiver plays each side."
+// in the language the app shows.
+func ComboDialogSub() string { return In(i18n.Locale()).ComboDialogSub() }
+
+// ComboDialogSub says "Choose which receiver plays each side."
+// in the language of msgs.
+func (msgs Messages) ComboDialogSub() string {
+	return Catalog.Format(msgs.locale, "comboDialogSub", nil)
+}
+
+// ComboCreate says "Create"
+// in the language the app shows.
+func ComboCreate() string { return In(i18n.Locale()).ComboCreate() }
+
+// ComboCreate says "Create"
+// in the language of msgs.
+func (msgs Messages) ComboCreate() string {
+	return Catalog.Format(msgs.locale, "comboCreate", nil)
+}
+
+// ComboErrorSame says "The two sides cannot be the same receiver"
+// in the language the app shows.
+func ComboErrorSame() string { return In(i18n.Locale()).ComboErrorSame() }
+
+// ComboErrorSame says "The two sides cannot be the same receiver"
+// in the language of msgs.
+func (msgs Messages) ComboErrorSame() string {
+	return Catalog.Format(msgs.locale, "comboErrorSame", nil)
+}
+
+// ComboErrorPick says "Choose a receiver for each side"
+// in the language the app shows.
+func ComboErrorPick() string { return In(i18n.Locale()).ComboErrorPick() }
+
+// ComboErrorPick says "Choose a receiver for each side"
+// in the language of msgs.
+func (msgs Messages) ComboErrorPick() string {
+	return Catalog.Format(msgs.locale, "comboErrorPick", nil)
+}
+
+// ComboPickEmpty says "Choose a receiver…"
+// in the language the app shows.
+func ComboPickEmpty() string { return In(i18n.Locale()).ComboPickEmpty() }
+
+// ComboPickEmpty says "Choose a receiver…"
+// in the language of msgs.
+func (msgs Messages) ComboPickEmpty() string {
+	return Catalog.Format(msgs.locale, "comboPickEmpty", nil)
+}
+
+// ComboPickHint says "Only AirPlay 2 receivers are listed"
+// in the language the app shows.
+func ComboPickHint() string { return In(i18n.Locale()).ComboPickHint() }
+
+// ComboPickHint says "Only AirPlay 2 receivers are listed"
+// in the language of msgs.
+func (msgs Messages) ComboPickHint() string {
+	return Catalog.Format(msgs.locale, "comboPickHint", nil)
+}
+
+// ComboFieldLeft says "Left channel"
+// in the language the app shows.
+func ComboFieldLeft() string { return In(i18n.Locale()).ComboFieldLeft() }
+
+// ComboFieldLeft says "Left channel"
+// in the language of msgs.
+func (msgs Messages) ComboFieldLeft() string {
+	return Catalog.Format(msgs.locale, "comboFieldLeft", nil)
+}
+
+// ComboFieldRight says "Right channel"
+// in the language the app shows.
+func ComboFieldRight() string { return In(i18n.Locale()).ComboFieldRight() }
+
+// ComboFieldRight says "Right channel"
+// in the language of msgs.
+func (msgs Messages) ComboFieldRight() string {
+	return Catalog.Format(msgs.locale, "comboFieldRight", nil)
+}
+
+// ComboTag says "Stereo combo"
+// in the language the app shows.
+func ComboTag() string { return In(i18n.Locale()).ComboTag() }
+
+// ComboTag says "Stereo combo"
+// in the language of msgs.
+func (msgs Messages) ComboTag() string {
+	return Catalog.Format(msgs.locale, "comboTag", nil)
+}

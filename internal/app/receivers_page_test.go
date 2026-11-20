@@ -76,7 +76,7 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.receiverHiddenOpen = true
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		"接收器", "管理接收器、自动连接、显示与声道。",
 		"已启用", "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
@@ -116,7 +116,7 @@ func localReceiverFixture() *App {
 func TestReceiverPageLocalRowIsDisabled(t *testing.T) {
 	a := localReceiverFixture()
 	a.receiverOpen = map[string]bool{"02:8F:B8:25:3A:B2": true}
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{"MacBook Air", locales.ReceiverChipLocal(), locales.ReceiverGroupHidden()} {
 		if !tt.HasText(want) {
 			t.Fatalf("local row is missing %q; texts: %q", want, tt.Texts())
@@ -138,7 +138,7 @@ func TestReceiverPageEmptyListShowsDiscoveryHint(t *testing.T) {
 	a.page = pageReceivers
 	a.snap.Receivers = nil
 	a.snap.Devices = nil
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	if !tt.HasText(locales.ReceiverDiscoveryHint()) {
 		t.Fatalf("discovery hint is missing: %q", tt.Texts())
 	}
@@ -167,7 +167,7 @@ func TestReceiverPageAllHiddenShowsProse(t *testing.T) {
 		},
 	}
 	a.snap.Devices = nil
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	if !tt.HasText(locales.ReceiverEmptyAllHiddenTitle()) {
 		t.Fatalf("all-hidden title is missing: %q", tt.Texts())
 	}
@@ -221,7 +221,7 @@ func TestReceiverExpandedRowShowsConfig(t *testing.T) {
 	})
 	a.page = pageReceivers
 	a.receiverOpen = map[string]bool{"m:ab12": true, "AA:00": true, "AA:02": true}
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		"启动时自动连接", locales.ReceiverAutoToggleDesc(),
 		"接收器密码", "已保存 · 用于 AirPlay 密码认证", "更改", "••••••",
@@ -244,7 +244,7 @@ func TestEnglishReceiverAuthLabelFitsOneLine(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.openAddReceiver()
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	tt.Frame()
 	label, ok := tt.Find(locales.ReceiverFieldAuth())
 	if !ok {
@@ -261,7 +261,7 @@ func TestEnglishReceiverAuthLabelFitsOneLine(t *testing.T) {
 func TestReceiverHiddenExpansionKeepsEnabledCardHeight(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	tt.SetDark(false)
 	tt.Frame()
 	row, ok := tt.Find("客厅 HomePod")
@@ -326,7 +326,7 @@ func TestCollapsingHiddenGroupCollapsesHiddenRows(t *testing.T) {
 	a.page = pageReceivers
 	a.receiverHiddenOpen = true
 	a.receiverOpen = map[string]bool{"AA:01": true}
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	tt.Frame()
 	if !tt.HasText("卧室 HomePod mini") {
 		t.Fatalf("hidden receiver is missing: %q", tt.Texts())
@@ -347,7 +347,7 @@ func TestReceiverAddDialogRenders(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.openAddReceiver()
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		"添加接收器", "填写名称、地址与认证方式。",
 		"名称", "类型", "AirPort Express", "IP 地址或主机名", "端口", "5000 或 7000",
@@ -363,7 +363,7 @@ func TestReceiverAddDialogValidatesInPlace(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.openAddReceiver()
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	a.receiverDraft.name = "书房"
 	if got := a.receiverDraft.errorMsg; got != "" {
 		t.Fatal("a fresh draft carries no error")
@@ -382,7 +382,7 @@ func TestReceiverEditDialogFillsAndSaves(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.beginEditReceiver(a.snap.Receivers[2]) // the manual AirPort Express
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{"编辑接收器", "修改手动添加的接收器信息。", "书房 AirPort Express", "保存", "移除接收器"} {
 		if !tt.HasText(want) {
 			t.Fatalf("edit dialog is missing %q; texts: %q", want, tt.Texts())
@@ -398,7 +398,7 @@ func TestReceiverPasswordDialogRenders(t *testing.T) {
 	a.page = pageReceivers
 	a.receiverDialog = receiverDialogState{kind: receiverDialogPassword, key: "m:ab12", entered: false}
 	a.receiverDialogOpen = true
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		"更改接收器密码", "书房 AirPort Express · AirPlay 密码认证",
 		"仅保存在本机；连接这台接收器时使用，不会写入诊断日志。",
@@ -414,7 +414,7 @@ func TestReceiverRemoveDialogRenders(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.openRemoveReceiver(a.snap.Receivers[2])
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		"移除接收器？", "书房 AirPort Express",
 		"会从设置和托盘面板中移除；接收器本身不受影响。",
@@ -430,7 +430,7 @@ func TestReceiverEditButtonOpensEditWithoutCollapsing(t *testing.T) {
 	a := receiverFixture()
 	a.page = pageReceivers
 	a.receiverOpen = map[string]bool{"m:ab12": true}
-	tt := ui.NewTester(a.settingsView, 720, 500)
+	tt := ui.NewTester(a.settingsView, 720, 560)
 	if err := tt.Click("编辑"); err != nil {
 		t.Fatalf("click the edit action: %v", err)
 	}
@@ -485,5 +485,139 @@ func TestFlyoutFiltersHiddenReceivers(t *testing.T) {
 	}
 	if tt.HasText("卧室 HomePod mini") || tt.HasText("书房 AirPort Express") {
 		t.Fatalf("hidden or manual rows appeared in the flyout: %q", tt.Texts())
+	}
+}
+
+// comboFixture adds a created combo over the fixture's two receivers: the
+// members drop from the list and the combo carries the synthesized group.
+func comboFixture() *App {
+	a := receiverFixture()
+	left, right := a.snap.Receivers[0], a.snap.Receivers[2]
+	members := []device.Device{left.Device, right.Device}
+	combo := receivers.View{
+		Key: "combo:01", Name: "客厅立体声", Kind: receivers.KindCombo,
+		Model: left.Device.Model, Online: true, Stereo: true,
+		Device: device.Device{
+			ID: "combo:01", Name: "客厅立体声", Model: left.Device.Model,
+			StereoID: "combo:01", Members: members, Online: true,
+		},
+		Entry: receivers.Entry{
+			Key: "combo:01", Kind: receivers.KindCombo, Name: "客厅立体声",
+			Members: []receivers.Member{{ID: left.Key, Name: left.Name}, {ID: right.Key, Name: right.Name}},
+		},
+	}
+	a.snap.SelectedID = "combo:01"
+	a.snap.ConnectedName = "客厅立体声"
+	a.snap.ActiveTargets = []string{"combo:01"}
+	a.snap.Targets = []engine.TargetControl{{
+		ID: "combo:01", Name: "客厅立体声", Volume: 65, Channel: receivers.ChannelStereo,
+		State: engine.TargetMember, Split: true, Stereo: true,
+	}}
+	a.selID = "combo:01"
+	a.snap.Receivers = []receivers.View{combo, a.snap.Receivers[1]}
+	return a
+}
+
+func TestReceiverComboRowRendersTheChannelMap(t *testing.T) {
+	a := comboFixture()
+	a.page = pageReceivers
+	a.receiverOpen = map[string]bool{"combo:01": true}
+	tt := ui.NewTester(a.settingsView, 720, 560)
+	for _, want := range []string{
+		locales.ReceiverGroupCombo(), locales.ComboTag(), locales.ComboMapLabel(),
+		locales.ChannelLeft(), locales.ChannelRight(), locales.ComboUnlink(),
+		locales.VolumeLabel(),
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("combo row is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+	// The combo replaces its members: no singles card renders beside it, and
+	// the channel map carries both members in playback order.
+	if tt.HasText(locales.ReceiverGroupEnabled()) {
+		t.Fatal("the singles card renders with no single rows")
+	}
+}
+
+func TestReceiverComboUnlinkOpensTheConfirmDialog(t *testing.T) {
+	a := comboFixture()
+	a.page = pageReceivers
+	a.receiverOpen = map[string]bool{"combo:01": true}
+	tt := ui.NewTester(a.settingsView, 720, 560)
+	if err := tt.Click(locales.ComboUnlink()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText(locales.ComboUnlinkTitle()) {
+		t.Fatalf("the unlink dialog did not open; texts: %q", tt.Texts())
+	}
+}
+
+func TestReceiverComboCreateDialogOpensAndNames(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	tt := ui.NewTester(a.settingsView, 720, 560)
+	if err := tt.Click(locales.ReceiverPairAddTitle()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	for _, want := range []string{locales.ComboFieldLeft(), locales.ComboFieldRight(), locales.ComboPickEmpty()} {
+		if !tt.HasText(want) {
+			t.Fatalf("the create dialog is missing %q; texts: %q", want, tt.Texts())
+		}
+	}
+}
+
+func TestComboMemberSubtitleAvoidsRepeatingTheName(t *testing.T) {
+	members := []device.Device{
+		{Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
+		{Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
+	}
+	if got := comboMemberSubtitle("客厅立体声", members, "fallback"); got != "HomePod L + HomePod R" {
+		t.Fatalf("custom-name sub = %q, want the member names", got)
+	}
+	if got := comboMemberSubtitle("HomePod L + HomePod R", members, "fallback"); got != "AudioAccessory5,1" {
+		t.Fatalf("derived-name sub = %q, want the deduped models", got)
+	}
+	if got := comboMemberSubtitle("客厅立体声", nil, "fallback"); got != "fallback" {
+		t.Fatalf("memberless sub = %q, want the fallback", got)
+	}
+}
+
+// flyoutComboFixture renders the flyout with one created combo whose name is
+// the derived default, mirroring a real linked pair of HomePods.
+func flyoutComboFixture() *App {
+	a := receiverFixture()
+	combo := device.Device{
+		ID: "combo:01", Name: "HomePod L + HomePod R", Model: "AudioAccessory5,1",
+		StereoID: "combo:01", Online: true,
+		Members: []device.Device{
+			{ID: "AA:00", Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
+			{ID: "AA:01", Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
+		},
+	}
+	a.snap.Devices = []device.Device{combo,
+		{ID: "mac:01", Name: "MacBook Air", Model: "Mac14,2", Online: true},
+		{ID: "AA:02", Name: "卧室", Model: "AudioAccessory5,1", StereoID: "2", Online: true,
+			Members: []device.Device{{ID: "AA:02", Name: "卧室"}, {ID: "AA:03", Name: "卧室 R"}}}}
+	a.snap.Receivers = []receivers.View{{
+		Key: "combo:01", Name: "HomePod L + HomePod R", Kind: receivers.KindCombo,
+		Model: "AudioAccessory5,1", Online: true, Stereo: true, Device: combo,
+		Entry: receivers.Entry{
+			Key: "combo:01", Kind: receivers.KindCombo, Name: "HomePod L + HomePod R",
+			Members: []receivers.Member{{ID: "AA:00", Name: "HomePod L"}, {ID: "AA:01", Name: "HomePod R"}},
+		},
+	}}
+	return a
+}
+
+func TestFlyoutComboRowKeepsItsNameBesideTheTag(t *testing.T) {
+	a := flyoutComboFixture()
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	if !tt.HasText("HomePod L + HomePod R") {
+		t.Fatalf("the combo name truncated beside the tag: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.ComboTag()) {
+		t.Fatalf("the combo tag missing: %q", tt.Texts())
 	}
 }

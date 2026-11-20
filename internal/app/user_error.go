@@ -29,6 +29,8 @@ func userErrorText(key engine.UserErrorKey, args []string, fallback string) stri
 		return locales.ErrorLocalReceiver()
 	case engine.ErrStereoMembersOffline:
 		return locales.ErrorStereoMembersOffline()
+	case engine.ErrComboInvalid:
+		return locales.ErrorComboInvalid()
 	case engine.ErrFairPlay:
 		return locales.ErrorFairPlay(arg(0))
 	case engine.ErrPasswordRejected:
@@ -67,8 +69,8 @@ func errorBarNeeded(s engine.Snapshot) bool {
 func connectionErrorKey(key engine.UserErrorKey) bool {
 	switch key {
 	case engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrLocalReceiver,
-		engine.ErrStereoMembersOffline, engine.ErrFairPlay, engine.ErrEndpointMoved,
-		engine.ErrSessionOpen, engine.ErrPasswordRejected:
+		engine.ErrStereoMembersOffline, engine.ErrComboInvalid, engine.ErrFairPlay,
+		engine.ErrEndpointMoved, engine.ErrSessionOpen, engine.ErrPasswordRejected:
 		return true
 	}
 	return false
