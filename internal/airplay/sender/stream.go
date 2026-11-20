@@ -122,7 +122,10 @@ func (s *Sender) sendAudioPacket() {
 		// A starve is a defect the receiver can hear only while the source
 		// was feeding the ring: roughly two start cushions after the last
 		// real packet. Past that window the padding carries silence over
-		// silence, which is what an idle source should stream.
+		// silence, which is what an idle source should stream. The window
+		// divides the capture rate while framesSent counts output frames, so
+		// at 48 kHz capture it runs about a tenth longer than 100 ms — close
+		// enough for a heuristic.
 		if s.ringFed && s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
 			s.underruns++
 		}
