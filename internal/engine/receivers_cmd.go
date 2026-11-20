@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"slices"
-
 	"saundo/internal/receivers"
 )
 
@@ -84,8 +82,9 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		// advertisement: accept the new endpoint.
 		entry.PairedHost, entry.PairedPort = "", 0
 	}
-	if patch.Channel != nil && entry.IsGroup() && receivers.ParseChannel(*patch.Channel) != receivers.ChannelStereo {
-		// A stereo pair always plays stereo; ignore a non-stereo side.
+	if patch.Channel != nil && (entry.IsGroup() || entry.IsCombo()) && receivers.ParseChannel(*patch.Channel) != receivers.ChannelStereo {
+		// A stereo pair and a combo always play stereo; a combo's sides live
+		// in its member order. Ignore a non-stereo side.
 		patch.Channel = nil
 	}
 	delayBefore := entry.DelayMS
@@ -122,21 +121,39 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		// A delay while a reconnect waits only updates the registry: the next
 		// retry's buildPlan recomputes every member's latency. With a live
 		// cohort the sender applies latency only at stream SETUP, so the whole
-		// cohort rebuilds with the new per-member values.
+		// cohort rebuilds with the new per-member values — under the same
+		// guard the global latency apply runs, because one missing or offline
+		// member would fail the launch and take the running session down.
 		if e.tr != nil {
-			e.userDisconnect = false
-			// A delay edit is a user action even when it lands while an
-			// automatic reconnect is still connecting. Start the standby
-			// clock at the new session so the light shows the restart.
-			e.connectAuto = false
-			e.rebuildSession()
+			if e.tr.WaitingForPin() {
+				e.logf("delay apply: %s is waiting for a PIN; session left alone", e.connectedName)
+				e.publish()
+			} else if missing, offline, ok := e.sessionAddressable(); !ok {
+				if missing != "" {
+					e.fail(ErrLatencyDeviceMissing)
+					e.logf("delay apply: device %s not found; session left running", missing)
+				} else {
+					e.fail(ErrLatencyOffline)
+					e.logf("delay apply: %s is offline; session left running", offline)
+				}
+				e.publish()
+			} else {
+				e.userDisconnect = false
+				// A delay edit is a user action even when it lands while an
+				// automatic reconnect is still connecting. Start the standby
+				// clock at the new session so the light shows the restart.
+				e.connectAuto = false
+				e.rebuildSession()
+			}
 		}
 	}
 }
 
 // handleRemoveReceiver deletes a manual receiver: its row, password, HAP
 // credentials, and remembered volume. Discovered rows are managed by hiding,
-// so removal there would only be undone by the next advertisement.
+// so removal there would only be undone by the next advertisement. A combo
+// that linked this receiver loses the member and is unlinked with it: a
+// one-sided combo is meaningless.
 func (e *Engine) handleRemoveReceiver(key string) {
 	entry, ok := e.reg.Get(key)
 	if !ok || !entry.IsManual() {
@@ -151,46 +168,34 @@ func (e *Engine) handleRemoveReceiver(key string) {
 		e.logf("credentials delete: %v", err)
 	}
 	delete(e.passwords, key)
-	if e.setsValue.VolumeByDevice != nil {
-		delete(e.setsValue.VolumeByDevice, key)
-		e.markSettingsDirty()
-	}
-	// The removed receiver also leaves the remembered combination.
-	if len(e.setsValue.LastTargets) > 0 {
-		kept := slices.DeleteFunc(slices.Clone(e.setsValue.LastTargets), func(k string) bool {
-			return k == key
-		})
-		if len(kept) != len(e.setsValue.LastTargets) {
-			e.setsValue.LastTargets = kept
-			e.markSettingsDirty()
+	e.forgetVolume(key)
+	e.forgetLastTarget(key)
+	// A combo that linked this receiver loses the member and is unlinked with
+	// it: a one-sided combo is meaningless. The keys collect first — deleting
+	// while ranging shifts the slice under the loop.
+	var unlinked []string
+	for _, other := range e.reg.Entries {
+		if !other.IsCombo() {
+			continue
+		}
+		for _, m := range other.Members {
+			if m.ID == key {
+				unlinked = append(unlinked, other.Key)
+				break
+			}
 		}
 	}
-	wanted := false
-	for _, k := range e.wantedKeys {
-		if k == key {
-			wanted = true
-			break
-		}
+	for _, comboKey := range unlinked {
+		e.reg.Delete(comboKey)
+		e.forgetVolume(comboKey)
+		e.forgetLastTarget(comboKey)
 	}
-	if e.selectedID == key || e.plan.has(key) || wanted {
-		// The removed receiver cannot stay in a live cohort or a pending
-		// request. End the session the way Disconnect does; a surviving
-		// target cannot keep playing a plan the user just deleted a member of.
-		if e.selectedID == key {
-			e.selectedID = ""
-		}
-		e.userDisconnect = true
-		e.reconnectPendingOff()
-		e.wantedKeys = nil
-		if e.tr != nil {
-			e.tr.Stop()
-		}
-		e.closeSession(false)
-		e.connectedName = ""
-	}
-	if err := e.recvStore.Save(e.reg); err != nil {
-		e.logf("receivers save: %v", err)
-		e.fail(ErrSaveReceiver, err.Error())
+	e.saveReceivers()
+	e.dropFromSession(key)
+	for _, comboKey := range unlinked {
+		// The combo may be the session's target even when the removed member
+		// itself is not.
+		e.dropFromSession(comboKey)
 	}
 	e.rebuildTargets()
 	e.publish()

@@ -27,16 +27,22 @@ type sessionPlan struct {
 	joinKey string
 }
 
-// plannedTarget is one selected target: a single receiver, or a stereo pair
-// whose two senders are its members.
+// plannedTarget is one selected target: a single receiver, a remembered
+// stereo pair whose two senders are its members, or a stereo combo whose two
+// member receivers play one input side each.
 type plannedTarget struct {
-	key       string // registry key: deviceid, "stereo:<tsid>", or "m:<uuid>"
-	name      string // display name; the pair's name for a stereo target
+	key       string // registry key: deviceid, "stereo:<tsid>", "combo:<hex>", or "m:<uuid>"
+	name      string // display name; the pair's or combo's name for a stereo target
 	groupName string // AirPlay group name for diagnostics; "" when none
 	stereo    bool
-	ptp       bool // this target's receivers need a sender-side PTP clock
-	first     int  // window into sessionPlan.members
-	count     int
+	// combo marks a user-created stereo combo: two independent receivers, so
+	// no group UUID or SETPEERS travels to them, each member plays its own
+	// input side, and each member times against its own grandmaster instead
+	// of the sender.
+	combo bool
+	ptp   bool // this target's receivers need a sender-side PTP clock
+	first int  // window into sessionPlan.members
+	count int
 	// volume is the target's own volume in percent. volumeSet false means the
 	// user never set one, so the receiver's reported initial volume is adopted
 	// when the session launches.
@@ -232,22 +238,26 @@ func (e *Engine) buildPlan(keys []string) (sessionPlan, error) {
 }
 
 // planTarget turns one merged target into plan data: one member for a single
-// receiver, the pair's two members for a stereo group. first is the offset the
-// target's window will occupy in the plan's flat member list. A pair's two
-// members carry the pair's groupUUID and the pair's two hosts as timing peers;
-// the registry stores one delay per pair, so both resolve latency through the
-// pair's key.
+// receiver, the pair's two members for a stereo group or combo. first is the
+// offset the target's window will occupy in the plan's flat member list. A
+// remembered pair's two members carry the pair's groupUUID and the pair's two
+// hosts as timing peers. A combo's two members are independent receivers:
+// no groupUUID, no timing peers, one input side each, and each member times
+// against its own grandmaster. The registry stores one delay per stereo
+// target, so all members resolve latency through the target's key.
 func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]string) (plannedTarget, []plannedMember, error) {
 	d := t.Device
 	if d.Name == "" {
 		d.Name = t.Entry.DisplayName()
 	}
 	entry, _ := e.reg.Get(t.Entry.Key)
+	combo := t.Entry.IsCombo()
 	target := plannedTarget{
 		key:       t.Entry.Key,
 		name:      d.Name,
 		groupName: d.GroupName,
 		stereo:    d.IsStereoGroup(),
+		combo:     combo,
 		ptp:       usesPTP(d),
 		first:     first,
 		channel:   sender.ParseChannelMode(entry.Channel),
@@ -276,13 +286,30 @@ func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]strin
 		for _, m := range d.Members {
 			peers = append(peers, m.Host)
 		}
+		// A combo is not a native pair: its members learn nothing about each
+		// other, so neither the group UUID nor SETPEERS travels to them.
+		groupUUID, timingPeers := d.StereoID, peers
+		if combo {
+			groupUUID, timingPeers = "", nil
+		}
 		members := make([]plannedMember, 0, len(d.Members))
-		for _, m := range d.Members {
+		for i, m := range d.Members {
 			if m.Host == "" || m.Port == 0 {
 				return plannedTarget{}, nil, addressless(m)
 			}
 			if err := seenMember(seen, m, t.Entry.Key); err != nil {
 				return plannedTarget{}, nil, err
+			}
+			mode, ptpTimed := target.channel, target.ptp
+			if combo {
+				mode = sender.ChannelLeft
+				if i == 1 {
+					mode = sender.ChannelRight
+				}
+				ptpTimed = usesPTP(m)
+				if ptpTimed {
+					target.ptp = true
+				}
 			}
 			members = append(members, plannedMember{
 				key:         t.Entry.Key,
@@ -291,12 +318,12 @@ func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]strin
 				auth:        authFor(m),
 				latencyMS:   latency,
 				duplicates:  duplicates,
-				groupUUID:   d.StereoID,
-				timingPeers: peers,
-				ptpTimed:    target.ptp,
+				groupUUID:   groupUUID,
+				timingPeers: timingPeers,
+				ptpTimed:    ptpTimed,
 				volume:      target.volume,
 				volumeSet:   target.volumeSet,
-				channel:     target.channel,
+				channel:     mode,
 			})
 		}
 		target.count = len(members)
@@ -357,10 +384,11 @@ func seenMember(seen map[string]string, d device.Device, key string) error {
 
 // clockPlanFor derives the one PTP role the plan's targets demand. A standalone
 // PTP receiver joins a follower set, which serves any number of them over one
-// shared socket pair. A PTP stereo pair needs the sender as grandmaster. Both
-// role families bind UDP 319/320, so a follower set beside a master cannot run
-// and is rejected here, before a transport opens. The returned error is always
-// a *planError when non-nil.
+// shared socket pair; a combo's PTP members each keep their own grandmaster,
+// so both hosts join the same follower set. A remembered stereo pair needs the
+// sender as grandmaster. Both role families bind UDP 319/320, so a follower
+// set beside a master cannot run and is rejected here, before a transport
+// opens. The returned error is always a *planError when non-nil.
 func clockPlanFor(p sessionPlan) (clockPlan, error) {
 	var (
 		followerHosts []string
@@ -373,7 +401,7 @@ func clockPlanFor(p sessionPlan) (clockPlan, error) {
 			continue // NTP receiver: needs no role
 		}
 		members := p.targetMembers(i)
-		if t.stereo {
+		if t.stereo && !t.combo {
 			for _, m := range members {
 				masterPeers = append(masterPeers, m.device.Host)
 			}
@@ -385,7 +413,11 @@ func clockPlanFor(p sessionPlan) (clockPlan, error) {
 		if followerName == "" {
 			followerName = t.name
 		}
-		followerHosts = append(followerHosts, members[0].device.Host)
+		for _, m := range members {
+			if m.ptpTimed {
+				followerHosts = append(followerHosts, m.device.Host)
+			}
+		}
 	}
 	switch {
 	case len(followerHosts) > 0 && len(masterPeers) > 0:

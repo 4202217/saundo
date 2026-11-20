@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -34,6 +35,7 @@ type fakeTransport struct {
 	inputRates     []int
 	targetVolumes  map[string]float64
 	targetChannels map[string]sender.ChannelMode
+	memberChannels map[string]sender.ChannelMode
 	initialByKey   map[string]float64
 	nowPlaying     []string
 	nowCover       []byte
@@ -96,12 +98,15 @@ func (f *fakeTransport) SetTargetChannel(key string, mode sender.ChannelMode) {
 	}
 	f.targetChannels[key] = mode
 }
+func (f *fakeTransport) SetMemberChannel(key string, index int, mode sender.ChannelMode) {
+	if f.memberChannels == nil {
+		f.memberChannels = map[string]sender.ChannelMode{}
+	}
+	f.memberChannels[key+"\x00"+strconv.Itoa(index)] = mode
+}
 func (f *fakeTransport) SetStrictReceiverAuth(v bool) { f.strict = v }
 func (f *fakeTransport) SubmitPin(code string)        { f.pins = append(f.pins, code) }
 func (f *fakeTransport) WaitingForPin() bool          { return f.waitingPin }
-func (f *fakeTransport) InitialVolumePercent() (float64, bool) {
-	return f.initialPct, f.hasInitial
-}
 func (f *fakeTransport) InitialVolumePercentFor(key string) (float64, bool) {
 	if p, ok := f.initialByKey[key]; ok {
 		return p, true

@@ -13,9 +13,13 @@ const (
 	ErrSaveReceiver         UserErrorKey = "saveReceiver"
 	ErrLocalReceiver        UserErrorKey = "localReceiver"
 	ErrStereoMembersOffline UserErrorKey = "stereoMembersOffline"
-	ErrFairPlay             UserErrorKey = "fairPlay"
-	ErrEndpointMoved        UserErrorKey = "endpointMoved"
-	ErrSessionOpen          UserErrorKey = "sessionOpen"
+	// ErrComboInvalid rejects a link whose two receivers cannot form a combo:
+	// one side is missing, already linked, a native pair, the local host, or
+	// not an AirPlay 2 receiver.
+	ErrComboInvalid  UserErrorKey = "comboInvalid"
+	ErrFairPlay      UserErrorKey = "fairPlay"
+	ErrEndpointMoved UserErrorKey = "endpointMoved"
+	ErrSessionOpen   UserErrorKey = "sessionOpen"
 	// ErrClockConflict rejects a clock mix the process cannot host: a set of
 	// standalone PTP receivers beside a sender-side PTP master. Args are one
 	// target name from each family.
@@ -38,6 +42,7 @@ var UserErrorKeys = []UserErrorKey{
 	ErrSaveReceiver,
 	ErrLocalReceiver,
 	ErrStereoMembersOffline,
+	ErrComboInvalid,
 	ErrFairPlay,
 	ErrEndpointMoved,
 	ErrSessionOpen,

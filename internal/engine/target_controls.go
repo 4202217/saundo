@@ -44,8 +44,9 @@ type TargetControl struct {
 	Volume   float64
 	Channel  string
 	Stereo   bool
-	// Split marks a user-created pair: the target's two receivers play one
-	// side each, so the row's channel control is a locked status.
+	// Split marks a stereo combo: the target's two receivers play one side
+	// each, so the row's channel control is a locked status distinct from a
+	// native pair's.
 	Split  bool
 	State  TargetState
 	Health TargetHealth
@@ -144,15 +145,15 @@ func (e *Engine) targetControls() []TargetControl {
 	out := make([]TargetControl, 0, len(keys))
 	for _, key := range keys {
 		state := e.targetState(key)
-		name, stereo := "", false
+		name, stereo, combo := "", false, false
 		if t, ok := e.plan.target(key); ok {
-			name, stereo = t.name, t.stereo
+			name, stereo, combo = t.name, t.stereo, t.combo
 		} else {
 			t, ok := e.target(key)
 			if !ok {
 				continue
 			}
-			name, stereo = t.Device.Name, t.Device.IsStereoGroup()
+			name, stereo, combo = t.Device.Name, t.Device.IsStereoGroup(), t.Entry.IsCombo()
 		}
 		channel := e.channelFor(key)
 		if stereo {
@@ -164,6 +165,7 @@ func (e *Engine) targetControls() []TargetControl {
 			Volume:  e.volumeFor(key),
 			Channel: channel.String(),
 			Stereo:  stereo,
+			Split:   combo,
 			State:   state,
 			Health:  health[key],
 		})
@@ -203,12 +205,20 @@ func (e *Engine) applyTargetVolume(key string, pct float64) {
 	e.publish()
 }
 
-// onReceiverVolume adopts a hardware knob change for the member's target.
+// onReceiverVolume adopts a hardware knob change for the member's target. A
+// combo's members each poll their own hardware volume, so one member's report
+// becomes the target's level and the other member takes it too — the two
+// speakers converge instead of trading overwrites.
 func (e *Engine) onReceiverVolume(key string, pct float64) {
 	if key == "" {
 		key = e.selectedID
 	}
 	e.storeTargetVolume(key, pct)
+	if e.tr != nil {
+		if t, ok := e.plan.target(key); ok && t.count > 1 {
+			e.tr.SetTargetVolume(key, pct)
+		}
+	}
 	e.publish()
 }
 
@@ -235,20 +245,26 @@ func (e *Engine) SetTargetVolume(id string, pct float64) {
 
 // applyReceiverChannel pushes a saved channel to the target's live members. A
 // stereo pair stays stereo, and the change never rebuilds the session: the mix
-// runs per packet.
+// runs per packet. A combo's sides live in its member order, so no whole-target
+// channel write ever reaches it.
 func (e *Engine) applyReceiverChannel(key string) {
 	if e.tr == nil || !e.isLive(key) {
 		return
 	}
-	mode := e.channelFor(key)
-	if e.isGroupKey(key) {
-		mode = sender.ChannelStereo
+	if e.isGroupKey(key) || e.isComboKey(key) {
+		return
 	}
-	e.tr.SetTargetChannel(key, mode)
+	e.tr.SetTargetChannel(key, e.channelFor(key))
 }
 
 // isGroupKey reports whether the registry key names a stereo pair.
 func (e *Engine) isGroupKey(key string) bool {
 	entry, ok := e.reg.Get(key)
 	return ok && entry.IsGroup()
+}
+
+// isComboKey reports whether the registry key names a stereo combo.
+func (e *Engine) isComboKey(key string) bool {
+	entry, ok := e.reg.Get(key)
+	return ok && entry.IsCombo()
 }

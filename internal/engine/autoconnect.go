@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 
+	"saundo/internal/airplay/device"
 	"saundo/internal/receivers"
 )
 
@@ -54,6 +55,40 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 		t, found := e.target(key)
 		if !found {
 			e.logf("auto-connect: dropping %s; it is no longer remembered", key)
+			continue
+		}
+		if t.Entry.IsCombo() {
+			// A combo launches from its members' own rows: an online member
+			// takes its live view, an offline one reads its cached endpoint,
+			// and a member with no address yet holds the launch for discovery.
+			members := make([]device.Device, 0, len(t.Entry.Members))
+			broken := false
+			for _, m := range t.Entry.Members {
+				mt, mfound := e.target(m.ID)
+				if !mfound {
+					e.logf("auto-connect: %s lost member %s; skipping", t.Entry.DisplayName(), m.Name)
+					broken = true
+					break
+				}
+				md := mt.Device
+				if !md.Online {
+					cached, ok := receivers.CachedDevice(mt.Entry, e.hasPassword(mt.Entry.Key))
+					if !ok {
+						return nil, nil, true
+					}
+					md = cached
+				}
+				if md.Host == "" || md.Port == 0 {
+					return nil, nil, true
+				}
+				members = append(members, md)
+			}
+			if broken {
+				continue
+			}
+			t.Device = receivers.ComboDevice(t.Entry, members)
+			keys = append(keys, key)
+			views[key] = t
 			continue
 		}
 		d := t.Device

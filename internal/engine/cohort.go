@@ -11,7 +11,6 @@ import (
 	"saundo/internal/airplay/ptp"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/audio/ring"
-	"saundo/internal/receivers"
 )
 
 // cohortEventQueue bounds the merged host-event queue. 1024 covers several
@@ -398,6 +397,16 @@ func (c *cohortTransport) SetTargetChannel(key string, mode sender.ChannelMode) 
 	}
 }
 
+// SetMemberChannel applies a stereo map to one member by its index within its
+// target's window, so a combo's swap flips the two sides in place.
+func (c *cohortTransport) SetMemberChannel(key string, index int, mode sender.ChannelMode) {
+	t, ok := c.plan.target(key)
+	if !ok || index < 0 || index >= t.count {
+		return
+	}
+	c.members[t.first+index].sender.SetChannel(mode)
+}
+
 // SetPaused applies the request only when every member can apply it, then
 // applies it to every member. A mixed AP1/AP2 cohort must not pause its AP2
 // members alone: the AP1 member refuses and keeps streaming, and nothing would
@@ -446,17 +455,6 @@ func (c *cohortTransport) WaitingForPin() bool {
 		}
 	}
 	return false
-}
-
-// InitialVolumePercent takes the first report in plan order, so the primary
-// target's volume wins.
-func (c *cohortTransport) InitialVolumePercent() (float64, bool) {
-	for _, m := range c.members {
-		if pct, ok := m.sender.InitialVolumePercent(); ok {
-			return pct, true
-		}
-	}
-	return 0, false
 }
 
 // InitialVolumePercentFor takes the first report among one target's members.
@@ -669,15 +667,13 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 
 // connectTargets is the one Connect entry point.
 func (e *Engine) connectTargets(key string) {
-	e.connectResolved(key, nil)
+	e.connectResolved(key)
 }
 
-// connectResolved runs Connect with an optional pre-resolved target. The
-// launch path hands in the registry's cached view, which may describe an
-// offline pair as addressable; every other caller re-resolves from the merged
-// rows. An add that cannot run never touches the live session: nothing is
-// stopped until validation and the plan both succeed.
-func (e *Engine) connectResolved(key string, cached *receivers.Target) {
+// connectResolved runs Connect for one key, re-resolved from the merged rows.
+// An add that cannot run never touches the live session: nothing is stopped
+// until validation and the plan both succeed.
+func (e *Engine) connectResolved(key string) {
 	e.autoTried = true
 	// A user action supersedes the previous attempt's state: a stale PIN
 	// dialog, a takeover notice, and the old failure all end here.
@@ -696,9 +692,6 @@ func (e *Engine) connectResolved(key string, cached *receivers.Target) {
 		return
 	}
 	t, ok := e.target(key)
-	if cached != nil {
-		t, ok = *cached, true
-	}
 	if !ok {
 		e.fail(ErrDeviceMissing)
 		e.publish()

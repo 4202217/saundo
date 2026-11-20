@@ -23,6 +23,11 @@ type Kind string
 const (
 	KindManual     Kind = "manual"
 	KindDiscovered Kind = "discovered"
+	// KindCombo marks a user-created stereo combo: two independent receivers
+	// that play one input side each. Unlike a remembered stereo pair, a combo
+	// is configuration, not an advertisement — it is never pruned for being
+	// unseen, and its row stays manageable while a member is offline.
+	KindCombo Kind = "combo"
 )
 
 // Type is the family a manual entry declares. A discovered entry never uses
@@ -49,6 +54,7 @@ const (
 const (
 	manualKeyPrefix = "m:"
 	groupKeyPrefix  = "stereo:"
+	comboKeyPrefix  = "combo:"
 )
 
 // The stored channel preference. A stereo pair always plays stereo; a single
@@ -72,9 +78,13 @@ func ParseChannel(value string) string {
 	}
 }
 
-// Member is one speaker of a remembered stereo pair. Discovery supplies the
-// addresses; keeping them lets the next launch connect the pair without
-// waiting for mDNS.
+// Member is one speaker of a remembered stereo pair, or one side of a
+// stereo combo. Discovery supplies the addresses of a pair's speakers;
+// keeping them lets the next launch connect the pair without waiting for
+// mDNS. A combo member stores only the member's registry key in ID — the
+// member's own entry is the source of truth for its endpoint and
+// credentials — plus a display-name cache for the degenerate case where the
+// member's entry is gone.
 type Member struct {
 	ID        string `json:"id,omitempty"`
 	Name      string `json:"name,omitempty"`
@@ -96,7 +106,8 @@ type Member struct {
 // Entry is one receiver's persisted configuration. Key is the identity the
 // engine, the UI rows, and the credential store share, and it never changes:
 // the deviceid for a discovered receiver, "stereo:<tsid>" for a remembered
-// stereo pair, "m:<uuid>" for a manual receiver.
+// stereo pair, "combo:<hex>" for a stereo combo, "m:<uuid>" for a manual
+// receiver.
 type Entry struct {
 	Key       string `json:"key"`
 	Kind      Kind   `json:"kind"`
@@ -120,14 +131,18 @@ type Entry struct {
 	SF         uint64      `json:"sf,omitempty"`
 	Auth       device.Auth `json:"auth,omitempty"`
 	// Members caches a stereo pair's speaker addresses so the next launch can
-	// connect without waiting for discovery. Empty for a single receiver.
+	// connect without waiting for discovery. A combo stores its two member
+	// keys here in playback order: Members[0] plays the left side, Members[1]
+	// the right, and swapping sides reorders them. Empty for a single
+	// receiver.
 	Members     []Member `json:"members,omitempty"`
 	Hidden      bool     `json:"hidden,omitempty"`
 	AutoConnect bool     `json:"autoConnect,omitempty"`
 	DelayMS     int      `json:"delayMs,omitempty"`
 	// Channel is the stereo side a single receiver plays: "stereo", "left",
-	// or "right". A stereo pair always plays stereo. Empty and unknown values
-	// read as stereo, because this is a preference, not a capability gate.
+	// or "right". A stereo pair and a combo always play stereo — a combo's
+	// sides live in the member order, not here. Empty and unknown values read
+	// as stereo, because this is a preference, not a capability gate.
 	Channel string `json:"channel,omitempty"`
 	// LastRetransmits and LastSentBlocks drive the next session's duplicate
 	// count: clean sessions get one copy, lossy ones two or three.
@@ -208,6 +223,12 @@ func PruneStaleGroups(reg *Registry, seen map[string]bool, now time.Time, grace 
 }
 
 func (e Entry) IsManual() bool { return e.Kind == KindManual }
+
+// IsCombo reports whether the entry is a user-created stereo combo. Settings
+// on a combo row apply to the combo as a whole: one volume, one auto-connect
+// flag, one hidden flag. Unlike a remembered pair, a combo is never pruned
+// for being unseen and its members keep their own credentials.
+func (e Entry) IsCombo() bool { return e.Kind == KindCombo }
 
 // IsGroup reports whether the entry is a remembered stereo pair. Settings on
 // a group row apply to the pair as a whole, and its password may serve both
@@ -381,4 +402,13 @@ func NewManualKey() string {
 		return manualKeyPrefix + "0000000000000000"
 	}
 	return manualKeyPrefix + hex.EncodeToString(b[:])
+}
+
+// NewComboKey mints a fresh stereo combo key.
+func NewComboKey() string {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return comboKeyPrefix + "0000000000000000"
+	}
+	return comboKeyPrefix + hex.EncodeToString(b[:])
 }

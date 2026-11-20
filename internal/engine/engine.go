@@ -109,57 +109,6 @@ func (s Snapshot) Active(key string) bool {
 	return false
 }
 
-type commandKind uint8
-
-const (
-	cmdConnect commandKind = iota
-	cmdDisconnect
-	cmdDisconnectTarget
-	cmdTargetVolume
-	cmdPin
-	cmdDismissPassword
-	cmdDismissCredentialReset
-	cmdCaptureEndpoint
-	cmdRefresh
-	cmdStrictAuth
-	cmdName
-	cmdReconnect
-	cmdLamp
-	cmdStandby
-	cmdTrayAnimation
-	cmdMuteLocal
-	cmdNowPlaying
-	cmdLatency
-	cmdLatencySettings
-	cmdCaptureProcess
-	cmdCaptureApps
-	cmdPassword
-	cmdQuit
-	cmdAddReceiver
-	cmdUpdateReceiver
-	cmdRemoveReceiver
-)
-
-type command struct {
-	kind      commandKind
-	deviceID  string
-	value     float64
-	text      string
-	name      string
-	album     string
-	cover     []byte
-	coverMIME string
-	reconnect bool
-	show      bool
-	lampCover bool
-	minutes   int
-	ids       []string
-	names     []string
-	label     string
-	spec      receivers.Spec
-	patch     receivers.Patch
-}
-
 type captureInfo struct {
 	gen  int
 	rate int
@@ -1170,6 +1119,12 @@ func (e *Engine) handleCommand(cmd command) {
 		e.handleUpdateReceiver(cmd.deviceID, cmd.patch)
 	case cmdRemoveReceiver:
 		e.handleRemoveReceiver(cmd.deviceID)
+	case cmdLinkReceivers:
+		e.handleLinkReceivers(cmd.ids, cmd.name)
+	case cmdUnlinkCombo:
+		e.handleUnlinkCombo(cmd.deviceID)
+	case cmdSwapComboSides:
+		e.handleSwapComboSides(cmd.deviceID)
 	}
 }
 
@@ -1796,7 +1751,9 @@ func membersEqual(a, b []receivers.Member) bool {
 }
 
 // rebuildTargets re-projects the registry and discovery onto the row lists.
-// Presentation rules live in receivers; the engine supplies inputs.
+// Presentation rules live in receivers; the engine supplies inputs. The
+// linked-member rows a combo replaces drop from the display lists while the
+// full merge stays available to lookups by member key.
 func (e *Engine) rebuildTargets() {
 	targets := receivers.Merge(e.reg, e.discovered, func(k string) bool { return e.passwords[k] })
 	active := make(map[string]bool)
@@ -1804,6 +1761,7 @@ func (e *Engine) rebuildTargets() {
 		active[key] = true
 	}
 	targets = receivers.Manageable(targets, active)
+	targets = receivers.DropLinked(targets)
 	e.devices = receivers.Visible(targets, active)
 	e.receiversViews = make([]receivers.View, len(targets))
 	for i, t := range targets {

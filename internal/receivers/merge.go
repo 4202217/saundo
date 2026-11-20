@@ -24,19 +24,28 @@ type Target struct {
 //     with the live advertisement's model and features when the same key is
 //     seen (a manual row that was learned by the engine takes the
 //     advertisement's identity fields);
-//   - a first sighting is returned with a zero entry; the engine persists it.
+//   - a first sighting is returned with a zero entry; the engine persists it;
+//   - a combo renders as one synthesized stereo-group row built from its two
+//     members' own merged rows.
 //
 // hasPassword reports whether a stored password exists for a key; it may be
 // nil. Manual keys ("m:<uuid>") never collide with discovery keys (MACs),
 // so one physical receiver shows as two rows only before the engine learns
-// its manual row's deviceid.
+// its manual row's deviceid. The member rows a combo replaces stay in the
+// output: DropLinked removes them at the projection point, so lookups by a
+// member key keep working while its combo exists.
 func Merge(reg Registry, discovered []device.Device, hasPassword func(key string) bool) []Target {
 	live := make(map[string]device.Device, len(discovered))
 	for _, d := range discovered {
 		live[d.ID] = d
 	}
 	out := make([]Target, 0, len(reg.Entries)+len(live))
+	rows := make(map[string]Target, len(reg.Entries))
 	for _, e := range reg.Entries {
+		if e.IsCombo() {
+			continue
+		}
+		var t Target
 		if e.IsManual() {
 			d := manualDevice(e, hasPassword != nil && hasPassword(e.Key))
 			if seen, ok := live[e.Key]; ok {
@@ -46,19 +55,25 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 			if d.Local {
 				e = localEntry(e)
 			}
-			out = append(out, Target{Device: d, Entry: e})
-			continue
-		}
-		if d, ok := live[e.Key]; ok {
+			t = Target{Device: d, Entry: e}
+		} else if d, ok := live[e.Key]; ok {
 			delete(live, d.ID)
 			d = pinnedDevice(e, d)
 			if d.Local {
 				e = localEntry(e)
 			}
-			out = append(out, Target{Device: d, Entry: e})
+			t = Target{Device: d, Entry: e}
+		} else {
+			t = Target{Device: offlineDevice(e, hasPassword), Entry: e}
+		}
+		rows[e.Key] = t
+		out = append(out, t)
+	}
+	for _, e := range reg.Entries {
+		if !e.IsCombo() {
 			continue
 		}
-		out = append(out, Target{Device: offlineDevice(e, hasPassword), Entry: e})
+		out = append(out, ComboTarget(e, rows))
 	}
 	for id, d := range live {
 		// A first sighting. The engine persists it as a remembered entry;
@@ -78,6 +93,54 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		return a.Key < b.Key
 	})
 	return out
+}
+
+// ComboTarget synthesizes a combo's merged row: one stereo-group device over
+// the two members' own rows, in the entry's member order (left, then right).
+// A member whose entry is gone renders from its cached name as an offline
+// row, so the combo stays visible and unlinkable instead of vanishing.
+func ComboTarget(e Entry, rows map[string]Target) Target {
+	members := make([]device.Device, 0, len(e.Members))
+	for _, m := range e.Members {
+		if t, ok := rows[m.ID]; ok {
+			members = append(members, t.Device)
+			continue
+		}
+		members = append(members, device.Device{ID: m.ID, Name: m.Name})
+	}
+	return Target{Device: ComboDevice(e, members), Entry: e}
+}
+
+// ComboDevice builds the wire description of a stereo combo: one synthesized
+// stereo-group device over its two members. StereoID carries the combo key
+// so IsStereoGroup gates the pair plumbing; the pair's own protocol fields
+// (group UUID, timing peers) stay empty because a combo's members are
+// independent receivers, not a native pair.
+func ComboDevice(e Entry, members []device.Device) device.Device {
+	online := len(members) > 0
+	model := ""
+	for _, m := range members {
+		if !m.Online {
+			online = false
+		}
+		if model == "" {
+			model = m.Model
+		}
+	}
+	d := device.Device{
+		ID:       e.Key,
+		Name:     e.DisplayName(),
+		Model:    model,
+		Family:   device.FamilyFor(model, ""),
+		AirPlay2: true,
+		StereoID: e.Key,
+		Members:  members,
+		Online:   online,
+	}
+	if len(members) > 0 {
+		d.Host, d.Port = members[0].Host, members[0].Port
+	}
+	return d
 }
 
 // localEntry is the row a receiver on this host gets: the hidden group and
@@ -179,15 +242,41 @@ func manualModel(t Type) string {
 	}
 }
 
-// Manageable is the list both surfaces show: manual entries always, online
-// receivers, and every active target even when it just went offline so its
-// controls stay reachable. A remembered receiver that is offline has nothing
-// to configure or connect to; its entry stays in the registry and returns to
-// the list when the device is seen again.
+// Manageable is the list both surfaces show: manual entries and combos
+// always (both are user-created configuration), online receivers, and every
+// active target even when it just went offline so its controls stay
+// reachable. A remembered receiver that is offline has nothing to configure
+// or connect to; its entry stays in the registry and returns to the list
+// when the device is seen again.
 func Manageable(targets []Target, active map[string]bool) []Target {
 	out := targets[:0]
 	for _, t := range targets {
-		if t.Entry.IsManual() || t.Device.Online || active[t.Entry.Key] {
+		if t.Entry.IsManual() || t.Entry.IsCombo() || t.Device.Online || active[t.Entry.Key] {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// DropLinked removes the member rows a combo replaces. While the combo
+// exists its members play through the combo row; their own rows return when
+// the combo is unlinked. The engine keeps the unfiltered merge for lookups
+// by member key, so this runs at the projection point, not inside Merge.
+func DropLinked(targets []Target) []Target {
+	linked := make(map[string]bool)
+	for _, t := range targets {
+		if t.Entry.IsCombo() {
+			for _, m := range t.Entry.Members {
+				linked[m.ID] = true
+			}
+		}
+	}
+	if len(linked) == 0 {
+		return targets
+	}
+	out := targets[:0]
+	for _, t := range targets {
+		if !linked[t.Entry.Key] {
 			out = append(out, t)
 		}
 	}

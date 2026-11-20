@@ -55,10 +55,13 @@ type transport interface {
 	// SetTargetChannel applies a stereo map to one target's members without a
 	// session rebuild.
 	SetTargetChannel(key string, mode sender.ChannelMode)
+	// SetMemberChannel applies a stereo map to one member by its index within
+	// its target's window. A combo's swap addresses each side directly, which
+	// the whole-target setter cannot express.
+	SetMemberChannel(key string, index int, mode sender.ChannelMode)
 	SetStrictReceiverAuth(strict bool)
 	SubmitPin(code string)
 	WaitingForPin() bool
-	InitialVolumePercent() (float64, bool)
 	// InitialVolumePercentFor is the first report among one target's members.
 	InitialVolumePercentFor(key string) (float64, bool)
 	SetNowPlaying(title, artist, album string, cover []byte, coverMIME string)

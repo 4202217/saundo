@@ -795,3 +795,79 @@ func TestDuplicatesFor(t *testing.T) {
 		}
 	}
 }
+
+func TestMergeSynthesizesAComboRow(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "左"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "右"},
+		{Key: "combo:01", Kind: KindCombo, Name: "客厅立体声", Members: []Member{
+			{ID: "AA:00", Name: "左"}, {ID: "AA:01", Name: "右"},
+		}},
+	}}
+	devs := []device.Device{discovered("AA:00", "左", "192.0.2.1", 7000), discovered("AA:01", "右", "192.0.2.2", 7000)}
+	targets := Merge(reg, devs, nil)
+	byKey := map[string]Target{}
+	for _, tg := range targets {
+		byKey[tg.Entry.Key] = tg
+	}
+	combo, ok := byKey["combo:01"]
+	if !ok {
+		t.Fatalf("combo row missing: %+v", targets)
+	}
+	if !combo.Device.IsStereoGroup() || len(combo.Device.Members) != 2 {
+		t.Fatalf("combo device is not a stereo group: %+v", combo.Device)
+	}
+	if combo.Device.Members[0].ID != "AA:00" || combo.Device.Members[1].ID != "AA:01" {
+		t.Fatalf("member order = %q %q, want left then right", combo.Device.Members[0].ID, combo.Device.Members[1].ID)
+	}
+	if !combo.Device.Online {
+		t.Fatal("a combo over two online members is online")
+	}
+	// The member rows stay in the merge; DropLinked removes them at the
+	// projection point, and lookups by a member key keep working.
+	for _, key := range []string{"AA:00", "AA:01"} {
+		if _, ok := byKey[key]; !ok {
+			t.Fatalf("member row %s vanished from the merge", key)
+		}
+	}
+	linked := DropLinked(targets)
+	if len(linked) != 1 || linked[0].Entry.Key != "combo:01" {
+		t.Fatalf("DropLinked left %d rows, want the combo alone", len(linked))
+	}
+}
+
+func TestMergeComboWithOfflineMember(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "左"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "右"},
+		{Key: "combo:01", Kind: KindCombo, Name: "客厅立体声", Members: []Member{
+			{ID: "AA:00", Name: "左"}, {ID: "AA:01", Name: "右"},
+		}},
+	}}
+	// The right member is not advertised: its remembered row goes offline and
+	// the combo reads that state, so the row stays visible and unlinkable.
+	devs := []device.Device{discovered("AA:00", "左", "192.0.2.1", 7000)}
+	targets := Merge(reg, devs, nil)
+	byKey := map[string]Target{}
+	for _, tg := range targets {
+		byKey[tg.Entry.Key] = tg
+	}
+	combo, ok := byKey["combo:01"]
+	if !ok {
+		t.Fatal("the combo row vanished while one member is offline")
+	}
+	if combo.Device.Online {
+		t.Fatal("a combo with an offline member is offline")
+	}
+	if combo.Device.Members[1].Online {
+		t.Fatal("the offline member's state did not travel into the combo")
+	}
+}
+
+func TestManageableKeepsAComboWithAnOfflineMember(t *testing.T) {
+	combo := Target{Device: device.Device{ID: "combo:01", Online: false}, Entry: Entry{Key: "combo:01", Kind: KindCombo}}
+	got := Manageable([]Target{combo}, nil)
+	if len(got) != 1 {
+		t.Fatal("a combo must stay manageable while a member is offline, like a manual row")
+	}
+}
