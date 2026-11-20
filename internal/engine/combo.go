@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"saundo/internal/airplay/device"
 	"saundo/internal/airplay/sender"
 	"saundo/internal/receivers"
 )
@@ -44,13 +45,25 @@ func (e *Engine) linkable(key string) (receivers.Target, bool) {
 	if !ok {
 		return t, false
 	}
-	if t.Device.Local || t.Device.IsStereoGroup() || t.Entry.IsGroup() || t.Entry.IsCombo() {
+	if t.Device.Local || t.Device.IsStereoGroup() || t.Device.StereoID != "" ||
+		t.Entry.IsGroup() || t.Entry.IsCombo() {
 		return t, false
 	}
 	if !t.Device.AirPlay2 {
 		return t, false
 	}
 	return t, true
+}
+
+// comboOfflineName names the member a combo cannot reach: the first offline
+// member, else the synthesized row's name for an incomplete combo.
+func comboOfflineName(d device.Device) string {
+	for _, m := range d.Members {
+		if !m.Online && m.Name != "" {
+			return m.Name
+		}
+	}
+	return d.Name
 }
 
 // comboInUse reports whether any combo entry already links key.
@@ -90,12 +103,21 @@ func (e *Engine) handleLinkReceivers(ids []string, name string) {
 	}
 	// The members' launch flags move onto the combo: a linked member's row is
 	// hidden, so the combo is the only row a launch can act on. Either member
-	// flagged means the user wants this set to start with the app.
+	// flagged means the user wants this set to start with the app. The combo
+	// also inherits the larger member delay, so a calibrated room keeps its
+	// sync compensation instead of resetting to the base latency.
+	delay := 0
+	for _, m := range []receivers.Target{left, right} {
+		if m.Entry.DelayMS > delay {
+			delay = m.Entry.DelayMS
+		}
+	}
 	entry := receivers.Entry{
 		Key:         receivers.NewComboKey(),
 		Kind:        receivers.KindCombo,
 		Name:        name,
 		AutoConnect: left.Entry.AutoConnect || right.Entry.AutoConnect,
+		DelayMS:     delay,
 		Members: []receivers.Member{
 			{ID: ids[0], Name: left.Device.Name},
 			{ID: ids[1], Name: right.Device.Name},
@@ -145,8 +167,9 @@ func (e *Engine) handleUnlinkCombo(key string) {
 }
 
 // handleSwapComboSides flips the combo's member order. The live plan's member
-// window keeps its device order, so each side takes the opposite channel in
-// place; the next plan reads the new order from the registry.
+// window keeps its device order, so each member's side follows the new order
+// by device identity: a member that is now first plays left, the other right.
+// The next plan reads the same order from the registry.
 func (e *Engine) handleSwapComboSides(key string) {
 	defer e.publish()
 	entry, ok := e.reg.Get(key)
@@ -158,8 +181,16 @@ func (e *Engine) handleSwapComboSides(key string) {
 	e.clearError()
 	e.saveReceivers()
 	if e.tr != nil && e.plan.has(key) {
-		e.tr.SetMemberChannel(key, 0, sender.ChannelRight)
-		e.tr.SetMemberChannel(key, 1, sender.ChannelLeft)
+		if t, planned := e.plan.target(key); planned {
+			for i := 0; i < t.count; i++ {
+				id := e.plan.members[t.first+i].device.ID
+				mode := sender.ChannelRight
+				if id == entry.Members[0].ID {
+					mode = sender.ChannelLeft
+				}
+				e.tr.SetMemberChannel(key, i, mode)
+			}
+		}
 	}
 	e.rebuildTargets()
 }
@@ -191,6 +222,7 @@ func (e *Engine) dropFromSession(key string) {
 		e.selectedID = ""
 	}
 	e.userDisconnect = true
+	e.takenOver = false
 	e.reconnectPendingOff()
 	e.wantedKeys = nil
 	e.pinRequired, e.pinDevice = false, ""

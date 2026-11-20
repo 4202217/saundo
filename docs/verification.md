@@ -69,6 +69,12 @@ live state:
   set. Still owed: three-member runs, a left/right assignment judged by ear,
   different per-device delays judged by ear, and a 30-minute three-member soak
   for drift, drops, CPU, and memory.
+- Stereo combo acceptance checklist (2026-11-20). Live-verify: left and
+  right judged by ear through a combo; swap and unlink while streaming; a
+  member lost mid-stream from a combo (the combo target leaves the session;
+  survivor-only playback is not implemented); a launch from auto-connect with a flagged combo;
+  and a combo over a mini plus a full HomePod. The engine paths are pinned by
+  the combo tests listed in the 2026-11-20 entry.
 - Powering off a member mid-session (2026-11-18 live pass, after the member
   isolation fix). HomePod R was powered off while R and L streamed. The
   survivor kept playing its receiver buffer until the engine saw the lost
@@ -1682,3 +1688,34 @@ one took it from 1627.
   `TestStandalonePTPSessionSkipsSetPeers`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`.
+
+## 2026-11-20 — software stereo combos
+
+Two independent AirPlay 2 receivers can be linked into one stereo target: a
+`combo:<hex>` registry row holds the member keys in playback order, the merge
+projects one stereo-group row over the members' own rows, and the plan gives
+each member one input side. The same session path serves it: the combo sends
+no group UUID and no SETPEERS peers, and both members join the shared PTP
+follower set. Link moves the members' launch flags onto the combo and clears
+them on the members; unlink hands the flag back; the launch set skips any
+linked member, so a registry written before this change cannot start one by
+itself. Swap reorders the registry and hot-applies the opposite side per
+member without a rebuild. Removing a receiver unlinks its combo.
+
+`mingw32-make check` passed on the branch, including the new pins:
+`TestComboPlanPlaysLeftAndRight`, `TestSwapComboSidesFlipsMembers`,
+`TestLinkComboMovesTheLaunchFlag`, `TestUnlinkComboReturnsTheLaunchFlag`,
+`TestComboLinkEndsAMembersAutoConnect`, `TestAutoTargetsSkipsLinkedMembers`,
+`TestComboVolumeReportConvergesTheMembers`, `TestLinkComboClearsAPendingPin`,
+`TestDelayRebuildRefusesAnOfflineMember`, and the app-side
+`TestReceiverComboRowRendersTheChannelMap`, `TestFlyoutPairChannelButtonIsFixed`,
+`TestComboPickRowsExcludeTheOtherSide`, `TestStereoIconFollowsMembers`.
+
+The maintainer ran the feature live during development and observed the combo
+card, the create dialog with per-side icon pickers, the flyout row with the
+立体声组合 tag and no channel button, and a streaming combo whose members both
+played. No log excerpt of a combo session is recorded in this entry, and the
+following remain owed: left and right judged by ear through a combo, swap and
+unlink while streaming, a member lost mid-stream from a combo, and a launch
+from auto-connect with a combo. The 1.37 s rebuild gap measured for a lost
+member applies to these paths unchanged.

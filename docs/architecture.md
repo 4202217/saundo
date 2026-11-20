@@ -183,11 +183,14 @@ The sender talks to it through a narrow `PTPClock` interface, so NTP stays the
 path for Apple TV.
 
 **One cohort, one start epoch.** A session is data: an immutable
-`sessionPlan` of 1..N targets, where a target is one receiver or a stereo
-pair. `buildPlan` derives the whole session from the selected registry keys:
-target order, one member per sender, per-member latency from the target's
-registry key, pair identity (`groupUUID` and SETPEERS peers), auth material,
-the duplicate policy, and the one clock role. `cohortTransport` then applies
+`sessionPlan` of 1..N targets, where a target is one receiver, a native stereo
+pair, or a user-created stereo combo. `buildPlan` derives the whole session
+from the selected registry keys: target order, one member per sender,
+per-member latency from the target's registry key, pair identity (`groupUUID`
+and SETPEERS peers), auth material, the duplicate policy, and the one clock
+role. A combo is not a native pair: it sends no group UUID and no SETPEERS
+peers, gives each member one input side, and lets each member time against its
+own grandmaster through the shared follower set. `cohortTransport` then applies
 the plan at construction: one `raopio.Host`, `sender.Sender`, and capture ring
 per member, one `StartGate` over every member, one merged event channel routed
 by peer host, and one forwarder per member. The single-receiver session and the
@@ -237,11 +240,12 @@ clock would be a different protocol question.
 **Minimal 200 OK.** Event-channel response headers are strictly minimal. This is a failure mode the C++ blueprint already hit.
 
 **Connect adds a target; Disconnect ends the cohort.** A session holds 1..N
-targets that all share one start epoch. `SelectedID` remains the primary
-target, the first key: it drives the latency page, per-device volume memory,
-the tray selection, and the reconnect fallback. `Snapshot.ActiveTargets`
-carries the cohort's keys in target order and `Snapshot.Active` answers a row,
-and `ConnectedName` joins the target names with ` + `. A Connect on a
+targets that all share one start epoch. `SelectedID` names the cohort's first
+target; it seeds the flyout's selection memory and the tray's current-device
+marker, and it is not a privilege: volume, channel, and delay belong to each
+target's own key. `Snapshot.ActiveTargets` carries the cohort's keys in target
+order and `Snapshot.Active` answers a row, and `ConnectedName` joins the target
+names with ` + `. A Connect on a
 streaming cohort adds the target and rebuilds every member from a new plan; a
 Connect on an active key is a no-op. Validation and the plan run before
 anything stops, so a rejected add publishes its error and leaves the live

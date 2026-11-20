@@ -131,7 +131,16 @@ against its own grandmaster (both hosts join the follower set, never a
 sender-side master). Linking a receiver that plays ends its session first;
 unlinking deletes the combo row and restores the member rows; swapping sides
 reorders the registry members and hot-applies the opposite channel per member
-without a rebuild. Removing a receiver unlinks any combo that held it.
+without a rebuild. Removing a receiver unlinks any combo that held it; a
+combo's launch flag returns to the surviving members. Linking seeds the combo
+delay from the larger member delay and leaves the volume unset, so the first
+session adopts each receiver's own level and then converges both members on
+it. A member lost mid-stream is a target loss: the combo leaves the session
+and a combo-only session ends and retries, while a multi-target session
+continues with the other targets. A takeover of one member isolates the same
+way; only a one-target session is marked taken over. A combo over two PIN-auth
+receivers shares one PIN dialog, so only one on-screen code can be entered;
+combos of PIN-paired receivers are a known limitation.
 `SetLatency` applies on the next
 session; `ApplyLatency` restarts a live one, but only after checking every
 member's device — one missing or offline receiver fails the apply with the

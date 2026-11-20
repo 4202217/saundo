@@ -291,7 +291,7 @@ func (a *App) targetVolume(t engine.TargetControl) *float64 {
 // solid side is the current side and a click cycles stereo → left → right. A
 // stereo target has no side to choose, so deviceMixer leaves it out.
 func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
-	label := channelLabelText(t)
+	label := channelLabelText(t.Channel)
 	b := ui.ButtonBase(c.Key("channel:"+d.ID)).Size(26, 26).Radius(13).Center().
 		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
 	b.OnClick(func() { a.cycleChannel(t) })
@@ -303,17 +303,10 @@ func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.
 	})
 }
 
-// channelLabelText names the current side and what a click does next. A pair
-// or a combo cannot change, so its label says why.
-func channelLabelText(t engine.TargetControl) string {
-	current := channelDisplay(t.Channel)
-	if t.Split {
-		return locales.ComboChannelLocked()
-	}
-	if t.Stereo {
-		return locales.ChannelPairTooltip(current)
-	}
-	return locales.ChannelTooltip(current, channelDisplay(nextChannel(t.Channel)))
+// channelLabelText names the current side and what a click does next. Only a
+// single receiver draws the control; a stereo target has no side to choose.
+func channelLabelText(channel string) string {
+	return locales.ChannelTooltip(channelDisplay(channel), channelDisplay(nextChannel(channel)))
 }
 
 func channelDisplay(channel string) string {

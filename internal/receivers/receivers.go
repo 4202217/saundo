@@ -167,8 +167,10 @@ type Registry struct {
 }
 
 // SchemaVersion stamps every save. A higher number in a file this build
-// reads means a newer build wrote it; unknown fields decode and stay.
-const SchemaVersion = 1
+// reads means a newer build wrote it; unknown fields decode and stay. 2 added
+// the per-receiver channel and the combo rows, so an older build treats a v2
+// file as read-only instead of dropping those fields on its next save.
+const SchemaVersion = 2
 
 // Get returns the entry with the key.
 func (r *Registry) Get(key string) (Entry, bool) {

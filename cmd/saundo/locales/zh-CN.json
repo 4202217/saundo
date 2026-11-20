@@ -465,7 +465,6 @@
   "channelLeft": "左",
   "channelRight": "右",
   "channelTooltip": "声道：{current} · 点击切换到 {next}",
-  "channelPairTooltip": "声道：{current} · 立体声对固定为立体声",
   "settingsNavUpdates": "更新",
   "pageUpdatesDesc": "版本、自动检查与安装。",
   "pageAboutDesc": "版本、项目链接、许可证与诊断日志。",
@@ -667,7 +666,6 @@
   "receiverGroupCombo": "立体声组合",
   "receiverPairAddTitle": "创建立体声组合",
   "receiverPairAddSub": "两台接收器各播一个声道",
-  "comboChannelLocked": "立体声组合 · 左 + 右（已锁定）",
   "comboMapLabel": "声道布局",
   "comboSwapTip": "交换左右声道",
   "comboUnlink": "解除组合",
@@ -699,5 +697,13 @@
   "comboFieldRight": "右声道",
   "comboTag": "立体声组合",
   "receiverAddAction": "添加",
-  "comboCreateAction": "创建组合"
+  "comboCreateAction": "创建组合",
+  "errorDeviceOffline": "{name} 未连接，无法加入会话。",
+  "@errorDeviceOffline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

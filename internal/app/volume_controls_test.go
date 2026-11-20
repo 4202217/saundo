@@ -292,7 +292,6 @@ func TestFlyoutPairChannelButtonIsFixed(t *testing.T) {
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	for _, absent := range []string{
-		locales.ChannelPairTooltip(locales.ChannelStereo()),
 		locales.ChannelTooltip(locales.ChannelStereo(), locales.ChannelLeft()),
 	} {
 		if tt.HasText(absent) {

@@ -280,6 +280,9 @@ func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]strin
 	}
 	if target.stereo {
 		if len(d.Members) != 2 {
+			if combo {
+				return plannedTarget{}, nil, &planError{key: ErrComboMemberOffline, args: []string{comboOfflineName(d)}}
+			}
 			return plannedTarget{}, nil, &planError{key: ErrStereoMembersOffline}
 		}
 		peers := make([]string, 0, len(d.Members))
@@ -529,6 +532,11 @@ func (e *Engine) validateTarget(t receivers.Target) error {
 		return &planError{key: ErrLocalReceiver}
 	}
 	if d.IsStereoGroup() && (!d.Online || len(d.Members) != 2) {
+		if t.Entry.IsCombo() {
+			// A combo names the member that is down; a native pair's copy
+			// speaks of the pair as a whole.
+			return &planError{key: ErrComboMemberOffline, args: []string{comboOfflineName(d)}}
+		}
 		return &planError{key: ErrStereoMembersOffline}
 	}
 	if d.Auth == device.AuthLegacyPin {

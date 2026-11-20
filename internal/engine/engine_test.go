@@ -1364,3 +1364,16 @@ func TestUnsupportedPlatformDropsAppSelection(t *testing.T) {
 		t.Fatal("a second call reported a change")
 	}
 }
+
+// TestLastSessionFirstFallsBackToTheLegacyDeviceID pins the upgrade path: a
+// settings file written before LastTargets still seeds the selection.
+func TestLastSessionFirstFallsBackToTheLegacyDeviceID(t *testing.T) {
+	cfg := settings.Settings{LastDeviceID: "AA:00"}
+	if got := lastSessionFirst(cfg); got != "AA:00" {
+		t.Fatalf("fallback = %q, want the legacy device id", got)
+	}
+	cfg.LastTargets = []string{"combo:01", "AA:00"}
+	if got := lastSessionFirst(cfg); got != "combo:01" {
+		t.Fatalf("first = %q, want the remembered combo", got)
+	}
+}

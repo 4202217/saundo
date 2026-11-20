@@ -253,8 +253,10 @@ func TestComboWithOfflineMemberRefusesConnect(t *testing.T) {
 	offline.Online = false
 	h.e.setDevices([]device.Device{onlineDevice(), offline})
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
-	if snap := h.e.Snapshot(); snap.ErrorKey != ErrStereoMembersOffline {
-		t.Fatalf("error = %q, want stereoMembersOffline", snap.ErrorKey)
+	if snap := h.e.Snapshot(); snap.ErrorKey != ErrComboMemberOffline {
+		t.Fatalf("error = %q, want comboMemberOffline", snap.ErrorKey)
+	} else if len(snap.ErrorArgs) != 1 || snap.ErrorArgs[0] != offline.Name {
+		t.Fatalf("args = %v, want the offline member's name", snap.ErrorArgs)
 	}
 	if h.e.plan.live() {
 		t.Fatal("an offline member must refuse the combo session")
@@ -379,5 +381,115 @@ func TestComboLinkEndsAMembersAutoConnect(t *testing.T) {
 	}
 	if len(h.e.plan.targets) != 1 || h.e.plan.targets[0].key != key {
 		t.Fatalf("launched %v, want the combo alone", h.e.plan.keys())
+	}
+}
+
+// TestSwapComboSidesTwiceRestoresTheSides pins the toggle: the live window
+// keeps its device order, so each press derives every member's side from the
+// new member order rather than flipping blindly.
+func TestSwapComboSidesTwiceRestoresTheSides(t *testing.T) {
+	h, key := linkCombo(t)
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
+	h.launch()
+	for i := 0; i < 2; i++ {
+		h.e.handleCommand(command{kind: cmdSwapComboSides, deviceID: key})
+	}
+	entry, _ := h.e.reg.Get(key)
+	if entry.Members[0].ID != testDeviceID || entry.Members[1].ID != comboSecondDevice().ID {
+		t.Fatalf("members after two swaps = %+v, want the original order", entry.Members)
+	}
+	if got := h.fake.memberChannels[key+"\x000"]; got != sender.ChannelLeft {
+		t.Fatalf("member 0 channel = %v, want left", got)
+	}
+	if got := h.fake.memberChannels[key+"\x001"]; got != sender.ChannelRight {
+		t.Fatalf("member 1 channel = %v, want right", got)
+	}
+}
+
+// TestAddOfflineReceiverLeavesTheCohortPlaying pins the add guard: a row that
+// went offline between snapshots is refused before the healthy cohort stops.
+func TestAddOfflineReceiverLeavesTheCohortPlaying(t *testing.T) {
+	h := newHarness(t)
+	h.e.setDevices(comboDevices())
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: testDeviceID})
+	h.launch()
+	sessions := h.sessions
+	offline := comboSecondDevice()
+	offline.Online = false
+	h.e.setDevices([]device.Device{onlineDevice(), offline})
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: offline.ID})
+	if h.sessions != sessions {
+		t.Fatal("the add rebuilt the cohort for an offline receiver")
+	}
+	if snap := h.e.Snapshot(); snap.ErrorKey != ErrDeviceOffline {
+		t.Fatalf("error = %q, want deviceOffline", snap.ErrorKey)
+	}
+}
+
+// TestRemoveMemberReturnsTheComboLaunchFlag pins the removal path's launch
+// intent: the surviving member inherits it, as an explicit unlink does.
+func TestRemoveMemberReturnsTheComboLaunchFlag(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.setDevices(comboDevices())
+	h.e.handleCommand(command{kind: cmdAddReceiver, spec: receivers.Spec{
+		Name: "书房", Type: receivers.TypeAirPlay2, Host: "192.0.2.33", Port: 7000,
+	}})
+	manual := manualKey(h)
+	h.e.handleCommand(command{kind: cmdLinkReceivers, ids: []string{testDeviceID, manual}})
+	key := comboKeyOf(h)
+	entry, _ := h.e.reg.Get(key)
+	entry.AutoConnect = true
+	h.e.reg.Put(entry)
+	h.e.handleCommand(command{kind: cmdRemoveReceiver, deviceID: manual})
+	survivor, ok := h.e.reg.Get(testDeviceID)
+	if !ok || !survivor.AutoConnect {
+		t.Fatal("the surviving member did not inherit the combo's launch flag")
+	}
+}
+
+// TestComboAdoptsItsInitialVolumeForBothMembers pins the adoption: a combo's
+// first reported level reaches every member, not just the remembered value.
+func TestComboAdoptsItsInitialVolumeForBothMembers(t *testing.T) {
+	h, key := linkCombo(t)
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
+	h.fake.initialByKey = map[string]float64{key: 41}
+	h.e.adoptInitialVolumes()
+	if got := h.e.setsValue.VolumeByDevice[key]; got != 41 {
+		t.Fatalf("stored volume = %v, want 41", got)
+	}
+	if got := h.fake.targetVolumes[key]; got != 41 {
+		t.Fatalf("pushed volume = %v, want 41", got)
+	}
+}
+
+// TestPreemptionOfOneMemberKeepsTheSession pins the takeover policy: with two
+// targets, one receiver's takeover is a member loss; the session keeps its
+// name and is not marked taken over.
+func TestPreemptionOfOneMemberKeepsTheSession(t *testing.T) {
+	h := newHarness(t)
+	h.e.setDevices(comboDevices())
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: testDeviceID})
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: comboSecondDevice().ID})
+	h.launch()
+	h.e.onPreempted("客厅 HomePod：another sender")
+	if h.e.takenOver {
+		t.Fatal("a member takeover marked the whole session taken over")
+	}
+	if snap := h.e.Snapshot(); snap.ConnectedName == "" {
+		t.Fatal("the session lost its name")
+	}
+}
+
+// TestComboMemberLossEndsAComboOnlySession pins the current loss behavior: a
+// combo is one target, so losing a member ends a combo-only session (the
+// retry policy then reopens it) instead of playing one side alone.
+func TestComboMemberLossEndsAComboOnlySession(t *testing.T) {
+	h, key := linkCombo(t)
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
+	h.launch()
+	h.e.sessionLost(key, false)
+	if h.e.plan.live() || h.e.tr != nil {
+		t.Fatal("a combo-only session kept a transport after its member was lost")
 	}
 }

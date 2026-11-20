@@ -119,9 +119,9 @@ type Settings struct {
 	CaptureAppNames     []string           `json:"captureAppNames"`
 	LastDeviceID        string             `json:"lastDeviceId"`
 	// LastTargets is the last streaming session's target keys in target
-	// order. It is what the launch auto-connect restores and what seeds the
-	// UI's pre-session selection; lastDeviceId is the legacy single-device
-	// record the receiver migration reads.
+	// order. It seeds the UI's pre-session selection; the launch auto-connect
+	// reads each row's flag instead. lastDeviceId is the legacy single-device
+	// record and the fallback when LastTargets is empty.
 	LastTargets         []string        `json:"lastTargets"`
 	StrictReceiverAuth  bool            `json:"strictReceiverAuth"`
 	AutoConnect         bool            `json:"autoConnect"`

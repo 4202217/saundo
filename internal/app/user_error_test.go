@@ -87,8 +87,8 @@ func TestErrorBarShowsOnlyConnectionFailuresWhileStreaming(t *testing.T) {
 // key it admits resolves to catalog copy.
 func TestConnectionErrorKeysAreCatalogKeys(t *testing.T) {
 	for _, key := range []engine.UserErrorKey{
-		engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrLocalReceiver,
-		engine.ErrStereoMembersOffline, engine.ErrComboInvalid, engine.ErrFairPlay,
+		engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrDeviceOffline, engine.ErrLocalReceiver,
+		engine.ErrStereoMembersOffline, engine.ErrComboInvalid, engine.ErrComboMemberOffline, engine.ErrFairPlay,
 		engine.ErrEndpointMoved, engine.ErrSessionOpen, engine.ErrPasswordRejected,
 	} {
 		if !connectionErrorKey(key) {

@@ -638,6 +638,10 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 	if err != nil {
 		e.plan = sessionPlan{}
 		e.activeMembers = nil
+		// The stopped session must not leave its identity behind: the snapshot
+		// would read idle with a stale "connected to" name.
+		e.connectedName = ""
+		e.activeHost, e.activePort = "", 0
 		if hold {
 			e.restoreLocalMute()
 		}
@@ -712,6 +716,13 @@ func (e *Engine) connectResolved(key string) {
 		e.failPlan(err)
 		e.publish()
 		return // the live cohort keeps playing
+	}
+	if (action == connectAdd || action == connectReplace) && !t.Device.Online && !t.Entry.IsManual() {
+		// Adding a receiver whose row went offline would stop the healthy
+		// cohort only to fail the dial; refuse it before anything stops.
+		e.fail(ErrDeviceOffline, t.Entry.DisplayName())
+		e.publish()
+		return
 	}
 	if action == connectRetry {
 		// Retry rebuilds every wanted target, so it runs the same prune and

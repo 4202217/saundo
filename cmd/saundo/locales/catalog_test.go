@@ -208,7 +208,6 @@ func TestPerDeviceControlCopyBudgets(t *testing.T) {
 		"channelLeft":         8,
 		"channelRight":        8,
 		"channelTooltip":      60,
-		"channelPairTooltip":  60,
 		"muteFor":             30,
 		"unmuteFor":           40,
 		"receiverChannelDesc": 60,

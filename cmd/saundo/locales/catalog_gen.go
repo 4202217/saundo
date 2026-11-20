@@ -3074,16 +3074,6 @@ func (msgs Messages) ChannelTooltip(current string, next string) string {
 	return Catalog.Format(msgs.locale, "channelTooltip", map[string]any{"current": current, "next": next})
 }
 
-// ChannelPairTooltip says "Channel: {current} · A stereo pair always plays stereo"
-// in the language the app shows.
-func ChannelPairTooltip(current string) string { return In(i18n.Locale()).ChannelPairTooltip(current) }
-
-// ChannelPairTooltip says "Channel: {current} · A stereo pair always plays stereo"
-// in the language of msgs.
-func (msgs Messages) ChannelPairTooltip(current string) string {
-	return Catalog.Format(msgs.locale, "channelPairTooltip", map[string]any{"current": current})
-}
-
 // SettingsNavUpdates says "Updates"
 // in the language the app shows.
 func SettingsNavUpdates() string { return In(i18n.Locale()).SettingsNavUpdates() }
@@ -3908,16 +3898,6 @@ func (msgs Messages) ReceiverPairAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverPairAddSub", nil)
 }
 
-// ComboChannelLocked says "Stereo combo · Left + Right (locked)"
-// in the language the app shows.
-func ComboChannelLocked() string { return In(i18n.Locale()).ComboChannelLocked() }
-
-// ComboChannelLocked says "Stereo combo · Left + Right (locked)"
-// in the language of msgs.
-func (msgs Messages) ComboChannelLocked() string {
-	return Catalog.Format(msgs.locale, "comboChannelLocked", nil)
-}
-
 // ComboMapLabel says "Channel layout"
 // in the language the app shows.
 func ComboMapLabel() string { return In(i18n.Locale()).ComboMapLabel() }
@@ -4096,4 +4076,14 @@ func ComboCreateAction() string { return In(i18n.Locale()).ComboCreateAction() }
 // in the language of msgs.
 func (msgs Messages) ComboCreateAction() string {
 	return Catalog.Format(msgs.locale, "comboCreateAction", nil)
+}
+
+// ErrorDeviceOffline says "{name} is offline, so it cannot join the session."
+// in the language the app shows.
+func ErrorDeviceOffline(name string) string { return In(i18n.Locale()).ErrorDeviceOffline(name) }
+
+// ErrorDeviceOffline says "{name} is offline, so it cannot join the session."
+// in the language of msgs.
+func (msgs Messages) ErrorDeviceOffline(name string) string {
+	return Catalog.Format(msgs.locale, "errorDeviceOffline", map[string]any{"name": name})
 }

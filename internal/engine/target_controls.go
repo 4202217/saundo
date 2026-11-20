@@ -234,6 +234,12 @@ func (e *Engine) adoptInitialVolumes() {
 		}
 		if pct, ok := e.tr.InitialVolumePercentFor(t.key); ok {
 			e.storeTargetVolume(t.key, pct)
+			if t.count > 1 {
+				// A combo is one target with one volume: push the adopted level
+				// so both speakers start together instead of keeping the last
+				// member's hardware level.
+				e.tr.SetTargetVolume(t.key, pct)
+			}
 		}
 	}
 }

@@ -6,13 +6,20 @@ package engine
 type UserErrorKey string
 
 const (
-	ErrDeviceMissing        UserErrorKey = "deviceMissing"
+	ErrDeviceMissing UserErrorKey = "deviceMissing"
+	// ErrDeviceOffline refuses adding a receiver whose discovered row went
+	// offline, before the live cohort is stopped for a dial that cannot work.
+	// Args are the receiver's display name.
+	ErrDeviceOffline        UserErrorKey = "deviceOffline"
 	ErrLatencyDeviceMissing UserErrorKey = "latencyDeviceMissing"
 	ErrLatencyOffline       UserErrorKey = "latencyOffline"
 	ErrSavePassword         UserErrorKey = "savePassword"
 	ErrSaveReceiver         UserErrorKey = "saveReceiver"
 	ErrLocalReceiver        UserErrorKey = "localReceiver"
 	ErrStereoMembersOffline UserErrorKey = "stereoMembersOffline"
+	// ErrComboMemberOffline refuses a combo whose member is offline or whose
+	// member row is incomplete. Args are the member's display name.
+	ErrComboMemberOffline UserErrorKey = "comboMemberOffline"
 	// ErrComboInvalid rejects a link whose two receivers cannot form a combo:
 	// one side is missing, already linked, a native pair, the local host, or
 	// not an AirPlay 2 receiver.
@@ -36,12 +43,14 @@ const (
 // walks it, so a new key cannot land without a catalog message.
 var UserErrorKeys = []UserErrorKey{
 	ErrDeviceMissing,
+	ErrDeviceOffline,
 	ErrLatencyDeviceMissing,
 	ErrLatencyOffline,
 	ErrSavePassword,
 	ErrSaveReceiver,
 	ErrLocalReceiver,
 	ErrStereoMembersOffline,
+	ErrComboMemberOffline,
 	ErrComboInvalid,
 	ErrFairPlay,
 	ErrEndpointMoved,

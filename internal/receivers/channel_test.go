@@ -1,6 +1,8 @@
 package receivers
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -48,5 +50,50 @@ func TestViewCarriesChannel(t *testing.T) {
 	target.Entry.Channel = "surround"
 	if got := target.View(false).Channel; got != ChannelStereo {
 		t.Fatalf("unknown view channel = %q, want stereo", got)
+	}
+}
+
+// TestVersionOneFileSurvivesTheSchemaBump pins the upgrade guard: a file
+// written before the channel and the combo rows loads its fields, is restamped
+// on save, and comes back whole.
+func TestVersionOneFileSurvivesTheSchemaBump(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "receivers.json")
+	seed := `{"version":1,"entries":[
+		{"key":"AA:01","kind":"discovered","name":"客厅","channel":"left"},
+		{"key":"combo:01","kind":"combo","name":"HomePods","members":[{"id":"AA:01"},{"id":"AA:02"}]}
+	]}`
+	if err := os.WriteFile(path, []byte(seed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := NewStoreAt(path)
+	reg, err := store.Load()
+	if err != nil {
+		t.Fatalf("a v1 file was refused: %v", err)
+	}
+	one, ok := reg.Get("AA:01")
+	if !ok || one.Channel != ChannelLeft {
+		t.Fatalf("channel lost: %+v", one)
+	}
+	combo, ok := reg.Get("combo:01")
+	if !ok || !combo.IsCombo() || len(combo.Members) != 2 {
+		t.Fatalf("combo row lost: %+v", combo)
+	}
+	if err := store.Save(reg); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved Registry
+	if err := json.Unmarshal(raw, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.Version != SchemaVersion {
+		t.Fatalf("saved version = %d, want %d", saved.Version, SchemaVersion)
+	}
+	if one, _ := saved.Get("AA:01"); one.Channel != ChannelLeft {
+		t.Fatal("the restamped file dropped the channel")
 	}
 }

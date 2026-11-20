@@ -186,7 +186,21 @@ func (e *Engine) handleRemoveReceiver(key string) {
 		}
 	}
 	for _, comboKey := range unlinked {
+		combo, hadEntry := e.reg.Get(comboKey)
 		e.reg.Delete(comboKey)
+		if hadEntry && combo.AutoConnect {
+			// The combo's launch intent returns to the members that survive, the
+			// way an explicit unlink hands it back.
+			for _, m := range combo.Members {
+				if m.ID == key {
+					continue
+				}
+				if survivor, ok := e.reg.Get(m.ID); ok {
+					survivor.AutoConnect = true
+					e.reg.Put(survivor)
+				}
+			}
+		}
 		e.forgetVolume(comboKey)
 		e.forgetLastTarget(comboKey)
 	}

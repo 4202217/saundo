@@ -115,9 +115,11 @@ func (e *Engine) sessionLost(key string, auth bool) {
 			}
 			e.logf("cohort: %s left the session; continuing with %d target(s)", name, len(remaining))
 			// The session continues, so the retry onClosed scheduled must not
-			// fire into the new cohort.
+			// fire into the new cohort. The survivor rebuild is automatic: it
+			// must not count as a user connect and light a standby display.
 			e.reconnectAt = time.Time{}
 			e.reconnectNum = 0
+			e.connectAuto = true
 			e.startPlan(plan, true)
 			return
 		} else {

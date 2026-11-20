@@ -587,7 +587,6 @@
   "channelLeft": "Left",
   "channelRight": "Right",
   "channelTooltip": "Channel: {current} · Click for {next}",
-  "channelPairTooltip": "Channel: {current} · A stereo pair always plays stereo",
   "settingsNavUpdates": "Updates",
   "pageUpdatesDesc": "Versions, automatic checks, and installation.",
   "pageAboutDesc": "Version, project links, license, and diagnostic log.",
@@ -789,7 +788,6 @@
   "receiverGroupCombo": "Stereo combos",
   "receiverPairAddTitle": "Create stereo combo",
   "receiverPairAddSub": "One receiver per channel",
-  "comboChannelLocked": "Stereo combo · Left + Right (locked)",
   "comboMapLabel": "Channel layout",
   "comboSwapTip": "Swap left and right",
   "comboUnlink": "Unlink",
@@ -821,5 +819,13 @@
   "comboFieldRight": "Right channel",
   "comboTag": "Stereo combo",
   "receiverAddAction": "Add",
-  "comboCreateAction": "New combo"
+  "comboCreateAction": "New combo",
+  "errorDeviceOffline": "{name} is offline, so it cannot join the session.",
+  "@errorDeviceOffline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

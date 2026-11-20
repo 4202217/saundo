@@ -17,6 +17,8 @@ func userErrorText(key engine.UserErrorKey, args []string, fallback string) stri
 	switch key {
 	case engine.ErrDeviceMissing:
 		return locales.ErrorDeviceMissing()
+	case engine.ErrDeviceOffline:
+		return locales.ErrorDeviceOffline(arg(0))
 	case engine.ErrLatencyDeviceMissing:
 		return locales.ErrorLatencyDeviceMissing()
 	case engine.ErrLatencyOffline:
@@ -29,6 +31,8 @@ func userErrorText(key engine.UserErrorKey, args []string, fallback string) stri
 		return locales.ErrorLocalReceiver()
 	case engine.ErrStereoMembersOffline:
 		return locales.ErrorStereoMembersOffline()
+	case engine.ErrComboMemberOffline:
+		return locales.ComboOfflineWarn(arg(0))
 	case engine.ErrComboInvalid:
 		return locales.ErrorComboInvalid()
 	case engine.ErrFairPlay:
@@ -68,9 +72,22 @@ func errorBarNeeded(s engine.Snapshot) bool {
 // not, because the session they describe is still running.
 func connectionErrorKey(key engine.UserErrorKey) bool {
 	switch key {
-	case engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrLocalReceiver,
-		engine.ErrStereoMembersOffline, engine.ErrComboInvalid, engine.ErrFairPlay,
+	case engine.ErrClockConflict, engine.ErrDeviceMissing, engine.ErrDeviceOffline, engine.ErrLocalReceiver,
+		engine.ErrStereoMembersOffline, engine.ErrComboInvalid, engine.ErrComboMemberOffline, engine.ErrFairPlay,
 		engine.ErrEndpointMoved, engine.ErrSessionOpen, engine.ErrPasswordRejected:
+		return true
+	}
+	return false
+}
+
+// settingsErrorKey reports whether a key belongs on the receivers page. The
+// receiver dialogs close on submit and the flyout is hidden while settings is
+// open, so a save or link refusal would otherwise be invisible.
+func settingsErrorKey(key engine.UserErrorKey) bool {
+	switch key {
+	case engine.ErrSaveReceiver, engine.ErrSavePassword, engine.ErrDeletePassword,
+		engine.ErrReceiverMissing, engine.ErrComboInvalid, engine.ErrComboMemberOffline,
+		engine.ErrDeviceOffline:
 		return true
 	}
 	return false
