@@ -454,48 +454,91 @@ func (a *App) comboCandidates() []receivers.View {
 	return out
 }
 
-// comboOptionsExcept is one side's picker options: the empty state followed
-// by every eligible receiver except the one the other side already chose. A
-// receiver cannot play both sides, so offering it twice is a dead option.
-func comboOptionsExcept(candidates []receivers.View, excludeKey string) []string {
-	labels := make([]string, 0, len(candidates)+1)
-	labels = append(labels, locales.ComboPickEmpty())
+// comboCandidatesExcept is one side's picker rows: every eligible receiver
+// except the one the other side already chose. A receiver cannot play both
+// sides, so offering it twice is a dead option.
+func comboCandidatesExcept(candidates []receivers.View, excludeKey string) []receivers.View {
+	out := make([]receivers.View, 0, len(candidates))
 	for _, v := range candidates {
 		if v.Key == excludeKey {
 			continue
 		}
-		labels = append(labels, v.Name)
+		out = append(out, v)
 	}
-	return labels
+	return out
 }
 
-// comboSideKey maps a slot's selected label back onto a receiver key. Two
-// candidates may share a display name; the slot then takes the first one the
-// other slot has not taken. When the only match is the other slot's key it
-// still comes back, so submitting the same receiver twice reaches the
-// validation error instead of silently clearing the slot.
-func comboSideKey(candidates []receivers.View, label, other string) string {
-	var fallback string
+// comboSideView is the receiver behind one side's key.
+func comboSideView(candidates []receivers.View, key string) (receivers.View, bool) {
 	for _, v := range candidates {
-		if v.Name != label {
-			continue
+		if v.Key == key {
+			return v, true
 		}
-		if v.Key != other {
-			return v.Key
-		}
-		fallback = v.Key
 	}
-	return fallback
+	return receivers.View{}, false
 }
 
 // comboSideLabel is the label one slot shows for its key.
 func comboSideLabel(candidates []receivers.View, key string) string {
-	for _, v := range candidates {
-		if v.Key == key {
-			return v.Name
-		}
+	if v, ok := comboSideView(candidates, key); ok {
+		return v.Name
 	}
 	return ""
+}
+
+// comboPickSelect is one side's receiver picker: a field-shaped trigger that
+// shows the choice's glyph and name, and a popup whose rows carry the same
+// glyph, so both pickers name receivers rather than bare strings. The empty
+// row clears the side. The rows leave out the receiver the other side holds.
+func (a *App) comboPickSelect(c *ui.Context, p palette, value *string,
+	candidates []receivers.View, excludeKey, label string, changed func()) {
+	sel := ui.SelectBase(c, value)
+	trigger := sel.Trigger.FillWidth().Height(32).Radius(8).PaddingX(10).
+		Border(1, p.pill).Background(p.pill).Cursor(ui.CursorPointer).Label(label)
+	trigger.Children(func() {
+		ui.Row(c).Grow(1).Gap(8).AlignItems(ui.Center).Children(func() {
+			if v, ok := comboSideView(candidates, *value); ok {
+				ui.Icon(c, deviceIcon(v.Model, false)).Size(14, 14).TextColor(p.fg2).Shrink(0)
+				ui.Text(c, v.Name).FontSize(12.5).SingleLine().Ellipsis("…").Shrink(1)
+			} else {
+				ui.Text(c, locales.ComboPickEmpty()).FontSize(12.5).TextColor(p.muted).Shrink(1)
+			}
+			ui.Spacer(c)
+			ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted).Shrink(0)
+		})
+	})
+	sel.Popup(func(panel ui.Element) {
+		panel.Padding(4).Radius(9).Background(p.card).Border(1, p.line)
+		panel.Children(func() {
+			row := func(v *receivers.View, name string) {
+				item := sel.Item("")
+				if v != nil {
+					item = sel.Item(v.Key)
+				}
+				item.Height(28).Radius(7).PaddingX(8).Gap(8).AlignItems(ui.Center).
+					Cursor(ui.CursorPointer).Label(name)
+				if item.Highlighted() {
+					item.Background(p.sel)
+				}
+				item.Children(func() {
+					if v != nil {
+						ui.Icon(c, deviceIcon(v.Model, false)).Size(14, 14).TextColor(p.fg2)
+						ui.Text(c, name).FontSize(12.5).SingleLine().Ellipsis("…")
+						return
+					}
+					ui.Text(c, name).FontSize(12.5).TextColor(p.muted).SingleLine()
+				})
+			}
+			row(nil, locales.ComboPickEmpty())
+			rows := comboCandidatesExcept(candidates, excludeKey)
+			for i := range rows {
+				row(&rows[i], rows[i].Name)
+			}
+		})
+	})
+	if trigger.Changed() {
+		changed()
+	}
 }
 
 // receiverComboCreateDialog builds the combo as a plain form, the same
@@ -514,33 +557,19 @@ func (a *App) receiverComboCreateDialog(c *ui.Context, p palette) {
 	if d.comboRight != "" && comboSideLabel(candidates, d.comboRight) == "" {
 		d.comboRight = ""
 	}
-	// Each side offers every eligible receiver except the one the other side
-	// already holds, so a chosen receiver never appears twice.
-	leftOptions := comboOptionsExcept(candidates, d.comboRight)
-	rightOptions := comboOptionsExcept(candidates, d.comboLeft)
 	leftLabel := comboSideLabel(candidates, d.comboLeft)
 	rightLabel := comboSideLabel(candidates, d.comboRight)
-	if leftLabel == "" {
-		leftLabel = locales.ComboPickEmpty()
-	}
-	if rightLabel == "" {
-		rightLabel = locales.ComboPickEmpty()
-	}
 	ready := d.comboLeft != "" && d.comboRight != ""
 
 	ui.Column(c).Children(func() {
 		dialogHead(c, p, iconLink, locales.ReceiverPairAddTitle(), locales.ComboDialogSub(), false, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Children(func() {
 			fieldLabel(c, p, locales.ComboFieldLeft(), "")
-			if sel := ui.Select(c.Key("combo-left"), &leftLabel, leftOptions).FillWidth().Height(32).
-				Radius(8).PaddingX(10).FontSize(12.5).Label(locales.ComboFieldLeft()); sel.Changed() {
-				d.comboLeft = comboSideKey(candidates, leftLabel, d.comboRight)
-			}
+			a.comboPickSelect(c, p, &d.comboLeft, candidates, d.comboRight,
+				locales.ComboFieldLeft(), func() { d.comboError = "" })
 			fieldLabel(c, p, locales.ComboFieldRight(), "")
-			if sel := ui.Select(c.Key("combo-right"), &rightLabel, rightOptions).FillWidth().Height(32).
-				Radius(8).PaddingX(10).FontSize(12.5).Label(locales.ComboFieldRight()); sel.Changed() {
-				d.comboRight = comboSideKey(candidates, rightLabel, d.comboLeft)
-			}
+			a.comboPickSelect(c, p, &d.comboRight, candidates, d.comboLeft,
+				locales.ComboFieldRight(), func() { d.comboError = "" })
 			// One muted line under the fields explains why a receiver may be
 			// missing from the pickers.
 			ui.Text(c, locales.ComboPickHint()).FontSize(11).TextColor(p.muted).Margin(6, 0, 0, 0)

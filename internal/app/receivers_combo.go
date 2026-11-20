@@ -15,8 +15,8 @@ import (
 // row, its channel layout map, and the dashed create entry. The create and
 // unlink dialogs live in receivers_dialogs.go.
 
-// receiverPairAddRow is the dashed create-combo affordance under the add
-// row, styled and placed like it so the two entry points stack in one place.
+// receiverPairAddRow is the dotted create-combo affordance: the empty
+// section's rows are absent, so this row stands in for them.
 func (a *App) receiverPairAddRow(c *ui.Context, p palette) {
 	row := ui.ButtonBase(c).Margin(8, 0, 0, 0).MinHeight(44).Padding(9, 14).Gap(10).Shrink(0).
 		Radius(12).Cursor(ui.CursorPointer).Justify(ui.Start).AlignItems(ui.Center).
@@ -24,10 +24,7 @@ func (a *App) receiverPairAddRow(c *ui.Context, p palette) {
 		BorderStyle(ui.BorderDashed)
 	row.Background(ui.Transparent)
 	hoverFill(row, p.pill, 11, 1)
-	row.OnClick(func() {
-		a.receiverDialog = receiverDialogState{kind: receiverDialogComboCreate, entered: false}
-		a.receiverDialogOpen = true
-	})
+	row.OnClick(func() { a.openComboCreate() })
 	row.Children(func() {
 		tile := ui.Box(c).Size(24, 24).Radius(12).Center().Shrink(0).Background(p.accentSoft)
 		tile.Draw(func(pt *ui.Painter, r ui.Rect) {

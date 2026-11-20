@@ -1984,11 +1984,11 @@ func (msgs Messages) SettingsReconnectsValue(n int) string {
 	return Catalog.Format(msgs.locale, "settingsReconnectsValue", map[string]any{"n": n})
 }
 
-// ReceiverGroupEnabled says "Enabled"
+// ReceiverGroupEnabled says "Standalone receivers"
 // in the language the app shows.
 func ReceiverGroupEnabled() string { return In(i18n.Locale()).ReceiverGroupEnabled() }
 
-// ReceiverGroupEnabled says "Enabled"
+// ReceiverGroupEnabled says "Standalone receivers"
 // in the language of msgs.
 func (msgs Messages) ReceiverGroupEnabled() string {
 	return Catalog.Format(msgs.locale, "receiverGroupEnabled", nil)
@@ -2022,36 +2022,6 @@ func ReceiverAddSub() string { return In(i18n.Locale()).ReceiverAddSub() }
 // in the language of msgs.
 func (msgs Messages) ReceiverAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverAddSub", nil)
-}
-
-// ReceiverEmptyHiddenHint says "Enable them again in the hidden group below."
-// in the language the app shows.
-func ReceiverEmptyHiddenHint() string { return In(i18n.Locale()).ReceiverEmptyHiddenHint() }
-
-// ReceiverEmptyHiddenHint says "Enable them again in the hidden group below."
-// in the language of msgs.
-func (msgs Messages) ReceiverEmptyHiddenHint() string {
-	return Catalog.Format(msgs.locale, "receiverEmptyHiddenHint", nil)
-}
-
-// ReceiverEmptyAllHiddenTitle says "All receivers are hidden"
-// in the language the app shows.
-func ReceiverEmptyAllHiddenTitle() string { return In(i18n.Locale()).ReceiverEmptyAllHiddenTitle() }
-
-// ReceiverEmptyAllHiddenTitle says "All receivers are hidden"
-// in the language of msgs.
-func (msgs Messages) ReceiverEmptyAllHiddenTitle() string {
-	return Catalog.Format(msgs.locale, "receiverEmptyAllHiddenTitle", nil)
-}
-
-// ReceiverDiscoveryHint says "AirPlay receivers on your network appear here automatically."
-// in the language the app shows.
-func ReceiverDiscoveryHint() string { return In(i18n.Locale()).ReceiverDiscoveryHint() }
-
-// ReceiverDiscoveryHint says "AirPlay receivers on your network appear here automatically."
-// in the language of msgs.
-func (msgs Messages) ReceiverDiscoveryHint() string {
-	return Catalog.Format(msgs.locale, "receiverDiscoveryHint", nil)
 }
 
 // ReceiverChipLocal says "Local"
@@ -4106,4 +4076,24 @@ func ComboTag() string { return In(i18n.Locale()).ComboTag() }
 // in the language of msgs.
 func (msgs Messages) ComboTag() string {
 	return Catalog.Format(msgs.locale, "comboTag", nil)
+}
+
+// ReceiverAddAction says "Add"
+// in the language the app shows.
+func ReceiverAddAction() string { return In(i18n.Locale()).ReceiverAddAction() }
+
+// ReceiverAddAction says "Add"
+// in the language of msgs.
+func (msgs Messages) ReceiverAddAction() string {
+	return Catalog.Format(msgs.locale, "receiverAddAction", nil)
+}
+
+// ComboCreateAction says "New combo"
+// in the language the app shows.
+func ComboCreateAction() string { return In(i18n.Locale()).ComboCreateAction() }
+
+// ComboCreateAction says "New combo"
+// in the language of msgs.
+func (msgs Messages) ComboCreateAction() string {
+	return Catalog.Format(msgs.locale, "comboCreateAction", nil)
 }

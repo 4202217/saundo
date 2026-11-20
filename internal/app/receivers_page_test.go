@@ -80,8 +80,8 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		"接收器", "管理接收器、自动连接、显示与声道。",
-		"已启用", "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
-		"启动时", "手动添加", "添加接收器", "已隐藏", "卧室 HomePod mini",
+		locales.ReceiverGroupEnabled(), "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
+		"启动时", "手动添加", locales.ReceiverAddAction(), locales.ReceiverPairAddTitle(), "已隐藏", "卧室 HomePod mini",
 		"AudioAccessory5,1 · 192.168.1.20:7000",
 		"AirPort Express · 192.168.1.32:5000",
 		"AudioAccessory5,1 · 立体声组 2/2",
@@ -131,32 +131,32 @@ func TestReceiverPageLocalRowIsDisabled(t *testing.T) {
 	}
 }
 
-// TestReceiverPageEmptyListShowsDiscoveryHint pins the empty page to plain
-// prose: one discovery line where the list would be, the add row, and no
-// 已启用 head at zero rows.
-func TestReceiverPageEmptyListShowsDiscoveryHint(t *testing.T) {
+// TestReceiverPageEmptyListShowsTheAddRow pins the empty page: the singles
+// head with no count pill and no head action, the add row as its content, and
+// no combo section because there is nothing to group.
+func TestReceiverPageEmptyListShowsTheAddRow(t *testing.T) {
 	a := previewApp()
 	a.page = pageReceivers
 	a.snap.Receivers = nil
 	a.snap.Devices = nil
 	tt := ui.NewTester(a.settingsView, 720, 560)
-	if !tt.HasText(locales.ReceiverDiscoveryHint()) {
-		t.Fatalf("discovery hint is missing: %q", tt.Texts())
+	if !tt.HasText(locales.ReceiverGroupEnabled()) {
+		t.Fatalf("the singles head is missing: %q", tt.Texts())
 	}
 	if !tt.HasText(locales.ReceiverAddTitle()) {
 		t.Fatalf("add row is missing: %q", tt.Texts())
 	}
-	if tt.HasText(locales.ReceiverGroupEnabled()) {
-		t.Fatalf("已启用 head rendered with zero rows: %q", tt.Texts())
+	if got := countText(tt, locales.ReceiverAddAction()); got != 0 {
+		t.Fatalf("the empty head offers a duplicate add action: %d", got)
 	}
-	if tt.HasText("没有可见的接收器") {
-		t.Fatalf("old empty card copy is on the page: %q", tt.Texts())
+	if tt.HasText(locales.ReceiverGroupCombo()) || tt.HasText(locales.ReceiverPairAddTitle()) {
+		t.Fatalf("the combo section rendered with no receivers: %q", tt.Texts())
 	}
 }
 
-// TestReceiverPageAllHiddenShowsProse pins the all-hidden page to two prose
-// lines where the list would be, then the add row and the hidden group.
-func TestReceiverPageAllHiddenShowsProse(t *testing.T) {
+// TestReceiverPageAllHiddenShowsTheListHead pins the all-hidden page: the
+// same head and add row as an empty page, over the hidden group.
+func TestReceiverPageAllHiddenShowsTheListHead(t *testing.T) {
 	a := previewApp()
 	a.page = pageReceivers
 	a.snap.Receivers = []receivers.View{
@@ -169,17 +169,11 @@ func TestReceiverPageAllHiddenShowsProse(t *testing.T) {
 	}
 	a.snap.Devices = nil
 	tt := ui.NewTester(a.settingsView, 720, 560)
-	if !tt.HasText(locales.ReceiverEmptyAllHiddenTitle()) {
-		t.Fatalf("all-hidden title is missing: %q", tt.Texts())
-	}
-	if !tt.HasText(locales.ReceiverEmptyHiddenHint()) {
-		t.Fatalf("hidden hint is missing: %q", tt.Texts())
+	if !tt.HasText(locales.ReceiverGroupEnabled()) {
+		t.Fatalf("the singles head is missing: %q", tt.Texts())
 	}
 	if !tt.HasText(locales.ReceiverAddTitle()) {
 		t.Fatalf("add row is missing: %q", tt.Texts())
-	}
-	if tt.HasText(locales.ReceiverGroupEnabled()) {
-		t.Fatalf("已启用 head rendered with zero visible rows: %q", tt.Texts())
 	}
 	if !tt.HasText(locales.ReceiverGroupHidden()) {
 		t.Fatalf("hidden group is missing: %q", tt.Texts())
@@ -533,10 +527,13 @@ func TestReceiverComboRowRendersTheChannelMap(t *testing.T) {
 			t.Fatalf("combo row is missing %q; texts: %q", want, tt.Texts())
 		}
 	}
-	// The combo replaces its members: no singles card renders beside it, and
-	// the channel map carries both members in playback order.
-	if tt.HasText(locales.ReceiverGroupEnabled()) {
-		t.Fatal("the singles card renders with no single rows")
+	// The combo replaces its members: the singles section has no rows, so its
+	// head carries no action and the add row stands in for the card.
+	if got := countText(tt, locales.ReceiverAddAction()); got != 0 {
+		t.Fatalf("the empty singles head offers an add action beside the add row: %d", got)
+	}
+	if !tt.HasText(locales.ReceiverAddTitle()) {
+		t.Fatal("the empty singles section lost its add row")
 	}
 }
 
@@ -623,24 +620,31 @@ func TestFlyoutComboRowKeepsItsNameBesideTheTag(t *testing.T) {
 	}
 }
 
-func TestComboOptionsExcludeTheOtherSide(t *testing.T) {
+func TestComboPickRowsExcludeTheOtherSide(t *testing.T) {
 	candidates := []receivers.View{
 		{Key: "AA:00", Name: "HomePod L"},
 		{Key: "AA:01", Name: "HomePod R"},
 		{Key: "m:02", Name: "书房"},
 	}
-	left := comboOptionsExcept(candidates, "AA:01")
-	right := comboOptionsExcept(candidates, "AA:00")
-	if slices.Contains(left, "HomePod R") {
+	keys := func(views []receivers.View) []string {
+		out := make([]string, 0, len(views))
+		for _, v := range views {
+			out = append(out, v.Key)
+		}
+		return out
+	}
+	left := keys(comboCandidatesExcept(candidates, "AA:01"))
+	right := keys(comboCandidatesExcept(candidates, "AA:00"))
+	if slices.Contains(left, "AA:01") {
 		t.Fatalf("left side still offers the right side's receiver: %v", left)
 	}
-	if slices.Contains(right, "HomePod L") {
+	if slices.Contains(right, "AA:00") {
 		t.Fatalf("right side still offers the left side's receiver: %v", right)
 	}
-	if !slices.Contains(left, "HomePod L") || !slices.Contains(right, "HomePod R") {
+	if !slices.Contains(left, "AA:00") || !slices.Contains(right, "AA:01") {
 		t.Fatalf("a side lost its own receiver: left=%v right=%v", left, right)
 	}
-	if len(left) == 0 || left[0] != locales.ComboPickEmpty() || right[0] != locales.ComboPickEmpty() {
-		t.Fatalf("the empty-state option is not first: left=%v right=%v", left, right)
+	if len(comboCandidatesExcept(candidates, "")) != len(candidates) {
+		t.Fatal("an empty exclusion dropped a receiver")
 	}
 }

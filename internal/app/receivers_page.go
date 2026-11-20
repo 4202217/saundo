@@ -116,47 +116,36 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 		}
 	}
 
-	// The 已启用 group head renders only when the list has rows, matching the
-	// hidden group's own non-empty rule. An empty page is plain prose where
-	// the list would be; the add rows below keep their margin in every state.
-	// Created combos live in their own 立体声组合 section so the combo's long
-	// expanded body never runs into a single receiver's card.
+	// One section per type. A section's create action rides its head while the
+	// section has rows; an empty section replaces it with its dashed row, so an
+	// empty page is one head plus 添加接收器 and the combo section appears only
+	// once the page has a row to group.
+	a.receiverSectionHead(c, p, locales.ReceiverGroupEnabled(), len(singles), 6, len(singles) > 0,
+		locales.ReceiverAddAction(), func() { a.openAddReceiver() })
 	if len(singles) > 0 {
-		ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-			countBadge(c, p, len(singles))
-		})
-
 		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 		card.Children(func() {
 			for i, v := range singles {
 				a.receiverRow(c, p, v, false, i < len(singles)-1)
 			}
 		})
-	} else if len(combos) == 0 {
-		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			if len(hidden) > 0 {
-				emptyCopy(c, p, locales.ReceiverEmptyAllHiddenTitle(), locales.ReceiverEmptyHiddenHint(), false)
-			} else {
-				emptyCopy(c, p, locales.ReceiverEmptyTitle(), locales.ReceiverDiscoveryHint(), false)
-			}
-		})
+	} else {
+		a.receiverAddRow(c, p)
 	}
-	if len(combos) > 0 {
-		ui.Row(c).Margin(12, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, locales.ReceiverGroupCombo()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-			countBadge(c, p, len(combos))
-		})
-		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
-		card.Children(func() {
-			for i, v := range combos {
-				a.receiverComboRow(c, p, v, false, i < len(combos)-1)
-			}
-		})
+	if len(visible) > 0 {
+		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0,
+			locales.ComboCreateAction(), func() { a.openComboCreate() })
+		if len(combos) > 0 {
+			card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
+			card.Children(func() {
+				for i, v := range combos {
+					a.receiverComboRow(c, p, v, false, i < len(combos)-1)
+				}
+			})
+		} else {
+			a.receiverPairAddRow(c, p)
+		}
 	}
-
-	a.receiverAddRow(c, p)
-	a.receiverPairAddRow(c, p)
 
 	if len(hidden) > 0 {
 		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
@@ -195,6 +184,29 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	}
 
 	a.receiverDialogs(c, p)
+}
+
+// receiverSectionHead is one list section's label with its count and, while
+// the section has rows, its create action at the right. A section without
+// rows leaves the action to its dashed row, so no head offers an action twice.
+func (a *App) receiverSectionHead(c *ui.Context, p palette, label string, count int, topMargin float32, withAction bool, actionLabel string, fn func()) {
+	head := ui.Row(c).Margin(topMargin, 0, 0, 0).FillWidth().Gap(7).AlignItems(ui.Center).Shrink(0)
+	head.Children(func() {
+		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		if count > 0 {
+			countBadge(c, p, count)
+		}
+		if withAction {
+			ui.Spacer(c)
+			rowAction(c, p, "section:"+label, actionLabel, iconPlus, p.accent, fn)
+		}
+	})
+}
+
+// openComboCreate opens the create-combo dialog over the page.
+func (a *App) openComboCreate() {
+	a.receiverDialog = receiverDialogState{kind: receiverDialogComboCreate, entered: false}
+	a.receiverDialogOpen = true
 }
 
 // receiverAddRow is the dashed manual-add affordance under the card.

@@ -314,13 +314,10 @@
       }
     }
   },
-  "receiverGroupEnabled": "已启用",
+  "receiverGroupEnabled": "单独接收器",
   "receiverGroupHidden": "已隐藏",
   "receiverAddTitle": "添加接收器",
   "receiverAddSub": "手动填写 IP 或主机名，适用于无法通过 mDNS 发现的接收器",
-  "receiverEmptyHiddenHint": "在下方“已隐藏”组里重新启用即可恢复。",
-  "receiverEmptyAllHiddenTitle": "所有接收器都已隐藏",
-  "receiverDiscoveryHint": "网络上的 AirPlay 接收器会自动出现在这里。",
   "receiverChipLocal": "本机",
   "receiverChipManual": "手动添加",
   "receiverChipAuto": "启动时",
@@ -668,7 +665,7 @@
   "settingsShowInPanel": "托盘面板中显示",
   "errorComboInvalid": "这两台接收器无法组成立体声组合。",
   "receiverGroupCombo": "立体声组合",
-  "receiverPairAddTitle": "组成立体声组合",
+  "receiverPairAddTitle": "创建立体声组合",
   "receiverPairAddSub": "两台接收器各播一个声道",
   "comboChannelLocked": "立体声组合 · 左 + 右（已锁定）",
   "comboMapLabel": "声道布局",
@@ -700,5 +697,7 @@
   "comboPickHint": "仅列出支持 AirPlay 2 的接收器",
   "comboFieldLeft": "左声道",
   "comboFieldRight": "右声道",
-  "comboTag": "立体声组合"
+  "comboTag": "立体声组合",
+  "receiverAddAction": "添加",
+  "comboCreateAction": "创建组合"
 }
