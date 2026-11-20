@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -619,5 +620,27 @@ func TestFlyoutComboRowKeepsItsNameBesideTheTag(t *testing.T) {
 	}
 	if !tt.HasText(locales.ComboTag()) {
 		t.Fatalf("the combo tag missing: %q", tt.Texts())
+	}
+}
+
+func TestComboOptionsExcludeTheOtherSide(t *testing.T) {
+	candidates := []receivers.View{
+		{Key: "AA:00", Name: "HomePod L"},
+		{Key: "AA:01", Name: "HomePod R"},
+		{Key: "m:02", Name: "书房"},
+	}
+	left := comboOptionsExcept(candidates, "AA:01")
+	right := comboOptionsExcept(candidates, "AA:00")
+	if slices.Contains(left, "HomePod R") {
+		t.Fatalf("left side still offers the right side's receiver: %v", left)
+	}
+	if slices.Contains(right, "HomePod L") {
+		t.Fatalf("right side still offers the left side's receiver: %v", right)
+	}
+	if !slices.Contains(left, "HomePod L") || !slices.Contains(right, "HomePod R") {
+		t.Fatalf("a side lost its own receiver: left=%v right=%v", left, right)
+	}
+	if len(left) == 0 || left[0] != locales.ComboPickEmpty() || right[0] != locales.ComboPickEmpty() {
+		t.Fatalf("the empty-state option is not first: left=%v right=%v", left, right)
 	}
 }

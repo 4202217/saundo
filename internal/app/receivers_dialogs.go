@@ -454,11 +454,16 @@ func (a *App) comboCandidates() []receivers.View {
 	return out
 }
 
-// comboSideOptions are the select labels for one slot: every eligible
-// receiver's display name.
-func comboSideOptions(candidates []receivers.View) []string {
-	labels := make([]string, 0, len(candidates))
+// comboOptionsExcept is one side's picker options: the empty state followed
+// by every eligible receiver except the one the other side already chose. A
+// receiver cannot play both sides, so offering it twice is a dead option.
+func comboOptionsExcept(candidates []receivers.View, excludeKey string) []string {
+	labels := make([]string, 0, len(candidates)+1)
+	labels = append(labels, locales.ComboPickEmpty())
 	for _, v := range candidates {
+		if v.Key == excludeKey {
+			continue
+		}
 		labels = append(labels, v.Name)
 	}
 	return labels
@@ -509,7 +514,10 @@ func (a *App) receiverComboCreateDialog(c *ui.Context, p palette) {
 	if d.comboRight != "" && comboSideLabel(candidates, d.comboRight) == "" {
 		d.comboRight = ""
 	}
-	options := append([]string{locales.ComboPickEmpty()}, comboSideOptions(candidates)...)
+	// Each side offers every eligible receiver except the one the other side
+	// already holds, so a chosen receiver never appears twice.
+	leftOptions := comboOptionsExcept(candidates, d.comboRight)
+	rightOptions := comboOptionsExcept(candidates, d.comboLeft)
 	leftLabel := comboSideLabel(candidates, d.comboLeft)
 	rightLabel := comboSideLabel(candidates, d.comboRight)
 	if leftLabel == "" {
@@ -524,12 +532,12 @@ func (a *App) receiverComboCreateDialog(c *ui.Context, p palette) {
 		dialogHead(c, p, iconLink, locales.ReceiverPairAddTitle(), locales.ComboDialogSub(), false, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Children(func() {
 			fieldLabel(c, p, locales.ComboFieldLeft(), "")
-			if sel := ui.Select(c.Key("combo-left"), &leftLabel, options).FillWidth().Height(32).
+			if sel := ui.Select(c.Key("combo-left"), &leftLabel, leftOptions).FillWidth().Height(32).
 				Radius(8).PaddingX(10).FontSize(12.5).Label(locales.ComboFieldLeft()); sel.Changed() {
 				d.comboLeft = comboSideKey(candidates, leftLabel, d.comboRight)
 			}
 			fieldLabel(c, p, locales.ComboFieldRight(), "")
-			if sel := ui.Select(c.Key("combo-right"), &rightLabel, options).FillWidth().Height(32).
+			if sel := ui.Select(c.Key("combo-right"), &rightLabel, rightOptions).FillWidth().Height(32).
 				Radius(8).PaddingX(10).FontSize(12.5).Label(locales.ComboFieldRight()); sel.Changed() {
 				d.comboRight = comboSideKey(candidates, rightLabel, d.comboLeft)
 			}

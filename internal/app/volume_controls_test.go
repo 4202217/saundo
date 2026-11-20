@@ -122,7 +122,6 @@ func TestFlyoutJoiningRowHidesMixer(t *testing.T) {
 	tt.Frame()
 	for _, want := range []string{
 		locales.VolumeFor("HomePods"), locales.MuteFor("HomePods"),
-		locales.ChannelPairTooltip(locales.ChannelStereo()),
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("the member lost %q during a join; texts: %q", want, tt.Texts())
@@ -265,8 +264,9 @@ func TestNextChannelCycles(t *testing.T) {
 	}
 }
 
-// TestFlyoutPairChannelButtonIsFixed pins the pair rule in the flyout: one
-// disabled channel control that says it always plays stereo.
+// TestFlyoutPairChannelButtonIsFixed pins the pair rule in the flyout: a
+// stereo target keeps its volume but offers no channel control, because its
+// two members play one side each and there is no side for the user to switch.
 func TestFlyoutPairChannelButtonIsFixed(t *testing.T) {
 	a := previewApp()
 	pair := device.Device{
@@ -279,11 +279,18 @@ func TestFlyoutPairChannelButtonIsFixed(t *testing.T) {
 		{ID: pair.ID, Name: pair.Name, Volume: 52, Channel: receivers.ChannelStereo, Stereo: true, State: engine.TargetMember},
 	}
 	a.selectDevice(pair.ID)
-	label := locales.ChannelPairTooltip(locales.ChannelStereo())
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
-	if !tt.HasText(label) {
-		t.Fatalf("pair row is missing %q; texts: %q", label, tt.Texts())
+	for _, absent := range []string{
+		locales.ChannelPairTooltip(locales.ChannelStereo()),
+		locales.ChannelTooltip(locales.ChannelStereo(), locales.ChannelLeft()),
+	} {
+		if tt.HasText(absent) {
+			t.Fatalf("pair row still offers %q; texts: %q", absent, tt.Texts())
+		}
+	}
+	if !tt.HasText(locales.VolumeFor(pair.Name)) {
+		t.Fatalf("pair row lost its volume; texts: %q", tt.Texts())
 	}
 }
 

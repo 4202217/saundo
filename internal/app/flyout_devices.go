@@ -149,15 +149,12 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 			pick.OnClick(func() { a.selectDevice(d.ID) })
 			pick.Children(func() {
 				deviceGlyph(c, p, d, selected)
-				// The plain row keeps the live row's line rhythm: a 26 name
-				// line, a 2 gap, and a 20 second line, so the name and model
-				// breathe the same way as the name and volume bar above.
+				// The plain row keeps the live row's rhythm: a 26 name line, a
+				// 2 gap, and a 20 second line. Shrink keeps the combo tag beside
+				// the name, spare width on the right.
 				ui.Column(c).Grow(1).Gap(2).Children(func() {
 					ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
-						// The name grows to fill the line, so the tag rides the
-						// row's end and the name truncates only when the two
-						// genuinely cannot share the width.
-						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Grow(1)
+						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
 						a.comboTag(c, p, d)
 					})
 					ui.Row(c).Height(20).AlignItems(ui.Center).Children(func() {
@@ -209,18 +206,20 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 }
 
 // deviceMixer is a member row's two-line content: the channel button and name,
-// then the device's own volume and percent. The channel button and the volume
-// glyph share a 26 wide lead, so the name and the rail start on one x.
+// then volume and percent. A stereo target draws no channel button — its two
+// members play one side each — so its name starts at the row's lead.
 func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.TargetControl, selected bool) {
 	ui.Column(c).Grow(1).Gap(2).Children(func() {
 		ui.Row(c).Height(26).Gap(8).AlignItems(ui.Center).Children(func() {
-			a.channelButton(c, p, d, t)
+			if !t.Stereo {
+				a.channelButton(c, p, d, t)
+			}
 			name := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Justify(ui.Start).
 				Cursor(ui.CursorPointer).Label(d.Name)
 			name.OnClick(func() { a.selectDevice(d.ID) })
 			name.Children(func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Grow(1)
+					ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
 					a.comboTag(c, p, d)
 				})
 			})
@@ -291,20 +290,15 @@ func (a *App) targetVolume(t engine.TargetControl) *float64 {
 	return &v
 }
 
-// channelButton is the icon-only channel control. The solid side of the
-// symbol is the current side; a click cycles stereo → left → right. A stereo
-// pair always plays stereo, so its button is disabled.
+// channelButton is the icon-only channel control on a single receiver: the
+// solid side is the current side and a click cycles stereo → left → right. A
+// stereo target has no side to choose, so deviceMixer leaves it out.
 func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	label := channelLabelText(t)
 	b := ui.ButtonBase(c.Key("channel:"+d.ID)).Size(26, 26).Radius(13).Center().
-		Label(label).Tooltip(label)
-	if t.Stereo {
-		b.Disabled(true).Opacity(0.4)
-	} else {
-		b.Cursor(ui.CursorPointer)
-		b.OnClick(func() { a.cycleChannel(t) })
-		hoverFill(b, p.pill, 13, 0)
-	}
+		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
+	b.OnClick(func() { a.cycleChannel(t) })
+	hoverFill(b, p.pill, 13, 0)
 	b.Children(func() {
 		// Image, not Icon: the icon mask drops fill-opacity, and the faded
 		// side is the state. Image renders the SVG in the palette color.
