@@ -169,7 +169,7 @@ func replicaStreamingApp(t *testing.T, locale string) *App {
 // session first in its own list, the player it is showing first overall. Each
 // item carries both languages and its own poster palette and lamp, so the page
 // never has to guess either from the track's position.
-func replicaSessions(a, en *App) []replicaPlayer {
+func replicaSessions(a, en *App, art replicaArt) []replicaPlayer {
 	var players []replicaPlayer
 	seen := map[string]bool{}
 	for _, s := range a.nowSnap.Sessions {
@@ -190,11 +190,11 @@ func replicaSessions(a, en *App) []replicaPlayer {
 			Position: int(s.Position.Seconds()),
 		}}
 		items = append(items, replicaCorpus[s.AppName]...)
-		players = append(players, replicaPlayer{App: s.AppName, Icon: replicaMarkURI(appMark(s.AppName)), Items: items})
+		players = append(players, replicaPlayer{App: s.AppName, Icon: art.Marks[s.AppName], Items: items})
 	}
 	for _, app := range []string{"Cinder"} {
 		if !seen[app] {
-			players = append(players, replicaPlayer{App: app, Icon: replicaMarkURI(appMark(app)), Items: replicaCorpus[app]})
+			players = append(players, replicaPlayer{App: app, Icon: art.Marks[app], Items: replicaCorpus[app]})
 		}
 	}
 	if i := a.nowMediaIndex(); i < len(a.nowSnap.Sessions) {
@@ -209,9 +209,9 @@ func replicaSessions(a, en *App) []replicaPlayer {
 	for pi := range players {
 		for ii := range players[pi].Items {
 			it := &players[pi].Items[ii]
-			art := coverArt(it.Title)
-			it.Cover = replicaCoverURI(art)
-			it.Lamp, it.Colors = replicaCoverLamp(art)
+			cover := art.Covers[replicaArtCoverKey(it.Title)]
+			it.Cover = cover.Cover
+			it.Lamp, it.Colors = cover.Lamp, cover.Colors
 		}
 	}
 	return players
@@ -271,7 +271,7 @@ func replicaMarkURI(src image.Image) string {
 
 // replicaTemplates lists the six ambient templates in display order, with the
 // names both catalogs give them.
-func replicaTemplates() []replicaTemplate {
+func replicaTemplates(art replicaArt) []replicaTemplate {
 	var out []replicaTemplate
 	for _, p := range lamp.All() {
 		colors := make([]string, 0, len(p.Colors))
@@ -290,7 +290,7 @@ func replicaTemplates() []replicaTemplate {
 			NameEN: replicaLampPresetName("en", p.ID),
 			Colors: colors,
 			Seed:   p.Seed,
-			Base:   hexColor(p.Base),
+			Base:   art.Templates[p.ID].Base,
 			Blobs:  blobs,
 		})
 	}
@@ -366,11 +366,12 @@ func replicaDataValue(t *testing.T) replicaData {
 	testLocale = "zh-CN"
 	a := replicaStreamingApp(t, "zh-CN")
 	en := replicaStreamingApp(t, "en")
+	art := loadReplicaArt(t)
 	data := replicaData{
 		Volume:    int(a.volume),
 		Latency:   string(a.latencyMode),
 		CustomMS:  int(a.latencyCustom),
-		Templates: replicaTemplates(),
+		Templates: replicaTemplates(art),
 		Scenarios: replicaScenarios(),
 		LatencyModes: []replicaLatencyMode{
 			{Mode: string(settings.LatencyLow), MS: settings.LatencyLowMS},
@@ -400,15 +401,12 @@ func replicaDataValue(t *testing.T) replicaData {
 			SubtitleEN: enSubs[d.ID],
 		})
 	}
-	data.Sessions = replicaSessions(a, en)
-	if a.nowLampOK {
-		l := &replicaLamp{Cover: a.lampCover, Base: hexColor(a.nowLamp.Base)}
-		for _, b := range a.nowLamp.Blobs() {
-			l.Blobs = append(l.Blobs, replicaBlob{
-				X: b.X, Y: b.Y, R: b.Radius, Color: hexColor(b.Color), Alpha: b.Alpha,
-			})
-		}
-		data.Lamp = l
+	data.Sessions = replicaSessions(a, en, art)
+	if a.nowLampOK && len(data.Sessions) > 0 && len(data.Sessions[0].Items) > 0 {
+		// The session lamp follows the opening track's cover, so it is pinned
+		// with that cover rather than recomputed from its float-derived pixels.
+		key := replicaArtCoverKey(data.Sessions[0].Items[0].Title)
+		data.Lamp = art.Covers[key].Lamp
 	}
 	return data
 }
