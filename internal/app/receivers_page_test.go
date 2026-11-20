@@ -47,6 +47,15 @@ func receiverFixture() *App {
 			Entry:   receivers.Entry{Key: "AA:00", Kind: receivers.KindDiscovered, Name: "客厅 HomePod", AutoConnect: true},
 		},
 		{
+			// A second eligible AirPlay 2 receiver, so the combo section has two
+			// candidates to offer.
+			Key: "AA:09", Name: "卧室 HomePod", Kind: receivers.KindDiscovered,
+			Model: "AudioAccessory5,1", Online: true,
+			Channel: receivers.ChannelStereo,
+			Device:  device.Device{ID: "AA:09", Name: "卧室 HomePod", Host: "192.168.1.21", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
+			Entry:   receivers.Entry{Key: "AA:09", Kind: receivers.KindDiscovered, Name: "卧室 HomePod"},
+		},
+		{
 			Key: "AA:01", Name: "卧室 HomePod mini", Kind: receivers.KindDiscovered,
 			Model: "AudioAccessory5,1", Hidden: true, DelayMS: 120,
 			Channel: receivers.ChannelStereo,
@@ -487,7 +496,19 @@ func TestFlyoutFiltersHiddenReceivers(t *testing.T) {
 // members drop from the list and the combo carries the synthesized group.
 func comboFixture() *App {
 	a := receiverFixture()
-	left, right := a.snap.Receivers[0], a.snap.Receivers[2]
+	// The fixture's row order is an implementation detail; find the members by
+	// key so an added row cannot silently change which receivers link.
+	var left, right, hidden receivers.View
+	for _, v := range a.snap.Receivers {
+		switch v.Key {
+		case "AA:00":
+			left = v
+		case "m:ab12":
+			right = v
+		case "AA:01":
+			hidden = v
+		}
+	}
 	members := []device.Device{left.Device, right.Device}
 	combo := receivers.View{
 		Key: "combo:01", Name: "客厅立体声", Kind: receivers.KindCombo,
@@ -509,7 +530,7 @@ func comboFixture() *App {
 		State: engine.TargetMember, Split: true, Stereo: true,
 	}}
 	a.selID = "combo:01"
-	a.snap.Receivers = []receivers.View{combo, a.snap.Receivers[1]}
+	a.snap.Receivers = []receivers.View{combo, hidden}
 	return a
 }
 
@@ -606,6 +627,15 @@ func flyoutComboFixture() *App {
 			Members: []receivers.Member{{ID: "AA:00", Name: "HomePod L"}, {ID: "AA:01", Name: "HomePod R"}},
 		},
 	}}
+	// A live combo shows the mixer layout: one volume, no channel button.
+	a.snap.ActiveTargets = []string{"combo:01"}
+	a.snap.Targets = []engine.TargetControl{{
+		ID: "combo:01", Name: "HomePod L + HomePod R", Volume: 40,
+		Channel: receivers.ChannelStereo, Stereo: true, Split: true, State: engine.TargetMember,
+	}}
+	a.selID = "combo:01"
+	a.snap.SelectedID = "combo:01"
+	a.snap.ConnectedName = "HomePod L + HomePod R"
 	return a
 }
 
@@ -617,6 +647,12 @@ func TestFlyoutComboRowKeepsItsNameBesideTheTag(t *testing.T) {
 	}
 	if !tt.HasText(locales.ComboTag()) {
 		t.Fatalf("the combo tag missing: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.VolumeFor("HomePod L + HomePod R")) {
+		t.Fatalf("the combo mixer lost its volume: %q", tt.Texts())
+	}
+	if tt.HasText(locales.ChannelTooltip(locales.ChannelStereo(), locales.ChannelLeft())) {
+		t.Fatalf("the combo row drew a channel button: %q", tt.Texts())
 	}
 }
 
@@ -646,5 +682,67 @@ func TestComboPickRowsExcludeTheOtherSide(t *testing.T) {
 	}
 	if len(comboCandidatesExcept(candidates, "")) != len(candidates) {
 		t.Fatal("an empty exclusion dropped a receiver")
+	}
+}
+
+// TestReceiverPageShowsSaveErrors pins the settings-side error surface: a
+// refused save or link shows on the receivers page, because the dialog closes
+// and the flyout is hidden while settings is open.
+func TestReceiverPageShowsSaveErrors(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	a.snap.ErrorKey = engine.ErrSaveReceiver
+	a.snap.ErrorArgs = []string{"disk full"}
+	tt := ui.NewTester(a.settingsView, 720, 560)
+	if !tt.HasText(locales.ErrorSaveReceiver("disk full")) {
+		t.Fatalf("the save error is not on the page: %q", tt.Texts())
+	}
+	a.snap.ErrorKey = engine.ErrLatencyOffline
+	tt = ui.NewTester(a.settingsView, 720, 560)
+	if tt.HasText(locales.ErrorLatencyOffline()) {
+		t.Fatal("an unrelated engine error rendered on the receivers page")
+	}
+}
+
+// TestReceiverComboOfflineWarning pins the collapsed cue and the expanded
+// bar: a combo with a member down reads 离线 on the row and names the member
+// when opened.
+func TestReceiverComboOfflineWarning(t *testing.T) {
+	a := comboFixture()
+	a.page = pageReceivers
+	a.receiverOpen = map[string]bool{"combo:01": true}
+	for i := range a.snap.Receivers {
+		if a.snap.Receivers[i].Key != "combo:01" {
+			continue
+		}
+		v := &a.snap.Receivers[i]
+		v.Online = false
+		v.Device.Online = false
+		for j := range v.Device.Members {
+			v.Device.Members[j].Online = false
+		}
+	}
+	tt := ui.NewTester(a.settingsView, 720, 700)
+	if !tt.HasText(locales.ActionOffline()) {
+		t.Fatalf("the collapsed combo row has no offline cue: %q", tt.Texts())
+	}
+	if !tt.HasText(locales.ComboOfflineWarn("客厅 HomePod + 书房 AirPort Express")) {
+		t.Fatalf("the expanded combo has no member warning: %q", tt.Texts())
+	}
+}
+
+// TestComboCreateRefusesAnIncompleteForm pins the dialog's own validation:
+// without both sides the commit stays in the dialog with the error line.
+func TestComboCreateRefusesAnIncompleteForm(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	a.receiverDialog = receiverDialogState{kind: receiverDialogComboCreate, entered: true, comboLeft: "AA:00"}
+	a.receiverDialogOpen = true
+	a.submitComboCreate()
+	if !a.receiverDialogOpen {
+		t.Fatal("the dialog closed without both sides")
+	}
+	if a.receiverDialog.comboError != locales.ComboErrorPick() {
+		t.Fatalf("error = %q, want the pick hint", a.receiverDialog.comboError)
 	}
 }

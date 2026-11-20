@@ -14,8 +14,8 @@
   draws that glyph in the accent color; an unreachable row keeps the 离线
   subtitle and stays clickable. Clicking a row connects when idle, or adds
   that receiver to the playing session and rebuilds the cohort while
-  streaming; an already-active target is a silent no-op. Only the primary
-  active row is marked and disabled this round. While connecting every row is
+  streaming; an already-active target is a silent no-op. Every active row is
+  marked and disabled. While connecting every row is
   disabled. The row under the list is the session action: 取消连接, 断开连接,
   or 重试连接, and it is absent while idle; with more than six receivers the
   更多接收器… row sits between the sixth receiver row and the session action,
@@ -49,8 +49,8 @@
   connect action owns a centered trailing column fixed at one width whatever
   its label says. The speaker is a button: one click mutes the target (volume
   to zero, muted speaker shown), the next restores the level it muted from.
-  The channel button cycles stereo → left → right; a stereo pair is a
-  disabled stereo. A member keeps its mixer while the cohort re-establishes,
+  A single receiver's channel button cycles stereo → left → right; a stereo
+  target draws no channel button. A member keeps its mixer while the cohort re-establishes,
   so adding a device never takes the first device's controls away. A joining
   or reopening row is plain: its second line reads 正在连接… while joining and
   正在重连… while an automatic retry reopens it, and otherwise a plain row
@@ -87,7 +87,7 @@
   `showNowPlayingPanel` is on), the ambient section (90 collapsed, plus
   53 when its preset grid expands), and the playback section's head,
   borders, and gap (33) when neither media nor the latency row is drawn. The
-  base constant is 428, but the function subtracts the old 62-DIP media row
+  base constant is 438, but the function subtracts the old 62-DIP media row
   and adds the 90-DIP lamp section, so three device rows with no media
   measure 500. The empty playback section is pinned by
   `TestFlyoutPlaybackSectionHidesWhenEmpty` and

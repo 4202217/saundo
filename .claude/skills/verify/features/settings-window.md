@@ -38,7 +38,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   its name, a stereo pair reads 已连接 · 立体声组. Pinned by
   `TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
   `TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
-  `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`
+  `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
   `TestConnectionPagePairRow`, `TestConnectionPageSpeaksForTheSession`. Below
   the sections are 断开后自动重连, 严格验证接收器, and 连接后静音本机输出 (on
   by default).
@@ -80,7 +80,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   sides in place without a rebuild), a warning bar naming an offline member,
   and one volume for both members. 解除组合 rides the head's tail while
   expanded and opens the red confirm dialog. 创建立体声组合 (the dashed row, or the
-  立体声组合 head's 创建组合 once the section has rows) opens the create dialog: a 左/右 select per side with a swap button,
+  立体声组合 head's 创建组合 once the section has rows) opens the create dialog: a 左/右 select per side,
   the derived 「A + B」 name suggestion, and 组合 at 40% until both sides are
   chosen. Members drop from the list and the flyout while linked
   (`TestReceiverComboRowRendersTheChannelMap`,
@@ -147,7 +147,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestConnectionPageDeviceHealthNotableOnly|TestConnectionPageSessionCardDegraded|TestConnectionPagePairRow|TestConnectionPageSpeaksForTheSession|TestReceiverComboRowRendersTheChannelMap|TestReceiverComboUnlinkOpensTheConfirmDialog|TestReceiverComboCreateDialogOpensAndNames|TestReceiverComboOfflineWarning|TestComboCreateRefusesAnIncompleteForm|TestComboMemberSubtitleAvoidsRepeatingTheName|TestFlyoutComboRowKeepsItsNameBesideTheTag|TestComboPickRowsExcludeTheOtherSide|TestReceiverPageShowsSaveErrors|TestStereoIconFollowsMembers' -v ./internal/app/
 ```
 
 Settings defaults:

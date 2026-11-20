@@ -104,12 +104,18 @@ func (a *App) trackNotice() {
 	if a.notice.dismissed == sig || a.notice.timer != nil {
 		return
 	}
+	if shown, ok := a.sessionNotice(); ok && shown.join {
+		// The join notice holds the bar; the loss timer starts when it clears,
+		// so a loss cannot expire unseen behind it.
+		return
+	}
 	a.notice.timer = time.AfterFunc(noticeLifetime, func() {
 		a.updateUI(func() {
 			if noticeSignature(a.snap.Notice) == sig {
 				a.notice.dismissed = sig
 			}
 			a.notice.timer = nil
+			a.fitFlyout()
 		})
 	})
 }
@@ -129,6 +135,8 @@ func (a *App) dismissNotice() {
 		a.notice.timer.Stop()
 		a.notice.timer = nil
 	}
+	// The bar goes away this frame; the window keeps its height otherwise.
+	a.fitFlyout()
 }
 
 // sessionNoticeBar is the line under the device card. A lost member explains

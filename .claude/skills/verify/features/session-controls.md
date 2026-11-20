@@ -78,7 +78,7 @@ page, and the diagnostics log row lives on the settings 关于 page.
   choosing it adds that receiver to the session and rebuilds the whole cohort
   from a new plan, so the mute and the session's settings survive the gap
   (`connectTargets` and `startPlan` in `cohort.go`; the row action in
-  `flyout.go`). An active row offers 断开连接 and ends every target. A
+  `flyout.go`). An active row's 断开连接 removes only that target; the device head's 全部断开 ends the whole session. A
   rejected add (clock conflict, local receiver, offline pair, FairPlay)
   publishes its reason while the cohort keeps streaming. While a connect is
   in progress the other rows are disabled, and an add that cannot open its new

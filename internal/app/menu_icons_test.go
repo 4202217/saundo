@@ -19,6 +19,15 @@ func TestMenuIconsLoad(t *testing.T) {
 			t.Fatalf("menu icon %q missing; got %v", it.name, icons)
 		}
 	}
+	// Every family stereoIconKey can return must have a tray glyph, or a row
+	// silently loses its icon.
+	for _, family := range menuDeviceFamilies {
+		for _, prefix := range []string{"dev:", "devon:", "devond:"} {
+			if icons[prefix+family] == nil {
+				t.Fatalf("menu glyph %q missing", prefix+family)
+			}
+		}
+	}
 	for _, p := range lamp.All() {
 		if icons["lamp:"+p.ID] == nil {
 			t.Fatalf("lamp preview %q missing", p.ID)

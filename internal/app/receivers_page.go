@@ -95,6 +95,14 @@ type receiverDialogState struct {
 }
 
 func (a *App) receiversPage(c *ui.Context, p palette) {
+	// A save or link refusal lands here: the dialogs close on submit and the
+	// flyout's error bar is hidden while the settings window is open.
+	if settingsErrorKey(a.snap.ErrorKey) {
+		ui.Column(c).Margin(6, 0, 8, 0).Children(func() {
+			statusBar(c, p, barDanger, iconAlert,
+				userErrorText(a.snap.ErrorKey, a.snap.ErrorArgs, a.snap.Error), nil)
+		})
+	}
 	var visible, hidden, singles, combos []receivers.View
 	for _, v := range a.snap.Receivers {
 		if v.Hidden {
@@ -117,9 +125,12 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	}
 
 	// One section per type. A section's create action rides its head while the
-	// section has rows; an empty section replaces it with its dashed row, so an
-	// empty page is one head plus 添加接收器 and the combo section appears only
-	// once the page has a row to group.
+	// section has rows; an empty section replaces it with its dashed row. The
+	// combo section needs two eligible receivers to offer creation at all: with
+	// fewer, the dialog could never commit. It still renders when a combo
+	// exists, so its rows stay reachable.
+	candidates := len(a.comboCandidates())
+	canCreateCombo := candidates >= 2
 	a.receiverSectionHead(c, p, locales.ReceiverGroupEnabled(), len(singles), 6, len(singles) > 0,
 		locales.ReceiverAddAction(), func() { a.openAddReceiver() })
 	if len(singles) > 0 {
@@ -132,8 +143,8 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	} else {
 		a.receiverAddRow(c, p)
 	}
-	if len(visible) > 0 {
-		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0,
+	if len(combos) > 0 || (len(visible) > 0 && canCreateCombo) {
+		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0 && canCreateCombo,
 			locales.ComboCreateAction(), func() { a.openComboCreate() })
 		if len(combos) > 0 {
 			card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
@@ -407,7 +418,12 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 func receiverSubtitle(v receivers.View) string {
 	model := receiverModelLabel(v)
 	if v.Entry.IsCombo() {
-		return comboMemberSubtitle(v.Name, v.Device.Members, model)
+		sub := comboMemberSubtitle(v.Name, v.Device.Members, model)
+		if !v.Device.Online {
+			// The collapsed row is the only cue that the combo cannot start.
+			sub += " · " + locales.ActionOffline()
+		}
+		return sub
 	}
 	if !v.Device.Online {
 		return model + " · " + locales.ActionOffline()
@@ -500,7 +516,7 @@ func (a *App) receiverVolumeRow(c *ui.Context, p palette, v receivers.View, titl
 				Grow(1).SingleLine().Ellipsis("…")
 			ui.Text(c, locales.FlyoutVolumeValue(*volumeValue)).FontSize(12.5).TextColor(subColor)
 		})
-		sl := slider(c, p, volumeValue, 0, 100, locales.VolumeLabel(), func(next float64) {
+		sl := slider(c, p, volumeValue, 0, 100, locales.VolumeFor(v.Name), func(next float64) {
 			if a.eng != nil {
 				a.eng.SetTargetVolume(v.Key, next)
 			}
@@ -516,7 +532,7 @@ func (a *App) receiverVolumeRow(c *ui.Context, p palette, v receivers.View, titl
 func (a *App) receiverChannelSegment(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {
 	if v.Stereo {
 		idx := 0
-		segmented(c, p, &idx, []segmentItem{{label: locales.ChannelStereo()}}, 120, true, segmentCenter, locales.ChannelLabel())
+		segmented(c, p, &idx, []segmentItem{{label: locales.ChannelStereo()}}, 120, true, segmentCenter, locales.ChannelLabel()+" · "+v.Name)
 		return
 	}
 	idx := 0
@@ -531,7 +547,7 @@ func (a *App) receiverChannelSegment(c *ui.Context, p palette, v receivers.View,
 		{label: locales.ChannelLeft()},
 		{label: locales.ChannelRight()},
 	}
-	track := segmented(c, p, &idx, items, 200, hiddenGroup, segmentCenter, locales.ChannelLabel())
+	track := segmented(c, p, &idx, items, 200, hiddenGroup, segmentCenter, locales.ChannelLabel()+" · "+v.Name)
 	if track.Changed() && a.eng != nil {
 		mode := receivers.ChannelStereo
 		switch idx {

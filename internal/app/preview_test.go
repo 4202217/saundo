@@ -456,13 +456,12 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 
 	connectionUnknown := fixture()
 	connectionUnknown.page = pageConnection
-	connectionUnknown.snap.ReceiverLatencyMS = 0
 	save("settings-connection-unknown-light", connectionUnknown.settingsView, 720, 500, false)
 	save("settings-connection-unknown-dark", connectionUnknown.settingsView, 720, 500, true)
 
 	connectionUnstable := fixture()
 	connectionUnstable.page = pageConnection
-	connectionUnstable.snap.DroppedSamples = 3
+	connectionUnstable.snap.Diagnostics.Degraded = true
 	save("settings-connection-unstable-light", connectionUnstable.settingsView, 720, 500, false)
 	save("settings-connection-unstable-dark", connectionUnstable.settingsView, 720, 500, true)
 
@@ -620,7 +619,6 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		State: engine.TargetMember,
 	})
 	multiSession.snap.ConnectedName = "HomePods + Apple TV"
-	multiSession.snap.ReceiverLatencyMS = 70
 	save("settings-connection-session-light", multiSession.settingsView, 720, 500, false)
 	save("settings-connection-session-dark", multiSession.settingsView, 720, 500, true)
 

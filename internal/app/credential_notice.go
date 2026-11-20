@@ -42,7 +42,7 @@ func (a *App) credentialDialog(c *ui.Context, p palette) {
 		dialogHead(c, p, iconKey, locales.CredentialResetTitle(), locales.CredentialResetSub(), false, nil)
 		ui.Text(c, locales.CredentialResetBody()).FontSize(12.5).TextColor(p.fg2).Margin(14, 0, 0, 0)
 		ui.Text(c, locales.CredentialResetHint()).FontSize(11.5).TextColor(p.muted).Margin(8, 0, 0, 0)
-		ui.Row(c).Justify(ui.End).Gap(8).Margin(20, 0, 0, 0).Children(func() {
+		ui.Row(c).Justify(ui.End).Gap(9).Margin(20, 0, 0, 0).Children(func() {
 			quietButton(c, p, locales.CredentialResetDismiss(), a.dismissCredentialReset)
 			primaryButton(c, p, locales.CredentialResetPair(), a.pairAgain)
 		})
