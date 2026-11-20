@@ -22,7 +22,7 @@ const (
 
 // apply takes an engine snapshot, holding it while a latency change is
 // applying so the device row, footer, and tray keep their streaming face.
-// The latency row and ALAC line still update at once.
+// The latency row and the playback head still update at once.
 func (a *App) apply(snap engine.Snapshot) {
 	a.power.observe(sessionActive(snap))
 	if a.latencyApplying && a.holdLatencyApply(snap) {
@@ -121,10 +121,10 @@ func (a *App) latencyMS() int {
 	return settings.LatencyLowMS
 }
 
-// latencyDisplay is the value shown in the playback head's ALAC line: the
-// global base plus each active receiver's DSP/DAC delay, clamped to the
-// sender's window. A multi-target session shows its slowest member, because
-// that is the delay the room hears. An idle engine shows the base only.
+// latencyDisplay is the value shown in the playback head: the global base plus
+// each active receiver's DSP/DAC delay, clamped to the sender's window. A
+// multi-target session shows its slowest member, because that is the delay the
+// room hears. An idle engine shows the base only.
 func (a *App) latencyDisplay() string {
 	return settings.LatencyText(a.sessionLatencyMS())
 }

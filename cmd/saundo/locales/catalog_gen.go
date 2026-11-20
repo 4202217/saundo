@@ -834,26 +834,6 @@ func (msgs Messages) FlyoutPlayback() string {
 	return Catalog.Format(msgs.locale, "flyoutPlayback", nil)
 }
 
-// FlyoutFormat says "ALAC · 44.1 kHz"
-// in the language the app shows.
-func FlyoutFormat() string { return In(i18n.Locale()).FlyoutFormat() }
-
-// FlyoutFormat says "ALAC · 44.1 kHz"
-// in the language of msgs.
-func (msgs Messages) FlyoutFormat() string {
-	return Catalog.Format(msgs.locale, "flyoutFormat", nil)
-}
-
-// FlyoutLatency says "Latency {value}"
-// in the language the app shows.
-func FlyoutLatency(value string) string { return In(i18n.Locale()).FlyoutLatency(value) }
-
-// FlyoutLatency says "Latency {value}"
-// in the language of msgs.
-func (msgs Messages) FlyoutLatency(value string) string {
-	return Catalog.Format(msgs.locale, "flyoutLatency", map[string]any{"value": value})
-}
-
 // FlyoutSyncNTP says "NTP"
 // in the language the app shows.
 func FlyoutSyncNTP() string { return In(i18n.Locale()).FlyoutSyncNTP() }

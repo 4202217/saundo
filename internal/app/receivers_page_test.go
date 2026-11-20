@@ -466,15 +466,15 @@ func TestReceiverPasswordRowOpensItsDialog(t *testing.T) {
 	}
 }
 
-func TestFlyoutALACLineShowsActiveReceiverDelay(t *testing.T) {
+func TestFlyoutHeadShowsActiveReceiverDelay(t *testing.T) {
 	a := previewApp()
 	a.latencyMode = settings.LatencyLow
 	a.latency = 200
 	a.snap.SelectedID = "AA:BB:CC:DD:EE:01"
 	a.snap.Receivers = []receivers.View{{Key: "AA:BB:CC:DD:EE:01", DelayMS: 120}}
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	if !tt.HasText("延迟 320 ms") {
-		t.Fatalf("ALAC line lacks the effective latency: %q", tt.Texts())
+	if !tt.HasText("320 ms") {
+		t.Fatalf("the playback head lacks the effective latency: %q", tt.Texts())
 	}
 }
 

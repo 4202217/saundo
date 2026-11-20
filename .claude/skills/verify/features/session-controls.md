@@ -21,8 +21,8 @@ page, and the diagnostics log row lives on the settings 关于 page.
   (200 ms / 1.5 s / 2 s / 20–2000 ms) are the settings 音频 tile text. Their
   14-DIP mode glyphs lead-align with an 8-DIP inner inset, and the first
   glyph sits on the 22-DIP content column. The effective value shows on the
-  ALAC line
-  (`延迟 700 ms`). Preset clicks debounce the session restart 300 ms,
+  playback head
+  (a bare `700 ms`, no label). Preset clicks debounce the session restart 300 ms,
   the custom slider 500 ms (constants `latency.go:20-21`); the effective
   value is base + the receiver's DSP/DAC delay, clamped 20–4000 ms
   (`EffectiveLatencyMS`). The 托盘面板中显示 switch that
@@ -139,7 +139,7 @@ every player and confirm the media card disappears entirely and the flyout
 shrinks; the latency and volume rows remain, with no empty card,
 status line, or reserved blank under the device card.
 
-Proven end state: the ALAC line carries the selected latency, the slider
+Proven end state: the playback head carries the selected latency, the slider
 matches the receiver's own volume, and the settings 采集状态 names the
 endpoint that is actually rendering.
 

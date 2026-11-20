@@ -131,8 +131,6 @@
   "flyoutSearchHint": "请确认接收器与本机在同一网络，且 AirPlay 已开启。",
   "flyoutSearchAgain": "重新搜索",
   "flyoutPlayback": "播放",
-  "flyoutFormat": "ALAC · 44.1 kHz",
-  "flyoutLatency": "延迟 {value}",
   "flyoutSyncNTP": "NTP",
   "flyoutSyncPTPReady": "PTP · 已同步",
   "flyoutSyncPTPPending": "PTP · 同步中",

@@ -110,7 +110,7 @@ func TestViewRendersDevicesAndStatus(t *testing.T) {
 	for _, want := range []string{
 		"声渡", "AIRPLAY 2", "接收器", "HomePods", "Apple TV", "HomePod mini",
 		"连接", "断开连接", "离线", "音量", "65%", "正在通过 HomePods 播放",
-		"ALAC · 44.1 kHz · PTP · 已同步", "延迟 200 ms", "低延迟", "标准", "稳定", "自定义",
+		"200 ms", "低延迟", "标准", "稳定", "自定义",
 		"氛围灯", "沙丘",
 	} {
 		if !tt.HasText(want) {
@@ -1408,12 +1408,12 @@ func TestFlyoutLatencySwitchCanHide(t *testing.T) {
 	}
 }
 
-func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
+func TestFlyoutCustomLatencyInHead(t *testing.T) {
 	a := previewApp()
 	a.latencyMode = "custom"
 	a.latencyCustom = 700
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	if !tt.HasText("延迟 700 ms") || !tt.HasText("自定义") {
+	if !tt.HasText("700 ms") || !tt.HasText("自定义") {
 		t.Fatalf("custom latency not shown: %q", tt.Texts())
 	}
 }
@@ -1429,8 +1429,8 @@ func TestFlyoutLatencySegmentSelects(t *testing.T) {
 	if a.latencyMode != "standard" || a.latency != 1500 {
 		t.Fatalf("selected %q/%v, want standard/1500", a.latencyMode, a.latency)
 	}
-	if !tt.HasText("延迟 1.5 s") {
-		t.Fatalf("the ALAC line did not follow: %q", tt.Texts())
+	if !tt.HasText("1.5 s") {
+		t.Fatalf("the playback head did not follow: %q", tt.Texts())
 	}
 }
 
@@ -1495,24 +1495,24 @@ func TestLatencyApplyHoldsStreamingSnapshot(t *testing.T) {
 	}
 }
 
-func TestLatencySpinnerKeepsALACLineAnchored(t *testing.T) {
+func TestLatencySpinnerKeepsTheValueAnchored(t *testing.T) {
 	withLocale(t, "zh-CN")
 	a := previewApp()
-	const note = "ALAC · 44.1 kHz · PTP · 已同步 · 延迟 200 ms"
+	const note = "200 ms"
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	before, ok := tt.Find(note)
 	if !ok {
-		t.Fatalf("ALAC line is missing: %q", tt.Texts())
+		t.Fatalf("latency value is missing: %q", tt.Texts())
 	}
 	a.latencyApplying = true
 	tt.Frame()
 	after, ok := tt.Find(note)
 	if !ok {
-		t.Fatalf("ALAC line is missing while applying: %q", tt.Texts())
+		t.Fatalf("latency value is missing while applying: %q", tt.Texts())
 	}
 	if before.X != after.X || before.W != after.W {
-		t.Fatalf("ALAC line moved from %.1f/%.1f to %.1f/%.1f", before.X, before.W, after.X, after.W)
+		t.Fatalf("latency value moved from %.1f/%.1f to %.1f/%.1f", before.X, before.W, after.X, after.W)
 	}
 }
 

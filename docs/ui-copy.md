@@ -33,7 +33,7 @@ The tray menu's receiver rows keep the flyout's 离线 status. The session actio
 | Session audio stability | 稳定性 | stability | 丢样本, 丢帧 |
 | Where the latency mode is changed | 可在音频页调整 | Adjust on Audio | — |
 
-The connection page shows no latency value; the latency mode lives on 音频 and the flyout's ALAC line carries the effective value. The receiver's own processing time is measured for diagnostics and has no surface.
+The connection page shows no latency value; the latency mode lives on 音频 and the flyout's playback head carries the effective value. The receiver's own processing time is measured for diagnostics and has no surface.
 
 ## Per-device controls
 

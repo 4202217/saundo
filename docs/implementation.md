@@ -250,8 +250,8 @@ new tsid, so the old key never returns. A row without `lastSeen` is stamped on
 the first launch and is not pruned at upgrade.
 
 The engine's SETUP latency for a receiver is the global base plus that
-receiver's DSP/DAC delay, clamped to 20–4000 ms. The app composes the
-flyout's ALAC line from the same two values for the active receiver. A delay
+receiver's DSP/DAC delay, clamped to 20–4000 ms. The app shows that value in
+the flyout's playback head for the active receiver. A delay
 change to the active receiver restarts its session; the engine keeps the
 per-device delay data and the `UpdateReceiver` delay path for a later UI. The
 per-device delay is the sync control across device types. The settings

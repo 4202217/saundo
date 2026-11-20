@@ -57,12 +57,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 	if !a.hasNowMedia() && !a.showLatencySwitch {
 		return
 	}
-	note := locales.FlyoutFormat()
-	if phaseOf(a.snap) == phaseStreaming {
-		note += " · " + a.syncText()
-	}
-	note += " · " + locales.FlyoutLatency(a.latencyDisplay())
-	sectionHead(c, p, locales.FlyoutPlayback(), note, a.latencyApplying, nil)
+	sectionHead(c, p, locales.FlyoutPlayback(), a.latencyDisplay(), a.latencyApplying, nil)
 
 	card := ui.Column(c).Radius(10).Background(p.card).Border(1, p.line).Clip()
 	card.Children(func() {
@@ -79,7 +74,7 @@ func (a *App) playbackSection(c *ui.Context, p palette) {
 }
 
 // latencySwitch is the four-segment mode control. It carries no value of its
-// own; the playback head's ALAC line shows the current latency.
+// own; the playback head shows the current latency.
 func (a *App) latencySwitch(c *ui.Context, p palette) {
 	seg := a.latencyModeIndex()
 	items := []segmentItem{

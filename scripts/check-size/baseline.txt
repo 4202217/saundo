@@ -12,4 +12,4 @@ internal/app/settings_window.go	885
 internal/airplay/sender/sender.go	881
 internal/airplay/sender/rtsp.go	679
 internal/capture/capture_darwin.go	697
-internal/app/flyout.go	452
+internal/app/flyout.go	447

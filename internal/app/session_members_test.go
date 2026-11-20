@@ -59,8 +59,8 @@ func TestSessionNameJoinsWhileOpening(t *testing.T) {
 	}
 }
 
-// TestSessionLatencyUsesSlowestMember pins the ALAC line's value: each member
-// carries its own delay, so the session shows the slowest one.
+// TestSessionLatencyUsesSlowestMember pins the playback head's value: each
+// member carries its own delay, so the session shows the slowest one.
 func TestSessionLatencyUsesSlowestMember(t *testing.T) {
 	a := multiSessionApp()
 	a.snap.Receivers = []receivers.View{

@@ -211,15 +211,6 @@
   "flyoutSearchHint": "Make sure the receiver is on the same network and AirPlay is on.",
   "flyoutSearchAgain": "Search again",
   "flyoutPlayback": "Playback",
-  "flyoutFormat": "ALAC · 44.1 kHz",
-  "flyoutLatency": "Latency {value}",
-  "@flyoutLatency": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "flyoutSyncNTP": "NTP",
   "flyoutSyncPTPReady": "PTP · Synced",
   "flyoutSyncPTPPending": "PTP · Syncing",
