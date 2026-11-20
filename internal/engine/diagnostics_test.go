@@ -13,22 +13,24 @@ func TestDiagnosticsSingleAggregates(t *testing.T) {
 	h := newHarness(t)
 	h.addDevice()
 	h.connect()
-	lastSync := h.now.Add(-250 * time.Millisecond)
+	start := h.now
+	h.launch()
+	h.advance(2 * time.Minute)
+	// The counters arrive inside the stability window: the sample at launch
+	// was zero, so both the lifetime and the trailing window read 1.
 	h.fake.stats = []sender.Stats{{
 		Retransmits: 4,
 		LateTicks:   2,
 		Underruns:   1,
 		SentBlocks:  120,
 		SendErrors:  3,
-		LastSync:    lastSync,
+		LastSync:    start.Add(-250 * time.Millisecond),
 		BufferMS:    42,
 		BufferValid: true,
 		WiFi: sender.WiFiMetrics{
 			Valid: true, RSSI: -52, SSID: "HomeNet", Band: sender.WiFiBand5,
 		},
 	}}
-	h.launch()
-	h.advance(2 * time.Minute)
 	h.e.publish()
 
 	d := h.e.Snapshot().Diagnostics
@@ -47,8 +49,8 @@ func TestDiagnosticsSingleAggregates(t *testing.T) {
 	if !d.SyncValid || d.SyncAge != 2*time.Minute+250*time.Millisecond {
 		t.Fatalf("sync = %v/%s, want 2m250ms", d.SyncValid, d.SyncAge)
 	}
-	if d.Retransmits != 4 || d.LateTicks != 2 || d.Underruns != 1 || d.SendErrors != 3 {
-		t.Fatalf("counters = %d/%d/%d/%d, want 4/2/1/3", d.Retransmits, d.LateTicks, d.Underruns, d.SendErrors)
+	if d.Retransmits != 4 || d.LateTicks != 2 || d.RecentUnderruns != 1 || d.SendErrors != 3 {
+		t.Fatalf("counters = %d/%d/%d/%d, want 4/2/1/3", d.Retransmits, d.LateTicks, d.RecentUnderruns, d.SendErrors)
 	}
 	if !d.BufferValid || d.SendBufferMS != 42 {
 		t.Fatalf("buffer = %v/%f, want 42", d.BufferValid, d.SendBufferMS)
@@ -65,7 +67,7 @@ func TestDiagnosticsSingleAggregates(t *testing.T) {
 // whose audio datagrams never reach the host is not healthy even when no
 // sample was dropped and no packet was padded.
 func TestDiagnosticsSendErrorsDegrade(t *testing.T) {
-	d := aggregateDiagnostics([]sender.Stats{{SendErrors: 5}}, GroupSingle, 1, "", 0, 0, 0, time.Unix(101, 0))
+	d := aggregateDiagnostics([]sender.Stats{{SendErrors: 5}}, GroupSingle, 1, "", 0, 0, stabilityCounts{SendErrors: 5}, time.Unix(101, 0))
 	if d.SendErrors != 5 {
 		t.Fatalf("send errors = %d, want 5", d.SendErrors)
 	}
@@ -103,20 +105,23 @@ func TestDiagnosticsStereoTakesWorstAndSums(t *testing.T) {
 	}
 	h.e.setDevices([]device.Device{group})
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: group.ID})
+	start := h.now
+	h.launch()
+	h.advance(time.Minute)
+	// Both members' counters arrive inside the stability window; the pair's
+	// per-member underruns sum.
 	h.fake.stats = []sender.Stats{
 		{
 			Retransmits: 2, Underruns: 1, BufferMS: 42, BufferValid: true,
-			LastSync: h.now.Add(-100 * time.Millisecond),
+			LastSync: start.Add(-100 * time.Millisecond),
 			WiFi:     sender.WiFiMetrics{Valid: true, RSSI: -62, Band: sender.WiFiBand5},
 		},
 		{
 			Retransmits: 3, LateTicks: 3, Underruns: 2, BufferMS: 8, BufferValid: true,
-			LastSync: h.now.Add(-300 * time.Millisecond),
+			LastSync: start.Add(-300 * time.Millisecond),
 			WiFi:     sender.WiFiMetrics{Valid: true, RSSI: -78, Band: sender.WiFiBand24},
 		},
 	}
-	h.launch()
-	h.advance(time.Minute)
 	h.e.publish()
 
 	d := h.e.Snapshot().Diagnostics
@@ -132,8 +137,8 @@ func TestDiagnosticsStereoTakesWorstAndSums(t *testing.T) {
 	if d.LateTicks != 3 {
 		t.Fatalf("late ticks = %d, want the worst 3", d.LateTicks)
 	}
-	if d.Underruns != 3 {
-		t.Fatalf("underruns = %d, want the sum 3", d.Underruns)
+	if d.RecentUnderruns != 3 {
+		t.Fatalf("underruns = %d, want the sum 3", d.RecentUnderruns)
 	}
 	if !d.BufferValid || d.SendBufferMS != 8 {
 		t.Fatalf("buffer = %v/%f, want the worst 8", d.BufferValid, d.SendBufferMS)
@@ -168,8 +173,37 @@ func TestDiagnosticsStereoOverflowSumsMembers(t *testing.T) {
 	if snap.DroppedSamples != 12 {
 		t.Fatalf("stability drops = %d, want the max 12", snap.DroppedSamples)
 	}
-	if snap.Diagnostics.Overflow != 24 {
-		t.Fatalf("overflow = %d, want the members' sum 24", snap.Diagnostics.Overflow)
+	if snap.Diagnostics.RecentDropped != 24 {
+		t.Fatalf("overflow = %d, want the members' sum 24", snap.Diagnostics.RecentDropped)
+	}
+}
+
+// TestDiagnosticsUnderrunsAgeOutOfTheWindow pins why the card reads a
+// trailing span: an underrun from a join or a rebuild stops counting as
+// stutter once it leaves the window, and a fresh one starts counting again.
+func TestDiagnosticsUnderrunsAgeOutOfTheWindow(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+	h.fake.stats = []sender.Stats{{Underruns: 2}}
+	h.e.publish()
+	if d := h.e.Snapshot().Diagnostics; !d.Degraded || d.RecentUnderruns != 2 {
+		t.Fatalf("window = %d degraded = %v, want 2 and true", d.RecentUnderruns, d.Degraded)
+	}
+
+	h.advance(stabilityWindow)
+	h.e.publish()
+	d := h.e.Snapshot().Diagnostics
+	if d.Degraded || d.RecentUnderruns != 0 {
+		t.Fatalf("an expired underrun still reads: %d and %v", d.RecentUnderruns, d.Degraded)
+	}
+
+	h.fake.stats = []sender.Stats{{Underruns: 3}}
+	h.advance(time.Second)
+	h.e.publish()
+	if d := h.e.Snapshot().Diagnostics; !d.Degraded || d.RecentUnderruns != 1 {
+		t.Fatalf("a fresh underrun = %d and %v, want 1 and true", d.RecentUnderruns, d.Degraded)
 	}
 }
 
@@ -178,7 +212,7 @@ func TestDiagnosticsUnknownWhenMemberDidNotSync(t *testing.T) {
 		{LastSync: time.Unix(100, 0), BufferValid: true, BufferMS: 20},
 		{BufferValid: false},
 	}
-	d := aggregateDiagnostics(members, GroupStereo, 2, "Pair", 0, 0, 0, time.Unix(101, 0))
+	d := aggregateDiagnostics(members, GroupStereo, 2, "Pair", 0, 0, stabilityCounts{}, time.Unix(101, 0))
 	if d.SyncValid {
 		t.Fatal("a member without a sync packet still read as synced")
 	}
@@ -201,8 +235,8 @@ func TestDiagnosticsOverflowComesFromSessionDrops(t *testing.T) {
 	h.e.publish()
 
 	d := h.e.Snapshot().Diagnostics
-	if d.Overflow != 3 {
-		t.Fatalf("overflow = %d, want 3", d.Overflow)
+	if d.RecentDropped != 3 {
+		t.Fatalf("overflow = %d, want 3", d.RecentDropped)
 	}
 	if !d.Degraded {
 		t.Fatal("dropped samples did not mark the session degraded")
@@ -238,7 +272,7 @@ func TestDiagnosticsUnknownWhenMemberDidNotReportWiFi(t *testing.T) {
 		{WiFi: sender.WiFiMetrics{Valid: true, RSSI: -52, Band: sender.WiFiBand5}},
 		{},
 	}
-	d := aggregateDiagnostics(members, GroupStereo, 2, "Pair", 0, 0, 0, time.Unix(101, 0))
+	d := aggregateDiagnostics(members, GroupStereo, 2, "Pair", 0, 0, stabilityCounts{}, time.Unix(101, 0))
 	if d.WiFi.Valid {
 		t.Fatal("a member without Wi-Fi data still read as a valid group value")
 	}

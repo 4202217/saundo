@@ -277,7 +277,7 @@
       }
     }
   },
-  "settingsStabilityNote": "丢样 {drops} · 欠载 {underruns}",
+  "settingsStabilityNote": "60 秒内丢样 {drops} · 欠载 {underruns}",
   "@settingsStabilityNote": {
     "placeholders": {
       "drops": {

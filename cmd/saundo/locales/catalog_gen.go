@@ -1920,13 +1920,13 @@ func (msgs Messages) SettingsUptimeHoursWhole(h int) string {
 	return Catalog.Format(msgs.locale, "settingsUptimeHoursWhole", map[string]any{"h": h})
 }
 
-// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// SettingsStabilityNote says "last 60 s · {drops} dropped · {underruns} underruns"
 // in the language the app shows.
 func SettingsStabilityNote(drops int, underruns int) string {
 	return In(i18n.Locale()).SettingsStabilityNote(drops, underruns)
 }
 
-// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// SettingsStabilityNote says "last 60 s · {drops} dropped · {underruns} underruns"
 // in the language of msgs.
 func (msgs Messages) SettingsStabilityNote(drops int, underruns int) string {
 	return Catalog.Format(msgs.locale, "settingsStabilityNote", map[string]any{"drops": drops, "underruns": underruns})

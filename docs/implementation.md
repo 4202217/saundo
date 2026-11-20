@@ -182,11 +182,11 @@ the slowest member's effective latency. The tray, the connection page, the
 settings sidebar, and the playback head's latency line read that layer instead
 of a single selected device; the flyout already renders one row per member.
 The connection page draws two sections from it: 已连接设备 lists the members
-with their channel, volume, and state, naming retransmits and underruns only
-when notable, and 本次连接 reads `Snapshot.Diagnostics` for uptime, stability,
-the session retransmit share, and reconnects while the session streams. A
-dropped member leaves the list and appears as the engine notice's reconnect
-row. Neither card restates a setting or a device constant. Two selection
+with their channel, volume, and state, naming retransmits and trailing-window
+underruns only when notable, and 本次连接 reads `Snapshot.Diagnostics` for
+uptime, stability, the session retransmit share, and reconnects while the
+session streams. A dropped member leaves the list and appears as the engine
+notice's reconnect row. Neither card restates a setting or a device constant. Two selection
 semantics stay distinct: the engine's `SelectedID` is the primary target — the
 session's first key, which guards the reconnect policy and anchors the tray's
 retry — while the app's `selID` is the panel's view selection, seeded from the
@@ -199,18 +199,26 @@ engine calls it on the event loop and folds it once per publish. An underrun
 is a packet padded with silence while the ring was still being fed real
 audio — roughly two start cushions after the last fed packet; padding over an
 idle source is the stream's correct output and stays uncounted, so connecting
-with nothing playing reads zero. The engine
-owns the group rules: Wi-Fi, late ticks, and buffer take the worst member,
-resends and underruns sum, the overflow figure sums the members' session
-drops, and stability uses the max drop the connection card already shows. A
-stereo pair reports the oldest member's sync age, and `SyncValid` is false
-when any member has not sent a timing packet. The group shape comes from the
+with nothing playing reads zero. The engine owns the group rules: Wi-Fi, late
+ticks, and buffer take the worst member, resends sum, and the dropped-sample
+source sums the member rings' session drops. A stereo pair reports the oldest
+member's sync age, and `SyncValid` is false when any member has not sent a
+timing packet. The group shape comes from the
 plan: one stereo target reports `GroupStereo`, one single `GroupSingle`, and
-more than one target `GroupCohort` with the sender count as its size. The
-engine folds the model on
-each snapshot publish; no UI consumes it yet. The
-Wi-Fi object is the
-stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and
+more than one target `GroupCohort` with the sender count as its size.
+
+The stability verdict is a trailing-window reading, not a session total.
+`sessionStability` (`internal/engine/stability.go`) samples each sender's
+cumulative underruns and the session's dropped-sample count once per publish.
+`RecentUnderruns` and `RecentDropped` are the growth over the last 60 seconds,
+and `Degraded` reads only those; `TargetControl.Health.RecentUnderruns` uses
+the same per-member samples. Joining a receiver or rebuilding the cohort can
+pad a packet or two with silence, and that blip stops reading as 有卡顿 once
+it ages out. A counter that moves backwards means its sender session
+restarted, so its window starts over. While a session streams the engine
+publishes diagnostics every 5 seconds (`statsWake`), which is what expires a
+window on a quiet session; the engine folds the model on each snapshot
+publish. The Wi-Fi object is the stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and
 `wifiBand` 1/2/3 for 2.4/5/6 GHz); it is a device-side snapshot that can be up
 to 30 minutes old, and a missing object reads unknown.
 

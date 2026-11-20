@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-18 -->
+<!-- reviewed-through: 2026-11-20 -->
 
 # Verification
 
@@ -1137,6 +1137,33 @@ matrix renders the page in both themes and at 640 DIP
 `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
 `TestConnectionPagePairRow`. Not run: the reworked page against a live
 two-receiver session.
+
+## 2026-11-20 — the stability verdict reads the last 60 seconds
+
+The 连接 page's 稳定性 verdict and both counters beside it now answer "is this
+session stuttering now" instead of "did it ever stumble". `sessionStability`
+in `internal/engine/stability.go` samples each sender's cumulative underruns
+and the session's dropped-sample count once per publish; `RecentUnderruns`,
+`RecentDropped`, and `TargetControl.Health.RecentUnderruns` report growth over
+the trailing 60 seconds, and `Degraded` reads only that span. Joining a second
+receiver rebuilds the cohort and can pad a packet or two with silence; that
+blip now clears after a minute instead of pinning the card to 有卡顿 for the
+rest of the session. A counter that moves backwards marks a restarted sender
+session and restarts its window. While a session streams the engine publishes
+diagnostics every 5 seconds, so the window ages out on an otherwise quiet
+session; that also keeps 已连接时长 current. The note reads
+`60 秒内丢样 {drops} · 欠载 {underruns}` / `last 60 s · {drops} dropped ·
+{underruns} underruns`.
+
+Checks: `mingw32-make check` passed (398 messages, 143 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok). The preview matrix rendered `settings-connection-*` in both languages at
+720, 640, and large text. Pins: `TestDiagnosticsUnderrunsAgeOutOfTheWindow`,
+`TestDiagnosticsSingleAggregates`, `TestDiagnosticsStereoTakesWorstAndSums`,
+`TestTargetControlsCarryMeasuredHealth`, `TestConnectionPageSessionCard`,
+`TestConnectionPageSessionCardDegraded`,
+`TestConnectionPageDeviceHealthNotableOnly`. Not run: a live two-device join
+on real receivers to watch an underrun blip clear from the card.
 
 ## Graduated
 

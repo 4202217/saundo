@@ -18,7 +18,7 @@ import (
 
 // deviceUnhealthyRetransmit is the retransmit share that makes one device's
 // link worth naming. Below it the counters stay hidden, so a healthy session
-// is not noisy. Any underrun is notable by itself.
+// is not noisy. Any underrun in the stability window is notable by itself.
 const deviceUnhealthyRetransmit = 0.5
 
 func (a *App) connectionPage(c *ui.Context, p palette) {
@@ -147,8 +147,8 @@ func (a *App) connectionDeviceMetrics(m sessionMember) string {
 	if rate, ok := retransmitRate(h.Retransmits, h.SentBlocks); ok && rate >= deviceUnhealthyRetransmit {
 		parts = append(parts, locales.SettingsRetransmitShort(fmt.Sprintf("%.1f", rate)))
 	}
-	if h.Underruns > 0 {
-		parts = append(parts, locales.SettingsUnderrunsShort(int(h.Underruns)))
+	if h.RecentUnderruns > 0 {
+		parts = append(parts, locales.SettingsUnderrunsShort(int(h.RecentUnderruns)))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -212,7 +212,7 @@ func (a *App) connectionSessionCard(c *ui.Context, p palette) {
 				status, tone = locales.SettingsHealthDropsBad(), p.red
 			}
 			connectionStatCell(c, p, locales.SettingsHealthDrops(), status,
-				locales.SettingsStabilityNote(int(diag.Overflow), int(diag.Underruns)), tone)
+				locales.SettingsStabilityNote(int(diag.RecentDropped), int(diag.RecentUnderruns)), tone)
 		})
 		rowLine(c, p)
 		ui.Row(c).Padding(12, 14).Gap(18).Children(func() {

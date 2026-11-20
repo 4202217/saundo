@@ -69,6 +69,10 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		}
 		e.idle = e.idlePhase(now)
 		e.applyLamp()
+		// A launch, including a rebuild that adds a member, opens fresh
+		// senders with zeroed counters; the stability window starts over
+		// with them instead of attributing the old members' trouble to them.
+		e.stability.reset()
 		if !e.dropSessionActive {
 			e.beginDropSession()
 		}
@@ -112,6 +116,7 @@ func (e *Engine) onClosed() {
 	e.connectedName = ""
 	e.receiverLatency = 0
 	e.sessionStartedAt = time.Time{}
+	e.stability.reset()
 	e.endDropSession()
 	e.pinRequired = false
 	e.clearPasswordPrompt()

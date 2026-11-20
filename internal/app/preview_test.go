@@ -462,6 +462,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	connectionUnstable := fixture()
 	connectionUnstable.page = pageConnection
 	connectionUnstable.snap.Diagnostics.Degraded = true
+	connectionUnstable.snap.Diagnostics.RecentUnderruns = 3
 	save("settings-connection-unstable-light", connectionUnstable.settingsView, 720, 500, false)
 	save("settings-connection-unstable-dark", connectionUnstable.settingsView, 720, 500, true)
 
