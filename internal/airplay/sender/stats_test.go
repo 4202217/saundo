@@ -58,13 +58,15 @@ func TestStatsCountUnderrunsAndBuffer(t *testing.T) {
 	r.sender.AttachRing(rb)
 	r.start()
 	requireLaunched(t, r)
+	// An idle source starves every packet, but silence padding over silence
+	// is the stream's correct output, not a defect: nothing counts.
 	r.advance(100 * time.Millisecond)
 	stats := r.sender.Stats()
 	if stats.SentBlocks == 0 {
 		t.Fatal("no blocks sent")
 	}
-	if stats.Underruns == 0 {
-		t.Fatal("an empty ring produced no underrun")
+	if got := stats.Underruns; got != 0 {
+		t.Fatalf("an idle source counted %d underruns", got)
 	}
 	if !stats.BufferValid {
 		t.Fatal("buffer read as unknown while streaming")
@@ -80,6 +82,19 @@ func TestStatsCountUnderrunsAndBuffer(t *testing.T) {
 	}
 	if stats.BufferMS < 99 || stats.BufferMS > 101 {
 		t.Fatalf("buffer = %f ms, want about 100", stats.BufferMS)
+	}
+
+	// A starve while the fed audio drains is audible: it counts.
+	r.advance(300 * time.Millisecond)
+	counted := r.sender.Stats().Underruns
+	if counted == 0 {
+		t.Fatal("a starve after fed audio produced no underrun")
+	}
+	// Past the feed window the padding is silence over silence again, and
+	// the counter stops.
+	r.advance(500 * time.Millisecond)
+	if got := r.sender.Stats().Underruns; got != counted {
+		t.Fatalf("starves kept counting past the feed window: %d -> %d", counted, got)
 	}
 }
 

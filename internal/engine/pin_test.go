@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -25,18 +26,20 @@ func movedDevice(host string) device.Device {
 	}
 }
 
-// TestConnectRefusesAMovedPairedEndpoint pins the engine boundary: even a
+// TestValidateTargetRefusesAMovedPairedEndpoint pins the engine boundary: a
 // device that bypassed the merge cannot hand stored credentials to a host
 // other than the one it was paired with.
-func TestConnectRefusesAMovedPairedEndpoint(t *testing.T) {
+func TestValidateTargetRefusesAMovedPairedEndpoint(t *testing.T) {
 	h := newHarness(t)
-	h.e.reg.Put(pinnedEntry("192.0.2.66", 7000))
-	h.e.connect(movedDevice("192.0.2.66"))
-	if h.sessions != 0 {
-		t.Fatalf("sessions = %d, want no session to the moved endpoint", h.sessions)
+	entry := pinnedEntry("192.0.2.66", 7000)
+	h.e.reg.Put(entry)
+	err := h.e.validateTarget(receivers.Target{Device: movedDevice("192.0.2.66"), Entry: entry})
+	var pe *planError
+	if !errors.As(err, &pe) || pe.key != ErrEndpointMoved {
+		t.Fatalf("validateTarget = %v, want endpointMoved", err)
 	}
-	if h.e.lastError == "" {
-		t.Fatal("the refusal was not surfaced")
+	if len(pe.args) != 1 || pe.args[0] != "客厅 HomePod" {
+		t.Fatalf("endpoint-moved args = %q, want the device name", pe.args)
 	}
 }
 

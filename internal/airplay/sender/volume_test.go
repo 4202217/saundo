@@ -105,6 +105,23 @@ func TestFirstConnectRealVolumeKeepsFraction(t *testing.T) {
 	}
 }
 
+// TestVolumeSetBeforeStartSurvivesStart pins the cohort path: openCohort
+// applies a remembered per-target volume before Start, and Start must not
+// clear it, or the receiver jumps to its own level instead of the saved one.
+func TestVolumeSetBeforeStartSurvivesStart(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	rb, _ := fillRing(4410)
+	r.sender.AttachRing(rb)
+	r.sender.SetVolume(37)
+	r.start()
+	requireLaunched(t, r)
+
+	got := volumeRequests(r)
+	if len(got) != 1 || got[0] != "volume: -18.900000" {
+		t.Fatalf("volume requests = %q, want [volume: -18.900000]", got)
+	}
+}
+
 // TestFirstConnectKnownZeroSendsFullVolume keeps the fix from over-correcting:
 // a receiver that really reports 0 dB is known full scale, unlike an unknown
 // value, and must still get the explicit request.

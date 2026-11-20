@@ -295,12 +295,36 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	idle.snap.State = sender.StateIdle
 	idle.snap.ConnectedName = ""
 	idle.snap.PTPActive = false
+	idle.snap.ActiveTargets = nil
+	idle.snap.Targets = nil
 	save("flyout-idle", idle.view, flyoutWidth, visibleFlyoutHeight(idle), false)
 
 	connecting := fixture()
 	connecting.snap.State = sender.StateHandshake
 	connecting.snap.ConnectedName = ""
+	connecting.snap.Targets[0].State = engine.TargetJoining
 	save("flyout-connecting", connecting.view, flyoutWidth, visibleFlyoutHeight(connecting), false)
+
+	// The join: an established member keeps its mixer while the added target
+	// is plain with the connecting state and the cancel action.
+	joining := fixture()
+	joining.snap.State = sender.StateHandshake
+	joining.snap.ConnectedName = ""
+	joining.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	joining.snap.Targets = []engine.TargetControl{
+		{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember},
+		{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo", State: engine.TargetJoining},
+	}
+	save("flyout-joining-light", joining.view, flyoutWidth, visibleFlyoutHeight(joining), false)
+	save("flyout-joining-dark", joining.view, flyoutWidth, visibleFlyoutHeight(joining), true)
+
+	notice := fixture()
+	notice.snap.Notice = engine.SessionNotice{
+		Kind: engine.NoticeMemberLost, DeviceID: "AA:BB:CC:DD:EE:02",
+		Name: "Apple TV", Remaining: 1,
+	}
+	save("flyout-notice-light", notice.view, flyoutWidth, visibleFlyoutHeight(notice), false)
+	save("flyout-notice-dark", notice.view, flyoutWidth, visibleFlyoutHeight(notice), true)
 
 	failed := fixture()
 	failed.snap.State = sender.StateIdle
@@ -409,6 +433,20 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	save("settings-connection-640-light", connection640.settingsView, 640, 420, false)
 	save("settings-connection-640-dark", connection640.settingsView, 640, 420, true)
 
+	// The multi-member session: the sidebar footer names the first member
+	// with a count and carries the joined name as a tooltip.
+	members := fixture()
+	members.page = pageConnection
+	members.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	members.snap.Targets = append(members.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50,
+		Channel: "stereo", State: engine.TargetMember,
+	})
+	members.snap.State = sender.StateStreaming
+	members.snap.ConnectedName = "HomePods + Apple TV"
+	save("settings-connection-members-light", members.settingsView, 720, 500, false)
+	save("settings-connection-members-dark", members.settingsView, 720, 500, true)
+
 	// The general page at the 640 minimum, scrolled to its last rows, where
 	// the subtitle rows have the least width.
 	general640 := fixture()
@@ -418,13 +456,12 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 
 	connectionUnknown := fixture()
 	connectionUnknown.page = pageConnection
-	connectionUnknown.snap.ReceiverLatencyMS = 0
 	save("settings-connection-unknown-light", connectionUnknown.settingsView, 720, 500, false)
 	save("settings-connection-unknown-dark", connectionUnknown.settingsView, 720, 500, true)
 
 	connectionUnstable := fixture()
 	connectionUnstable.page = pageConnection
-	connectionUnstable.snap.DroppedSamples = 3
+	connectionUnstable.snap.Diagnostics.Degraded = true
 	save("settings-connection-unstable-light", connectionUnstable.settingsView, 720, 500, false)
 	save("settings-connection-unstable-dark", connectionUnstable.settingsView, 720, 500, true)
 
@@ -504,6 +541,32 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	receiversHidden.receiverHiddenOpen = true
 	save("settings-receivers-hidden-light", receiversHidden.settingsView, 720, 500, false)
 
+	// The created stereo combo: its expanded card, the two dialogs over the
+	// page, and the flyout's combo row.
+	comboCard := comboFixture()
+	comboCard.page = pageReceivers
+	comboCard.receiverOpen = map[string]bool{"combo:01": true}
+	save("settings-receivers-combo-light", comboCard.settingsView, 720, 560, false)
+	save("settings-receivers-combo-dark", comboCard.settingsView, 720, 560, true)
+
+	comboCreate := receiverFixture()
+	comboCreate.page = pageReceivers
+	comboCreate.receiverDialog = receiverDialogState{kind: receiverDialogComboCreate, entered: true}
+	comboCreate.receiverDialogOpen = true
+	save("settings-receivers-combo-create-light", comboCreate.settingsView, 720, 560, false)
+	save("settings-receivers-combo-create-dark", comboCreate.settingsView, 720, 560, true)
+
+	comboUnlink := comboFixture()
+	comboUnlink.page = pageReceivers
+	comboUnlink.receiverDialog = receiverDialogState{kind: receiverDialogComboUnlink, key: "combo:01", entered: true}
+	comboUnlink.receiverDialogOpen = true
+	save("settings-receivers-combo-unlink-light", comboUnlink.settingsView, 720, 560, false)
+	save("settings-receivers-combo-unlink-dark", comboUnlink.settingsView, 720, 560, true)
+
+	comboFly := flyoutComboFixture()
+	save("flyout-combo-light", comboFly.view, flyoutWidth, visibleFlyoutHeight(comboFly), false)
+	save("flyout-combo-dark", comboFly.view, flyoutWidth, visibleFlyoutHeight(comboFly), true)
+
 	receiversLocal := localReceiverFixture()
 	receiversLocal.snap.SelectedID = ""
 	receiversLocal.snap.ConnectedName = ""
@@ -545,6 +608,19 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 		receiversPage.receiverDialogOpen = true
 		save("dialog-receiver-password", receiversPage.settingsView, 720, 500, false)
 	}
+
+	// A two-member session: the connection card and sidebar name the whole
+	// session, and the receiver stat carries the slowest member's value.
+	multiSession := fixture()
+	multiSession.page = pageConnection
+	multiSession.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	multiSession.snap.Targets = append(multiSession.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo",
+		State: engine.TargetMember,
+	})
+	multiSession.snap.ConnectedName = "HomePods + Apple TV"
+	save("settings-connection-session-light", multiSession.settingsView, 720, 500, false)
+	save("settings-connection-session-dark", multiSession.settingsView, 720, 500, true)
 
 	customSettings := fixture()
 	customSettings.page = pageAudio

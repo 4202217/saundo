@@ -5,7 +5,7 @@ area (the window frame adds a few DIPs; min 640×420), hidden title bar,
 created hidden at startup before the engine starts. The desktop text scale
 multiplies the content size (`scaledSize`; 125% gives 900×625 and an 800×525
 minimum) while the view carries the same scale as its content zoom, so the
-layout stays 720 DIP wide. The title, cards, and
+layout stays 720 DIP wide. The title, cards
 notes share one content column capped at 720 DIP and centered on a wider
 window; the scroll gutter stays at the window edge. Title is localized: `设置 · 声渡` under zh-CN,
 `Settings · Saundo` under en — match windows by class `MyGoWindow` + pid;
@@ -18,14 +18,30 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 
 - 通用 page: 发送端名称 (the name receivers show on their next connection),
   登录时自动启动 (a `HKCU\...\Run` value named `com.saundo.app` in the
-  packaged build; a macOS login item on darwin), 托盘动画, language, and
+  packaged build; a macOS login item on darwin), 托盘动画, language
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
   once).
-- 连接 page: a health card for the current receiver (identity, state, and
-  while streaming 延迟模式, 接收器处理, and 稳定性; the two latency values
-  name different stages and are never summed; 稳定性 reads 良好 or 有卡顿;
-  disconnected shows identity and state only), then 断开后自动重连,
-  严格验证接收器, and 连接后静音本机输出 (on by default).
+- 连接 page: two sections above the switches card. 已连接设备 lists every
+  target in the session: a 24-DIP glyph, the name, a second line of model · channel · volume, and the member state
+  (正在播放, 正在连接…, 正在重连…, 连接失败) right-aligned and vertically
+  centered. A retransmit share of at least 0.5% or any underrun joins the
+  second line in the warning color; healthy devices show no counters. A
+  dropped member leaves the list and appears under the card as
+  `{name} 已断开` with 重新连接, from the engine's session notice. 本次连接
+  appears only while streaming with measurements: a 2×2 grid of 已连接时长,
+  稳定性 (良好 or 有卡顿, with 丢样 and 欠载 on the label line), 网络重传,
+  and 重连, above one full-width hairline. Both section labels use the group
+  style (11.5 / 600 / letter-spacing) above the cards. No latency mode and no
+  receiver-processing stat appear here. The sidebar's footer identity names a
+  multi-member session `{name} 和其他 {n} 台` / `{name} and {n} more` (the
+  first member plus a count, joined name on the tooltip); one member keeps
+  its name, a stereo pair reads 已连接 · 立体声组. Pinned by
+  `TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
+  `TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
+  `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
+  `TestConnectionPagePairRow`, `TestConnectionPageSpeaksForTheSession`. Below
+  the sections are 断开后自动重连, 严格验证接收器, and 连接后静音本机输出 (on
+  by default).
   The mute row's subtitle follows the engine state (`MuteLocal`): off,
   waiting for a connection, muted now, or failed; the driver caveat under
   the card shows only while the switch is on. With a per-app selection on
@@ -33,25 +49,46 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   apps are muted, and the note says other apps keep playing. Launch
   auto-connect is not here — it is per receiver on the 接收器 page.
 - 接收器 page (receiver registry, `receivers_page.go`): every remembered or
-  manually added row with 启动时自动连接 (per receiver), hidden, and a
-  0–2000 ms delay slider (500 ms debounced restart); a password row only
+  manually added row with 启动时自动连接 (multi-select — every flagged
+  receiver connects at launch as one cohort; 可勾选多台；启动时会一起连接),
+  hidden, a volume
+  slider, and a 声道 segment (立体声 / 左 / 右 for a single receiver, a
+  disabled 立体声 on a discovered pair); the per-device delay slider stays out
+  of settings. A password row only
   when the receiver can use one (a Mac, a manual row, or a saved password),
   masked, saved/cleared through the OS secret store (DPAPI on Windows,
   Keychain-backed AES on macOS); add/edit/password/
   remove dialogs (`receivers_dialogs.go`). A receiver on this host is the
   exception: it is forced into the hidden group with a 本机 chip, no switch,
-  no expander, and no delay or password settings. The flyout and this list
+  no expander, and no channel or password settings. The flyout and this list
   show
   manual receivers and online discovered receivers; an offline discovered
   receiver is hidden and returns with its saved settings. The active
-  session's row stays reachable even when it just went offline. The 已启用
-  head renders only when the list has rows. An empty page is plain prose:
-  a title plus the discovery hint when nothing is found, or an all-hidden
-  title plus the recovery hint when every row is hidden; the add row is the
-  only plus.
+  session's row stays reachable even when it just went offline. The 单独接收器
+  and 立体声组合 sections each draw a head: the label, its count pill while the
+  section has rows, and its create action at the right (添加 / 创建组合). A
+  section with no rows drops the pill and the action and shows its dashed row
+  instead (添加接收器 / 创建立体声组合). A page with no receivers shows only the
+  单独接收器 head and the 添加接收器 row; the combo section waits for a first
+  row.
+- 立体声组合 section (`receiverComboRow`): created combos live in their own
+  card under the same group-head style, so the combo's expanded body never
+  runs into a single receiver's card. The row shows the stereo glyph, the
+  立体声组合 chip, and the two member names as the subtitle; the expanded
+  body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
+  member, the offline side dimmed, a swap button between them that flips the
+  sides in place without a rebuild), a warning bar naming an offline member,
+  and one volume for both members. 解除组合 rides the head's tail while
+  expanded and opens the red confirm dialog. 创建立体声组合 (the dashed row, or the
+  立体声组合 head's 创建组合 once the section has rows) opens the create dialog: a 左/右 select per side,
+  the derived 「A + B」 name suggestion, and 组合 at 40% until both sides are
+  chosen. Members drop from the list and the flyout while linked
+  (`TestReceiverComboRowRendersTheChannelMap`,
+  `TestReceiverComboUnlinkOpensTheConfirmDialog`,
+  `TestReceiverComboCreateDialogOpensAndNames`).
 - 音频 page: latency mode tiles (低延迟/标准/稳定/自定义), the custom slider
   (20–2000 ms, applies 500 ms after the last change), the 托盘面板中显示
-  header switch that shows or hides the flyout's latency segment row, and
+  header switch that shows or hides the flyout's latency segment row
   read-only format/sync rows. Below 714 DIP the three presets stack as
   full-width rows in the custom tile's shape; at every width they take the
   height their wrapped description needs, so no text leaves its card. The
@@ -60,7 +97,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   action, a 72-DIP preview of the current preset with its localized name, a
   颜色来源 row (封面 / 模板) whose segment sits at its right, a 模板 block
   whose six fixed 68-DIP tiles (暖烬, 沙丘, 苔庭, 潮汐, 兰夜, 月白) wrap on a
-  narrow page, its 六组预设灯光颜色 description, the Sound Glow reminder, and
+  narrow page, its 六组预设灯光颜色 description, the Sound Glow reminder
   the 自动关闭氛围灯 row (from 从不 to 30 分钟, default 30). Off dims the
   preview to 35% and disables the grid and the standby select. The page and
   the flyout's ambient card read the same global choice; see
@@ -73,7 +110,7 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   loopback cannot keep the selected app off the local output without
   silencing the capture. The status row counts a multi-app selection and
   keeps the rate visible, with the full names in its tooltip; it shows
-  `{active}/{selected}` with a warning dot when some apps are missing, and
+  `{active}/{selected}` with a warning dot when some apps are missing
   "Waiting for the selected apps" until one has a process. Both
   pickers are 220 DIP wide, for device and app names. The status keeps the
   row's right-hand column, capped at 55% and ellipsized so a long device name
@@ -110,7 +147,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionHealthCardLabelsAreExact|TestConnectionHealthCardStability|TestConnectionHealthCardUnknownAndDisconnected|TestConnectionHealthCardShowsBaseLatency|TestConnectionHealthCardStereoGroup|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsDiscoveryHint|TestReceiverPageAllHiddenShowsProse|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting' -v ./internal/app/
+go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestConnectionPageDeviceHealthNotableOnly|TestConnectionPageSessionCardDegraded|TestConnectionPagePairRow|TestConnectionPageSpeaksForTheSession|TestReceiverComboRowRendersTheChannelMap|TestReceiverComboUnlinkOpensTheConfirmDialog|TestReceiverComboCreateDialogOpensAndNames|TestReceiverComboOfflineWarning|TestComboCreateRefusesAnIncompleteForm|TestComboMemberSubtitleAvoidsRepeatingTheName|TestFlyoutComboRowKeepsItsNameBesideTheTag|TestComboPickRowsExcludeTheOtherSide|TestReceiverPageShowsSaveErrors|TestStereoIconFollowsMembers' -v ./internal/app/
 ```
 
 Settings defaults:
@@ -129,7 +166,7 @@ SAUNDO_MUTE_TEST=1 go test -run TestLiveMuteLocal -v ./internal/engine/
 ```
 
 E2E UI drives this window from the e2e build: launch it as SKILL.md's e2e
-launch block shows, press the flyout's gear (设置) to raise the window, and
+launch block shows, press the flyout's gear (设置) to raise the window
 act on the refs a snapshot prints:
 
 ```bash
@@ -181,8 +218,8 @@ change in the flyout).
   (latency presets, receiver delay) with the 300/500 ms debounce — one
   restart with the final value is correct; one per click is a bug. The
   connection mute is held across that in-place restart
-  (`engine.go:1401-1413`); a mute dropping there is a bug, not the expected
-  release.
+  (`cohort.go:562-609`; `closeSession` in `engine.go:965-978`); a mute
+  dropping there is a bug, not the expected release.
 - Per-app claims need macOS 14.4+; on Windows the picker, its status states,
   and the per-app mute copy are unreachable. In per-app mute mode no
   `mute-guard.json` is written, so the forced-kill guard step needs system
@@ -199,5 +236,5 @@ change in the flyout).
   but the settings preview shows the live or sample card.
 - The receiver track info is always pushed while streaming; the display
   switch does not gate it.
-- Passwords never render back — dots only (`receivers_page.go:523-527`). A
+- Passwords never render back — dots only (`receivers_page.go:486-492`). A
   page showing a stored password verbatim is a bug.

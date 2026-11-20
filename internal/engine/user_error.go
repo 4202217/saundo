@@ -6,37 +6,60 @@ package engine
 type UserErrorKey string
 
 const (
-	ErrDeviceMissing        UserErrorKey = "deviceMissing"
+	ErrDeviceMissing UserErrorKey = "deviceMissing"
+	// ErrDeviceOffline refuses adding a receiver whose discovered row went
+	// offline, before the live cohort is stopped for a dial that cannot work.
+	// Args are the receiver's display name.
+	ErrDeviceOffline        UserErrorKey = "deviceOffline"
 	ErrLatencyDeviceMissing UserErrorKey = "latencyDeviceMissing"
 	ErrLatencyOffline       UserErrorKey = "latencyOffline"
 	ErrSavePassword         UserErrorKey = "savePassword"
 	ErrSaveReceiver         UserErrorKey = "saveReceiver"
 	ErrLocalReceiver        UserErrorKey = "localReceiver"
 	ErrStereoMembersOffline UserErrorKey = "stereoMembersOffline"
-	ErrFairPlay             UserErrorKey = "fairPlay"
-	ErrEndpointMoved        UserErrorKey = "endpointMoved"
-	ErrSessionOpen          UserErrorKey = "sessionOpen"
-	ErrReconnectStopped     UserErrorKey = "reconnectStopped"
-	ErrReceiverMissing      UserErrorKey = "receiverMissing"
-	ErrDeletePassword       UserErrorKey = "deletePassword"
+	// ErrComboMemberOffline refuses a combo whose member is offline or whose
+	// member row is incomplete. Args are the member's display name.
+	ErrComboMemberOffline UserErrorKey = "comboMemberOffline"
+	// ErrComboInvalid rejects a link whose two receivers cannot form a combo:
+	// one side is missing, already linked, a native pair, the local host, or
+	// not an AirPlay 2 receiver.
+	ErrComboInvalid  UserErrorKey = "comboInvalid"
+	ErrFairPlay      UserErrorKey = "fairPlay"
+	ErrEndpointMoved UserErrorKey = "endpointMoved"
+	ErrSessionOpen   UserErrorKey = "sessionOpen"
+	// ErrClockConflict rejects a clock mix the process cannot host: a set of
+	// standalone PTP receivers beside a sender-side PTP master. Args are one
+	// target name from each family.
+	ErrClockConflict    UserErrorKey = "clockConflict"
+	ErrReconnectStopped UserErrorKey = "reconnectStopped"
+	ErrReceiverMissing  UserErrorKey = "receiverMissing"
+	ErrDeletePassword   UserErrorKey = "deletePassword"
+	// ErrPasswordRejected means the receiver refused the saved password.
+	// Args are its display name.
+	ErrPasswordRejected UserErrorKey = "passwordRejected"
 )
 
 // UserErrorKeys lists every key the UI must resolve. The app's resolver test
 // walks it, so a new key cannot land without a catalog message.
 var UserErrorKeys = []UserErrorKey{
 	ErrDeviceMissing,
+	ErrDeviceOffline,
 	ErrLatencyDeviceMissing,
 	ErrLatencyOffline,
 	ErrSavePassword,
 	ErrSaveReceiver,
 	ErrLocalReceiver,
 	ErrStereoMembersOffline,
+	ErrComboMemberOffline,
+	ErrComboInvalid,
 	ErrFairPlay,
 	ErrEndpointMoved,
 	ErrSessionOpen,
+	ErrClockConflict,
 	ErrReconnectStopped,
 	ErrReceiverMissing,
 	ErrDeletePassword,
+	ErrPasswordRejected,
 }
 
 // fail records a keyed user error. The key is also the fallback string, so

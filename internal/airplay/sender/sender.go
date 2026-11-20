@@ -52,8 +52,7 @@ const (
 	feedbackInterval       = 25 * time.Second
 	ap2Feedback            = 2 * time.Second
 	volumePollInterval     = time.Second
-	// startWaitTimeout bounds how long a ready pair member waits for its peer.
-	// It outlasts the 30 s PTP re-synchronization window.
+	// startWaitTimeout outlasts the 30 s PTP re-synchronization window.
 	startWaitTimeout = 40 * time.Second
 	inBufMaxFrames   = 8192
 	defaultLatency   = 22050 + 44100
@@ -238,8 +237,7 @@ type Sender struct {
 
 	identity   Identity
 	strictAuth bool
-	// latencyMS is the presentation latency in milliseconds, applied to the
-	// PTP stream SETUP (latencyMin/latencyMax) and the sync packets.
+	// latencyMS is applied to the PTP stream SETUP and the sync packets.
 	latencyMS int
 	// nextLatencySamples carries the SETUP latency to startStreaming.
 	nextLatencySamples int64
@@ -252,6 +250,9 @@ type Sender struct {
 	underruns   uint64
 	sentBlocks  uint64
 	sendErrors  uint64
+	// ringFed/lastFedFrames gate underrun counting; see sendAudioPacket.
+	ringFed       bool
+	lastFedFrames uint64
 	// encryptErrors counts audio packets dropped because the AP2 cipher
 	// refused the payload. A packet that cannot be encrypted is never sent.
 	encryptErrors uint64
@@ -337,14 +338,16 @@ type Sender struct {
 	// startWaitUntil bounds how long a ready member waits for its peers.
 	startWaitUntil time.Time
 
-	clockStart    time.Time
-	startTs       uint64
-	framesSent    uint64
-	latency       uint32
-	seq           uint16
-	firstAudio    bool
-	paused        bool
-	pauseWanted   bool
+	clockStart  time.Time
+	startTs     uint64
+	framesSent  uint64
+	latency     uint32
+	seq         uint16
+	firstAudio  bool
+	paused      bool
+	pauseWanted bool
+	// channel maps the captured stereo pair onto both outputs.
+	channel       ChannelMode
 	pendingVolume float64
 
 	ring      *ring.Buffer
@@ -401,6 +404,8 @@ type Sender struct {
 	digestRealm   string
 	digestNonce   string
 	digestRetried bool
+	// passwordRejected marks a handshake the receiver refused for a bad password.
+	passwordRejected bool
 }
 
 // New returns a sender that sends through io and reports through events.
@@ -638,11 +643,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.serverPort, s.controlPort, s.timingPort = 0, 0, 0
 	s.framesSent = 0
 	s.firstAudio = true
-	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
-	s.encryptErrors = 0
-	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
-	s.lastSync = time.Time{}
-	s.wifi = WiFiMetrics{}
+	s.resetSessionCounters()
 	if s.resampler == nil {
 		s.resampler = resample.NewLinear(s.inputRate)
 	} else {
@@ -654,8 +655,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	for i := range s.backlogSeq {
 		s.backlogSeq[i] = -1
 	}
-	s.pendingVolume = noVolume
-
+	// A volume set before Start is the next session's initial level.
 	s.wipeSecrets()
 	s.ap2 = nil
 	s.pairStage = pairNone
@@ -671,6 +671,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.pairSetupSessionKey = nil
 	s.digestRealm, s.digestNonce = "", ""
 	s.digestRetried = false
+	s.passwordRejected = false
 
 	timingPort, timingErr := s.io.UDPBind(raopio.UDPTiming)
 	controlPort, controlErr := s.io.UDPBind(raopio.UDPControl)
@@ -936,8 +937,6 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		}
 	}
 }
-
-func (s *Sender) now() time.Time { return s.clock() }
 
 // resetStartState drops per-session wait state so a stopped sender reports no
 // pending start deadline. startGate is configuration and is kept.

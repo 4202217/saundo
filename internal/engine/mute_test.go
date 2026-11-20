@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"saundo/internal/airplay/device"
 	"saundo/internal/capture"
 )
 
@@ -230,8 +229,8 @@ func TestLatencyRestartRestoresMuteWhenTheNewSessionFails(t *testing.T) {
 	h.launch()
 	h.settleMute(t, MuteLocalActive)
 
-	h.e.newSession = func(device.Device) (transport, func(), error) {
-		return nil, nil, errors.New("no route")
+	h.e.newCohort = func(sessionPlan) (transport, error) {
+		return nil, errors.New("no route")
 	}
 	h.e.handleCommand(command{kind: cmdLatency, value: 1500, reconnect: true})
 	h.settleMute(t, MuteLocalWaiting)

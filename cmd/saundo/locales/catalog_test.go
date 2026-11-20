@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // TestCatalogKeyParity keeps the translations complete. mygo i18n check
@@ -124,16 +125,20 @@ func TestCatalogUniqueValues(t *testing.T) {
 		"settingsSave": true, "receiverDialogSave": true,
 		"languageSystem": true, "themeSystem": true,
 		"receiverGroupHidden": true, "receiverChipHidden": true,
+		"comboTag": true, "receiverGroupCombo": true,
+		"receiverAddAction": true, "receiverDialogAdd": true,
 		"receiverAddTitle": true, "receiverDialogTitleAdd": true,
 		"receiverPasswordTitle": true, "receiverAuthPassword": true, "receiverFieldPassword": true,
 		"updateAvailableTitle": true, "flyoutUpdateAvailable": true,
 		"updateAvailableMeta": true, "updateNotesMeta": true,
 		"settingsNavLamp": true, "settingsLampCardTitle": true, "flyoutLampSection": true,
 		"settingsLampTemplates": true, "lampSourceTemplate": true,
-		"lampSourceCover": true, "summaryCurrentDevice": true,
-		"passwordLabel": true, "receiverFieldAuth": true,
+		"lampSourceCover": true,
+		"passwordLabel":   true, "receiverFieldAuth": true,
 		"themeLight":            true,
 		"settingsLatencyStable": true, "settingsChannelStable": true,
+		// Uptime and the lamp standby select share the minutes form.
+		"settingsUptimeMinutes": true, "settingsLampStandbyMinutes": true,
 		// Both choices mean "none": no receiver authentication, no cover.
 		"receiverAuthNone": true, "settingsCoverNone": true,
 	}
@@ -192,6 +197,36 @@ func readCatalog(t *testing.T, name string) map[string]string {
 // settings-row subtitle and a link description are labels, not prose, so they
 // carry no final period. Page descriptions, card body text, notes, dialog
 // copy, and status lines keep sentence punctuation.
+// TestPerDeviceControlCopyBudgets keeps the new per-device labels on one
+// line. The channel segment sits beside a title in a narrow settings row, and
+// the volume label carries one receiver name.
+func TestPerDeviceControlCopyBudgets(t *testing.T) {
+	budgets := map[string]int{
+		"volumeFor":           40,
+		"channelLabel":        12,
+		"channelStereo":       12,
+		"channelLeft":         8,
+		"channelRight":        8,
+		"channelTooltip":      60,
+		"muteFor":             30,
+		"unmuteFor":           40,
+		"receiverChannelDesc": 60,
+	}
+	for _, loc := range []string{"en", "zh-CN"} {
+		catalog := readCatalog(t, loc+".json")
+		for key, budget := range budgets {
+			value, ok := catalog[key]
+			if !ok {
+				t.Errorf("%s.json is missing %q", loc, key)
+				continue
+			}
+			if n := utf8.RuneCountInString(value); n > budget {
+				t.Errorf("%s.json %q is %d runes, over the %d-rune one-line budget", loc, key, n, budget)
+			}
+		}
+	}
+}
+
 // TestVolumeValueRoundsToWholePercent keeps the receiver's fractional
 // feedback out of the readout.
 func TestVolumeValueRoundsToWholePercent(t *testing.T) {
@@ -234,7 +269,7 @@ func TestRowHintsHaveNoTerminalPunctuation(t *testing.T) {
 		"settingsAppCaptureDesc",
 		"settingsCaptureStatusDesc",
 		"receiverAutoToggleDesc",
-		"receiverDelayDesc",
+		"receiverChannelDesc",
 		"receiverAddSub",
 		"lampPriorityDesc",
 		"settingsLampStandbyDesc",

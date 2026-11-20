@@ -119,6 +119,11 @@ type Follower struct {
 	event   *net.UDPConn
 	general *net.UDPConn
 
+	// hub is set when this follower borrows a Followers hub's sockets. The hub
+	// owns the exchange loop and the sockets; a borrowed follower's Stop only
+	// marks it stopped.
+	hub *Followers
+
 	stop     chan struct{}
 	done     chan struct{}
 	stopOnce sync.Once
@@ -197,6 +202,9 @@ func (f *Follower) Stop() {
 	f.stopped = true
 	started := f.started
 	f.mu.Unlock()
+	if f.hub != nil {
+		return
+	}
 	f.stopOnce.Do(func() {
 		close(f.stop)
 		_ = f.event.Close()
@@ -289,12 +297,22 @@ func (f *Follower) readOne(conn *net.UDPConn, buf []byte) {
 	if err != nil {
 		return
 	}
-	if !addr.IP.Equal(f.peer) || (addr.Port != eventPort && addr.Port != generalPort) {
+	f.handlePacket(buf[:n], addr, uint64(time.Now().UnixNano()))
+}
+
+// handlePacket applies the peer and port filter, then feeds one datagram to the
+// peer state machine. A Followers hub calls it for the peer it demultiplexed by
+// source address; the single follower calls it from its own loop.
+func (f *Follower) handlePacket(data []byte, from *net.UDPAddr, localNs uint64) {
+	if from == nil || !from.IP.Equal(f.peer) || (from.Port != eventPort && from.Port != generalPort) {
 		return
 	}
-	local := uint64(time.Now().UnixNano())
 	f.mu.Lock()
-	notice, ok := f.handle(buf[:n], local, time.Now(), addr)
+	if f.stopped {
+		f.mu.Unlock()
+		return
+	}
+	notice, ok := f.handle(data, localNs, time.Now(), from)
 	f.mu.Unlock()
 	if ok {
 		f.deliver(notice)

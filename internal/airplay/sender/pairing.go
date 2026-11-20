@@ -30,6 +30,7 @@ func (s *Sender) beginAuthChain() {
 		s.sendPairSetupM1()
 	case device.AuthHAPPassword:
 		if s.digestPassword == "" {
+			s.passwordRejected = true
 			s.fail(fmtError("%s requires the receiver's AirPlay password. Save it in the app's settings for this receiver, then connect again.", s.name))
 			return
 		}
@@ -336,6 +337,7 @@ func (s *Sender) handlePairSetupM4(body []byte) {
 	}
 	if code, ok := tlvError(items); ok {
 		if s.authMethod == device.AuthHAPPassword {
+			s.passwordRejected = true
 			s.fail(fmtError("%s rejected the AirPlay password (error %d). Check the receiver's password in the app's settings.", s.name, code))
 		} else {
 			s.fail(fmtError("Pairing PIN was not accepted (error %d)", code))

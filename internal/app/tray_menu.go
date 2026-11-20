@@ -20,12 +20,12 @@ const trayMenuDeviceRows = 6
 // snapshot, the media session, the ambient light, and the update state.
 // Rebuilding compares the model, so an unchanged model keeps the cached menu.
 type trayMenuModel struct {
-	locale    string
-	dark      bool
-	phase     phase
-	selected  string
-	connected string
-	devices   []trayMenuDevice
+	locale   string
+	dark     bool
+	phase    phase
+	selected string
+	members  []string
+	devices  []trayMenuDevice
 
 	media        bool
 	mediaAUMID   string
@@ -56,12 +56,12 @@ type trayMenuDevice struct {
 // trayMenuKey is what the tray menu's shape depends on. The tooltip follows
 // more of the snapshot and is compared on its own.
 type trayMenuKey struct {
-	locale    string
-	dark      bool
-	phase     phase
-	selected  string
-	connected string
-	devices   string
+	locale   string
+	dark     bool
+	phase    phase
+	selected string
+	members  string
+	devices  string
 
 	media        bool
 	mediaAUMID   string
@@ -87,6 +87,7 @@ func (a *App) trayModel(locale string, dark bool) trayMenuModel {
 		dark:       dark,
 		phase:      phaseOf(a.snap),
 		selected:   a.snap.SelectedID,
+		members:    append([]string(nil), a.snap.ActiveTargets...),
 		lampOff:    a.snap.LampOff,
 		lampCover:  a.snap.LampCover,
 		lampPreset: lamp.Normalize(a.snap.LampPreset),
@@ -95,11 +96,8 @@ func (a *App) trayModel(locale string, dark bool) trayMenuModel {
 	if m.selected == "" {
 		m.selected = a.selID
 	}
-	if m.phase != phaseIdle {
-		m.connected = m.selected
-	}
 	for i, d := range a.snap.Devices {
-		m.devices[i] = trayMenuDevice{id: d.ID, name: d.Name, family: deviceIconKey(d.Model, d.IsStereoGroup()), online: d.Online}
+		m.devices[i] = trayMenuDevice{id: d.ID, name: d.Name, family: stereoIconKey(d, d.IsStereoGroup()), online: d.Online}
 	}
 	if s, ok := a.nowSession(); ok && a.cfg.PlaybackControls && a.nowHasControls(s) {
 		m.media = true
@@ -131,7 +129,7 @@ func (m trayMenuModel) key() trayMenuKey {
 		dark:          m.dark,
 		phase:         m.phase,
 		selected:      m.selected,
-		connected:     m.connected,
+		members:       strings.Join(m.members, ","),
 		devices:       b.String(),
 		media:         m.media,
 		mediaAUMID:    m.mediaAUMID,
@@ -154,13 +152,24 @@ func (m trayMenuModel) key() trayMenuKey {
 // the accent-colored variant for the appearance, the other rows the template
 // in the menu's text color.
 func (m trayMenuModel) deviceIcon(d trayMenuDevice) string {
-	if d.id != m.connected {
+	if !m.isMember(d.id) {
 		return "dev:" + d.family
 	}
 	if m.dark {
 		return "devond:" + d.family
 	}
 	return "devon:" + d.family
+}
+
+// isMember reports whether the target is in the live or wanted session, so
+// every member row carries the session glyph and state, not just the primary.
+func (m trayMenuModel) isMember(id string) bool {
+	for _, member := range m.members {
+		if member == id {
+			return true
+		}
+	}
+	return false
 }
 
 // lampSubtitle names the light's current state without opening the submenu.
@@ -199,7 +208,7 @@ func (a *App) trayMenuItems(m trayMenuModel) []*mygo.MenuItem {
 		shown = shown[:trayMenuDeviceRows]
 	}
 	for _, d := range shown {
-		active := d.id == m.connected
+		active := m.isMember(d.id)
 		item := &mygo.MenuItem{
 			Label: d.name,
 			Icon:  a.menuIcons[m.deviceIcon(d)],

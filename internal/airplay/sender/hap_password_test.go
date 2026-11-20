@@ -107,6 +107,9 @@ func TestHAPPasswordWrongPasswordFailsWithoutPrompt(t *testing.T) {
 	if len(r.pins) != 0 || r.sender.WaitingForPin() {
 		t.Fatal("a wrong password must not prompt for a PIN")
 	}
+	if !r.sender.PasswordRejected() {
+		t.Fatal("a rejected password must be reported to the host")
+	}
 }
 
 // TestHAPPasswordRequiredFailsBeforePairing proves the sender refuses to

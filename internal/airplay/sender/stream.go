@@ -10,6 +10,8 @@ import (
 	"saundo/internal/audio/resample"
 )
 
+func (s *Sender) now() time.Time { return s.clock() }
+
 // rtpTime32 is the RTP timestamp of the next packet. The huge NTP-derived
 // base cancels, so it starts at the fixed latency and advances one per frame.
 func (s *Sender) rtpTime32() uint32 {
@@ -65,7 +67,7 @@ func (s *Sender) PacerLag() (frames uint64, lagging bool) {
 // AirPlay 1 receivers keep the continuous silence stream: suspend and resume
 // are verified only on HAP AP2.
 func (s *Sender) SetPaused(paused bool) bool {
-	if !s.airplay2 {
+	if !s.PauseSupported() {
 		return false
 	}
 	s.pauseWanted = paused
@@ -74,6 +76,16 @@ func (s *Sender) SetPaused(paused bool) bool {
 	}
 	return true
 }
+
+// PauseSupported reports whether this sender can suspend and resume the
+// realtime stream. Only HAP AP2 receivers verify it; an AirPlay 1 receiver
+// keeps streaming silence.
+func (s *Sender) PauseSupported() bool { return s.airplay2 }
+
+// PauseRequested reports whether a pause is recorded for this sender, either
+// applied now or waiting for the stream to begin. A caller that must not
+// pause part of a cohort checks it before any member is touched.
+func (s *Sender) PauseRequested() bool { return s.pauseWanted }
 
 // Pushing reports whether the realtime stream is currently sending RTP. A
 // suspended pacer is not pushing, which is the state the idle standby counts.
@@ -98,6 +110,7 @@ func (s *Sender) applyPause(paused bool) {
 		frames := int(float64(s.inputRate) * DefaultStartCushion.Seconds())
 		s.ring.KeepNewest(frames * channels)
 	}
+	s.ringFed, s.lastFedFrames = false, s.framesSent
 	s.pacer.arm(now)
 	s.info("audio resumed at frame %d", s.framesSent)
 }
@@ -106,7 +119,19 @@ func (s *Sender) sendAudioPacket() {
 	var frames [framesPerPacket * channels]int16
 	available := s.fillFrames(frames[:])
 	if available < framesPerPacket {
-		s.underruns++
+		// A starve is a defect the receiver can hear only while the source
+		// was feeding the ring: roughly two start cushions after the last
+		// real packet. Past that window the padding carries silence over
+		// silence, which is what an idle source should stream. The window
+		// divides the capture rate while framesSent counts output frames, so
+		// at 48 kHz capture it runs about a tenth longer than 100 ms — close
+		// enough for a heuristic.
+		if s.ringFed && s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+			s.underruns++
+		}
+	} else {
+		s.ringFed = true
+		s.lastFedFrames = s.framesSent
 	}
 
 	var header [12]byte
@@ -180,7 +205,9 @@ func (s *Sender) fillFrames(dst []int16) int {
 	if s.resampler == nil {
 		s.resampler = resample.NewLinear(s.inputRate)
 	}
-	return s.resampler.Resample(dst, s.ring.Pop)
+	frames := s.resampler.Resample(dst, s.ring.Pop)
+	applyChannel(dst, frames, s.channel)
+	return frames
 }
 
 // encryptAudioPayload applies the AP2 audio cipher. AAD is RTP header bytes 4

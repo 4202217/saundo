@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-17 -->
+<!-- reviewed-through: 2026-11-20 -->
 
 # UI copy standard
 
@@ -15,6 +15,8 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | The media card | 媒体卡片 | media card | 媒体卡 (short form) |
 | Ambient light | 氛围灯 | ambient light | 顶屏灯光 as the feature name |
 | The light's target | 顶屏 | top display | 屏幕 |
+| A target's volume | 音量 | volume | 音量大小, 输出音量 |
+| A target's stereo side | 声道 | channel | 左声道, 右声道, 单声道 as values; the combo layout fields read 左声道 / 右声道 on purpose |
 | A receiver on the machine running saundo | 本机 | local | 自身接收器, this device, this Mac as the chip |
 
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is named 系统声音 / system audio, never 接收器 or 设备. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
@@ -28,11 +30,26 @@ The tray menu's receiver rows keep the flyout's 离线 status. The session actio
 | Concept | Chinese | English | Do not use |
 |---|---|---|---|
 | The sender buffer the user chooses | 延迟模式 | latency mode | 调度缓冲, 缓冲延迟 |
-| The receiver's own reported processing time | 接收器处理 | receiver processing | 接收器输出, 设备输出 |
 | Session audio stability | 稳定性 | stability | 丢样本, 丢帧 |
 | Where the latency mode is changed | 可在音频页调整 | Adjust on Audio | — |
 
-The two latency values measure different stages. Never draw them as one bar, never add them, and never present the receiver's value as a total.
+The connection page shows no latency value; the latency mode lives on 音频 and the flyout's ALAC line carries the effective value. The receiver's own processing time is measured for diagnostics and has no surface.
+
+## Per-device controls
+
+A target is one receiver, one native stereo pair, or one user-created stereo combo. Volume and channel belong to the target. The settings receiver row keeps the volume slider and the channel segment; the per-device delay row was removed from settings at the user's request. In the flyout, each session member's row carries its own volume slider under the name; a single receiver also carries an icon-only channel button before the name, and a stereo target draws no channel control at all, because its members play one side each. The row's model line yields while the device is a member. A row the engine is joining or reopening is plain and its model line reads 正在连接… / Connecting… while joining, 正在重连… / Reconnecting… while an automatic retry reopens it. The joining row's 取消 / Cancel removes just that target; a member's 断开连接 / Disconnect removes only that row's target; the device section head's 全部断开 / Disconnect all ends the whole session. The slider's label names its target: `Volume · HomePods` / `音量 · HomePods`. The channel button has no visible text: its tooltip and accessible name read `Channel: {current} · Click for {next}` / `声道：{current} · 点击切换到 {next}`. The button's solid side is the current side. The speaker glyph is a button with no visible label; its tooltip and accessible name read `Mute {device}` / `静音 {device}`, or `Unmute {device}` / `取消静音 {device}` at zero volume.
+
+The channel choices are `Stereo` / `立体声`, `Left` / `左`, and `Right` / `右`. Left or right copies that input channel into both outputs. The settings row hints this with `Left or right copies that channel to both outputs` / `左或右会把该声道复制到两个输出`; as a row hint it carries no terminal punctuation. A stereo pair always plays stereo: its settings row shows a disabled `立体声`, never `左` or `右`.
+
+A stereo combo (软件立体声组合) reads 立体声组合 as its section label (Stereo combos in English) and the same word as its row chip (Stereo combo singular), and names itself `{left} + {right}` from its two members. The create entry reads 创建立体声组合 / Create stereo combo with the hint 两台接收器各播一个声道 / One receiver per channel; the dialog commits as 组合 / Create. Each side excludes the receiver the other side holds, so the same receiver cannot be chosen twice. The layout row reads 声道布局 / Channel layout and the swap action 交换左右声道 / Swap left and right. Unlinking reads 解除组合 / Unlink; the dialog 解除立体声组合 / Unlink stereo combo states 「{name}」将拆回两台独立接收器。/ {name} splits back into two standalone receivers. and the hint 组合的音量不再适用；每台接收器保留自己的设置。/ The combo volume stops applying; each receiver keeps its own settings. An offline member warns 「{name}」未连接，无法启动组合 / {name} is offline, so the combo cannot start. The engine's refusal reads 这两台接收器无法组成立体声组合。/ These receivers cannot form a stereo combo.
+
+A multi-target session names itself as `{name} + {name}` where the engine publishes one name (`ConnectedName`); the settings sidebar instead names it `{name} 和其他 {n} 台` / `{name} and {n} more` — the first member plus a count — because a joined name overflows the 190-DIP sidebar, and the joined form rides that row's tooltip. The connection page's 已连接设备 card lists every target and its own state; the 本次连接 card reports the measured session health.
+
+A member that leaves while the rest continue reads `{name} 已断开，其他设备继续播放` / `{name} disconnected; the other devices keep playing`; a join in progress reads `正在加入 {name}，其他设备会短暂暂停` / `Adding {name}; the other devices pause briefly`. The notice's dismiss action is 忽略 / Dismiss, and its only other action is 重试 / Retry on the loss.
+
+A refused saved password reads `{device} 的密码未被接收器接受。` / `The receiver did not accept the password for {device}.` The masked password dialog that opens is the same one used on first connect; the error explains why it reopened.
+
+The 连接 page names its two sections 已连接设备 / Connected devices and 本次连接 / This connection, in the group-label style above the card. A device row's state reuses 正在播放 / Streaming, 正在连接… / Connecting…, 正在重连… / Reconnecting…, and 连接失败 / Connection failed. A device dropped while the rest continue appears as `{name} 已断开` / `{name} disconnected` with 重新连接 / Reconnect. The measured card reads 已连接时长 / Connected for, 稳定性 / Stability with `丢样 {drops} · 欠载 {underruns}` / `{drops} dropped · {underruns} underruns`, 网络重传 / Network retransmit, and 重连 / Reconnects; a healthy device's counters stay hidden, and a notable one reads `重传 {pct}%` / `{pct}% retransmitted` and `欠载 {n}` / `{n} underruns`.
 
 ## One state, one phrase
 
@@ -96,6 +113,7 @@ Every other protocol or implementation term needs a plain-language replacement b
 
 - `TestCatalogHasNoDeadKeys` fails when a catalog key has no caller.
 - `TestCatalogBannedTerms` fails when Chinese copy contains a banned synonym or an implementation term.
+- `TestPerDeviceControlCopyBudgets` keeps the new labels within their one-line budgets.
 - `TestLatencyText` pins the unit rule.
 
 A new UI string lands with its key, both languages, the surface that shows it, and the gate that covers its rule. Deleting a surface deletes its keys in the same change.

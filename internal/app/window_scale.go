@@ -16,7 +16,7 @@ func (a *App) fitFlyout() {
 	if a.win == nil && a.resizeWindow == nil {
 		return
 	}
-	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
+	h := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset, a.noticeShown())
 	scale := a.textScale()
 	if h == a.flyoutH && scale == a.flyoutScale {
 		return

@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 // visibleFlyoutHeight is the height a tester should use for this App's
 // current devices, latency row, and media card.
 func visibleFlyoutHeight(a *App) int {
-	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
+	return flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset, a.noticeShown())
 }
 
 func withLocale(t *testing.T, tag string) {
@@ -55,7 +55,6 @@ func withLocale(t *testing.T, tag string) {
 func previewApp() *App {
 	a := &App{
 		cfg:               settings.Default(),
-		volume:            65,
 		captureNames:      []string{locales.CaptureFollowSystem(), "Speakers"},
 		captureIDs:        []string{"", "{endpoint}"},
 		captureLabels:     []string{locales.CaptureFollowSystem(), "Speakers"},
@@ -82,9 +81,11 @@ func previewApp() *App {
 			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 		},
 		SelectedID:        "AA:BB:CC:DD:EE:01",
+		Diagnostics:       engine.Diagnostics{HasStats: true, SessionUptime: 42 * time.Minute, Retransmits: 2, SentBlocks: 1000},
+		ActiveTargets:     []string{"AA:BB:CC:DD:EE:01"},
+		Targets:           []engine.TargetControl{{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember}},
 		State:             sender.StateStreaming,
 		ConnectedName:     "HomePods",
-		Volume:            65,
 		CaptureName:       "Speakers",
 		CaptureRate:       48000,
 		CaptureRunning:    true,
@@ -235,8 +236,8 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "连接状态、延迟与稳定性。", "HomePods", "已连接", "延迟模式", "200 ms", "可在音频页调整", "接收器处理", "70 ms", "接收器自报", "稳定性", "良好", "本次会话", "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
-		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与每台接收器的延迟补偿。", "网络上的 AirPlay 接收器会自动出现在这里。", "添加接收器", "手动填写 IP 或主机名"}},
+		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "AudioAccessory5,1 · 立体声 · 65%", "正在播放", "本次连接", "已连接时长", "42 分钟", "稳定性", "良好", "丢样 0 · 欠载 0", "网络重传", "0.2%", "重连", "0 次", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
+		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "单独接收器", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
 		{pageCapture, capturePageCopy()},
@@ -311,92 +312,143 @@ func countExactText(tt *ui.Tester, want string) int {
 	return n
 }
 
-func TestConnectionHealthCardLabelsAreExact(t *testing.T) {
-	a := previewApp()
+func TestConnectionPageDeviceList(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		locales.SettingsLatency(),
-		locales.SettingsHealthLatencySub(),
-		locales.SettingsHealthReceiver(),
-		locales.SettingsHealthReceiverSub(),
-		locales.SettingsHealthDrops(),
-		locales.SettingsHealthDropsGood(),
-		locales.SettingsHealthDropsSub(),
+		locales.SettingsConnectionDevices(), "2", "HomePods", "Apple TV",
+		"AudioAccessory5,1 · 立体声 · 65%", "AppleTV6,2 · 立体声 · 50%",
 	} {
 		if !hasExactText(tt, want) {
-			t.Fatalf("card is missing exact text %q; texts: %q", want, tt.Texts())
+			t.Fatalf("device list is missing exact %q; texts: %q", want, tt.Texts())
 		}
 	}
-	for _, old := range []string{"延迟", "调度缓冲", "接收器输出", "接收器上报", "丢样本"} {
-		if hasExactText(tt, old) {
-			t.Fatalf("card still shows old text %q; texts: %q", old, tt.Texts())
-		}
+	// The sidebar's 正在播放 nav entry contributes two labels of its own.
+	if got := countExactText(tt, locales.StatusStreaming()); got != 4 {
+		t.Fatalf("playing states = %d, want two members beside the nav labels; texts: %q", got, tt.Texts())
+	}
+	if hasExactText(tt, "HomePod mini") {
+		t.Fatalf("an inactive device is listed as connected; texts: %q", tt.Texts())
 	}
 }
 
-func TestConnectionHealthCardStability(t *testing.T) {
-	a := previewApp()
+// TestConnectionPageDeviceHealthNotableOnly pins the per-device counters: a
+// notable retransmit share or any underrun is named, a healthy device keeps
+// its row quiet.
+func TestConnectionPageDeviceHealthNotableOnly(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
-	a.snap.DroppedSamples = 3
+	a.snap.Targets[1].Health = engine.TargetHealth{Retransmits: 12, SentBlocks: 1000, Underruns: 3}
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !hasExactText(tt, locales.SettingsHealthDropsBad()) {
-		t.Fatalf("unstable session is missing %q; texts: %q", locales.SettingsHealthDropsBad(), tt.Texts())
+	want := locales.SettingsRetransmitShort("1.2") + " · " + locales.SettingsUnderrunsShort(3)
+	if !hasExactText(tt, want) {
+		t.Fatalf("device row is missing %q; texts: %q", want, tt.Texts())
+	}
+	if hasExactText(tt, locales.SettingsRetransmitShort("0.0")) {
+		t.Fatalf("a healthy device shows a retransmit counter; texts: %q", tt.Texts())
+	}
+}
+
+// TestConnectionPageSessionCard pins the measured card: uptime, stability with
+// its evidence, the session retransmit share, and the reconnect count.
+func TestConnectionPageSessionCard(t *testing.T) {
+	a := multiSessionApp()
+	a.page = pageConnection
+	a.snap.Diagnostics = engine.Diagnostics{
+		HasStats: true, SessionUptime: 42 * time.Minute,
+		Retransmits: 2, SentBlocks: 1000, Reconnects: 1,
+	}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsConnectionThis(), locales.SettingsConnectionUptime(), "42 分钟",
+		locales.SettingsHealthDrops(), locales.SettingsHealthDropsGood(),
+		" · " + locales.SettingsStabilityNote(0, 0),
+		locales.SettingsConnectionRetransmit(), "0.2%",
+		locales.SettingsConnectionReconnects(), locales.SettingsReconnectsValue(1),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("session card is missing exact %q; texts: %q", want, tt.Texts())
+		}
+	}
+	if hasExactText(tt, locales.SettingsLatency()) {
+		t.Fatalf("session card restates the latency setting; texts: %q", tt.Texts())
+	}
+}
+
+func TestConnectionPageSessionCardDegraded(t *testing.T) {
+	a := multiSessionApp()
+	a.page = pageConnection
+	a.snap.Diagnostics = engine.Diagnostics{
+		HasStats: true, SessionUptime: 6 * time.Minute,
+		Degraded: true, Overflow: 120, Underruns: 8,
+	}
+	tt := ui.NewTester(a.settingsView, 720, 500)
+	for _, want := range []string{
+		locales.SettingsHealthDropsBad(), " · " + locales.SettingsStabilityNote(120, 8),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("degraded card is missing exact %q; texts: %q", want, tt.Texts())
+		}
 	}
 	if hasExactText(tt, locales.SettingsHealthDropsGood()) {
-		t.Fatalf("unstable session still reads %q; texts: %q", locales.SettingsHealthDropsGood(), tt.Texts())
+		t.Fatalf("degraded card still reads %q; texts: %q", locales.SettingsHealthDropsGood(), tt.Texts())
 	}
 }
 
-func TestConnectionHealthCardUnknownAndDisconnected(t *testing.T) {
-	a := previewApp()
+// TestConnectionPageLostNotice pins the lost member as an event under the
+// device card, not a disconnected row inside the connected list.
+func TestConnectionPageLostNotice(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
-
-	a.snap.ReceiverLatencyMS = 0
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01"}
+	a.snap.Targets = a.snap.Targets[:1]
+	a.snap.Notice = engine.SessionNotice{
+		Kind: engine.NoticeMemberLost, DeviceID: "AA:BB:CC:DD:EE:02", Name: "Apple TV",
+	}
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	for _, want := range []string{locales.SettingsHealthReceiver(), "—", locales.SettingsHealthReceiverUnknown()} {
-		if !hasExactText(tt, want) {
-			t.Fatalf("unknown latency state is missing exact %q; texts: %q", want, tt.Texts())
-		}
-	}
-
-	a.snap.State = sender.StateIdle
-	tt = ui.NewTester(a.settingsView, 720, 500)
-	if got := countExactText(tt, locales.StatusDisconnected()); got != 2 {
-		t.Fatalf("disconnected text count = %d, want 2 (sidebar and card chip); texts: %q", got, tt.Texts())
-	}
-	for _, absent := range []string{
-		locales.SettingsLatency(), locales.SettingsHealthLatencySub(),
-		locales.SettingsHealthReceiver(), locales.SettingsHealthReceiverSub(),
-		locales.SettingsHealthDrops(), locales.SettingsHealthDropsSub(),
-		locales.SettingsHealthNote(),
+	for _, want := range []string{
+		locales.SettingsConnectionLost("Apple TV"), locales.ActionReconnect(),
 	} {
-		if hasExactText(tt, absent) {
-			t.Fatalf("disconnected card still shows %q; texts: %q", absent, tt.Texts())
+		if !hasExactText(tt, want) {
+			t.Fatalf("lost notice is missing exact %q; texts: %q", want, tt.Texts())
 		}
 	}
+	if hasExactText(tt, "Apple TV") {
+		t.Fatalf("the lost member is still a connected row; texts: %q", tt.Texts())
+	}
+
+	// Once the device is back in the session, the notice has nothing to say.
+	a.snap.ActiveTargets = append(a.snap.ActiveTargets, "AA:BB:CC:DD:EE:02")
+	a.snap.Targets = append(a.snap.Targets, engine.TargetControl{
+		ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50,
+		Channel: receivers.ChannelStereo, State: engine.TargetMember,
+	})
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	if hasExactText(tt, locales.SettingsConnectionLost("Apple TV")) {
+		t.Fatalf("the notice survived the member's return; texts: %q", tt.Texts())
+	}
 }
 
-// TestConnectionHealthCardShowsBaseLatency pins the card to the value chosen
-// on the 音频 page, not the effective value that also carries the receiver's
-// DSP/DAC delay.
-func TestConnectionHealthCardShowsBaseLatency(t *testing.T) {
-	a := previewApp()
+// TestConnectionPageHidesSessionCard pins the card's precondition: it exists
+// only while the session streams and the engine has measurements.
+func TestConnectionPageHidesSessionCard(t *testing.T) {
+	a := multiSessionApp()
 	a.page = pageConnection
-	a.snap.Receivers = []receivers.View{{Key: a.snap.SelectedID, DelayMS: 120}}
-
-	tt := ui.NewTester(a.settingsView, 720, 500)
-	if !hasExactText(tt, "200 ms") {
-		t.Fatalf("card is missing the base latency 200 ms; texts: %q", tt.Texts())
+	a.snap.Diagnostics = engine.Diagnostics{}
+	if hasExactText(ui.NewTester(a.settingsView, 720, 500), locales.SettingsConnectionThis()) {
+		t.Fatal("the session card shows without statistics")
 	}
-	if hasExactText(tt, "320 ms") {
-		t.Fatalf("card shows the effective latency 320 ms; texts: %q", tt.Texts())
+	a.snap.Diagnostics.HasStats = true
+	a.snap.State = sender.StateHandshake
+	if hasExactText(ui.NewTester(a.settingsView, 720, 500), locales.SettingsConnectionThis()) {
+		t.Fatal("the session card shows while connecting")
 	}
 }
 
-// TestConnectionHealthCardStereoGroup pins the pair's value as the higher of
-// the two member reports and drops the old 当前接收器 suffix.
-func TestConnectionHealthCardStereoGroup(t *testing.T) {
+// TestConnectionPagePairRow pins a stereo pair as one device row with its
+// shared volume and stereo side.
+func TestConnectionPagePairRow(t *testing.T) {
 	a := previewApp()
 	a.page = pageConnection
 	group := device.Device{
@@ -408,20 +460,23 @@ func TestConnectionHealthCardStereoGroup(t *testing.T) {
 		},
 	}
 	a.snap.Devices = []device.Device{group}
+	a.snap.ActiveTargets = []string{group.ID}
+	a.snap.Targets = []engine.TargetControl{{
+		ID: group.ID, Name: group.Name, Volume: 52, Channel: receivers.ChannelStereo,
+		Stereo: true, State: engine.TargetMember,
+	}}
 	a.snap.SelectedID = group.ID
 	a.selID = group.ID
 	a.snap.State = sender.StateStreaming
-	a.snap.ReceiverLatencyMS = 70
 
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	if want := locales.SettingsHealthReceiverGroupValue("70 ms"); !hasExactText(tt, want) {
-		t.Fatalf("group card is missing %q; texts: %q", want, tt.Texts())
-	}
-	if want := locales.SummaryStereoGroup(2); !hasExactText(tt, want) {
-		t.Fatalf("group card is missing %q; texts: %q", want, tt.Texts())
-	}
-	if hasExactText(tt, "当前接收器") {
-		t.Fatalf("group card still says 当前接收器; texts: %q", tt.Texts())
+	for _, want := range []string{
+		"HomePods", "AudioAccessory5,1 · 立体声 · 52%",
+		locales.StatusStreaming(),
+	} {
+		if !hasExactText(tt, want) {
+			t.Fatalf("pair row is missing exact %q; texts: %q", want, tt.Texts())
+		}
 	}
 }
 
@@ -782,6 +837,7 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	a.snap.State = sender.StateIdle
 	a.snap.Error = "接收器没有响应"
 	a.snap.ConnectedName = ""
+	a.snap.Targets[0].State = engine.TargetFailed
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	for _, want := range []string{"重试", "连接失败：接收器没有响应", "连接失败"} {
 		if !tt.HasText(want) {
@@ -798,29 +854,83 @@ func TestErrorStateShowsRetry(t *testing.T) {
 	}
 }
 
+// TestFailedAddShowsTheErrorBarWhileStreaming pins the multi-target add: a
+// rejected add publishes its key while the live cohort keeps streaming, and
+// the user must see why the row did nothing.
+func TestFailedAddShowsTheErrorBarWhileStreaming(t *testing.T) {
+	a := previewApp()
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01"}
+	a.snap.State = sender.StateStreaming
+	a.snap.Error = string(engine.ErrClockConflict)
+	a.snap.ErrorKey = engine.ErrClockConflict
+	if !a.errorBarShown() {
+		t.Fatal("a rejected add while streaming hid the error bar")
+	}
+	if got := userErrorText(a.snap.ErrorKey, a.snap.ErrorArgs, a.snap.Error); got != locales.ErrorClockConflict() {
+		t.Fatalf("error text = %q, want the clock-conflict copy", got)
+	}
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	if want := locales.FlyoutConnectFailed(locales.ErrorClockConflict()); !tt.HasText(want) {
+		t.Fatalf("streaming snapshot is missing the failed add %q; texts: %q", want, tt.Texts())
+	}
+}
+
+// TestFlyoutMarksEveryActiveTarget pins the multi-target rows: each active
+// target offers Disconnect while another online row offers Connect.
+func TestFlyoutMarksEveryActiveTarget(t *testing.T) {
+	a := previewApp()
+	a.snap.ActiveTargets = []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}
+	a.snap.Targets = append(a.snap.Targets,
+		engine.TargetControl{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Volume: 50, Channel: "stereo", State: engine.TargetMember})
+	a.snap.Devices[2].Online = true
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	count := func(label string) int {
+		n := 0
+		for _, text := range tt.Texts() {
+			if text == label {
+				n++
+			}
+		}
+		return n
+	}
+	// Each button contributes its label twice: the accessibility label and
+	// the child text.
+	if got := count(locales.ActionDisconnect()); got != 4 {
+		t.Fatalf("Disconnect labels = %d, want two active rows", got/2)
+	}
+	if got := count(locales.ActionConnect()); got != 2 {
+		t.Fatalf("Connect labels = %d, want one inactive row", got/2)
+	}
+}
+
 // TestRowActionKeepsOtherReceiversConnectable pins the failed-session escape
 // and the live switch: the failed row keeps retry, the engine is idle after a
 // failure, and a streaming session moves to another receiver by connecting
 // its row.
 func TestRowActionKeepsOtherReceiversConnectable(t *testing.T) {
 	cases := []struct {
-		name   string
-		ph     phase
-		active bool
-		online bool
-		want   rowActionKind
+		name    string
+		state   engine.TargetState
+		hasRole bool
+		session sender.State
+		online  bool
+		want    rowActionKind
 	}{
-		{"failed row retries", phaseError, true, true, actionRetry},
-		{"other row connects after failure", phaseError, false, true, actionConnect},
-		{"connecting keeps other rows disabled", phaseConnecting, false, true, actionConnectDisabled},
-		{"streaming switches to another row", phaseStreaming, false, true, actionConnect},
-		{"offline row stays offline", phaseError, false, false, actionOffline},
-		{"idle row connects", phaseIdle, false, true, actionConnect},
+		{"failed row retries", engine.TargetFailed, true, sender.StateIdle, true, actionRetry},
+		{"other row connects after failure", engine.TargetInactive, false, sender.StateIdle, true, actionConnect},
+		{"connecting keeps other rows disabled", engine.TargetInactive, false, sender.StateHandshake, true, actionConnectDisabled},
+		{"streaming switches to another row", engine.TargetInactive, false, sender.StateStreaming, true, actionConnect},
+		{"offline row stays offline", engine.TargetInactive, false, sender.StateIdle, false, actionOffline},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := actionFor(tc.ph, tc.active, tc.online); got != tc.want {
-				t.Fatalf("actionFor(%v, %v, %v) = %v, want %v", tc.ph, tc.active, tc.online, got, tc.want)
+			snap := engine.Snapshot{State: tc.session}
+			if tc.hasRole {
+				snap.Targets = []engine.TargetControl{{ID: "X", State: tc.state}}
+			}
+			d := device.Device{ID: "X", Online: tc.online}
+			if got := rowActionFor(snap, d); got != tc.want {
+				t.Fatalf("rowActionFor = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -841,20 +951,23 @@ func TestEmptyStateOffersSearch(t *testing.T) {
 }
 
 func TestFlyoutHeightForDeviceRows(t *testing.T) {
-	noMedia := map[int]int{0: 348, 1: 265, 2: 321, 3: 377, 5: 377}
-	withMedia := map[int]int{0: 498, 1: 415, 2: 471, 3: 527, 5: 527}
-	for _, tc := range []struct {
-		media bool
-		want  map[int]int
-	}{{false, noMedia}, {true, withMedia}} {
-		for devices, want := range tc.want {
-			want += lampSectionHeight
-			if got := flyoutHeightFor(devices, false, tc.media); got != want {
-				t.Errorf("flyoutHeightFor(%d, false, media=%v) = %d, want %d", devices, tc.media, got, want)
-			}
-			if got := flyoutHeightFor(devices, true, tc.media); got != want+latencySwitchHeight {
-				t.Errorf("flyoutHeightFor(%d, true, media=%v) = %d, want %d", devices, tc.media, got, want+latencySwitchHeight)
-			}
+	// The empty case leaves the playback section out: its head and borders are
+	// worth playbackSectionHeight, which the shown cases pay.
+	hidden := map[int]int{0: 284, 1: 211, 2: 277, 3: 343, 5: 343}
+	for devices, want := range hidden {
+		if got := flyoutHeightFor(devices, false, false); got != want+lampSectionHeight {
+			t.Errorf("flyoutHeightFor(%d, false, false) = %d, want %d", devices, got, want+lampSectionHeight)
+		}
+		shown := want + playbackSectionHeight + latencySwitchHeight + lampSectionHeight
+		if got := flyoutHeightFor(devices, true, false); got != shown {
+			t.Errorf("flyoutHeightFor(%d, true, false) = %d, want %d", devices, got, shown)
+		}
+		media := want + playbackSectionHeight + nowPlayingCardHeight + lampSectionHeight
+		if got := flyoutHeightFor(devices, false, true); got != media {
+			t.Errorf("flyoutHeightFor(%d, false, true) = %d, want %d", devices, got, media)
+		}
+		if got := flyoutHeightFor(devices, true, true); got != media+latencySwitchHeight {
+			t.Errorf("flyoutHeightFor(%d, true, true) = %d, want %d", devices, got, media+latencySwitchHeight)
 		}
 	}
 }
@@ -1285,12 +1398,13 @@ func writePreview(t *testing.T, tt *ui.Tester, path string) {
 func TestFlyoutLatencySwitchCanHide(t *testing.T) {
 	a := previewApp()
 	a.showLatencySwitch = false
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), false, a.hasNowMedia()))
+	a.cfg.ShowNowPlayingPanel = false
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if tt.HasText("低延迟") {
 		t.Fatalf("hidden switch still shows the mode row: %q", tt.Texts())
 	}
-	if !tt.HasText("延迟 200 ms") {
-		t.Fatalf("the ALAC line lost the latency: %q", tt.Texts())
+	if _, ok := tt.Find(locales.FlyoutPlayback()); ok {
+		t.Fatalf("empty playback section is still drawn: %q", tt.Texts())
 	}
 }
 
@@ -1298,7 +1412,7 @@ func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
 	a := previewApp()
 	a.latencyMode = "custom"
 	a.latencyCustom = 700
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if !tt.HasText("延迟 700 ms") || !tt.HasText("自定义") {
 		t.Fatalf("custom latency not shown: %q", tt.Texts())
 	}
@@ -1306,7 +1420,7 @@ func TestFlyoutCustomLatencyOnALACLine(t *testing.T) {
 
 func TestFlyoutLatencySegmentSelects(t *testing.T) {
 	a := previewApp()
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	if err := tt.Click("标准"); err != nil {
 		t.Fatal(err)
@@ -1385,7 +1499,7 @@ func TestLatencySpinnerKeepsALACLineAnchored(t *testing.T) {
 	withLocale(t, "zh-CN")
 	a := previewApp()
 	const note = "ALAC · 44.1 kHz · PTP · 已同步 · 延迟 200 ms"
-	tt := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), true, a.hasNowMedia()))
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	tt.Frame()
 	before, ok := tt.Find(note)
 	if !ok {
@@ -1782,7 +1896,8 @@ func TestNowPlayingPanelHiddenWhenOff(t *testing.T) {
 			t.Fatalf("panel still shows %q with the master off", gone)
 		}
 	}
-	if got, want := visibleFlyoutHeight(a), flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false); got != want {
+	want := flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false)
+	if got := visibleFlyoutHeight(a); got != want {
 		t.Fatalf("flyout height = %d, want the no-card height %d", got, want)
 	}
 }
@@ -2015,7 +2130,7 @@ func TestFitFlyoutResizesWithoutATray(t *testing.T) {
 		width, height = w, h
 	}
 	a.fitFlyout()
-	want := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset)
+	want := flyoutHeightForState(len(a.snap.Devices), a.showLatencySwitch, a.hasNowMedia(), a.lampCover, a.lampExpanded, a.errorBarShown(), a.snap.CredentialReset, a.noticeShown())
 	if width != flyoutWidth || height != want {
 		t.Fatalf("fitFlyout resized to %dx%d, want %dx%d", width, height, flyoutWidth, want)
 	}
@@ -2041,4 +2156,40 @@ func capturePageCopy() []string {
 		copy = []string{"采集", "系统声音", "按应用采集", "采集状态", "Speakers", "· 48 kHz"}
 	}
 	return copy
+}
+
+// TestStereoIconFollowsMembers pins the pair glyph selection by the members'
+// own models: the glyph must not depend on which side a receiver plays, so a
+// combo's swap cannot change the row's icon.
+func TestStereoIconFollowsMembers(t *testing.T) {
+	member := func(model string) device.Device {
+		return device.Device{ID: model, Name: model, Model: model, Online: true}
+	}
+	group := func(m0, m1 device.Device) device.Device {
+		return device.Device{ID: "g", Model: m0.Model, StereoID: "g", Members: []device.Device{m0, m1}, Online: true}
+	}
+	cases := []struct {
+		name string
+		d    device.Device
+		want *ui.SVG
+	}{
+		{"mini plus mini", group(member("AudioAccessory5,1"), member("AudioAccessory5,1")), sfIcons["homepod-mini-pair"]},
+		{"homepod plus homepod", group(member("AudioAccessory6,1"), member("AudioAccessory6,1")), sfIcons["homepod-pair"]},
+		{"mini left of homepod", group(member("AudioAccessory5,1"), member("AudioAccessory6,1")), sfIcons["homepod-mini-combo"]},
+		{"homepod left of mini", group(member("AudioAccessory6,1"), member("AudioAccessory5,1")), sfIcons["homepod-mini-combo"]},
+		{"homepod plus appletv", group(member("AudioAccessory6,1"), member("AppleTV6,2")), sfIcons["homepod-pair"]},
+		{"appletv left of homepod", group(member("AppleTV6,2"), member("AudioAccessory6,1")), sfIcons["homepod-pair"]},
+		{"single receiver", member("AudioAccessory5,1"), sfIcons["homepod-mini"]},
+	}
+	for _, tc := range cases {
+		stereo := tc.d.IsStereoGroup()
+		if got := stereoIcon(tc.d, stereo); got != tc.want {
+			t.Errorf("%s: stereoIcon picked the wrong glyph", tc.name)
+		}
+	}
+	// A remembered stereo row without cached members keys off its own model.
+	offline := device.Device{ID: "stereo:1", Model: "AudioAccessory5,1"}
+	if got := stereoIcon(offline, true); got != sfIcons["homepod-mini-pair"] {
+		t.Error("stereo row without members lost its pair glyph")
+	}
 }

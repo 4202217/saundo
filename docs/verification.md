@@ -40,15 +40,74 @@ live state:
   confirmation stays the user's. The engine path is pinned by
   `TestLatencyRestartKeepsLocalMute`, `TestLatencyRestartKeepsProcessMute`,
   and `TestReceiverDelayRestartKeepsLocalMute`.
-- Local output mute across a receiver switch, and its restore when the switch
+- Local output mute across an added target, and its restore when the rebuild
   fails: no live run yet. The engine path is pinned by
-  `TestDeviceSwitchKeepsLocalMute`, `TestDeviceSwitchKeepsProcessMute`,
-  `TestDeviceSwitchRestoresMuteWhenTheNewSessionFails`, and
-  `TestDeviceSwitchRestoresMuteWhenTheLaunchFails`; the row action is pinned
-  by `TestRowActionKeepsOtherReceiversConnectable`. A live run should switch
-  between two receivers while streaming, check the log shows no restore
-  until the disconnect, then switch to an unreachable receiver and confirm
-  the endpoint comes back.
+  `TestAddTargetKeepsLocalMute`, `TestAddTargetKeepsProcessMute`,
+  `TestAddTargetRestoresMuteWhenTheNewSessionFails`, and
+  `TestAddTargetRestoresMuteWhenTheLaunchFails`; the row action is pinned
+  by `TestRowActionKeepsOtherReceiversConnectable`. A live run should add a
+  receiver while streaming, check the log shows no restore until the
+  disconnect, then add an unreachable receiver and confirm the endpoint comes
+  back.
+- A multi-device session on real hardware: one capture stream on 2..N targets
+  with one start epoch, a two-pair session (four PTP master peers), a live add
+  whose gap is audible on the playing rooms, and a rejected add that leaves
+  them playing. The engine behavior is pinned by
+  `TestConnectWhileStreamingAddsTarget`, `TestRejectedAddLeavesCohortLive`,
+  `TestCohortGateWaitsForEveryMember`, and `TestNewMasterAcceptsManyPeers`;
+  the 2026-11-17 live session covers two standalone HomePods and a MacBook
+  Air, and the two-pair, four-peer run plus a measured room offset remain
+  owed.
+- Multi-device acceptance checklist (2026-11-18). Two members stream and each
+  volume slider moves only its own room; mute and unmute stay per device. A
+  third target joins mid-playback and the original pair resumes in sync.
+  Disconnecting one member pauses the others only for the rebuild and they
+  resume; the gap is accepted for now. A PIN or receiver password prompt on
+  one member leaves the other playing. Sleep, wake, lock, and a network change
+  recover the session. The session identity is checked in the footer, the tray
+  tooltip, the connection card, and the sidebar, which read the same member
+  set. Still owed: three-member runs, a left/right assignment judged by ear,
+  different per-device delays judged by ear, and a 30-minute three-member soak
+  for drift, drops, CPU, and memory.
+- Stereo combo acceptance checklist (2026-11-20). Live-verify: left and
+  right judged by ear through a combo; swap and unlink while streaming; a
+  member lost mid-stream from a combo (the combo target leaves the session;
+  survivor-only playback is not implemented); a launch from auto-connect with a flagged combo;
+  and a combo over a mini plus a full HomePod. The engine paths are pinned by
+  the combo tests listed in the 2026-11-20 entry.
+- Powering off a member mid-session (2026-11-18 live pass, after the member
+  isolation fix). HomePod R was powered off while R and L streamed. The
+  survivor kept playing its receiver buffer until the engine saw the lost
+  member's control connection close at 20:42:23.700, logged `cohort: HomePod R
+  left the session; continuing with 1 target(s)`, stopped the survivor at
+  20:42:23.701, and resumed streaming at 20:42:25.069 (a 1.37 s rebuild gap,
+  the accepted cost). R disappeared from discovery and returned on power-on.
+  The delay before the gap is the survivor's buffer plus TCP close detection,
+  not extra session work.
+- Auto-connect after a member returns (2026-11-18, deferred by the user). A
+  receiver that is powered off and comes back mid-session is not connected
+  again: 启动时自动连接 is a launch-time single-target choice, evaluated when
+  the app starts, and nothing watches a member reappearing while another
+  target streams. This is the old single-target launch logic, which does not
+  model a multi-device wanted set; the user asked to leave it for now. The
+  eventual shape is either a per-receiver auto-recover or a launch choice that
+  restores the last wanted set.
+- Per-device volume and channel on real hardware: two standalone HomePods set
+  left and right, a MacBook Air set stereo, different volumes on each, and the
+  result confirmed by ear, from the flyout rows and the settings receiver rows.
+  The settings row keeps the volume slider and the channel segment; the
+  flyout's live device rows carry each target's volume slider and an icon-only
+  channel button, and the playback card keeps the latency switch. The
+  per-device delay row was removed from settings at the user's request, and the
+  engine keeps the per-device delay data and its `UpdateReceiver` delay path
+  for a later UI. The split, live change, and registration paths are pinned by
+  `TestChannelMix`, `TestLiveSetChannelChangesTheNextPacket`,
+  `TestBuildPlanTargetVolumeAndChannel`, `TestSetTargetVolumeAppliesOnlyItsTarget`,
+  `TestInitialVolumeAdoptedPerTarget`,
+  `TestReceiverChannelPatchSavesAndAppliesLive`,
+  `TestFlyoutDeviceRowCarriesItsOwnVolume`, and
+  `TestFlyoutChannelButtonNamesItsState`; no live per-device volume or channel
+  run exists yet.
 - A two-computer takeover with both apps auto-reconnecting: the second
   should show the takeover state, the first should keep streaming, and
   neither should re-enter the reconnect loop. The single-machine two-session
@@ -694,6 +753,391 @@ maintainer's pre-release test of the candidate remains unrecorded. The first
 `v0.6.4` tag (`04fdd96`) was canceled before any release existed; this
 release is the re-cut at `117508a`, which includes the code review fixes.
 
+## 2026-11-17 — multi-device cohort, engine first
+
+One session plan and one cohort transport replace the single-receiver session
+and the stereo group transport. A target is a single receiver or a stereo
+pair, every member shares one `StartGate` epoch and one capture trim, and a
+session runs at most one PTP role. `mingw32-make check` passed, and
+`go test -race` passed on the engine, PTP, and receivers packages. The
+behavioral tests named in the pending multi-device item pin the add,
+rejection, retry, latency, gate, and N-peer paths. A five-dimension review
+confirmed 18 defects; all 12 accepted fixes ship with a failing-before test,
+including the mixed AP1/AP2 pause, removing a live target, the capture-rate
+change between arrivals, same-host routing, retry pruning, Now Playing
+replay, and the error-bar scope.
+
+A local build of the first implementation auto-connected to the HomePod
+stereo pair and streamed both members through the cohort path. The log showed
+the per-member 200 ms plan latency, both sessions streaming, and a clean
+takeover stop when another sender took the pair. This is a stereo regression
+check, not a multi-device run. The multi-device session and the two-pair,
+four-peer run above remain pending, and no live multi-device run exists.
+
+## 2026-11-17 — follower set for standalone PTP receivers
+
+An unpaired pair leaves two standalone HomePods, each keeping its own PTP
+grandmaster. One `ptp.Followers` now owns UDP 319/320 and demultiplexes replies
+by source IPv4 address, so the engine's clock plan has a follower set instead
+of one follower. Every peer keeps its own offset and readiness, each member's
+stream SETUP waits for its own clock, and the plan still rejects a follower set
+beside a sender-side master. A remembered `stereo:<tsid>` auto-connect entry is
+skipped when discovery reports both members as standalone receivers, so the
+launch starts idle instead of failing on the missing pair.
+
+Checks: `go test -count=1 ./internal/engine ./internal/app` passed;
+`go test -run 'Followers|PlanClock|ClockPlan|StalePair' ./internal/airplay/ptp
+./internal/engine` passed, plus explicit runs of
+`TestAddSecondStandalonePTPReceiver` and `TestAutoConnectSkipsAStaleStereoPair`;
+`go vet ./internal/engine ./internal/airplay/ptp ./internal/app` passed;
+`go run ./scripts/check-size` passed after the `engine.go` extraction lowered
+its baseline to 2518. `mingw32-make check` was not run: the running app holds
+UDP 319/320, so the full gate waits for it to stop.
+
+The live two-HomePod run remains owed and is recorded in Currently pending.
+Each receiver maps the shared RTP timeline onto its own clock, so the rooms
+align only as well as the two grandmasters; no live two-HomePod run exists yet.
+Pins: `TestFollowersDemuxBySourceIP`, `TestClockPlanRoles`,
+`TestClockPlanRejectsConflicts`, `TestAddSecondStandalonePTPReceiver`,
+`TestAutoConnectSkipsAStaleStereoPair`, and
+`TestAutoConnectKeepsALiveStereoPair`.
+
+## 2026-11-17 — live three-receiver session
+
+The follower set ran on real hardware. Two standalone HomePods (the pair
+unpaired, both `AudioAccessory5,1`) and a MacBook Air joined one cohort, all
+three as standalone PTP receivers. The app log shows the per-target plan
+latency for all three and `streaming to HomePod L + HomePod R + MacBook Air`
+at 19:17, after the live adds rebuilt the cohort. The user confirmed
+synchronized playback by ear at the per-target latency the log shows, 200 ms
+for all three; a 1500 ms probe preceded that confirmation. The follower set
+maps each receiver's clock onto the shared timeline, but the device output
+timing comes from each target's presentation latency, the global base plus
+that receiver's delay. The sync is a property of those per-device latency
+settings, not of the follower set alone.
+
+Not yet measured: the left/right offset between rooms, drift over a longer
+soak, the delay values that align a HomePod with a Mac of a different output
+latency, the two-pair master run, and a member dropping mid-session. The gate
+after the follower change was `mingw32-make check` and `go test -race` on
+engine, PTP, receivers, and sender, both passing on build
+`v0.6.4-1-g01729d5-dirty`.
+
+Pins: `TestFollowersDemuxBySourceIP`, `TestClockPlanRoles`,
+`TestAddSecondStandalonePTPReceiver`, and `TestAutoConnectSkipsAStaleStereoPair`.
+The live evidence is the app log lines above and the user's ear confirmation.
+
+## 2026-11-17 — per-target volume and channel
+
+Each live target now has its own volume and stereo side. A stereo pair shares
+one volume and is forced to stereo; a single receiver can play stereo, left, or
+right. The sender mixes each 352-frame block after resampling and before ALAC,
+so a live channel change reaches the next packet without a session rebuild;
+the engine stores the channel in `receivers.json`, applies it to the target's
+live members, and a pair ignores a non-stereo patch. Volume is stored per
+target in `VolumeByDevice`; an unset target adopts each member's reported
+`initialVolume` when the session launches, and a hardware knob report updates
+only its own target. The per-device delay remains the sync control: the live
+three-receiver session above used 200 ms for both HomePods and the MacBook Air
+after a 1500 ms probe, and the delay slider stays beside the volume slider and
+channel segment in the settings audio group.
+
+No live per-device volume or channel run exists. The split, the live change,
+the per-target command, the launch adoption, and the pair rule are pinned by
+the sender, engine, registry, and app tests named in Currently pending.
+
+Checks: `go test -count=1 ./internal/engine ./internal/app ./internal/receivers
+./internal/airplay/sender` passed; `go test -count=1 -run
+'Channel|TargetVolume|TargetControl|ReceiverChannel' ./internal/...` passed;
+`go vet` on the four packages passed; `go run ./scripts/check-size` reported
+127 files within budget after `engine.go` fell to 2503 and its baseline moved
+with it; `go run ./scripts/check-arch` held; `go tool mygo i18n check
+cmd/saundo` reported 371 messages. `mingw32-make check` and the host build were
+not run because the running app holds UDP 319/320; both remain for after it
+stops.
+
+## 2026-11-17 — settings receiver rows drop the delay and volume controls
+
+The settings receiver row now carries only the channel segment. At the user's
+request, the per-device DSP/DAC delay slider and the per-device volume slider
+were removed from the settings page; their two delay copy keys were deleted.
+The global latency section in the settings audio page and the flyout's latency
+switch stay. The flyout's volume slider still controls the selected target,
+and the per-device volume storage and engine APIs stay unchanged. The engine
+keeps the per-device delay data and the `UpdateReceiver` delay path for a
+later UI; the app's 500 ms receiver-delay debounce is gone because it served
+only the removed slider.
+
+Checks: `go test -count=1 ./internal/app ./internal/receivers
+./internal/engine` passed; `go test -count=1 -run
+'Receiver|Channel|Volume|Latency' ./internal/app ./internal/receivers
+./internal/engine` passed; `go run ./scripts/check-size` reported 127 files
+within budget after `engine.go` fell to 2502 and `app.go` to 1242, both
+baselines moved with them; `go run ./scripts/check-arch` held; `go tool mygo
+i18n check cmd/saundo` reported 369 messages. `mingw32-make check` and the host
+build were not run because the running app holds UDP 319/320; both remain for
+after it stops.
+
+## 2026-11-17 — settings receiver volume restored
+
+At the user's request the settings receiver row has its volume slider back
+next to the channel segment. The per-device delay slider stays out of
+settings; the engine keeps the delay data and the `UpdateReceiver` path, and
+the global latency mode remains. The flyout still names and controls the
+selected target's volume. The page tests assert the volume and channel
+together; a pair shows its one shared volume and the disabled stereo.
+
+Checks: `go test -count=1 ./internal/app ./internal/engine ./internal/receivers`
+passed; `go run ./scripts/check-size` reported 127 files within budget;
+`go run ./scripts/check-arch` held; gofmt over the changed files printed
+nothing. The port-free `mingw32-make check`, race, and host build run after
+the running app stops.
+
+## 2026-11-18 — flyout per-device mixer
+
+Every flyout device row is 66 DIP high, connected or not; a live target's row
+carries its own volume slider and percent under the name, an icon-only channel
+button before the name, and the connect action in its own centered trailing
+column. The channel button uses the SF Symbols dot.radiowaves symbol with the
+left or right arc group at 25% fill, so the solid side is the current side; a
+click cycles stereo → left → right, and a stereo pair shows a disabled
+stereo. The playback card lost its one-for-all volume row and is not drawn
+when it has neither media nor the latency row. A failed target keeps the plain
+row for its 重试 action. The flyout height is now 428 with three 66 rows; a
+media session plus the latency row measures 650 and the latency-only idle 500.
+
+The speaker glyph is a button: one click takes that target's volume to zero,
+shows the muted speaker, and the next restores the level it muted from (kept in
+the app's `mutedVolume`, session state only). The channel glyph is 16 DIP wide
+so it does not outweigh the 14-DIP speaker, and a plain row now uses the live
+row's 26/2/20 line rhythm, giving the name and model the same breathing room
+as the name and volume row.
+
+Checks: `mingw32-make check` passed (373 messages, 128 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/app` passed. The faded-side render is pinned by
+`TestChannelIconFadesTheOtherSide`: the icon mask drops fill-opacity, so the
+button draws the SVG through `ui.Image` instead. The mute and unmute actions
+are pinned by `TestFlyoutVolumeButtonNamesItsAction`. The muted glyph was
+checked in a one-off muted render; the plain-row rhythm and the 16-DIP
+channel glyph were checked in the light and dark streaming previews. The preview matrix was rendered
+for idle, connecting, streaming, failed, and the credential notice in both
+themes. The per-device live run with the two HomePods and the MacBook Air is
+recorded under Currently pending.
+
+## 2026-11-18 — flyout phase rules and per-target disconnect
+
+The flyout's mixer now exists only while a target streams: a connecting or
+failed row keeps its name, model, and action, so volume and channel are not
+offered before playback. The trailing action column is a fixed 92 DIP, so the
+name, slider, and percent do not move when the action label changes between
+取消, 连接, 断开连接, and 重新连接. A row's 断开连接 now sends `DisconnectTarget`:
+the engine drops that key and rebuilds the cohort with the remaining targets
+while holding the connection mute, and the last key takes the full disconnect
+path. The device section head carries 全部断开 while a session is live and
+grows 10 DIP for it, so one click still ends the whole session.
+
+Checks: `mingw32-make check` passed (374 messages, 130 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. The per-target
+leave is pinned by `TestDisconnectTargetLeavesOthers`; the phase rule by
+`TestFlyoutConnectingRowHidesMixer`; the head button by
+`TestFlyoutDisconnectAllButtonFollowsSession`. The connecting, streaming,
+idle, and error flyouts were rendered and inspected in the preview matrix.
+
+## 2026-11-18 — connecting rows keep their own action
+
+Adding a target while another streams used to give every active row the same
+Cancel action, because the phase is session-wide. The app now remembers the
+target a Connect started for (`joinID`) and refines the row action: the
+joining row (or the sole active target when no mark exists) offers 取消, and
+the rows already in the session keep 断开连接. Cancel on the joining row now
+sends `DisconnectTarget`, so it removes that target instead of ending the
+whole session; the header 全部断开 still ends everything. The same
+session-wide phase made a per-target disconnect rebuild turn the remaining
+row into Cancel; the app now marks a rebuild (a target left, a latency apply)
+and no row offers 取消 during it. A present cohort
+now counts as live for the leave path even before its first state, so a
+cancel in the brief window before the handshake rebuilds with the remaining
+target instead of merely shrinking the wanted set and leaving both members
+connecting.
+
+Checks: `mingw32-make check` passed (374 messages, 130 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. The per-row
+policy is pinned by `TestConnectingRowActions`, the pre-stream cancel by
+`TestDisconnectJoiningTargetBeforeStreaming`, and the existing
+`TestFlyoutConnectingRowHidesMixer` exercises the joining mark.
+
+## 2026-11-18 — the engine names the row the join started
+
+The previous entry's app-side marks (`joinID`, `suppressCancel`) could not be
+kept true: a join rebuilds the whole cohort, so during it every wanted key is
+re-opening and the session-wide phase cannot tell the target the user just
+added from a member that is merely re-establishing. A diagnostic test
+constructed both cases and printed the same snapshot in every field the flyout
+read (`state=handshake active=[A B] targets=2`), which is why two patch rounds
+each surfaced another wrong row. The engine now owns the fact:
+`sessionPlan.joinKey` carries the target a user connect started or added (a
+rebuild carries it only while that target stays planned, and the launch
+resolves it), and `TargetControl.State` publishes one of `TargetMember`,
+`TargetJoining`, `TargetReopening`, or `TargetFailed` per active key. Wanted
+keys now keep a `TargetControl` while a retry waits, so every active row has a
+published role. The flyout maps one state to one verb (member and reopening →
+断开连接, joining → 取消, failed → 重试, no role → connect/disabled/offline),
+keeps a member's mixer through a rebuild, and shows 正在连接… on a joining
+row's second line and 正在重连… on a reopening one. The app's session markers
+and `trackConnect` are deleted. A cross-judge pass found the dead-transport arm
+closed the session without publishing, so a failed launch could leave the rows
+reading member until the next tick; the arm now publishes after
+`closeSession`.
+
+Checks: `mingw32-make check` passed (374 messages, 131 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. Pins:
+`TestJoinAndRebuildPublishTheSameAudioFields` (the premise),
+`TestConnectPublishesJoiningThenMember`, `TestAddPublishesMemberAndJoining`,
+`TestRejectedAddKeepsMembers`, `TestCancelJoiningLeavesMember`,
+`TestLeaveAndLatencyRebuildsKeepMembers`,
+`TestFailedAttemptPublishesRetryOrReopening`, `TestTakeoverPublishesFailed`,
+and on the app side `TestRowActionFollowsTargetState`,
+`TestFlyoutJoiningRowHidesMixer`, `TestRebuildRowsOfferNoCancel`,
+`TestReopeningRowSaysReconnecting`. The device head's 26-DIP action slot is
+reserved in every state: the 全部断开 button used to grow the head by 10 DIP
+when it appeared, which resized the panel; the slot now holds an invisible
+26-high spacer when no session runs, the base height is 438, and
+`TestDeviceHeadKeepsItsHeight` pins identical label and card geometry with and
+without a live session. `mingw32-make build` produced the 0.6.4 binary and
+relaunched it. Not run: a live two-HomePod join; the preview matrix
+renders the joining state (`flyout-joining-light`, `flyout-joining-dark`).
+
+## 2026-11-18 — the session member set reaches every surface
+
+The flyout already rendered one row per active target, but the tray, the
+connection page, the settings sidebar, and the ALAC latency line still spoke
+for one selected device. The app now reads a session through `sessionMembers`
+(`internal/app/session_members.go`): active targets in snapshot order, each
+with its row and published controls, plus the joined session name and the
+slowest member's effective latency. The tray accents and disables every member
+row, not only the primary; the connection card shows the joined name and a
+member count while the sidebar shows the joined name; the ALAC line reports the
+slowest member's base-plus-delay so a mixed-delay cohort does not claim one
+member's value. Idle behavior is unchanged.
+
+Checks: `mingw32-make check` passed (375 messages, 133 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/app` passed. Pins:
+`TestSessionMembersFollowActiveTargets`, `TestSessionNameJoinsWhileOpening`,
+`TestSessionLatencyUsesSlowestMember`, `TestTrayMenuMarksEveryMember`,
+`TestConnectionPageSpeaksForTheSession`. Not run: a live two-receiver session
+with different per-device delays to see the ALAC line and the tray in the real
+app.
+
+## 2026-11-18 — a dead member leaves the cohort instead of retrying it
+
+The two-HomePod acceptance pass found that powering off one receiver while
+both streamed took the other one down. The dead signal closed the whole
+cohort, and the automatic retry rebuilt the full wanted set, including the
+unreachable receiver. The run's log shows the retry ladder on HomePod L's
+dial failure with `session stopped` for HomePod R on every attempt
+(20:26:13 to 20:26:31), so the surviving room was interrupted for the whole
+ladder. The cohort now records the target whose member closed first
+(`LostTarget`), and the engine rebuilds without it while the rest keep their
+session; the lost target leaves the wanted set, so no retry includes it. A
+single-target session keeps the close-and-retry path. The lost target's row
+leaves the session immediately; discovery's offline marking is a separate,
+slower signal.
+
+Checks: `mingw32-make check` passed (375 messages, 134 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app ./internal/receivers`
+passed. Pins: `TestCohortMemberCloseBeforeLaunchSignalsEngine` (the transport
+records the lost target), `TestMemberDeathKeepsOthersPlaying`,
+`TestPrimaryDeathPromotesTheRemainingTarget`,
+`TestMemberDeathOfTheOnlyTargetKeepsTheRetry`. Not run: the same power-off
+pass on real hardware after the fix.
+
+## 2026-11-18 — session notices explain a lost member and a join
+
+A member death already kept the rest playing, but the flyout explained nothing:
+the room paused and the row simply left the session. The engine now publishes a
+`SessionNotice` when it isolates a lost member, and the flyout renders a
+44-DIP bar under the device card with the member's name, 重试, and a dismiss.
+The bar clears on the next user connect or after 8 s. A join in progress is
+derived from a `TargetJoining` member beside an existing one and uses the same
+bar to warn that the other devices pause briefly. The window adds 52 DIP while
+a notice shows. The connection-error and credential-recovery bars now share
+that 44-DIP geometry, left glyph, and border, so the three read as one family.
+
+Checks: `mingw32-make check` passed (378 messages, 136 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. The preview
+matrix renders `flyout-notice-light` and `flyout-notice-dark`. Pins:
+`TestMemberDeathPublishesANotice`, `TestSessionNoticeShowsLostMember`,
+`TestSessionNoticeJoinCopy`, `TestSessionNoticeAddsItsHeight`. Not run: the
+notice in a live two-receiver session.
+
+## 2026-11-18 — a refused password prompts instead of retrying
+
+Adding a receiver with a saved but wrong password to a live cohort used to take
+the whole session down and burn the five-step reconnect ladder. The MacBook Air
+answered the stream SETUP with 401, the digest replay with another 401, and the
+cohort closed; every retry rebuilt both members and failed on the same
+password, and the run ended with 自动重连 5 次后停止 instead of a password error
+(log 21:41:05 to 21:41:46, `session failed: MacBook Air：The password was not
+accepted by the device`). The sender now marks a refused password from both the
+RTSP digest replay and the HAP pairing rejection (`PasswordRejected`), the
+cohort records that member's target and device, and the engine treats the
+failure as auth: no retry is scheduled, `ErrPasswordRejected` is published, and
+the password prompt opens for that receiver. The dead arm drops the refused
+member and rebuilds the survivors, so the rest keep playing; a single-target
+session keeps the prompt without a ladder.
+
+Checks: `mingw32-make check` passed (379 messages, 138 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/airplay/sender ./internal/engine ./internal/app`
+passed. Pins: `TestHAPPasswordWrongPasswordFailsWithoutPrompt`,
+`TestRejectedPasswordPromptsInsteadOfRetrying`,
+`TestRejectedPasswordOnTheOnlyTargetDoesNotRetry`. Not run: the same add with a
+wrong saved password on real hardware after the fix.
+
+## 2026-11-18 — password rejection live pass
+
+The user re-ran the add-with-wrong-password case on the rebuilt app and
+confirmed it. The log shows HomePod R streaming, the MacBook Air refused at
+21:57:43 with `session failed: MacBook Air did not accept the password`, and
+HomePod R streaming again 1.7 s later with no retry ladder; after the correct
+password the same pair reached `streaming to HomePod R + MacBook Air` at
+21:57:56. A second rejection at 21:58:16 repeated the pattern. This supersedes
+the "not run" line in the previous entry; its pins still hold.
+
+## 2026-11-18 — the connection page states the session, not its settings
+
+The old 连接 page repeated values that did not answer a question: the latency
+mode was a setting already on 音频, and 接收器处理 was a receiver constant no
+user can change. The page now draws the session itself. 已连接设备 lists every
+target with its channel, volume, and state, and names per-device retransmits
+and underruns only when notable; a dropped member leaves the list and appears
+as the engine notice's `{name} 已断开` row with 重新连接. 本次连接 appears only
+while streaming and the engine has measurements: 已连接时长, 稳定性 with 丢样
+和 欠载, 网络重传, and 重连 in a 2×2 grid above one full-width hairline. Both
+section labels use the group style above the cards. The engine now publishes
+`TargetControl.Health`, folding each target's members' retransmits, sent
+blocks, and underruns; a stats slice that does not line up with the plan keeps
+health at zero. The page copy adds the session labels, the uptime formats, the
+stability note, and the notable-device counters.
+
+Checks: `mingw32-make check` passed (381 messages, 138 files within their line
+budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
+ok); `go test -race ./internal/engine ./internal/app` passed. The preview
+matrix renders the page in both themes and at 640 DIP
+(`settings-connection-*`). Pins: `TestTargetControlsCarryMeasuredHealth`,
+`TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
+`TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
+`TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
+`TestConnectionPagePairRow`. Not run: the reworked page against a live
+two-receiver session.
+
 ## Graduated
 
 Dated batches compressed under the rule at the top of this file: every claim
@@ -1267,3 +1711,34 @@ costs 0.3 ms for the 150×83 Chrome thumbnail and 6.6 ms for a synthetic
 TestUsableArtwork` passed 4 tests. Live check on the rebuilt app: with Apple
 Music idle and current, the flyout drew the card's own placeholder tile with
 no frame around it (user's capture, 2026-11-18).
+
+## 2026-11-20 — software stereo combos
+
+Two independent AirPlay 2 receivers can be linked into one stereo target: a
+`combo:<hex>` registry row holds the member keys in playback order, the merge
+projects one stereo-group row over the members' own rows, and the plan gives
+each member one input side. The same session path serves it: the combo sends
+no group UUID and no SETPEERS peers, and both members join the shared PTP
+follower set. Link moves the members' launch flags onto the combo and clears
+them on the members; unlink hands the flag back; the launch set skips any
+linked member, so a registry written before this change cannot start one by
+itself. Swap reorders the registry and hot-applies the opposite side per
+member without a rebuild. Removing a receiver unlinks its combo.
+
+`mingw32-make check` passed on the branch, including the new pins:
+`TestComboPlanPlaysLeftAndRight`, `TestSwapComboSidesFlipsMembers`,
+`TestLinkComboMovesTheLaunchFlag`, `TestUnlinkComboReturnsTheLaunchFlag`,
+`TestComboLinkEndsAMembersAutoConnect`, `TestAutoTargetsSkipsLinkedMembers`,
+`TestComboVolumeReportConvergesTheMembers`, `TestLinkComboClearsAPendingPin`,
+`TestDelayRebuildRefusesAnOfflineMember`, and the app-side
+`TestReceiverComboRowRendersTheChannelMap`, `TestFlyoutPairChannelButtonIsFixed`,
+`TestComboPickRowsExcludeTheOtherSide`, `TestStereoIconFollowsMembers`.
+
+The maintainer ran the feature live during development and observed the combo
+card, the create dialog with per-side icon pickers, the flyout row with the
+立体声组合 tag and no channel button, and a streaming combo whose members both
+played. No log excerpt of a combo session is recorded in this entry, and the
+following remain owed: left and right judged by ear through a combo, swap and
+unlink while streaming, a member lost mid-stream from a combo, and a launch
+from auto-connect with a combo. The 1.37 s rebuild gap measured for a lost
+member applies to these paths unchanged.

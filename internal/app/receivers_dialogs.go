@@ -119,6 +119,10 @@ func (a *App) receiverDialogs(c *ui.Context, p palette) {
 			a.receiverPasswordDialog(c, p)
 		case receiverDialogRemove:
 			a.receiverRemoveDialog(c, p)
+		case receiverDialogComboCreate:
+			a.receiverComboCreateDialog(c, p)
+		case receiverDialogComboUnlink:
+			a.receiverComboUnlinkDialog(c, p)
 		}
 	})
 }
@@ -401,6 +405,8 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 			func() {
 				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
 				primaryDangerButton(c, p, locales.ReceiverRemoveConfirm(), func() {
+					delete(a.receiverOpen, key)
+					delete(a.mutedVolume, key)
 					a.eng.RemoveReceiver(key)
 					a.closeReceiverDialog()
 				})
@@ -428,5 +434,228 @@ func primaryDangerButton(c *ui.Context, p palette, label string, fn func()) {
 	b.OnClick(fn)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(13).FontWeight(500).TextColor(p.bg).SingleLine()
+	})
+}
+
+// comboCandidates lists the receivers a combo may link: visible, not the
+// local host, not a native pair or an existing combo, and AirPlay 2 — the
+// per-packet channel mix runs on the ALAC stream only.
+func (a *App) comboCandidates() []receivers.View {
+	var out []receivers.View
+	for _, v := range a.snap.Receivers {
+		if v.Hidden || v.Local || v.Entry.IsCombo() || v.Entry.IsGroup() || v.Device.IsStereoGroup() {
+			continue
+		}
+		if !v.Device.AirPlay2 {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// comboCandidatesExcept is one side's picker rows: every eligible receiver
+// except the one the other side already chose. A receiver cannot play both
+// sides, so offering it twice is a dead option.
+func comboCandidatesExcept(candidates []receivers.View, excludeKey string) []receivers.View {
+	out := make([]receivers.View, 0, len(candidates))
+	for _, v := range candidates {
+		if v.Key == excludeKey {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// comboSideView is the receiver behind one side's key.
+func comboSideView(candidates []receivers.View, key string) (receivers.View, bool) {
+	for _, v := range candidates {
+		if v.Key == key {
+			return v, true
+		}
+	}
+	return receivers.View{}, false
+}
+
+// comboSideLabel is the label one slot shows for its key.
+func comboSideLabel(candidates []receivers.View, key string) string {
+	if v, ok := comboSideView(candidates, key); ok {
+		return v.Name
+	}
+	return ""
+}
+
+// comboPickSelect is one side's receiver picker: a field-shaped trigger that
+// shows the choice's glyph and name, and a popup whose rows carry the same
+// glyph, so both pickers name receivers rather than bare strings. The empty
+// row clears the side. The rows leave out the receiver the other side holds.
+func (a *App) comboPickSelect(c *ui.Context, p palette, value *string,
+	candidates []receivers.View, excludeKey, label string, changed func()) {
+	sel := ui.SelectBase(c, value)
+	trigger := sel.Trigger.FillWidth().Height(32).Radius(8).PaddingX(10).
+		Border(1, p.pill).Background(p.pill).Cursor(ui.CursorPointer).Label(label)
+	trigger.Children(func() {
+		ui.Row(c).Grow(1).Gap(8).AlignItems(ui.Center).Children(func() {
+			if v, ok := comboSideView(candidates, *value); ok {
+				ui.Icon(c, deviceIcon(v.Model, false)).Size(14, 14).TextColor(p.fg2).Shrink(0)
+				ui.Text(c, v.Name).FontSize(12.5).SingleLine().Ellipsis("…").Shrink(1)
+			} else {
+				ui.Text(c, locales.ComboPickEmpty()).FontSize(12.5).TextColor(p.muted).Shrink(1)
+			}
+			ui.Spacer(c)
+			ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted).Shrink(0)
+		})
+	})
+	sel.Popup(func(panel ui.Element) {
+		panel.Padding(4).Radius(9).Background(p.card).Border(1, p.line)
+		panel.Children(func() {
+			row := func(v *receivers.View, name string) {
+				item := sel.Item("")
+				if v != nil {
+					item = sel.Item(v.Key)
+				}
+				item.Height(28).Radius(7).PaddingX(8).Gap(8).AlignItems(ui.Center).
+					Cursor(ui.CursorPointer).Label(name)
+				if item.Highlighted() {
+					item.Background(p.sel)
+				}
+				item.Children(func() {
+					if v != nil {
+						ui.Icon(c, deviceIcon(v.Model, false)).Size(14, 14).TextColor(p.fg2)
+						ui.Text(c, name).FontSize(12.5).SingleLine().Ellipsis("…")
+						return
+					}
+					ui.Text(c, name).FontSize(12.5).TextColor(p.muted).SingleLine()
+				})
+			}
+			row(nil, locales.ComboPickEmpty())
+			rows := comboCandidatesExcept(candidates, excludeKey)
+			for i := range rows {
+				row(&rows[i], rows[i].Name)
+			}
+		})
+	})
+	if trigger.Changed() {
+		changed()
+	}
+}
+
+// receiverComboCreateDialog builds the combo as a plain form, the same
+// label-plus-field shape the add dialog uses: one select per side, the name
+// with the derived suggestion as its placeholder, and 组合 enabling when both
+// sides hold a receiver. Each select's first option is the empty state's
+// call to action, so an untouched dialog never shows a blank control.
+func (a *App) receiverComboCreateDialog(c *ui.Context, p palette) {
+	d := &a.receiverDialog
+	candidates := a.comboCandidates()
+	// A slot whose receiver left the picker clears, so the form cannot hold a
+	// stale key the selects no longer show.
+	if d.comboLeft != "" && comboSideLabel(candidates, d.comboLeft) == "" {
+		d.comboLeft = ""
+	}
+	if d.comboRight != "" && comboSideLabel(candidates, d.comboRight) == "" {
+		d.comboRight = ""
+	}
+	leftLabel := comboSideLabel(candidates, d.comboLeft)
+	rightLabel := comboSideLabel(candidates, d.comboRight)
+	ready := d.comboLeft != "" && d.comboRight != ""
+
+	ui.Column(c).Children(func() {
+		dialogHead(c, p, iconLink, locales.ReceiverPairAddTitle(), locales.ComboDialogSub(), false, nil)
+		ui.Column(c).Margin(13, 0, 0, 0).Children(func() {
+			fieldLabel(c, p, locales.ComboFieldLeft(), "")
+			a.comboPickSelect(c, p, &d.comboLeft, candidates, d.comboRight,
+				locales.ComboFieldLeft(), func() { d.comboError = "" })
+			fieldLabel(c, p, locales.ComboFieldRight(), "")
+			a.comboPickSelect(c, p, &d.comboRight, candidates, d.comboLeft,
+				locales.ComboFieldRight(), func() { d.comboError = "" })
+			// One muted line under the fields explains why a receiver may be
+			// missing from the pickers.
+			ui.Text(c, locales.ComboPickHint()).FontSize(11).TextColor(p.muted).Margin(6, 0, 0, 0)
+			fieldLabel(c, p, locales.ReceiverFieldName(), "")
+			suggest := ""
+			if ready {
+				suggest = leftLabel + " + " + rightLabel
+			}
+			dialogInput(c, p, &d.comboName, suggest, locales.ReceiverFieldName())
+			dialogErrorRow(c, p, d.comboError)
+		})
+		dialogFooter(c, p,
+			func() { ui.Spacer(c) },
+			func() {
+				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
+				if ready {
+					primaryButton(c, p, locales.ComboCreate(), func() { a.submitComboCreate() })
+				} else {
+					// The commit button shows its 40% disabled pose until both
+					// sides hold a receiver.
+					b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 16).Center().
+						Label(locales.ComboCreate())
+					b.Background(p.fg)
+					b.Disabled(true)
+					b.Opacity(0.4)
+					b.Children(func() {
+						ui.Text(c, locales.ComboCreate()).FontSize(13).FontWeight(500).TextColor(p.bg).SingleLine()
+					})
+				}
+			},
+		)
+	})
+}
+
+// submitComboCreate validates the two slots against the picker's current
+// candidates and sends the link command. An invalid slot keeps the dialog
+// open with the error line, because the engine's refusal would land on a
+// surface the dialog is covering.
+func (a *App) submitComboCreate() {
+	d := &a.receiverDialog
+	valid := func(key string) bool {
+		for _, v := range a.comboCandidates() {
+			if v.Key == key {
+				return true
+			}
+		}
+		return false
+	}
+	if !valid(d.comboLeft) || !valid(d.comboRight) {
+		d.comboError = locales.ComboErrorPick()
+		return
+	}
+	if d.comboLeft == d.comboRight {
+		d.comboError = locales.ComboErrorSame()
+		return
+	}
+	a.eng.LinkReceivers(d.comboLeft, d.comboRight, strings.TrimSpace(d.comboName))
+	a.closeReceiverDialog()
+}
+
+// receiverComboUnlinkDialog asks before splitting a combo: what splits, and
+// that each receiver keeps its own settings.
+func (a *App) receiverComboUnlinkDialog(c *ui.Context, p palette) {
+	key := a.receiverDialog.key
+	v, ok := a.receiverViewFor(key)
+	if !ok {
+		a.closeReceiverDialog()
+		return
+	}
+	ui.Column(c).Children(func() {
+		dialogHead(c, p, iconUnlink, locales.ComboUnlinkTitle(), locales.ComboUnlinkSub(v.Name), true, nil)
+		ui.Column(c).Margin(13, 0, 0, 0).Gap(5).Children(func() {
+			ui.Text(c, locales.ComboUnlinkHint()).FontSize(11.5).TextColor(p.muted)
+		})
+		dialogErrorRow(c, p, "")
+		dialogFooter(c, p,
+			func() { ui.Spacer(c) },
+			func() {
+				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
+				primaryDangerButton(c, p, locales.ComboUnlink(), func() {
+					delete(a.receiverOpen, key)
+					delete(a.mutedVolume, key)
+					a.eng.UnlinkCombo(key)
+					a.closeReceiverDialog()
+				})
+			},
+		)
 	})
 }

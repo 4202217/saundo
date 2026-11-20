@@ -41,6 +41,7 @@ var menuDeviceFamilies = []string{
 	"homepod-mini",
 	"homepod-pair",
 	"homepod-mini-pair",
+	"homepod-mini-combo",
 	"appletv",
 	"airport-express",
 	"macbook",

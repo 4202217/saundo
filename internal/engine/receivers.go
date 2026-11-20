@@ -25,8 +25,8 @@ func (e *Engine) RemoveReceiver(key string) {
 	e.send(command{kind: cmdRemoveReceiver, deviceID: key})
 }
 
-// SetReceiverAutoConnect makes key the single auto-connect target; toggling
-// one receiver clears the others.
+// SetReceiverAutoConnect toggles one receiver's launch flag. The flagged set
+// is the launch's target list, so one receiver no longer clears the others.
 func (e *Engine) SetReceiverAutoConnect(key string, on bool) {
 	e.send(command{kind: cmdUpdateReceiver, deviceID: key,
 		patch: receivers.Patch{AutoConnect: &on}})

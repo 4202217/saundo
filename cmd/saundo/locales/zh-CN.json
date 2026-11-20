@@ -79,6 +79,23 @@
   "flyoutRefreshDevices": "刷新接收器",
   "flyoutDevices": "接收器",
   "flyoutDeviceCount": "{n, plural, =0 {暂无} other {# 台}}",
+  "flyoutMemberLostNotice": "{name} 已断开，其他设备继续播放",
+  "@flyoutMemberLostNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutJoinNotice": "正在加入 {name}，其他设备会短暂暂停",
+  "@flyoutJoinNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutNoticeDismiss": "忽略",
   "flyoutConnectFailed": "连接失败：{error}",
   "credentialResetBar": "保存的配对已重置，需要重新配对。",
   "credentialResetTitle": "保存的配对已重置",
@@ -95,8 +112,17 @@
   "errorLocalReceiver": "本机正在运行声渡，不能作为接收器。",
   "errorStereoMembersOffline": "立体声组需要两台成员都在线。",
   "errorFairPlay": "{device} 使用当前应用不支持的音频格式。",
+  "errorPasswordRejected": "{device} 的密码未被接收器接受。",
+  "@errorPasswordRejected": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "errorEndpointMoved": "{device} 的地址与配对时不一致，已拒绝连接。",
   "errorSessionOpen": "无法建立会话：{error}",
+  "errorClockConflict": "立体声对不能和独立的 PTP 接收器放在一起。",
   "errorReconnectStopped": "自动重连 {count} 次后停止。",
   "errorReceiverMissing": "接收器不存在，请刷新后重试。",
   "errorDeletePassword": "无法删除接收器密码：{error}",
@@ -111,6 +137,16 @@
   "flyoutSyncPTPReady": "PTP · 已同步",
   "flyoutSyncPTPPending": "PTP · 同步中",
   "flyoutVolumeValue": "{v, number, integer}%",
+  "volumeFor": "音量 · {device}",
+  "muteFor": "静音 {device}",
+  "unmuteFor": "取消静音 {device}",
+  "@volumeFor": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "flyoutNowPlayingNoMedia": "未检测到媒体",
   "flyoutNowPlayingSessionFailed": "无法读取系统媒体信息",
   "flyoutNowPlayingSession": "系统媒体",
@@ -124,6 +160,7 @@
   "actionCancel": "取消",
   "actionRetry": "重试",
   "actionReconnect": "重新连接",
+  "disconnectAll": "全部断开",
   "actionDisconnect": "断开连接",
   "actionOffline": "离线",
   "actionConnect": "连接",
@@ -151,8 +188,8 @@
   "settingsNavCapture": "采集",
   "settingsNavNowPlaying": "正在播放",
   "pageGeneralDesc": "发送端身份、启动与外观。",
-  "pageConnectionDesc": "连接状态、延迟与稳定性。",
-  "pageReceiversDesc": "管理接收器、自动连接、显示与每台接收器的延迟补偿。",
+  "pageConnectionDesc": "设备与本次连接的状态。",
+  "pageReceiversDesc": "管理接收器、自动连接、显示与声道。",
   "pageAudioDesc": "在延迟与稳定性之间权衡；播放中切换会自动重连。",
   "pageCaptureDesc": "系统声音，或一个或多个应用。",
   "pageCaptureSystemDesc": "系统声音。",
@@ -199,39 +236,96 @@
   "settingsReconnectDesc": "断开后会自动重试几次，然后停止",
   "settingsStrictAuth": "严格验证接收器",
   "settingsStrictAuthDesc": "接收器验证不通过时断开",
-  "settingsHealthLatencySub": "可在音频页调整",
-  "settingsHealthReceiver": "接收器处理",
-  "settingsHealthReceiverSub": "接收器自报",
-  "settingsHealthReceiverUnknown": "接收器未上报",
-  "settingsHealthReceiverGroupValue": "最高 {value}",
-  "@settingsHealthReceiverGroupValue": {
+  "settingsHealthDrops": "稳定性",
+  "settingsHealthDropsGood": "良好",
+  "settingsHealthDropsBad": "有卡顿",
+  "settingsConnectionDevices": "已连接设备",
+  "settingsConnectionThis": "本次连接",
+  "settingsConnectionUptime": "已连接时长",
+  "settingsConnectionRetransmit": "网络重传",
+  "settingsConnectionReconnects": "重连",
+  "settingsConnectionLost": "{name} 已断开",
+  "@settingsConnectionLost": {
     "placeholders": {
-      "value": {
+      "name": {
         "type": "String"
       }
     }
   },
-  "settingsHealthDrops": "稳定性",
-  "settingsHealthDropsSub": "本次会话",
-  "settingsHealthDropsGood": "良好",
-  "settingsHealthDropsBad": "有卡顿",
-  "settingsHealthNote": "延迟模式决定发送端的缓冲时间；接收器处理是接收器自报的处理时间。两者测量的是不同环节，不能直接相加。",
-  "receiverGroupEnabled": "已启用",
+  "settingsUptimeMinutes": "{n} 分钟",
+  "@settingsUptimeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHours": "{h} 小时 {m} 分钟",
+  "@settingsUptimeHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHoursWhole": "{h} 小时",
+  "@settingsUptimeHoursWhole": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsStabilityNote": "丢样 {drops} · 欠载 {underruns}",
+  "@settingsStabilityNote": {
+    "placeholders": {
+      "drops": {
+        "type": "int"
+      },
+      "underruns": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRetransmitShort": "重传 {pct}%",
+  "@settingsRetransmitShort": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnderrunsShort": "欠载 {n}",
+  "@settingsUnderrunsShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsReconnectsValue": "{n} 次",
+  "@settingsReconnectsValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "receiverGroupEnabled": "单独接收器",
   "receiverGroupHidden": "已隐藏",
   "receiverAddTitle": "添加接收器",
   "receiverAddSub": "手动填写 IP 或主机名，适用于无法通过 mDNS 发现的接收器",
-  "receiverEmptyHiddenHint": "在下方“已隐藏”组里重新启用即可恢复。",
-  "receiverEmptyAllHiddenTitle": "所有接收器都已隐藏",
-  "receiverDiscoveryHint": "网络上的 AirPlay 接收器会自动出现在这里。",
   "receiverChipLocal": "本机",
   "receiverChipManual": "手动添加",
   "receiverChipAuto": "启动时",
   "receiverChipHidden": "已隐藏",
   "receiverEnableSwitch": "在托盘面板中显示；关闭后移入“已隐藏”组",
   "receiverAutoToggle": "启动时自动连接",
-  "receiverAutoToggleDesc": "同一时间仅一台；启用一台会关闭其他接收器",
-  "receiverDelayTitle": "DSP/DAC 延迟",
-  "receiverDelayDesc": "补偿接收器的硬件音频延迟",
+  "receiverAutoToggleDesc": "可勾选多台；启动时会一起连接",
+  "receiverChannelDesc": "左或右会把该声道复制到两个输出",
   "receiverPasswordTitle": "接收器密码",
   "receiverPasswordSaved": "已保存 · 用于 AirPlay 密码认证",
   "receiverPasswordUnset": "未保存 · 连接时按需填写",
@@ -349,16 +443,28 @@
   "settingsCaptureWaitingApp": "等待所选应用",
   "settingsCaptureNotRunning": "未运行",
   "captureSystemDefault": "系统默认输出",
-  "summaryStereoGroup": "立体声组 · {n, number}/2",
-  "summaryModelCurrentDevice": "{model}",
-  "summaryCurrentDevice": "接收器",
   "summaryConnected": "已连接",
-  "summaryConnecting": "连接中",
   "sidebarNoDevice": "未选择接收器",
+  "sidebarSessionCount": "{name} 和其他 {more} 台",
+  "@sidebarSessionCount": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "more": {
+        "type": "int"
+      }
+    }
+  },
   "sidebarConnectedStereo": "已连接 · 立体声组",
   "captureFollowSystem": "跟随系统默认",
   "captureAllSystem": "整个系统",
   "volumeLabel": "音量",
+  "channelLabel": "声道",
+  "channelStereo": "立体声",
+  "channelLeft": "左",
+  "channelRight": "右",
+  "channelTooltip": "声道：{current} · 点击切换到 {next}",
   "settingsNavUpdates": "更新",
   "pageUpdatesDesc": "版本、自动检查与安装。",
   "pageAboutDesc": "版本、项目链接、许可证与诊断日志。",
@@ -555,5 +661,49 @@
   "flyoutLampCollapse": "收起配色",
   "receiverEmptyTitle": "暂无接收器",
   "versionLocalTag": "本地构建",
-  "settingsShowInPanel": "托盘面板中显示"
+  "settingsShowInPanel": "托盘面板中显示",
+  "errorComboInvalid": "这两台接收器无法组成立体声组合。",
+  "receiverGroupCombo": "立体声组合",
+  "receiverPairAddTitle": "创建立体声组合",
+  "receiverPairAddSub": "两台接收器各播一个声道",
+  "comboMapLabel": "声道布局",
+  "comboSwapTip": "交换左右声道",
+  "comboUnlink": "解除组合",
+  "comboUnlinkTitle": "解除立体声组合",
+  "comboUnlinkSub": "「{name}」将拆回两台独立接收器。",
+  "@comboUnlinkSub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboUnlinkHint": "组合的音量不再适用；每台接收器保留自己的设置。",
+  "comboOfflineWarn": "「{name}」未连接，无法启动组合",
+  "@comboOfflineWarn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboDialogSub": "选择左、右声道各由哪台接收器播放。",
+  "comboCreate": "组合",
+  "comboErrorSame": "两侧不能选择同一台接收器",
+  "comboErrorPick": "请为两侧各选择一台接收器",
+  "comboPickEmpty": "选择接收器…",
+  "comboPickHint": "仅列出支持 AirPlay 2 的接收器",
+  "comboFieldLeft": "左声道",
+  "comboFieldRight": "右声道",
+  "comboTag": "立体声组合",
+  "receiverAddAction": "添加",
+  "comboCreateAction": "创建组合",
+  "errorDeviceOffline": "{name} 未连接，无法加入会话。",
+  "@errorDeviceOffline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

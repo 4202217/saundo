@@ -85,7 +85,7 @@ func TestLiveMuteLocal(t *testing.T) {
 	t.Logf("target: %s (%s) at %s:%d", target.Name, target.ID, target.Host, target.Port)
 
 	e.Connect(target.ID)
-	e.SetVolume(0) // mute the receiver before audio can flow
+	e.SetTargetVolume(target.ID, 0) // mute the receiver before audio can flow
 	waitLive(t, 40*time.Second, "streaming", e, func() bool {
 		return e.Snapshot().State == sender.StateStreaming
 	})
@@ -109,7 +109,7 @@ func TestLiveMuteLocal(t *testing.T) {
 	if restoreVolume <= 0 {
 		restoreVolume = realCfg.Volume
 	}
-	e.SetVolume(restoreVolume)
+	e.SetTargetVolume(target.ID, restoreVolume)
 	time.Sleep(500 * time.Millisecond)
 
 	e.Disconnect()
@@ -135,7 +135,7 @@ func TestLiveMuteLocal(t *testing.T) {
 		t.Fatalf("pre-mute the local endpoint: %v", err)
 	}
 	e.Connect(target.ID)
-	e.SetVolume(0)
+	e.SetTargetVolume(target.ID, 0)
 	waitLive(t, 40*time.Second, "streaming again", e, func() bool {
 		return e.Snapshot().State == sender.StateStreaming
 	})
@@ -151,7 +151,7 @@ func TestLiveMuteLocal(t *testing.T) {
 	}
 	t.Logf("streaming; pre-muted local endpoint held muted")
 
-	e.SetVolume(restoreVolume)
+	e.SetTargetVolume(target.ID, restoreVolume)
 	time.Sleep(500 * time.Millisecond)
 	e.Disconnect()
 	waitLive(t, 15*time.Second, "idle after the second disconnect", e, func() bool {

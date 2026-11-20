@@ -95,8 +95,9 @@ const (
 
 // SchemaVersion stamps every save. A file with a higher number was written by
 // a newer build; this build reads its known fields but never rewrites it.
-// Bump this whenever a persisted field is added, renamed, or removed.
-const SchemaVersion = 1
+// Bump this whenever a persisted field is added, renamed, or removed. 2 added
+// lastTargets, the launch combination the engine remembers.
+const SchemaVersion = 2
 
 type Settings struct {
 	Version             int                `json:"version"`
@@ -117,26 +118,31 @@ type Settings struct {
 	CaptureAppIDs       []string           `json:"captureAppIds"`
 	CaptureAppNames     []string           `json:"captureAppNames"`
 	LastDeviceID        string             `json:"lastDeviceId"`
-	StrictReceiverAuth  bool               `json:"strictReceiverAuth"`
-	AutoConnect         bool               `json:"autoConnect"`
-	Reconnect           bool               `json:"reconnect"`
-	ShowNowPlayingPanel bool               `json:"showNowPlayingPanel"`
-	PlaybackControls    bool               `json:"playbackControls"`
-	CoverColors         bool               `json:"coverColors"`
-	CoverMode           CoverMode          `json:"coverMode"`
-	AudioLevel          bool               `json:"audioLevel"`
-	MuteLocalOnConnect  bool               `json:"muteLocalOnConnect"`
-	Lamp                LampSettings       `json:"lamp"`
-	Standby             StandbySettings    `json:"standby"`
-	TrayAnimation       bool               `json:"trayAnimation"`
-	LaunchAtStart       bool               `json:"launchAtStart"`
-	Language            string             `json:"language"`
-	Theme               ThemeMode          `json:"theme"`
-	Beta                bool               `json:"beta"`
-	AutoUpdate          bool               `json:"autoUpdate"`
-	AutoDownload        bool               `json:"autoDownload"`
-	SkippedVersion      string             `json:"skippedVersion"`
-	LastCheck           string             `json:"lastCheck"`
+	// LastTargets is the last streaming session's target keys in target
+	// order. It seeds the UI's pre-session selection; the launch auto-connect
+	// reads each row's flag instead. lastDeviceId is the legacy single-device
+	// record and the fallback when LastTargets is empty.
+	LastTargets         []string        `json:"lastTargets"`
+	StrictReceiverAuth  bool            `json:"strictReceiverAuth"`
+	AutoConnect         bool            `json:"autoConnect"`
+	Reconnect           bool            `json:"reconnect"`
+	ShowNowPlayingPanel bool            `json:"showNowPlayingPanel"`
+	PlaybackControls    bool            `json:"playbackControls"`
+	CoverColors         bool            `json:"coverColors"`
+	CoverMode           CoverMode       `json:"coverMode"`
+	AudioLevel          bool            `json:"audioLevel"`
+	MuteLocalOnConnect  bool            `json:"muteLocalOnConnect"`
+	Lamp                LampSettings    `json:"lamp"`
+	Standby             StandbySettings `json:"standby"`
+	TrayAnimation       bool            `json:"trayAnimation"`
+	LaunchAtStart       bool            `json:"launchAtStart"`
+	Language            string          `json:"language"`
+	Theme               ThemeMode       `json:"theme"`
+	Beta                bool            `json:"beta"`
+	AutoUpdate          bool            `json:"autoUpdate"`
+	AutoDownload        bool            `json:"autoDownload"`
+	SkippedVersion      string          `json:"skippedVersion"`
+	LastCheck           string          `json:"lastCheck"`
 }
 
 // Default returns the first-run configuration.

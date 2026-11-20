@@ -41,6 +41,7 @@ var (
 		"CaptureAppIDs",
 		"CaptureAppNames",
 		"LastDeviceID",
+		"LastTargets",
 		"StrictReceiverAuth",
 		"Reconnect",
 		"Lamp",

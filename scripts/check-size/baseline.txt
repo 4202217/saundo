@@ -1,13 +1,15 @@
-# Files above the 800-line cap when the ratchet landed. A file listed here
-# may not grow; extract the next seam instead. The gate also fails when a
-# file shrinks, so lower its number in the same change and the ceiling
-# ratchets down. Raising a number is an explicit override that shows up in
-# review. New files must stay at or below 800 lines. Generated files and
-# _test.go files are exempt.
-internal/engine/engine.go	2812
-internal/app/app.go	1259
-internal/app/settings_window.go	1172
-internal/airplay/sender/sender.go	1147
-internal/airplay/sender/rtsp.go	772
-internal/capture/capture_darwin.go	851
-internal/app/flyout.go	770
+# Files grandfathered when the ratchet landed: they crossed the 800-line cap
+# under the old count that included comments. Counts now measure code lines
+# only, so some sit below 800 but keep their ceiling. A listed file may not
+# grow; extract the next seam instead. The gate also fails when a file shrinks,
+# so lower its number in the same change and the ceiling ratchets down.
+# Raising a number is an explicit override that shows up in review. New files
+# must stay at or below 800 code lines. Generated files and _test.go files are
+# exempt.
+internal/engine/engine.go	1834
+internal/app/app.go	999
+internal/app/settings_window.go	885
+internal/airplay/sender/sender.go	881
+internal/airplay/sender/rtsp.go	679
+internal/capture/capture_darwin.go	697
+internal/app/flyout.go	452

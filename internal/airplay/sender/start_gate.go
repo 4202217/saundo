@@ -83,6 +83,18 @@ func (g *StartGate) Arrive(now time.Time, inputRate int) error {
 	return nil
 }
 
+// SetInputRate follows a capture-rate change while the gate is still open. A
+// rate update can land between two arrivals when the capture result reaches
+// the engine after the first sender has arrived; without this, the next
+// arrival on the new rate would fail the mismatch check and kill the cohort.
+// A sealed gate keeps the rate its cushion was computed from.
+func (g *StartGate) SetInputRate(rate int) {
+	if g.sealed || rate <= 0 {
+		return
+	}
+	g.rate = rate
+}
+
 // Begin reports the shared start epoch once every member has arrived and now
 // has reached it. The first successful call performs the one trim that keeps
 // the newest cushion in every registered buffer; later calls return the same

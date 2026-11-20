@@ -76,7 +76,7 @@ func TestMergeHidesTheLocalReceiver(t *testing.T) {
 	if !v.Local || !v.Hidden || v.AutoConnect {
 		t.Fatalf("local view = %+v, want local, hidden, no auto-connect", v)
 	}
-	if got := Visible(targets, ""); len(got) != 0 {
+	if got := Visible(targets, nil); len(got) != 0 {
 		t.Fatalf("local receiver leaked into the flyout: %+v", got)
 	}
 }
@@ -213,7 +213,7 @@ func TestManageableDropsOfflineRememberedRows(t *testing.T) {
 		{Key: "m:01", Kind: KindManual, Type: TypeAirPlay2, Name: "手动", Host: "192.0.2.9", Port: 7000},
 	}}
 	devs := []device.Device{discovered("AA:00", "在线", "192.0.2.1", 7000)}
-	targets := Manageable(Merge(reg, devs, nil), "")
+	targets := Manageable(Merge(reg, devs, nil), nil)
 	if len(targets) != 2 {
 		t.Fatalf("targets = %+v, want the online and the manual row", targets)
 	}
@@ -222,7 +222,7 @@ func TestManageableDropsOfflineRememberedRows(t *testing.T) {
 			t.Fatalf("offline remembered row survived: %+v", target)
 		}
 	}
-	if got := Manageable(Merge(reg, devs, nil), "AA:01"); len(got) != 3 {
+	if got := Manageable(Merge(reg, devs, nil), map[string]bool{"AA:01": true}); len(got) != 3 {
 		t.Fatalf("active row dropped: %+v", got)
 	}
 }
@@ -258,42 +258,28 @@ func TestVisibleFiltersHiddenAndKeepsActive(t *testing.T) {
 		{Device: discovered("AA:00", "可见", "h", 7000), Entry: Entry{Key: "AA:00", Kind: KindDiscovered}},
 		{Device: discovered("AA:01", "隐藏", "h", 7000), Entry: Entry{Key: "AA:01", Kind: KindDiscovered, Hidden: true}},
 	}
-	got := Visible(targets, "")
+	got := Visible(targets, nil)
 	if len(got) != 1 || got[0].ID != "AA:00" {
 		t.Fatalf("hidden row leaked into the flyout: %+v", got)
 	}
-	got = Visible(targets, "AA:01")
+	got = Visible(targets, map[string]bool{"AA:01": true})
 	if len(got) != 2 {
 		t.Fatalf("the active session's hidden row was dropped: %+v", got)
 	}
 }
 
-func TestAutoTargetPicksTheSingleFlag(t *testing.T) {
+func TestAutoTargetsListsEveryFlag(t *testing.T) {
 	reg := Registry{Entries: []Entry{
 		{Key: "AA:00", Kind: KindDiscovered},
 		{Key: "AA:01", Kind: KindDiscovered, AutoConnect: true},
+		{Key: "AA:02", Kind: KindDiscovered, AutoConnect: true},
 	}}
-	key, ok := AutoTarget(reg)
-	if !ok || key != "AA:01" {
-		t.Fatalf("auto target = %q %v, want AA:01", key, ok)
+	keys := AutoTargets(reg)
+	if len(keys) != 2 || keys[0] != "AA:01" || keys[1] != "AA:02" {
+		t.Fatalf("auto targets = %v, want both flags in registry order", keys)
 	}
-	if _, ok := AutoTarget(Registry{}); ok {
-		t.Fatal("empty registry chose a target")
-	}
-}
-
-func TestSingleAutoConnectKeepsOneFlag(t *testing.T) {
-	reg := Registry{Entries: []Entry{
-		{Key: "AA:00", Kind: KindDiscovered, AutoConnect: true},
-		{Key: "AA:01", Kind: KindDiscovered},
-	}}
-	reg.SingleAutoConnect("AA:01", true)
-	if reg.Entries[0].AutoConnect || !reg.Entries[1].AutoConnect {
-		t.Fatalf("two auto-connect flags: %+v", reg.Entries)
-	}
-	reg.SingleAutoConnect("AA:01", false)
-	if reg.Entries[1].AutoConnect {
-		t.Fatal("flag did not clear")
+	if got := AutoTargets(Registry{}); len(got) != 0 {
+		t.Fatalf("empty registry chose %v", got)
 	}
 }
 
@@ -807,5 +793,96 @@ func TestDuplicatesFor(t *testing.T) {
 		if got != c.want {
 			t.Fatalf("DuplicatesFor(sent=%d, retransmits=%d) = %d, want %d", c.sent, c.retransmits, got, c.want)
 		}
+	}
+}
+
+func TestMergeSynthesizesAComboRow(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "左"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "右"},
+		{Key: "combo:01", Kind: KindCombo, Name: "客厅立体声", Members: []Member{
+			{ID: "AA:00", Name: "左"}, {ID: "AA:01", Name: "右"},
+		}},
+	}}
+	devs := []device.Device{discovered("AA:00", "左", "192.0.2.1", 7000), discovered("AA:01", "右", "192.0.2.2", 7000)}
+	targets := Merge(reg, devs, nil)
+	byKey := map[string]Target{}
+	for _, tg := range targets {
+		byKey[tg.Entry.Key] = tg
+	}
+	combo, ok := byKey["combo:01"]
+	if !ok {
+		t.Fatalf("combo row missing: %+v", targets)
+	}
+	if !combo.Device.IsStereoGroup() || len(combo.Device.Members) != 2 {
+		t.Fatalf("combo device is not a stereo group: %+v", combo.Device)
+	}
+	if combo.Device.Members[0].ID != "AA:00" || combo.Device.Members[1].ID != "AA:01" {
+		t.Fatalf("member order = %q %q, want left then right", combo.Device.Members[0].ID, combo.Device.Members[1].ID)
+	}
+	if !combo.Device.Online {
+		t.Fatal("a combo over two online members is online")
+	}
+	// The member rows stay in the merge; DropLinked removes them at the
+	// projection point, and lookups by a member key keep working.
+	for _, key := range []string{"AA:00", "AA:01"} {
+		if _, ok := byKey[key]; !ok {
+			t.Fatalf("member row %s vanished from the merge", key)
+		}
+	}
+	linked := DropLinked(targets)
+	if len(linked) != 1 || linked[0].Entry.Key != "combo:01" {
+		t.Fatalf("DropLinked left %d rows, want the combo alone", len(linked))
+	}
+}
+
+func TestMergeComboWithOfflineMember(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "左"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "右"},
+		{Key: "combo:01", Kind: KindCombo, Name: "客厅立体声", Members: []Member{
+			{ID: "AA:00", Name: "左"}, {ID: "AA:01", Name: "右"},
+		}},
+	}}
+	// The right member is not advertised: its remembered row goes offline and
+	// the combo reads that state, so the row stays visible and unlinkable.
+	devs := []device.Device{discovered("AA:00", "左", "192.0.2.1", 7000)}
+	targets := Merge(reg, devs, nil)
+	byKey := map[string]Target{}
+	for _, tg := range targets {
+		byKey[tg.Entry.Key] = tg
+	}
+	combo, ok := byKey["combo:01"]
+	if !ok {
+		t.Fatal("the combo row vanished while one member is offline")
+	}
+	if combo.Device.Online {
+		t.Fatal("a combo with an offline member is offline")
+	}
+	if combo.Device.Members[1].Online {
+		t.Fatal("the offline member's state did not travel into the combo")
+	}
+}
+
+func TestManageableKeepsAComboWithAnOfflineMember(t *testing.T) {
+	combo := Target{Device: device.Device{ID: "combo:01", Online: false}, Entry: Entry{Key: "combo:01", Kind: KindCombo}}
+	got := Manageable([]Target{combo}, nil)
+	if len(got) != 1 {
+		t.Fatal("a combo must stay manageable while a member is offline, like a manual row")
+	}
+}
+
+// TestAutoTargetsSkipsLinkedMembers pins the read-side guard: a member that
+// still carries a stale launch flag inside a combo never starts on its own,
+// because the combo carries the launch intent.
+func TestAutoTargetsSkipsLinkedMembers(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, AutoConnect: true},
+		{Key: "AA:01", Kind: KindDiscovered, AutoConnect: true},
+		{Key: "combo:01", Kind: KindCombo, Members: []Member{{ID: "AA:00"}, {ID: "AA:01"}}},
+	}}
+	got := AutoTargets(reg)
+	if len(got) != 0 {
+		t.Fatalf("linked members launched on their own: %v", got)
 	}
 }

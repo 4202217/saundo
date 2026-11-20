@@ -96,6 +96,23 @@
   "flyoutRefreshDevices": "Refresh receivers",
   "flyoutDevices": "Receivers",
   "flyoutDeviceCount": "{n, plural, =0 {No receivers} one {# receiver} other {# receivers}}",
+  "flyoutMemberLostNotice": "{name} disconnected; the other devices keep playing",
+  "@flyoutMemberLostNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutJoinNotice": "Adding {name}; the other devices pause briefly",
+  "@flyoutJoinNotice": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "flyoutNoticeDismiss": "Dismiss",
   "@flyoutDeviceCount": {
     "placeholders": {
       "n": {
@@ -140,6 +157,14 @@
   "errorLocalReceiver": "Saundo is running on this computer, so it cannot be a receiver.",
   "errorStereoMembersOffline": "Both stereo members must be online.",
   "errorFairPlay": "{device} uses an audio format this app does not support.",
+  "errorPasswordRejected": "The receiver did not accept the password for {device}.",
+  "@errorPasswordRejected": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "@errorFairPlay": {
     "placeholders": {
       "device": {
@@ -163,6 +188,7 @@
       }
     }
   },
+  "errorClockConflict": "A stereo pair cannot join standalone PTP receivers.",
   "errorReconnectStopped": "Stopped after {count} reconnect attempts.",
   "@errorReconnectStopped": {
     "placeholders": {
@@ -205,6 +231,16 @@
       }
     }
   },
+  "volumeFor": "Volume · {device}",
+  "muteFor": "Mute {device}",
+  "unmuteFor": "Unmute {device}",
+  "@volumeFor": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
   "flyoutNowPlayingNoMedia": "No media detected",
   "flyoutNowPlayingSessionFailed": "Could not read the system media information",
   "flyoutNowPlayingSession": "System media",
@@ -225,6 +261,7 @@
   "actionCancel": "Cancel",
   "actionRetry": "Retry",
   "actionReconnect": "Reconnect",
+  "disconnectAll": "Disconnect all",
   "actionDisconnect": "Disconnect",
   "actionOffline": "Offline",
   "actionConnect": "Connect",
@@ -273,8 +310,8 @@
   "settingsNavCapture": "Capture",
   "settingsNavNowPlaying": "Now Playing",
   "pageGeneralDesc": "Sender identity, startup, and appearance.",
-  "pageConnectionDesc": "Connection, latency, and stability.",
-  "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and per-receiver delay compensation.",
+  "pageConnectionDesc": "Devices and this connection's state.",
+  "pageReceiversDesc": "Manage receivers, auto-connect, visibility, and channel.",
   "pageAudioDesc": "Trade latency against stability; switching mid-session reconnects.",
   "pageCaptureDesc": "System audio, or one or more apps.",
   "pageCaptureSystemDesc": "System audio.",
@@ -321,39 +358,96 @@
   "settingsReconnectDesc": "Retries automatically a few times before giving up",
   "settingsStrictAuth": "Strict receiver verification",
   "settingsStrictAuthDesc": "Disconnect when receiver verification fails",
-  "settingsHealthLatencySub": "Adjust on Audio",
-  "settingsHealthReceiver": "Receiver processing",
-  "settingsHealthReceiverSub": "Reported by receiver",
-  "settingsHealthReceiverUnknown": "Not reported",
-  "settingsHealthReceiverGroupValue": "Up to {value}",
-  "@settingsHealthReceiverGroupValue": {
+  "settingsHealthDrops": "Stability",
+  "settingsHealthDropsGood": "Good",
+  "settingsHealthDropsBad": "Stuttering",
+  "settingsConnectionDevices": "Connected devices",
+  "settingsConnectionThis": "This connection",
+  "settingsConnectionUptime": "Connected for",
+  "settingsConnectionRetransmit": "Network retransmit",
+  "settingsConnectionReconnects": "Reconnects",
+  "settingsConnectionLost": "{name} disconnected",
+  "@settingsConnectionLost": {
     "placeholders": {
-      "value": {
+      "name": {
         "type": "String"
       }
     }
   },
-  "settingsHealthDrops": "Stability",
-  "settingsHealthDropsSub": "This session",
-  "settingsHealthDropsGood": "Good",
-  "settingsHealthDropsBad": "Stuttering",
-  "settingsHealthNote": "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure different stages and are not additive.",
-  "receiverGroupEnabled": "Enabled",
+  "settingsUptimeMinutes": "{n} min",
+  "@settingsUptimeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHours": "{h} h {m} min",
+  "@settingsUptimeHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsUptimeHoursWhole": "{h} h",
+  "@settingsUptimeHoursWhole": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsStabilityNote": "{drops} dropped · {underruns} underruns",
+  "@settingsStabilityNote": {
+    "placeholders": {
+      "drops": {
+        "type": "int"
+      },
+      "underruns": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsRetransmitShort": "{pct}% retransmitted",
+  "@settingsRetransmitShort": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUnderrunsShort": "{n} underruns",
+  "@settingsUnderrunsShort": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsReconnectsValue": "{n}",
+  "@settingsReconnectsValue": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "receiverGroupEnabled": "Standalone receivers",
   "receiverGroupHidden": "Hidden",
   "receiverAddTitle": "Add receiver",
   "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find",
-  "receiverEmptyHiddenHint": "Enable them again in the hidden group below.",
-  "receiverEmptyAllHiddenTitle": "All receivers are hidden",
-  "receiverDiscoveryHint": "AirPlay receivers on your network appear here automatically.",
   "receiverChipLocal": "Local",
   "receiverChipManual": "Manual",
   "receiverChipAuto": "At launch",
   "receiverChipHidden": "Hidden",
   "receiverEnableSwitch": "Show in the tray panel; off moves the row to the hidden group",
   "receiverAutoToggle": "Connect at launch",
-  "receiverAutoToggleDesc": "One receiver at a time; enabling one turns the others off",
-  "receiverDelayTitle": "DSP/DAC delay",
-  "receiverDelayDesc": "Compensate the receiver's hardware audio delay",
+  "receiverAutoToggleDesc": "Flag as many as you like; they connect together at launch",
+  "receiverChannelDesc": "Left or right copies that channel to both outputs",
   "receiverPasswordTitle": "Receiver password",
   "receiverPasswordSaved": "Saved · used for AirPlay password authentication",
   "receiverPasswordUnset": "Not saved · fill in when the receiver asks",
@@ -471,30 +565,28 @@
   "settingsCaptureWaitingApp": "Waiting for the selected apps",
   "settingsCaptureNotRunning": "Not running",
   "captureSystemDefault": "System default output",
-  "summaryStereoGroup": "Stereo pair · {n, number}/2",
-  "@summaryStereoGroup": {
+  "summaryConnected": "Connected",
+  "sidebarNoDevice": "No receiver selected",
+  "sidebarSessionCount": "{name} and {more} more",
+  "@sidebarSessionCount": {
     "placeholders": {
-      "n": {
+      "name": {
+        "type": "String"
+      },
+      "more": {
         "type": "int"
       }
     }
   },
-  "summaryModelCurrentDevice": "{model}",
-  "@summaryModelCurrentDevice": {
-    "placeholders": {
-      "model": {
-        "type": "String"
-      }
-    }
-  },
-  "summaryCurrentDevice": "Receiver",
-  "summaryConnected": "Connected",
-  "summaryConnecting": "Connecting",
-  "sidebarNoDevice": "No receiver selected",
   "sidebarConnectedStereo": "Connected · Stereo pair",
   "captureFollowSystem": "Follow system default",
   "captureAllSystem": "Entire system",
   "volumeLabel": "Volume",
+  "channelLabel": "Channel",
+  "channelStereo": "Stereo",
+  "channelLeft": "Left",
+  "channelRight": "Right",
+  "channelTooltip": "Channel: {current} · Click for {next}",
   "settingsNavUpdates": "Updates",
   "pageUpdatesDesc": "Versions, automatic checks, and installation.",
   "pageAboutDesc": "Version, project links, license, and diagnostic log.",
@@ -691,5 +783,49 @@
   "flyoutLampCollapse": "Hide colors",
   "receiverEmptyTitle": "No receivers yet",
   "versionLocalTag": "Local build",
-  "settingsShowInPanel": "Show in tray panel"
+  "settingsShowInPanel": "Show in tray panel",
+  "errorComboInvalid": "These receivers cannot form a stereo combo.",
+  "receiverGroupCombo": "Stereo combos",
+  "receiverPairAddTitle": "Create stereo combo",
+  "receiverPairAddSub": "One receiver per channel",
+  "comboMapLabel": "Channel layout",
+  "comboSwapTip": "Swap left and right",
+  "comboUnlink": "Unlink",
+  "comboUnlinkTitle": "Unlink stereo combo",
+  "comboUnlinkSub": "{name} splits back into two standalone receivers.",
+  "@comboUnlinkSub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboUnlinkHint": "The combo volume stops applying; each receiver keeps its own settings.",
+  "comboOfflineWarn": "{name} is offline, so the combo cannot start",
+  "@comboOfflineWarn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "comboDialogSub": "Choose which receiver plays each side.",
+  "comboCreate": "Create",
+  "comboErrorSame": "The two sides cannot be the same receiver",
+  "comboErrorPick": "Choose a receiver for each side",
+  "comboPickEmpty": "Choose a receiver…",
+  "comboPickHint": "Only AirPlay 2 receivers are listed",
+  "comboFieldLeft": "Left channel",
+  "comboFieldRight": "Right channel",
+  "comboTag": "Stereo combo",
+  "receiverAddAction": "Add",
+  "comboCreateAction": "New combo",
+  "errorDeviceOffline": "{name} is offline, so it cannot join the session.",
+  "@errorDeviceOffline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

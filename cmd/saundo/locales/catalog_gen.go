@@ -518,6 +518,38 @@ func (msgs Messages) FlyoutDeviceCount(n int) string {
 	return Catalog.Format(msgs.locale, "flyoutDeviceCount", map[string]any{"n": n})
 }
 
+// FlyoutMemberLostNotice says "{name} disconnected; the other devices keep playing"
+// in the language the app shows.
+func FlyoutMemberLostNotice(name string) string {
+	return In(i18n.Locale()).FlyoutMemberLostNotice(name)
+}
+
+// FlyoutMemberLostNotice says "{name} disconnected; the other devices keep playing"
+// in the language of msgs.
+func (msgs Messages) FlyoutMemberLostNotice(name string) string {
+	return Catalog.Format(msgs.locale, "flyoutMemberLostNotice", map[string]any{"name": name})
+}
+
+// FlyoutJoinNotice says "Adding {name}; the other devices pause briefly"
+// in the language the app shows.
+func FlyoutJoinNotice(name string) string { return In(i18n.Locale()).FlyoutJoinNotice(name) }
+
+// FlyoutJoinNotice says "Adding {name}; the other devices pause briefly"
+// in the language of msgs.
+func (msgs Messages) FlyoutJoinNotice(name string) string {
+	return Catalog.Format(msgs.locale, "flyoutJoinNotice", map[string]any{"name": name})
+}
+
+// FlyoutNoticeDismiss says "Dismiss"
+// in the language the app shows.
+func FlyoutNoticeDismiss() string { return In(i18n.Locale()).FlyoutNoticeDismiss() }
+
+// FlyoutNoticeDismiss says "Dismiss"
+// in the language of msgs.
+func (msgs Messages) FlyoutNoticeDismiss() string {
+	return Catalog.Format(msgs.locale, "flyoutNoticeDismiss", nil)
+}
+
 // FlyoutConnectFailed says "Connection failed: {error}"
 // in the language the app shows.
 func FlyoutConnectFailed(error string) string { return In(i18n.Locale()).FlyoutConnectFailed(error) }
@@ -678,6 +710,18 @@ func (msgs Messages) ErrorFairPlay(device string) string {
 	return Catalog.Format(msgs.locale, "errorFairPlay", map[string]any{"device": device})
 }
 
+// ErrorPasswordRejected says "The receiver did not accept the password for {device}."
+// in the language the app shows.
+func ErrorPasswordRejected(device string) string {
+	return In(i18n.Locale()).ErrorPasswordRejected(device)
+}
+
+// ErrorPasswordRejected says "The receiver did not accept the password for {device}."
+// in the language of msgs.
+func (msgs Messages) ErrorPasswordRejected(device string) string {
+	return Catalog.Format(msgs.locale, "errorPasswordRejected", map[string]any{"device": device})
+}
+
 // ErrorEndpointMoved says "{device}'s address changed since pairing, so the connection was refused."
 // in the language the app shows.
 func ErrorEndpointMoved(device string) string { return In(i18n.Locale()).ErrorEndpointMoved(device) }
@@ -696,6 +740,16 @@ func ErrorSessionOpen(error string) string { return In(i18n.Locale()).ErrorSessi
 // in the language of msgs.
 func (msgs Messages) ErrorSessionOpen(error string) string {
 	return Catalog.Format(msgs.locale, "errorSessionOpen", map[string]any{"error": error})
+}
+
+// ErrorClockConflict says "A stereo pair cannot join standalone PTP receivers."
+// in the language the app shows.
+func ErrorClockConflict() string { return In(i18n.Locale()).ErrorClockConflict() }
+
+// ErrorClockConflict says "A stereo pair cannot join standalone PTP receivers."
+// in the language of msgs.
+func (msgs Messages) ErrorClockConflict() string {
+	return Catalog.Format(msgs.locale, "errorClockConflict", nil)
 }
 
 // ErrorReconnectStopped says "Stopped after {count} reconnect attempts."
@@ -840,6 +894,36 @@ func (msgs Messages) FlyoutVolumeValue(v float64) string {
 	return Catalog.Format(msgs.locale, "flyoutVolumeValue", map[string]any{"v": v})
 }
 
+// VolumeFor says "Volume · {device}"
+// in the language the app shows.
+func VolumeFor(device string) string { return In(i18n.Locale()).VolumeFor(device) }
+
+// VolumeFor says "Volume · {device}"
+// in the language of msgs.
+func (msgs Messages) VolumeFor(device string) string {
+	return Catalog.Format(msgs.locale, "volumeFor", map[string]any{"device": device})
+}
+
+// MuteFor says "Mute {device}"
+// in the language the app shows.
+func MuteFor(device string) string { return In(i18n.Locale()).MuteFor(device) }
+
+// MuteFor says "Mute {device}"
+// in the language of msgs.
+func (msgs Messages) MuteFor(device string) string {
+	return Catalog.Format(msgs.locale, "muteFor", map[string]any{"device": device})
+}
+
+// UnmuteFor says "Unmute {device}"
+// in the language the app shows.
+func UnmuteFor(device string) string { return In(i18n.Locale()).UnmuteFor(device) }
+
+// UnmuteFor says "Unmute {device}"
+// in the language of msgs.
+func (msgs Messages) UnmuteFor(device string) string {
+	return Catalog.Format(msgs.locale, "unmuteFor", map[string]any{"device": device})
+}
+
 // FlyoutNowPlayingNoMedia says "No media detected"
 // in the language the app shows.
 func FlyoutNowPlayingNoMedia() string { return In(i18n.Locale()).FlyoutNowPlayingNoMedia() }
@@ -970,6 +1054,16 @@ func ActionReconnect() string { return In(i18n.Locale()).ActionReconnect() }
 // in the language of msgs.
 func (msgs Messages) ActionReconnect() string {
 	return Catalog.Format(msgs.locale, "actionReconnect", nil)
+}
+
+// DisconnectAll says "Disconnect all"
+// in the language the app shows.
+func DisconnectAll() string { return In(i18n.Locale()).DisconnectAll() }
+
+// DisconnectAll says "Disconnect all"
+// in the language of msgs.
+func (msgs Messages) DisconnectAll() string {
+	return Catalog.Format(msgs.locale, "disconnectAll", nil)
 }
 
 // ActionDisconnect says "Disconnect"
@@ -1242,21 +1336,21 @@ func (msgs Messages) PageGeneralDesc() string {
 	return Catalog.Format(msgs.locale, "pageGeneralDesc", nil)
 }
 
-// PageConnectionDesc says "Connection, latency, and stability."
+// PageConnectionDesc says "Devices and this connection's state."
 // in the language the app shows.
 func PageConnectionDesc() string { return In(i18n.Locale()).PageConnectionDesc() }
 
-// PageConnectionDesc says "Connection, latency, and stability."
+// PageConnectionDesc says "Devices and this connection's state."
 // in the language of msgs.
 func (msgs Messages) PageConnectionDesc() string {
 	return Catalog.Format(msgs.locale, "pageConnectionDesc", nil)
 }
 
-// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver delay compensation."
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and channel."
 // in the language the app shows.
 func PageReceiversDesc() string { return In(i18n.Locale()).PageReceiversDesc() }
 
-// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and per-receiver delay compensation."
+// PageReceiversDesc says "Manage receivers, auto-connect, visibility, and channel."
 // in the language of msgs.
 func (msgs Messages) PageReceiversDesc() string {
 	return Catalog.Format(msgs.locale, "pageReceiversDesc", nil)
@@ -1724,58 +1818,6 @@ func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
 }
 
-// SettingsHealthLatencySub says "Adjust on Audio"
-// in the language the app shows.
-func SettingsHealthLatencySub() string { return In(i18n.Locale()).SettingsHealthLatencySub() }
-
-// SettingsHealthLatencySub says "Adjust on Audio"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthLatencySub() string {
-	return Catalog.Format(msgs.locale, "settingsHealthLatencySub", nil)
-}
-
-// SettingsHealthReceiver says "Receiver processing"
-// in the language the app shows.
-func SettingsHealthReceiver() string { return In(i18n.Locale()).SettingsHealthReceiver() }
-
-// SettingsHealthReceiver says "Receiver processing"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiver() string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiver", nil)
-}
-
-// SettingsHealthReceiverSub says "Reported by receiver"
-// in the language the app shows.
-func SettingsHealthReceiverSub() string { return In(i18n.Locale()).SettingsHealthReceiverSub() }
-
-// SettingsHealthReceiverSub says "Reported by receiver"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiverSub() string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiverSub", nil)
-}
-
-// SettingsHealthReceiverUnknown says "Not reported"
-// in the language the app shows.
-func SettingsHealthReceiverUnknown() string { return In(i18n.Locale()).SettingsHealthReceiverUnknown() }
-
-// SettingsHealthReceiverUnknown says "Not reported"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiverUnknown() string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiverUnknown", nil)
-}
-
-// SettingsHealthReceiverGroupValue says "Up to {value}"
-// in the language the app shows.
-func SettingsHealthReceiverGroupValue(value string) string {
-	return In(i18n.Locale()).SettingsHealthReceiverGroupValue(value)
-}
-
-// SettingsHealthReceiverGroupValue says "Up to {value}"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthReceiverGroupValue(value string) string {
-	return Catalog.Format(msgs.locale, "settingsHealthReceiverGroupValue", map[string]any{"value": value})
-}
-
 // SettingsHealthDrops says "Stability"
 // in the language the app shows.
 func SettingsHealthDrops() string { return In(i18n.Locale()).SettingsHealthDrops() }
@@ -1784,16 +1826,6 @@ func SettingsHealthDrops() string { return In(i18n.Locale()).SettingsHealthDrops
 // in the language of msgs.
 func (msgs Messages) SettingsHealthDrops() string {
 	return Catalog.Format(msgs.locale, "settingsHealthDrops", nil)
-}
-
-// SettingsHealthDropsSub says "This session"
-// in the language the app shows.
-func SettingsHealthDropsSub() string { return In(i18n.Locale()).SettingsHealthDropsSub() }
-
-// SettingsHealthDropsSub says "This session"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthDropsSub() string {
-	return Catalog.Format(msgs.locale, "settingsHealthDropsSub", nil)
 }
 
 // SettingsHealthDropsGood says "Good"
@@ -1816,21 +1848,147 @@ func (msgs Messages) SettingsHealthDropsBad() string {
 	return Catalog.Format(msgs.locale, "settingsHealthDropsBad", nil)
 }
 
-// SettingsHealthNote says "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure…"
+// SettingsConnectionDevices says "Connected devices"
 // in the language the app shows.
-func SettingsHealthNote() string { return In(i18n.Locale()).SettingsHealthNote() }
+func SettingsConnectionDevices() string { return In(i18n.Locale()).SettingsConnectionDevices() }
 
-// SettingsHealthNote says "Latency mode sets the sender buffer. Receiver processing is the receiver's own reported processing time. They measure…"
+// SettingsConnectionDevices says "Connected devices"
 // in the language of msgs.
-func (msgs Messages) SettingsHealthNote() string {
-	return Catalog.Format(msgs.locale, "settingsHealthNote", nil)
+func (msgs Messages) SettingsConnectionDevices() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionDevices", nil)
 }
 
-// ReceiverGroupEnabled says "Enabled"
+// SettingsConnectionThis says "This connection"
+// in the language the app shows.
+func SettingsConnectionThis() string { return In(i18n.Locale()).SettingsConnectionThis() }
+
+// SettingsConnectionThis says "This connection"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionThis() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionThis", nil)
+}
+
+// SettingsConnectionUptime says "Connected for"
+// in the language the app shows.
+func SettingsConnectionUptime() string { return In(i18n.Locale()).SettingsConnectionUptime() }
+
+// SettingsConnectionUptime says "Connected for"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionUptime() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionUptime", nil)
+}
+
+// SettingsConnectionRetransmit says "Network retransmit"
+// in the language the app shows.
+func SettingsConnectionRetransmit() string { return In(i18n.Locale()).SettingsConnectionRetransmit() }
+
+// SettingsConnectionRetransmit says "Network retransmit"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionRetransmit() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionRetransmit", nil)
+}
+
+// SettingsConnectionReconnects says "Reconnects"
+// in the language the app shows.
+func SettingsConnectionReconnects() string { return In(i18n.Locale()).SettingsConnectionReconnects() }
+
+// SettingsConnectionReconnects says "Reconnects"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionReconnects() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionReconnects", nil)
+}
+
+// SettingsConnectionLost says "{name} disconnected"
+// in the language the app shows.
+func SettingsConnectionLost(name string) string {
+	return In(i18n.Locale()).SettingsConnectionLost(name)
+}
+
+// SettingsConnectionLost says "{name} disconnected"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionLost(name string) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionLost", map[string]any{"name": name})
+}
+
+// SettingsUptimeMinutes says "{n} min"
+// in the language the app shows.
+func SettingsUptimeMinutes(n int) string { return In(i18n.Locale()).SettingsUptimeMinutes(n) }
+
+// SettingsUptimeMinutes says "{n} min"
+// in the language of msgs.
+func (msgs Messages) SettingsUptimeMinutes(n int) string {
+	return Catalog.Format(msgs.locale, "settingsUptimeMinutes", map[string]any{"n": n})
+}
+
+// SettingsUptimeHours says "{h} h {m} min"
+// in the language the app shows.
+func SettingsUptimeHours(h int, m int) string { return In(i18n.Locale()).SettingsUptimeHours(h, m) }
+
+// SettingsUptimeHours says "{h} h {m} min"
+// in the language of msgs.
+func (msgs Messages) SettingsUptimeHours(h int, m int) string {
+	return Catalog.Format(msgs.locale, "settingsUptimeHours", map[string]any{"h": h, "m": m})
+}
+
+// SettingsUptimeHoursWhole says "{h} h"
+// in the language the app shows.
+func SettingsUptimeHoursWhole(h int) string { return In(i18n.Locale()).SettingsUptimeHoursWhole(h) }
+
+// SettingsUptimeHoursWhole says "{h} h"
+// in the language of msgs.
+func (msgs Messages) SettingsUptimeHoursWhole(h int) string {
+	return Catalog.Format(msgs.locale, "settingsUptimeHoursWhole", map[string]any{"h": h})
+}
+
+// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// in the language the app shows.
+func SettingsStabilityNote(drops int, underruns int) string {
+	return In(i18n.Locale()).SettingsStabilityNote(drops, underruns)
+}
+
+// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// in the language of msgs.
+func (msgs Messages) SettingsStabilityNote(drops int, underruns int) string {
+	return Catalog.Format(msgs.locale, "settingsStabilityNote", map[string]any{"drops": drops, "underruns": underruns})
+}
+
+// SettingsRetransmitShort says "{pct}% retransmitted"
+// in the language the app shows.
+func SettingsRetransmitShort(pct string) string {
+	return In(i18n.Locale()).SettingsRetransmitShort(pct)
+}
+
+// SettingsRetransmitShort says "{pct}% retransmitted"
+// in the language of msgs.
+func (msgs Messages) SettingsRetransmitShort(pct string) string {
+	return Catalog.Format(msgs.locale, "settingsRetransmitShort", map[string]any{"pct": pct})
+}
+
+// SettingsUnderrunsShort says "{n} underruns"
+// in the language the app shows.
+func SettingsUnderrunsShort(n int) string { return In(i18n.Locale()).SettingsUnderrunsShort(n) }
+
+// SettingsUnderrunsShort says "{n} underruns"
+// in the language of msgs.
+func (msgs Messages) SettingsUnderrunsShort(n int) string {
+	return Catalog.Format(msgs.locale, "settingsUnderrunsShort", map[string]any{"n": n})
+}
+
+// SettingsReconnectsValue says "{n}"
+// in the language the app shows.
+func SettingsReconnectsValue(n int) string { return In(i18n.Locale()).SettingsReconnectsValue(n) }
+
+// SettingsReconnectsValue says "{n}"
+// in the language of msgs.
+func (msgs Messages) SettingsReconnectsValue(n int) string {
+	return Catalog.Format(msgs.locale, "settingsReconnectsValue", map[string]any{"n": n})
+}
+
+// ReceiverGroupEnabled says "Standalone receivers"
 // in the language the app shows.
 func ReceiverGroupEnabled() string { return In(i18n.Locale()).ReceiverGroupEnabled() }
 
-// ReceiverGroupEnabled says "Enabled"
+// ReceiverGroupEnabled says "Standalone receivers"
 // in the language of msgs.
 func (msgs Messages) ReceiverGroupEnabled() string {
 	return Catalog.Format(msgs.locale, "receiverGroupEnabled", nil)
@@ -1864,36 +2022,6 @@ func ReceiverAddSub() string { return In(i18n.Locale()).ReceiverAddSub() }
 // in the language of msgs.
 func (msgs Messages) ReceiverAddSub() string {
 	return Catalog.Format(msgs.locale, "receiverAddSub", nil)
-}
-
-// ReceiverEmptyHiddenHint says "Enable them again in the hidden group below."
-// in the language the app shows.
-func ReceiverEmptyHiddenHint() string { return In(i18n.Locale()).ReceiverEmptyHiddenHint() }
-
-// ReceiverEmptyHiddenHint says "Enable them again in the hidden group below."
-// in the language of msgs.
-func (msgs Messages) ReceiverEmptyHiddenHint() string {
-	return Catalog.Format(msgs.locale, "receiverEmptyHiddenHint", nil)
-}
-
-// ReceiverEmptyAllHiddenTitle says "All receivers are hidden"
-// in the language the app shows.
-func ReceiverEmptyAllHiddenTitle() string { return In(i18n.Locale()).ReceiverEmptyAllHiddenTitle() }
-
-// ReceiverEmptyAllHiddenTitle says "All receivers are hidden"
-// in the language of msgs.
-func (msgs Messages) ReceiverEmptyAllHiddenTitle() string {
-	return Catalog.Format(msgs.locale, "receiverEmptyAllHiddenTitle", nil)
-}
-
-// ReceiverDiscoveryHint says "AirPlay receivers on your network appear here automatically."
-// in the language the app shows.
-func ReceiverDiscoveryHint() string { return In(i18n.Locale()).ReceiverDiscoveryHint() }
-
-// ReceiverDiscoveryHint says "AirPlay receivers on your network appear here automatically."
-// in the language of msgs.
-func (msgs Messages) ReceiverDiscoveryHint() string {
-	return Catalog.Format(msgs.locale, "receiverDiscoveryHint", nil)
 }
 
 // ReceiverChipLocal says "Local"
@@ -1956,34 +2084,24 @@ func (msgs Messages) ReceiverAutoToggle() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggle", nil)
 }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off"
+// ReceiverAutoToggleDesc says "Flag as many as you like; they connect together at launch"
 // in the language the app shows.
 func ReceiverAutoToggleDesc() string { return In(i18n.Locale()).ReceiverAutoToggleDesc() }
 
-// ReceiverAutoToggleDesc says "One receiver at a time; enabling one turns the others off"
+// ReceiverAutoToggleDesc says "Flag as many as you like; they connect together at launch"
 // in the language of msgs.
 func (msgs Messages) ReceiverAutoToggleDesc() string {
 	return Catalog.Format(msgs.locale, "receiverAutoToggleDesc", nil)
 }
 
-// ReceiverDelayTitle says "DSP/DAC delay"
+// ReceiverChannelDesc says "Left or right copies that channel to both outputs"
 // in the language the app shows.
-func ReceiverDelayTitle() string { return In(i18n.Locale()).ReceiverDelayTitle() }
+func ReceiverChannelDesc() string { return In(i18n.Locale()).ReceiverChannelDesc() }
 
-// ReceiverDelayTitle says "DSP/DAC delay"
+// ReceiverChannelDesc says "Left or right copies that channel to both outputs"
 // in the language of msgs.
-func (msgs Messages) ReceiverDelayTitle() string {
-	return Catalog.Format(msgs.locale, "receiverDelayTitle", nil)
-}
-
-// ReceiverDelayDesc says "Compensate the receiver's hardware audio delay"
-// in the language the app shows.
-func ReceiverDelayDesc() string { return In(i18n.Locale()).ReceiverDelayDesc() }
-
-// ReceiverDelayDesc says "Compensate the receiver's hardware audio delay"
-// in the language of msgs.
-func (msgs Messages) ReceiverDelayDesc() string {
-	return Catalog.Format(msgs.locale, "receiverDelayDesc", nil)
+func (msgs Messages) ReceiverChannelDesc() string {
+	return Catalog.Format(msgs.locale, "receiverChannelDesc", nil)
 }
 
 // ReceiverPasswordTitle says "Receiver password"
@@ -2832,38 +2950,6 @@ func (msgs Messages) CaptureSystemDefault() string {
 	return Catalog.Format(msgs.locale, "captureSystemDefault", nil)
 }
 
-// SummaryStereoGroup says "Stereo pair · {n, number}/2"
-// in the language the app shows.
-func SummaryStereoGroup(n int) string { return In(i18n.Locale()).SummaryStereoGroup(n) }
-
-// SummaryStereoGroup says "Stereo pair · {n, number}/2"
-// in the language of msgs.
-func (msgs Messages) SummaryStereoGroup(n int) string {
-	return Catalog.Format(msgs.locale, "summaryStereoGroup", map[string]any{"n": n})
-}
-
-// SummaryModelCurrentDevice says "{model}"
-// in the language the app shows.
-func SummaryModelCurrentDevice(model string) string {
-	return In(i18n.Locale()).SummaryModelCurrentDevice(model)
-}
-
-// SummaryModelCurrentDevice says "{model}"
-// in the language of msgs.
-func (msgs Messages) SummaryModelCurrentDevice(model string) string {
-	return Catalog.Format(msgs.locale, "summaryModelCurrentDevice", map[string]any{"model": model})
-}
-
-// SummaryCurrentDevice says "Receiver"
-// in the language the app shows.
-func SummaryCurrentDevice() string { return In(i18n.Locale()).SummaryCurrentDevice() }
-
-// SummaryCurrentDevice says "Receiver"
-// in the language of msgs.
-func (msgs Messages) SummaryCurrentDevice() string {
-	return Catalog.Format(msgs.locale, "summaryCurrentDevice", nil)
-}
-
 // SummaryConnected says "Connected"
 // in the language the app shows.
 func SummaryConnected() string { return In(i18n.Locale()).SummaryConnected() }
@@ -2874,16 +2960,6 @@ func (msgs Messages) SummaryConnected() string {
 	return Catalog.Format(msgs.locale, "summaryConnected", nil)
 }
 
-// SummaryConnecting says "Connecting"
-// in the language the app shows.
-func SummaryConnecting() string { return In(i18n.Locale()).SummaryConnecting() }
-
-// SummaryConnecting says "Connecting"
-// in the language of msgs.
-func (msgs Messages) SummaryConnecting() string {
-	return Catalog.Format(msgs.locale, "summaryConnecting", nil)
-}
-
 // SidebarNoDevice says "No receiver selected"
 // in the language the app shows.
 func SidebarNoDevice() string { return In(i18n.Locale()).SidebarNoDevice() }
@@ -2892,6 +2968,18 @@ func SidebarNoDevice() string { return In(i18n.Locale()).SidebarNoDevice() }
 // in the language of msgs.
 func (msgs Messages) SidebarNoDevice() string {
 	return Catalog.Format(msgs.locale, "sidebarNoDevice", nil)
+}
+
+// SidebarSessionCount says "{name} and {more} more"
+// in the language the app shows.
+func SidebarSessionCount(name string, more int) string {
+	return In(i18n.Locale()).SidebarSessionCount(name, more)
+}
+
+// SidebarSessionCount says "{name} and {more} more"
+// in the language of msgs.
+func (msgs Messages) SidebarSessionCount(name string, more int) string {
+	return Catalog.Format(msgs.locale, "sidebarSessionCount", map[string]any{"name": name, "more": more})
 }
 
 // SidebarConnectedStereo says "Connected · Stereo pair"
@@ -2932,6 +3020,58 @@ func VolumeLabel() string { return In(i18n.Locale()).VolumeLabel() }
 // in the language of msgs.
 func (msgs Messages) VolumeLabel() string {
 	return Catalog.Format(msgs.locale, "volumeLabel", nil)
+}
+
+// ChannelLabel says "Channel"
+// in the language the app shows.
+func ChannelLabel() string { return In(i18n.Locale()).ChannelLabel() }
+
+// ChannelLabel says "Channel"
+// in the language of msgs.
+func (msgs Messages) ChannelLabel() string {
+	return Catalog.Format(msgs.locale, "channelLabel", nil)
+}
+
+// ChannelStereo says "Stereo"
+// in the language the app shows.
+func ChannelStereo() string { return In(i18n.Locale()).ChannelStereo() }
+
+// ChannelStereo says "Stereo"
+// in the language of msgs.
+func (msgs Messages) ChannelStereo() string {
+	return Catalog.Format(msgs.locale, "channelStereo", nil)
+}
+
+// ChannelLeft says "Left"
+// in the language the app shows.
+func ChannelLeft() string { return In(i18n.Locale()).ChannelLeft() }
+
+// ChannelLeft says "Left"
+// in the language of msgs.
+func (msgs Messages) ChannelLeft() string {
+	return Catalog.Format(msgs.locale, "channelLeft", nil)
+}
+
+// ChannelRight says "Right"
+// in the language the app shows.
+func ChannelRight() string { return In(i18n.Locale()).ChannelRight() }
+
+// ChannelRight says "Right"
+// in the language of msgs.
+func (msgs Messages) ChannelRight() string {
+	return Catalog.Format(msgs.locale, "channelRight", nil)
+}
+
+// ChannelTooltip says "Channel: {current} · Click for {next}"
+// in the language the app shows.
+func ChannelTooltip(current string, next string) string {
+	return In(i18n.Locale()).ChannelTooltip(current, next)
+}
+
+// ChannelTooltip says "Channel: {current} · Click for {next}"
+// in the language of msgs.
+func (msgs Messages) ChannelTooltip(current string, next string) string {
+	return Catalog.Format(msgs.locale, "channelTooltip", map[string]any{"current": current, "next": next})
 }
 
 // SettingsNavUpdates says "Updates"
@@ -3716,4 +3856,234 @@ func SettingsShowInPanel() string { return In(i18n.Locale()).SettingsShowInPanel
 // in the language of msgs.
 func (msgs Messages) SettingsShowInPanel() string {
 	return Catalog.Format(msgs.locale, "settingsShowInPanel", nil)
+}
+
+// ErrorComboInvalid says "These receivers cannot form a stereo combo."
+// in the language the app shows.
+func ErrorComboInvalid() string { return In(i18n.Locale()).ErrorComboInvalid() }
+
+// ErrorComboInvalid says "These receivers cannot form a stereo combo."
+// in the language of msgs.
+func (msgs Messages) ErrorComboInvalid() string {
+	return Catalog.Format(msgs.locale, "errorComboInvalid", nil)
+}
+
+// ReceiverGroupCombo says "Stereo combos"
+// in the language the app shows.
+func ReceiverGroupCombo() string { return In(i18n.Locale()).ReceiverGroupCombo() }
+
+// ReceiverGroupCombo says "Stereo combos"
+// in the language of msgs.
+func (msgs Messages) ReceiverGroupCombo() string {
+	return Catalog.Format(msgs.locale, "receiverGroupCombo", nil)
+}
+
+// ReceiverPairAddTitle says "Create stereo combo"
+// in the language the app shows.
+func ReceiverPairAddTitle() string { return In(i18n.Locale()).ReceiverPairAddTitle() }
+
+// ReceiverPairAddTitle says "Create stereo combo"
+// in the language of msgs.
+func (msgs Messages) ReceiverPairAddTitle() string {
+	return Catalog.Format(msgs.locale, "receiverPairAddTitle", nil)
+}
+
+// ReceiverPairAddSub says "One receiver per channel"
+// in the language the app shows.
+func ReceiverPairAddSub() string { return In(i18n.Locale()).ReceiverPairAddSub() }
+
+// ReceiverPairAddSub says "One receiver per channel"
+// in the language of msgs.
+func (msgs Messages) ReceiverPairAddSub() string {
+	return Catalog.Format(msgs.locale, "receiverPairAddSub", nil)
+}
+
+// ComboMapLabel says "Channel layout"
+// in the language the app shows.
+func ComboMapLabel() string { return In(i18n.Locale()).ComboMapLabel() }
+
+// ComboMapLabel says "Channel layout"
+// in the language of msgs.
+func (msgs Messages) ComboMapLabel() string {
+	return Catalog.Format(msgs.locale, "comboMapLabel", nil)
+}
+
+// ComboSwapTip says "Swap left and right"
+// in the language the app shows.
+func ComboSwapTip() string { return In(i18n.Locale()).ComboSwapTip() }
+
+// ComboSwapTip says "Swap left and right"
+// in the language of msgs.
+func (msgs Messages) ComboSwapTip() string {
+	return Catalog.Format(msgs.locale, "comboSwapTip", nil)
+}
+
+// ComboUnlink says "Unlink"
+// in the language the app shows.
+func ComboUnlink() string { return In(i18n.Locale()).ComboUnlink() }
+
+// ComboUnlink says "Unlink"
+// in the language of msgs.
+func (msgs Messages) ComboUnlink() string {
+	return Catalog.Format(msgs.locale, "comboUnlink", nil)
+}
+
+// ComboUnlinkTitle says "Unlink stereo combo"
+// in the language the app shows.
+func ComboUnlinkTitle() string { return In(i18n.Locale()).ComboUnlinkTitle() }
+
+// ComboUnlinkTitle says "Unlink stereo combo"
+// in the language of msgs.
+func (msgs Messages) ComboUnlinkTitle() string {
+	return Catalog.Format(msgs.locale, "comboUnlinkTitle", nil)
+}
+
+// ComboUnlinkSub says "{name} splits back into two standalone receivers."
+// in the language the app shows.
+func ComboUnlinkSub(name string) string { return In(i18n.Locale()).ComboUnlinkSub(name) }
+
+// ComboUnlinkSub says "{name} splits back into two standalone receivers."
+// in the language of msgs.
+func (msgs Messages) ComboUnlinkSub(name string) string {
+	return Catalog.Format(msgs.locale, "comboUnlinkSub", map[string]any{"name": name})
+}
+
+// ComboUnlinkHint says "The combo volume stops applying; each receiver keeps its own settings."
+// in the language the app shows.
+func ComboUnlinkHint() string { return In(i18n.Locale()).ComboUnlinkHint() }
+
+// ComboUnlinkHint says "The combo volume stops applying; each receiver keeps its own settings."
+// in the language of msgs.
+func (msgs Messages) ComboUnlinkHint() string {
+	return Catalog.Format(msgs.locale, "comboUnlinkHint", nil)
+}
+
+// ComboOfflineWarn says "{name} is offline, so the combo cannot start"
+// in the language the app shows.
+func ComboOfflineWarn(name string) string { return In(i18n.Locale()).ComboOfflineWarn(name) }
+
+// ComboOfflineWarn says "{name} is offline, so the combo cannot start"
+// in the language of msgs.
+func (msgs Messages) ComboOfflineWarn(name string) string {
+	return Catalog.Format(msgs.locale, "comboOfflineWarn", map[string]any{"name": name})
+}
+
+// ComboDialogSub says "Choose which receiver plays each side."
+// in the language the app shows.
+func ComboDialogSub() string { return In(i18n.Locale()).ComboDialogSub() }
+
+// ComboDialogSub says "Choose which receiver plays each side."
+// in the language of msgs.
+func (msgs Messages) ComboDialogSub() string {
+	return Catalog.Format(msgs.locale, "comboDialogSub", nil)
+}
+
+// ComboCreate says "Create"
+// in the language the app shows.
+func ComboCreate() string { return In(i18n.Locale()).ComboCreate() }
+
+// ComboCreate says "Create"
+// in the language of msgs.
+func (msgs Messages) ComboCreate() string {
+	return Catalog.Format(msgs.locale, "comboCreate", nil)
+}
+
+// ComboErrorSame says "The two sides cannot be the same receiver"
+// in the language the app shows.
+func ComboErrorSame() string { return In(i18n.Locale()).ComboErrorSame() }
+
+// ComboErrorSame says "The two sides cannot be the same receiver"
+// in the language of msgs.
+func (msgs Messages) ComboErrorSame() string {
+	return Catalog.Format(msgs.locale, "comboErrorSame", nil)
+}
+
+// ComboErrorPick says "Choose a receiver for each side"
+// in the language the app shows.
+func ComboErrorPick() string { return In(i18n.Locale()).ComboErrorPick() }
+
+// ComboErrorPick says "Choose a receiver for each side"
+// in the language of msgs.
+func (msgs Messages) ComboErrorPick() string {
+	return Catalog.Format(msgs.locale, "comboErrorPick", nil)
+}
+
+// ComboPickEmpty says "Choose a receiver…"
+// in the language the app shows.
+func ComboPickEmpty() string { return In(i18n.Locale()).ComboPickEmpty() }
+
+// ComboPickEmpty says "Choose a receiver…"
+// in the language of msgs.
+func (msgs Messages) ComboPickEmpty() string {
+	return Catalog.Format(msgs.locale, "comboPickEmpty", nil)
+}
+
+// ComboPickHint says "Only AirPlay 2 receivers are listed"
+// in the language the app shows.
+func ComboPickHint() string { return In(i18n.Locale()).ComboPickHint() }
+
+// ComboPickHint says "Only AirPlay 2 receivers are listed"
+// in the language of msgs.
+func (msgs Messages) ComboPickHint() string {
+	return Catalog.Format(msgs.locale, "comboPickHint", nil)
+}
+
+// ComboFieldLeft says "Left channel"
+// in the language the app shows.
+func ComboFieldLeft() string { return In(i18n.Locale()).ComboFieldLeft() }
+
+// ComboFieldLeft says "Left channel"
+// in the language of msgs.
+func (msgs Messages) ComboFieldLeft() string {
+	return Catalog.Format(msgs.locale, "comboFieldLeft", nil)
+}
+
+// ComboFieldRight says "Right channel"
+// in the language the app shows.
+func ComboFieldRight() string { return In(i18n.Locale()).ComboFieldRight() }
+
+// ComboFieldRight says "Right channel"
+// in the language of msgs.
+func (msgs Messages) ComboFieldRight() string {
+	return Catalog.Format(msgs.locale, "comboFieldRight", nil)
+}
+
+// ComboTag says "Stereo combo"
+// in the language the app shows.
+func ComboTag() string { return In(i18n.Locale()).ComboTag() }
+
+// ComboTag says "Stereo combo"
+// in the language of msgs.
+func (msgs Messages) ComboTag() string {
+	return Catalog.Format(msgs.locale, "comboTag", nil)
+}
+
+// ReceiverAddAction says "Add"
+// in the language the app shows.
+func ReceiverAddAction() string { return In(i18n.Locale()).ReceiverAddAction() }
+
+// ReceiverAddAction says "Add"
+// in the language of msgs.
+func (msgs Messages) ReceiverAddAction() string {
+	return Catalog.Format(msgs.locale, "receiverAddAction", nil)
+}
+
+// ComboCreateAction says "New combo"
+// in the language the app shows.
+func ComboCreateAction() string { return In(i18n.Locale()).ComboCreateAction() }
+
+// ComboCreateAction says "New combo"
+// in the language of msgs.
+func (msgs Messages) ComboCreateAction() string {
+	return Catalog.Format(msgs.locale, "comboCreateAction", nil)
+}
+
+// ErrorDeviceOffline says "{name} is offline, so it cannot join the session."
+// in the language the app shows.
+func ErrorDeviceOffline(name string) string { return In(i18n.Locale()).ErrorDeviceOffline(name) }
+
+// ErrorDeviceOffline says "{name} is offline, so it cannot join the session."
+// in the language of msgs.
+func (msgs Messages) ErrorDeviceOffline(name string) string {
+	return Catalog.Format(msgs.locale, "errorDeviceOffline", map[string]any{"name": name})
 }

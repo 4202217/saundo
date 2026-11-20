@@ -91,8 +91,8 @@ per receiver.
   since the last push the engine sends playback state 2. The first audible
   sample sends state 1 and resumes; pressing 开启氛围灯 while the display is dark
   relights it immediately and holds it on until the next sound
-  (`lamp.go:226-236`; `engine.go:1345-1357`; the gate at `:983-989`, cleared
-  on sound at `:1017-1019`). The flyout chip reads 待机,
+  (`lamp.go:226-236`; `engine.go:1187-1201`; the gate at `:841-847`, cleared
+  on sound at `:874-877`). The flyout chip reads 待机,
   the power action 开启氛围灯, and the footer 已待机 · 播放声音即唤醒.
 
 ## How to get to it (user POV)
@@ -124,7 +124,7 @@ Sender and engine:
 
 ```bash
 go test -run 'TestSetLampArtworkSendsCover|TestSetLampArtworkWaitsForStreaming|TestSetLampArtworkDuplicateIsNoOp|TestSetLampArtworkDoesNotTouchDMAPText|TestSetLampArtworkClearSendsNothing|TestFirstCoverResendsOnceOnAPair|TestFirstCoverRetrySendsTheCurrentCover|TestFirstCoverRetrySkipsAStandalone|TestFirstCoverRetryStopsWithTheSession|TestPairSessionSendsPlayingStateBeforeTheFirstCover|TestPairSessionKeepsAPreStartPause|TestStandaloneSessionStillAssumesPlaying|TestSetPlaybackStateSendsCommand|TestSetPlaybackStateWaitsForStreaming|TestSetPlaybackStateAssumesPlayingOnSessionStart|TestSetPlaybackStateResumesWithTheCover|TestMediaCoverWinsWhenLampIsOff|TestLampCoverWinsWhileOn' -v ./internal/airplay/sender/
-go test -run 'TestLampOffOnAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToDefault|TestLampCoverKeepsPlayingOnPause|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestGroupArtworkFansOutToBothCapableMembers|TestGroupArtworkSkipsIncapableMember|TestStandbyDarkensAtThresholdAndResumesOnSound|TestLastPushTracksTheStreamNotSilence' -v ./internal/engine/
+go test -run 'TestLampOffOnAppliesAndPersists|TestLampAppliedWhenStreamingStarts|TestLampUnknownPresetFallsBackToDefault|TestLampCoverKeepsPlayingOnPause|TestLampSkipsIncapableReceivers|TestLampTogglingTwiceLogsTheSkipOnce|TestCohortArtworkFansOutToCapableMembers|TestCohortArtworkSkipsIncapableMember|TestStandbyDarkensAtThresholdAndResumesOnSound|TestLastPushTracksTheStreamNotSilence' -v ./internal/engine/
 ```
 
 Live, with a HomePod at software 27.2 or later and Sound Glow on:

@@ -5,7 +5,6 @@ import (
 
 	"saundo/internal/airplay/sender"
 	"saundo/internal/engine"
-	"saundo/internal/receivers"
 	"saundo/internal/settings"
 )
 
@@ -91,6 +90,16 @@ func (a *App) disconnect() {
 	}
 }
 
+// disconnectTarget removes one target from the session; the other targets
+// keep playing. The last target takes the whole session down in the engine.
+func (a *App) disconnectTarget(id string) {
+	a.cancelLatencyApply()
+	a.finishLatencyApply()
+	if a.eng != nil {
+		a.eng.DisconnectTarget(id)
+	}
+}
+
 // latencyMS is the value the mode resolves to, with the engine's last value as
 // the fallback while settings are being migrated.
 func (a *App) latencyMS() int {
@@ -113,32 +122,16 @@ func (a *App) latencyMS() int {
 }
 
 // latencyDisplay is the value shown in the playback head's ALAC line: the
-// global base plus the active receiver's DSP/DAC delay, clamped to the
-// sender's window. An idle engine shows the base only, because no receiver
-// is streaming.
+// global base plus each active receiver's DSP/DAC delay, clamped to the
+// sender's window. A multi-target session shows its slowest member, because
+// that is the delay the room hears. An idle engine shows the base only.
 func (a *App) latencyDisplay() string {
-	return settings.LatencyText(a.effectiveLatencyMS())
+	return settings.LatencyText(a.sessionLatencyMS())
 }
 
-// effectiveLatencyMS is the global base plus the active receiver's DSP/DAC
-// delay, the value the connection page's health card compares against the
-// receiver's own output latency.
-func (a *App) effectiveLatencyMS() int {
-	ms := a.latencyMS()
-	if phaseOf(a.snap) != phaseIdle && a.snap.SelectedID != "" {
-		if delay, ok := a.receiverDelay(a.snap.SelectedID); ok {
-			ms = receivers.EffectiveLatencyMS(ms, delay)
-		}
-	}
-	return ms
-}
-
-// receiverDelay reads the row's delay, preferring an in-flight slider draft
-// so the ALAC line follows the drag before the engine applies it.
+// receiverDelay reads the row's stored DSP/DAC delay for the selected
+// receiver.
 func (a *App) receiverDelay(key string) (int, bool) {
-	if delay, ok := a.receiverDelayPend[key]; ok {
-		return delay, true
-	}
 	for _, v := range a.snap.Receivers {
 		if v.Key == key {
 			return v.DelayMS, true

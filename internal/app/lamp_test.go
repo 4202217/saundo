@@ -57,7 +57,7 @@ func TestSettingsLampPowerTurnsTheLightOff(t *testing.T) {
 	if !a.lampOff || !a.snap.LampOff || !a.cfg.Lamp.Off {
 		t.Fatal("the power action did not turn the light off")
 	}
-	fly := ui.NewTester(a.view, flyoutWidth, flyoutHeightFor(len(a.snap.Devices), a.showLatencySwitch, false))
+	fly := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	fly.Frame()
 	if !fly.HasText("氛围灯") {
 		t.Fatal("the flyout lost the ambient card after the light turned off")

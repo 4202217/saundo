@@ -82,12 +82,17 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		// advertisement: accept the new endpoint.
 		entry.PairedHost, entry.PairedPort = "", 0
 	}
+	if patch.Channel != nil && (entry.IsGroup() || entry.IsCombo()) && receivers.ParseChannel(*patch.Channel) != receivers.ChannelStereo {
+		// A stereo pair and a combo always play stereo; a combo's sides live
+		// in its member order. Ignore a non-stereo side.
+		patch.Channel = nil
+	}
 	delayBefore := entry.DelayMS
 	if patch.AutoConnect != nil {
-		// The flag chooses the next launch's target; it never starts a
-		// connection mid-session, and toggling it ends a pending launch wait.
+		// The flagged set is the next launch's target list; it never starts
+		// a connection mid-session, and toggling it ends a pending launch
+		// wait.
 		e.autoTried = true
-		e.reg.SingleAutoConnect(key, *patch.AutoConnect)
 	}
 	e.reg.Put(patch.Apply(entry))
 	e.clearError()
@@ -101,6 +106,11 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		e.fail(ErrSaveReceiver, err.Error())
 	}
 	e.rebuildTargets()
+	if patch.Channel != nil {
+		// A channel edit is a per-packet mix, not a SETUP value, so the live
+		// target's members take it without a rebuild.
+		e.applyReceiverChannel(key)
+	}
 	e.publish()
 
 	delayAfter := entry.DelayMS
@@ -108,20 +118,42 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 		delayAfter = applied.DelayMS
 	}
 	if patch.DelayMS != nil && delayBefore != delayAfter && e.isLive(key) {
-		if target, ok := e.target(key); ok {
-			e.userDisconnect = false
-			// A delay edit is a user action even when it lands while an
-			// automatic reconnect is still connecting. Start the standby
-			// clock at the new session so the light shows the restart.
-			e.connectAuto = false
-			e.restartSession(target.Device)
+		// A delay while a reconnect waits only updates the registry: the next
+		// retry's buildPlan recomputes every member's latency. With a live
+		// cohort the sender applies latency only at stream SETUP, so the whole
+		// cohort rebuilds with the new per-member values — under the same
+		// guard the global latency apply runs, because one missing or offline
+		// member would fail the launch and take the running session down.
+		if e.tr != nil {
+			if e.tr.WaitingForPin() {
+				e.logf("delay apply: %s is waiting for a PIN; session left alone", e.connectedName)
+				e.publish()
+			} else if missing, offline, ok := e.sessionAddressable(); !ok {
+				if missing != "" {
+					e.fail(ErrLatencyDeviceMissing)
+					e.logf("delay apply: device %s not found; session left running", missing)
+				} else {
+					e.fail(ErrLatencyOffline)
+					e.logf("delay apply: %s is offline; session left running", offline)
+				}
+				e.publish()
+			} else {
+				e.userDisconnect = false
+				// A delay edit is a user action even when it lands while an
+				// automatic reconnect is still connecting. Start the standby
+				// clock at the new session so the light shows the restart.
+				e.connectAuto = false
+				e.rebuildSession()
+			}
 		}
 	}
 }
 
 // handleRemoveReceiver deletes a manual receiver: its row, password, HAP
 // credentials, and remembered volume. Discovered rows are managed by hiding,
-// so removal there would only be undone by the next advertisement.
+// so removal there would only be undone by the next advertisement. A combo
+// that linked this receiver loses the member and is unlinked with it: a
+// one-sided combo is meaningless.
 func (e *Engine) handleRemoveReceiver(key string) {
 	entry, ok := e.reg.Get(key)
 	if !ok || !entry.IsManual() {
@@ -136,27 +168,48 @@ func (e *Engine) handleRemoveReceiver(key string) {
 		e.logf("credentials delete: %v", err)
 	}
 	delete(e.passwords, key)
-	if e.setsValue.VolumeByDevice != nil {
-		delete(e.setsValue.VolumeByDevice, key)
-		e.markSettingsDirty()
-	}
-	if e.setsValue.LastDeviceID == key {
-		e.setsValue.LastDeviceID = ""
-		e.markSettingsDirty()
-	}
-	if e.selectedID == key {
-		e.selectedID = ""
-		e.userDisconnect = true
-		e.reconnectPendingOff()
-		if e.tr != nil {
-			e.tr.Stop()
+	e.forgetVolume(key)
+	e.forgetLastTarget(key)
+	// A combo that linked this receiver loses the member and is unlinked with
+	// it: a one-sided combo is meaningless. The keys collect first — deleting
+	// while ranging shifts the slice under the loop.
+	var unlinked []string
+	for _, other := range e.reg.Entries {
+		if !other.IsCombo() {
+			continue
 		}
-		e.closeSession(false)
-		e.connectedName = ""
+		for _, m := range other.Members {
+			if m.ID == key {
+				unlinked = append(unlinked, other.Key)
+				break
+			}
+		}
 	}
-	if err := e.recvStore.Save(e.reg); err != nil {
-		e.logf("receivers save: %v", err)
-		e.fail(ErrSaveReceiver, err.Error())
+	for _, comboKey := range unlinked {
+		combo, hadEntry := e.reg.Get(comboKey)
+		e.reg.Delete(comboKey)
+		if hadEntry && combo.AutoConnect {
+			// The combo's launch intent returns to the members that survive, the
+			// way an explicit unlink hands it back.
+			for _, m := range combo.Members {
+				if m.ID == key {
+					continue
+				}
+				if survivor, ok := e.reg.Get(m.ID); ok {
+					survivor.AutoConnect = true
+					e.reg.Put(survivor)
+				}
+			}
+		}
+		e.forgetVolume(comboKey)
+		e.forgetLastTarget(comboKey)
+	}
+	e.saveReceivers()
+	e.dropFromSession(key)
+	for _, comboKey := range unlinked {
+		// The combo may be the session's target even when the removed member
+		// itself is not.
+		e.dropFromSession(comboKey)
 	}
 	e.rebuildTargets()
 	e.publish()
@@ -179,10 +232,18 @@ func (e *Engine) savePassword(key, password string) error {
 }
 
 // isLive reports whether the engine is working with this receiver right
-// now: a session, or a reconnect waiting to bring it back.
+// now: a member of the live cohort, or a wanted key while a reconnect waits.
 func (e *Engine) isLive(key string) bool {
-	if e.tr != nil && e.selectedID == key {
-		return true
+	if e.tr != nil {
+		return e.plan.has(key)
 	}
-	return e.reconnectWanted && e.selectedID == key
+	if !e.reconnectWanted {
+		return false
+	}
+	for _, k := range e.wantedKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }

@@ -8,7 +8,6 @@ import (
 	"saundo/cmd/saundo/locales"
 	"saundo/internal/airplay/device"
 	"saundo/internal/receivers"
-	"saundo/internal/settings"
 )
 
 // The 接收器 settings page: the merged receiver list per mockup-final, with
@@ -24,6 +23,8 @@ const (
 	receiverDialogEdit
 	receiverDialogPassword
 	receiverDialogRemove
+	receiverDialogComboCreate
+	receiverDialogComboUnlink
 )
 
 // receiverDraft is the add/edit dialog's fields. The password never lives
@@ -77,21 +78,42 @@ func receiverTypeLabels() []string {
 	}
 }
 
-// receiverDialogState is one open dialog over the settings window.
+// receiverDialogState is one open dialog over the settings window. The combo
+// create dialog keeps its two slots and the name field here, so one dialog
+// shell serves every kind.
 type receiverDialogState struct {
 	kind receiverDialogKind
 	key  string
 	// entered drives the one-shot panel entrance pose.
 	entered bool
+	// comboLeft and comboRight are the two slot keys; comboName is the
+	// suggestion the user may edit, and comboError its validation line.
+	comboLeft  string
+	comboRight string
+	comboName  string
+	comboError string
 }
 
 func (a *App) receiversPage(c *ui.Context, p palette) {
-	var visible, hidden []receivers.View
+	// A save or link refusal lands here: the dialogs close on submit and the
+	// flyout's error bar is hidden while the settings window is open.
+	if settingsErrorKey(a.snap.ErrorKey) {
+		ui.Column(c).Margin(6, 0, 8, 0).Children(func() {
+			statusBar(c, p, barDanger, iconAlert,
+				userErrorText(a.snap.ErrorKey, a.snap.ErrorArgs, a.snap.Error), nil)
+		})
+	}
+	var visible, hidden, singles, combos []receivers.View
 	for _, v := range a.snap.Receivers {
 		if v.Hidden {
 			hidden = append(hidden, v)
+			continue
+		}
+		visible = append(visible, v)
+		if v.Entry.IsCombo() {
+			combos = append(combos, v)
 		} else {
-			visible = append(visible, v)
+			singles = append(singles, v)
 		}
 	}
 	// Collapsing the group also collapses every row inside it, so reopening
@@ -102,32 +124,39 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 		}
 	}
 
-	// The 已启用 group head renders only when the list has rows, matching the
-	// hidden group's own non-empty rule. An empty page is plain prose where
-	// the list would be; the add row below keeps its margin in every state.
-	if len(visible) > 0 {
-		ui.Row(c).Margin(6, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, locales.ReceiverGroupEnabled()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-			countBadge(c, p, len(visible))
-		})
-
+	// One section per type. A section's create action rides its head while the
+	// section has rows; an empty section replaces it with its dashed row. The
+	// combo section needs two eligible receivers to offer creation at all: with
+	// fewer, the dialog could never commit. It still renders when a combo
+	// exists, so its rows stay reachable.
+	candidates := len(a.comboCandidates())
+	canCreateCombo := candidates >= 2
+	a.receiverSectionHead(c, p, locales.ReceiverGroupEnabled(), len(singles), 6, len(singles) > 0,
+		locales.ReceiverAddAction(), func() { a.openAddReceiver() })
+	if len(singles) > 0 {
 		card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 		card.Children(func() {
-			for i, v := range visible {
-				a.receiverRow(c, p, v, false, i < len(visible)-1)
+			for i, v := range singles {
+				a.receiverRow(c, p, v, false, i < len(singles)-1)
 			}
 		})
-	} else if len(hidden) > 0 {
-		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			emptyCopy(c, p, locales.ReceiverEmptyAllHiddenTitle(), locales.ReceiverEmptyHiddenHint(), false)
-		})
 	} else {
-		ui.Column(c).Margin(2, 0, 0, 0).Shrink(0).Children(func() {
-			emptyCopy(c, p, locales.ReceiverEmptyTitle(), locales.ReceiverDiscoveryHint(), false)
-		})
+		a.receiverAddRow(c, p)
 	}
-
-	a.receiverAddRow(c, p)
+	if len(combos) > 0 || (len(visible) > 0 && canCreateCombo) {
+		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0 && canCreateCombo,
+			locales.ComboCreateAction(), func() { a.openComboCreate() })
+		if len(combos) > 0 {
+			card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
+			card.Children(func() {
+				for i, v := range combos {
+					a.receiverComboRow(c, p, v, false, i < len(combos)-1)
+				}
+			})
+		} else {
+			a.receiverPairAddRow(c, p)
+		}
+	}
 
 	if len(hidden) > 0 {
 		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
@@ -168,6 +197,29 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	a.receiverDialogs(c, p)
 }
 
+// receiverSectionHead is one list section's label with its count and, while
+// the section has rows, its create action at the right. A section without
+// rows leaves the action to its dashed row, so no head offers an action twice.
+func (a *App) receiverSectionHead(c *ui.Context, p palette, label string, count int, topMargin float32, withAction bool, actionLabel string, fn func()) {
+	head := ui.Row(c).Margin(topMargin, 0, 0, 0).FillWidth().Gap(7).AlignItems(ui.Center).Shrink(0)
+	head.Children(func() {
+		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		if count > 0 {
+			countBadge(c, p, count)
+		}
+		if withAction {
+			ui.Spacer(c)
+			rowAction(c, p, "section:"+label, actionLabel, iconPlus, p.accent, fn)
+		}
+	})
+}
+
+// openComboCreate opens the create-combo dialog over the page.
+func (a *App) openComboCreate() {
+	a.receiverDialog = receiverDialogState{kind: receiverDialogComboCreate, entered: false}
+	a.receiverDialogOpen = true
+}
+
 // receiverAddRow is the dashed manual-add affordance under the card.
 func (a *App) receiverAddRow(c *ui.Context, p palette) {
 	row := ui.ButtonBase(c).Margin(12, 0, 0, 0).MinHeight(44).Padding(9, 14).Gap(10).Shrink(0).
@@ -197,8 +249,13 @@ func (a *App) receiverAddRow(c *ui.Context, p palette) {
 }
 
 // receiverRow is one card row: glyph, name with chips, enable switch,
-// chevron, and the expanded config. Hidden rows grey their parts.
+// chevron, and the expanded config. Hidden rows grey their parts. A combo
+// row owns its own renderer.
 func (a *App) receiverRow(c *ui.Context, p palette, v receivers.View, hiddenGroup, divider bool) {
+	if v.Entry.IsCombo() {
+		a.receiverComboRow(c, p, v, hiddenGroup, divider)
+		return
+	}
 	open := !v.Local && a.receiverOpen[v.Key]
 	row := ui.Column(c).Key(v.Key).Shrink(0).
 		Transition(ui.ElementTransition{Colors: true, Duration: 140 * time.Millisecond})
@@ -269,7 +326,8 @@ func (a *App) receiverRowHead(c *ui.Context, p palette, v receivers.View, open, 
 	})
 }
 
-// receiverRowBody is the expanded config: auto-connect, delay, password.
+// receiverRowBody is the expanded config: auto-connect, volume, channel,
+// password.
 func (a *App) receiverRowBody(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {
 	titleColor, subColor := p.fg, p.muted
 	if hiddenGroup {
@@ -285,7 +343,7 @@ func (a *App) receiverRowBody(c *ui.Context, p palette, v receivers.View, hidden
 				})
 			})
 		rowLine(c, p)
-		a.receiverDelayRow(c, p, v, hiddenGroup)
+		a.receiverAudioRows(c, p, v, hiddenGroup)
 		if receiverPasswordEditable(v) {
 			rowLine(c, p)
 			a.receiverPasswordRow(c, p, v, hiddenGroup)
@@ -306,7 +364,7 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 		if hiddenGroup {
 			color = p.faint
 		}
-		ui.Icon(c, deviceIcon(v.Model, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
+		ui.Icon(c, stereoIcon(v.Device, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
 		if v.Online && !hiddenGroup {
 			ring := p.card
 			if open {
@@ -339,6 +397,9 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			if v.IsManual() {
 				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
 			}
+			if v.Entry.IsCombo() {
+				inlineChip(c, p, locales.ComboTag(), chipNeutral, v.Hidden)
+			}
 			if v.AutoConnect {
 				inlineChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
 			}
@@ -356,6 +417,14 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 // flyout subtitle cannot, so the receiver page has its own line.
 func receiverSubtitle(v receivers.View) string {
 	model := receiverModelLabel(v)
+	if v.Entry.IsCombo() {
+		sub := comboMemberSubtitle(v.Name, v.Device.Members, model)
+		if !v.Device.Online {
+			// The collapsed row is the only cue that the combo cannot start.
+			sub += " · " + locales.ActionOffline()
+		}
+		return sub
+	}
 	if !v.Device.Online {
 		return model + " · " + locales.ActionOffline()
 	}
@@ -409,94 +478,86 @@ func (a *App) receiverEditButton(c *ui.Context, p palette, v receivers.View, hid
 // the head's 11 gap, and 6 more before the edit button.
 const receiverTailInset = 32 + 8 + 12 + 11 + 6
 
-// receiverDelayRow is the DSP/DAC slider with the 0/2000 scale and the
-// value on the subtitle line.
-func (a *App) receiverDelayRow(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {
-	delay := v.DelayMS
-	if draft, ok := a.receiverDelayPend[v.Key]; ok {
-		delay = draft
-	}
-	valueColor := p.fg2
+// receiverAudioRows is the per-receiver audio group: the volume row and the
+// channel row, separated by the page's hairline like every other settings row.
+// A stereo pair always plays stereo, so its segment is a disabled 立体声.
+func (a *App) receiverAudioRows(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {
+	titleColor, subColor := p.fg, p.muted
 	if hiddenGroup {
-		valueColor = p.muted
+		titleColor, subColor = p.muted, p.faint
 	}
-	ui.Column(c).Padding(8, 14).Children(func() {
-		ui.Row(c).Gap(12).AlignItems(ui.End).Children(func() {
-			ui.Column(c).Grow(1).Gap(2).Children(func() {
-				title := p.fg
-				sub := p.muted
-				if hiddenGroup {
-					title, sub = p.muted, p.faint
-				}
-				ui.Text(c, locales.ReceiverDelayTitle()).FontSize(12.5).FontWeight(500).TextColor(title)
-				ui.Text(c, locales.ReceiverDelayDesc()).FontSize(11.5).TextColor(sub)
-			})
-			ui.Text(c, settings.LatencyText(delay)).FontSize(11.5).TextColor(valueColor)
+	a.receiverVolumeRow(c, p, v, titleColor, subColor, hiddenGroup)
+	rowLine(c, p)
+	desc := ""
+	if !v.Stereo {
+		desc = locales.ReceiverChannelDesc()
+	}
+	settingRowColors(c, p, locales.ChannelLabel(), desc, titleColor, subColor, func() {
+		a.receiverChannelSegment(c, p, v, hiddenGroup)
+	})
+}
+
+// receiverVolumeRow is the volume line: the row title and its percent on the
+// title line, the slider under them at the row's own inset.
+func (a *App) receiverVolumeRow(c *ui.Context, p palette, v receivers.View, titleColor, subColor ui.Color, hiddenGroup bool) {
+	// The slider writes into the snapshot's row, so a drag survives the view
+	// rebuild between engine commands.
+	volume := v.Volume
+	volumeValue := &volume
+	for i := range a.snap.Receivers {
+		if a.snap.Receivers[i].Key == v.Key {
+			volumeValue = &a.snap.Receivers[i].Volume
+			break
+		}
+	}
+	ui.Column(c).Padding(8, 14).Gap(2).Children(func() {
+		ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, locales.VolumeLabel()).FontSize(13).FontWeight(500).TextColor(titleColor).
+				Grow(1).SingleLine().Ellipsis("…")
+			ui.Text(c, locales.FlyoutVolumeValue(*volumeValue)).FontSize(12.5).TextColor(subColor)
 		})
-		value := float64(delay)
-		sl := slider(c, p, &value, 0, receivers.MaxDelayMS, locales.ReceiverDelayTitle(), func(next float64) {
-			ms := receiverDelayValue(next)
-			if ms == delay {
-				return
+		sl := slider(c, p, volumeValue, 0, 100, locales.VolumeFor(v.Name), func(next float64) {
+			if a.eng != nil {
+				a.eng.SetTargetVolume(v.Key, next)
 			}
-			a.scheduleReceiverDelay(v.Key, ms)
-		}).Step(10)
+		})
 		if hiddenGroup {
 			sl.Opacity(0.55)
 		}
-		ui.Row(c).Margin(2, 0, 0, 0).Children(func() {
-			ui.Text(c, settings.LatencyText(0)).FontSize(10.5).TextColor(p.faint)
-			ui.Spacer(c)
-			ui.Text(c, settings.LatencyText(2000)).FontSize(10.5).TextColor(p.faint)
-		})
 	})
 }
 
-// receiverDelayValue quantizes a slider position to the mockup's 10 ms
-// steps and the sender's 0..2000 ms window.
-func receiverDelayValue(v float64) int {
-	ms := int(v + 0.5)
-	if ms < 0 {
-		ms = 0
+// receiverChannelSegment is the stereo/left/right control. A pair shows only
+// stereo and cannot change it.
+func (a *App) receiverChannelSegment(c *ui.Context, p palette, v receivers.View, hiddenGroup bool) {
+	if v.Stereo {
+		idx := 0
+		segmented(c, p, &idx, []segmentItem{{label: locales.ChannelStereo()}}, 120, true, segmentCenter, locales.ChannelLabel()+" · "+v.Name)
+		return
 	}
-	if ms > receivers.MaxDelayMS {
-		ms = receivers.MaxDelayMS
+	idx := 0
+	switch v.Channel {
+	case receivers.ChannelLeft:
+		idx = 1
+	case receivers.ChannelRight:
+		idx = 2
 	}
-	return (ms + 5) / 10 * 10
-}
-
-// scheduleReceiverDelay debounces the slider like the global latency apply:
-// one restart with the final value once the user stops dragging. The draft
-// stays in receiverDelayPend until the engine's row carries it.
-func (a *App) scheduleReceiverDelay(key string, ms int) {
-	if a.receiverDelayPend == nil {
-		a.receiverDelayPend = map[string]int{}
+	items := []segmentItem{
+		{label: locales.ChannelStereo()},
+		{label: locales.ChannelLeft()},
+		{label: locales.ChannelRight()},
 	}
-	a.receiverDelayPend[key] = ms
-	a.receiverDelaySeq++
-	seq := a.receiverDelaySeq
-	if a.receiverDelayTimer != nil {
-		a.receiverDelayTimer.Stop()
+	track := segmented(c, p, &idx, items, 200, hiddenGroup, segmentCenter, locales.ChannelLabel()+" · "+v.Name)
+	if track.Changed() && a.eng != nil {
+		mode := receivers.ChannelStereo
+		switch idx {
+		case 1:
+			mode = receivers.ChannelLeft
+		case 2:
+			mode = receivers.ChannelRight
+		}
+		a.eng.UpdateReceiver(v.Key, receivers.Patch{Channel: &mode})
 	}
-	a.receiverDelayTimer = time.AfterFunc(500*time.Millisecond, func() {
-		a.updateUI(func() {
-			if seq != a.receiverDelaySeq {
-				return
-			}
-			pending := make(map[string]int, len(a.receiverDelayPend))
-			for k, v := range a.receiverDelayPend {
-				pending[k] = v
-			}
-			// Only a change to the receiver the engine is working with
-			// restarts the session; that restart is what the hold masks.
-			if _, ok := pending[a.snap.SelectedID]; ok && phaseOf(a.snap) != phaseIdle {
-				a.beginLatencyApply()
-			}
-			for k, v := range pending {
-				a.eng.SetReceiverDelay(k, v)
-			}
-		})
-	})
 }
 
 // receiverPasswordEditable reports whether the receiver can use a user-set

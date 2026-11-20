@@ -10,13 +10,14 @@ import (
 // be read and was moved aside. It is text-only so it shares the connection
 // error bar's inset and height; the chevron opens the explanation.
 func (a *App) credentialBar(c *ui.Context, p palette) {
-	bar := ui.ButtonBase(c).Margin(8, 0, 0, 0).Padding(8, 10).Radius(8).
+	bar := ui.ButtonBase(c).MinHeight(44).Padding(8, 10).Radius(9).Border(1, p.line).
 		Background(p.warningSoft).Cursor(ui.CursorPointer).Label(locales.CredentialResetBar())
 	bar.OnClick(func() {
 		a.credentialOpen = true
 		a.credentialEntered = false
 	})
 	bar.Children(func() {
+		ui.Icon(c, iconKey).Size(16, 16).TextColor(p.warning)
 		ui.Text(c, locales.CredentialResetBar()).FontSize(11.5).TextColor(p.warning).Grow(1).SingleLine().Ellipsis("…")
 		ui.Icon(c, iconChevronRight).Size(12, 12).TextColor(p.warning)
 	})
@@ -41,7 +42,7 @@ func (a *App) credentialDialog(c *ui.Context, p palette) {
 		dialogHead(c, p, iconKey, locales.CredentialResetTitle(), locales.CredentialResetSub(), false, nil)
 		ui.Text(c, locales.CredentialResetBody()).FontSize(12.5).TextColor(p.fg2).Margin(14, 0, 0, 0)
 		ui.Text(c, locales.CredentialResetHint()).FontSize(11.5).TextColor(p.muted).Margin(8, 0, 0, 0)
-		ui.Row(c).Justify(ui.End).Gap(8).Margin(20, 0, 0, 0).Children(func() {
+		ui.Row(c).Justify(ui.End).Gap(9).Margin(20, 0, 0, 0).Children(func() {
 			quietButton(c, p, locales.CredentialResetDismiss(), a.dismissCredentialReset)
 			primaryButton(c, p, locales.CredentialResetPair(), a.pairAgain)
 		})

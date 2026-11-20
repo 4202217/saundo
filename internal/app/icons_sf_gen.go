@@ -486,8 +486,8 @@ var sfIcons = func() map[string]*ui.SVG {
 // row is a stereo group.
 func deviceIconKey(model string, stereo bool) string {
 	switch {
-	case strings.HasPrefix(model, "AudioAccessory"):
-		mini := strings.HasPrefix(model, "AudioAccessory5")
+	case isHomePodModel(model):
+		mini := isMiniModel(model)
 		if stereo {
 			if mini {
 				return "homepod-mini-pair"
@@ -522,3 +522,45 @@ func deviceIconKey(model string, stereo bool) string {
 func deviceIcon(model string, stereo bool) *ui.SVG {
 	return sfIcons[deviceIconKey(model, stereo)]
 }
+
+// stereoIcon picks the glyph for a row that may be a stereo group.
+func stereoIcon(d device.Device, stereo bool) *ui.SVG {
+	return sfIcons[stereoIconKey(d, stereo)]
+}
+
+// stereoIconKey names the glyph for a row that may be a stereo group. A group
+// with both members present keys the glyph off the members' own models, so a
+// combo's swap can never change the row's glyph: two minis pair at mini size,
+// two full HomePods pair at full size, a mini beside a full HomePod takes the
+// combo glyph, and two members of different families take the generic
+// two-speaker glyph. A stereo row without member devices keys off the row's
+// model, as every single receiver does.
+func stereoIconKey(d device.Device, stereo bool) string {
+	if !stereo {
+		return deviceIconKey(d.Model, false)
+	}
+	if d.IsStereoGroup() && len(d.Members) == 2 {
+		m0, m1 := d.Members[0].Model, d.Members[1].Model
+		if isHomePodModel(m0) && isHomePodModel(m1) {
+			switch {
+			case isMiniModel(m0) && isMiniModel(m1):
+				return "homepod-mini-pair"
+			case m0 == m1:
+				return "homepod-pair"
+			default:
+				return "homepod-mini-combo"
+			}
+		}
+		if k0, k1 := deviceIconKey(m0, false), deviceIconKey(m1, false); k0 == k1 {
+			return k0
+		}
+		return "homepod-pair"
+	}
+	return deviceIconKey(d.Model, true)
+}
+
+// isHomePodModel reports whether the model identifier names a HomePod.
+func isHomePodModel(model string) bool { return strings.HasPrefix(model, "AudioAccessory") }
+
+// isMiniModel reports whether the model identifier names a HomePod mini.
+func isMiniModel(model string) bool { return strings.HasPrefix(model, "AudioAccessory5") }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,8 +32,14 @@ func write(t *testing.T, root, rel, src string) {
 	}
 }
 
+// lines generates n code lines, so the fixture exercises the code-line count
+// rather than the comment-only lines the gate now ignores.
 func lines(n int) string {
-	return strings.Repeat("// filler\n", n)
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&b, "var x%d = %d\n", i, i)
+	}
+	return b.String()
 }
 
 func TestMissingBaselineFailsClosed(t *testing.T) {
@@ -115,5 +122,15 @@ func TestTestFileSkipped(t *testing.T) {
 	}, "# empty\n")
 	if err := run(root); err != nil {
 		t.Fatalf("test file: %v", err)
+	}
+}
+
+// TestCommentsDoNotConsumeBudget pins the new count: a file with few code
+// lines and many comments is measured by its code lines, so a writer can
+// explain a seam without spending the lines the gate protects.
+func TestCommentsDoNotConsumeBudget(t *testing.T) {
+	src := "package main\n\n// a note\n\tx := 1 // trailing\n   // indented note\nvar y = 2\n"
+	if got := countLines([]byte(src)); got != 3 {
+		t.Fatalf("countLines = %d, want 3 code lines (package, x, y)", got)
 	}
 }

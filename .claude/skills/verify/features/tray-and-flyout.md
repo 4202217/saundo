@@ -12,8 +12,10 @@
 - Right click opens the menu: one row per visible receiver, up to six, each
   with its receiver-family glyph in one icon column. The in-session receiver
   draws that glyph in the accent color; an unreachable row keeps the 离线
-  subtitle and stays clickable. Clicking a row connects or switches to it; the
-  in-session row is not a second connect target. While connecting every row is
+  subtitle and stays clickable. Clicking a row connects when idle, or adds
+  that receiver to the playing session and rebuilds the cohort while
+  streaming; an already-active target is a silent no-op. Every active row is
+  marked and disabled. While connecting every row is
   disabled. The row under the list is the session action: 取消连接, 断开连接,
   or 重试连接, and it is absent while idle; with more than six receivers the
   更多接收器… row sits between the sixth receiver row and the session action,
@@ -40,13 +42,56 @@
   `TestTrayMenuLampSubmenu`, `TestTrayMenuLampOffDisablesChoices`,
   `TestTrayMenuUpdateRow`, `TestTrayMenuMoreReceivers`, and
   `TestTrayMenuEmptyState`.
+- Device rows: every row is 66 DIP high whether or not it is a live target.
+  A live row carries a 26-DIP channel icon button (a 16-DIP glyph) before the
+  name and its own volume slider and percent; the button and the 14-DIP
+  speaker share one lead, the name and the rail start at one x, and the
+  connect action owns a centered trailing column fixed at one width whatever
+  its label says. The speaker is a button: one click mutes the target (volume
+  to zero, muted speaker shown), the next restores the level it muted from.
+  A single receiver's channel button cycles stereo → left → right; a stereo
+  target draws no channel button. A member keeps its mixer while the cohort re-establishes,
+  so adding a device never takes the first device's controls away. A joining
+  or reopening row is plain: its second line reads 正在连接… while joining and
+  正在重连… while an automatic retry reopens it, and otherwise a plain row
+  keeps its name, model, and action on the live row's 26/2/20 rhythm. The row's action is a table on the engine's `TargetState`: the
+  joining row offers 取消, a member and a reopening target offer 断开连接, a
+  failed target offers 重试, and a device with no role falls back to the
+  phase. A rebuild names no joiner, so it offers no 取消. A member that
+  closes while the cohort runs leaves the session instead of being retried:
+  the rest keep playing, the lost row returns to 连接, and a single-target
+  session still closes and retries. A session notice under the device card
+  names the lost member with 重试 and a dismiss, or warns that a joining
+  member pauses the others briefly; it clears on a user action or after 8 s. The row's 断开连接
+  removes only that target (`DisconnectTarget` rebuilds the cohort with the
+  rest; the last target ends the session), while the device head's 全部断开
+  ends the whole session. The head reserves the action's 10-DIP height in every state, so the panel does not move when the button appears; pinned by `TestDeviceHeadKeepsItsHeight`.
+  Pinned by
+  `TestFlyoutDeviceRowCarriesItsOwnVolume`,
+  `TestFlyoutVolumeButtonNamesItsAction`,
+  `TestFlyoutChannelButtonNamesItsState`,
+  `TestFlyoutPairChannelButtonIsFixed`, `TestNextChannelCycles`,
+  `TestFlyoutRowsShareOneHeight`, `TestChannelIconFadesTheOtherSide`,
+  `TestFlyoutJoiningRowHidesMixer`, `TestRebuildRowsOfferNoCancel`,
+  `TestMemberDeathKeepsOthersPlaying`, `TestPrimaryDeathPromotesTheRemainingTarget`,
+  `TestSessionNoticeShowsLostMember`, `TestSessionNoticeJoinCopy`,
+  `TestRowActionFollowsTargetState`,
+  `TestFlyoutDisconnectAllButtonFollowsSession`,
+  `TestConnectPublishesJoiningThenMember`, `TestAddPublishesMemberAndJoining`,
+  `TestJoinAndRebuildPublishTheSameAudioFields`,
+  `TestDisconnectJoiningTargetBeforeStreaming`,
+  and `TestDisconnectTargetLeavesOthers`.
 - Adaptive height: `flyoutHeightFor`/`flyoutHeightForState` derive the
-  height from the device rows (56 each, 141 empty state), the latency row
+  height from the device rows (66 each, 141 empty state), the latency row
   (44, while 托盘面板中显示 is on), the Now Playing card (150 while a session exists and
-  `showNowPlayingPanel` is on), and the ambient section (90 collapsed, plus
-  53 when its preset grid expands). The base constant is 439, but the
-  function subtracts the old 62-DIP media row and adds the 90-DIP lamp
-  section, so three device rows with no media measure 467. There is no
+  `showNowPlayingPanel` is on), the ambient section (90 collapsed, plus
+  53 when its preset grid expands), and the playback section's head,
+  borders, and gap (33) when neither media nor the latency row is drawn. The
+  base constant is 438, but the function subtracts the old 62-DIP media row
+  and adds the 90-DIP lamp section, so three device rows with no media
+  measure 500. The empty playback section is pinned by
+  `TestFlyoutPlaybackSectionHidesWhenEmpty` and
+  `TestFlyoutLatencySwitchCanHide`. There is no
   flexible spacer; the playback card follows the device card. Both windows
   carry the desktop text scale as a content zoom, so the flyout and settings
   sizes are multiplied by the scale when sized and shown
@@ -65,8 +110,9 @@
   page. The tray tooltip appends the available version while an update
   waits, and `Update ready` with no version once it is downloaded.
 - Credential recovery: when the engine reports
-  `Snapshot.CredentialReset`, a text-only 48-DIP bar with the connection
-  error bar's inset and height sits under the device card. Its chevron
+  `Snapshot.CredentialReset`, a 44-DIP bar in the status-bar family (key
+  glyph, warning tone, same inset and height as the error bar) sits under the
+  device card. Its chevron
   opens a 380-DIP dialog with the reason, the re-pair step, the
   receiver-reset fallback, and 不再提示 / 重新配对. A successful pairing or
   the dismiss action clears the notice. Pinned by

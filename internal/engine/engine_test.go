@@ -3,6 +3,8 @@ package engine
 import (
 	"bytes"
 	"errors"
+	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -20,38 +22,38 @@ import (
 const testDeviceID = "AA:BB:CC:DD:EE:01"
 
 type fakeTransport struct {
-	evs          chan raopio.Event
-	ev           sender.Events
-	started      bool
-	stopped      bool
-	state        sender.State
-	identity     sender.Identity
-	authDev      string
-	authAP2      bool
-	family       device.Family
-	strict       bool
-	ptpSet       bool
-	inputRates   []int
-	latencies    []int
-	volumes      []float64
-	authPW       string
-	nowPlaying   []string
-	nowCover     []byte
-	nowCoverMIME string
-	artwork      [][]byte
-	artworkMIME  []string
-	artworkOn    []bool
-	playback     []bool
-	pins         []string
-	waitingPin   bool
-	pauses       []bool
-	pauseOK      bool
-	pushing      bool
-	initialPct   float64
-	hasInitial   bool
-	rings        []*ring.Buffer
-	stats        []sender.Stats
-	dropped      uint64
+	evs            chan raopio.Event
+	ev             sender.Events
+	plan           sessionPlan
+	started        bool
+	stopped        bool
+	state          sender.State
+	lost           string
+	failure        LaunchFailure
+	identity       sender.Identity
+	strict         bool
+	inputRates     []int
+	targetVolumes  map[string]float64
+	targetChannels map[string]sender.ChannelMode
+	memberChannels map[string]sender.ChannelMode
+	initialByKey   map[string]float64
+	nowPlaying     []string
+	nowCover       []byte
+	nowCoverMIME   string
+	artwork        [][]byte
+	artworkMIME    []string
+	artworkOn      []bool
+	playback       []bool
+	pins           []string
+	waitingPin     bool
+	pauses         []bool
+	pauseOK        bool
+	pushing        bool
+	initialPct     float64
+	hasInitial     bool
+	rings          []*ring.Buffer
+	stats          []sender.Stats
+	dropped        uint64
 }
 
 func newFakeTransport(ev sender.Events) *fakeTransport {
@@ -60,9 +62,9 @@ func newFakeTransport(ev sender.Events) *fakeTransport {
 
 func (f *fakeTransport) Events() <-chan raopio.Event { return f.evs }
 func (f *fakeTransport) Dead() <-chan struct{}       { return nil }
-func (f *fakeTransport) Start(host string, port uint16, name string) {
-	f.started = true
-}
+func (f *fakeTransport) LostTarget() string          { return f.lost }
+func (f *fakeTransport) Failure() LaunchFailure      { return f.failure }
+func (f *fakeTransport) Start()                      { f.started = true }
 func (f *fakeTransport) Stop() {
 	f.stopped = true
 	f.state = sender.StateIdle
@@ -82,27 +84,33 @@ func (f *fakeTransport) SetPaused(paused bool) bool {
 }
 func (f *fakeTransport) Pushing() bool                  { return f.pushing }
 func (f *fakeTransport) SetIdentity(id sender.Identity) { f.identity = id }
-func (f *fakeTransport) SetAuth(a device.Auth, ap2 bool, id, creds, pw string) {
-	f.authDev = id
-	f.authAP2 = ap2
-	f.authPW = pw
+func (f *fakeTransport) Rings() []*ring.Buffer          { return f.rings }
+func (f *fakeTransport) SetInputFormat(rate int)        { f.inputRates = append(f.inputRates, rate) }
+func (f *fakeTransport) SetTargetVolume(key string, p float64) {
+	if f.targetVolumes == nil {
+		f.targetVolumes = map[string]float64{}
+	}
+	f.targetVolumes[key] = p
 }
-func (f *fakeTransport) SetFamily(family device.Family) { f.family = family }
-func (f *fakeTransport) SetMemberAuth(m device.Device, creds, pw string) {
-	f.authDev = m.ID
-	f.authPW = pw
-	f.family = m.Family
+func (f *fakeTransport) SetTargetChannel(key string, mode sender.ChannelMode) {
+	if f.targetChannels == nil {
+		f.targetChannels = map[string]sender.ChannelMode{}
+	}
+	f.targetChannels[key] = mode
 }
-func (f *fakeTransport) Rings() []*ring.Buffer         { return f.rings }
-func (f *fakeTransport) SetPTPClock(c sender.PTPClock) { f.ptpSet = c != nil }
-func (f *fakeTransport) AttachRing(*ring.Buffer)       {}
-func (f *fakeTransport) SetInputFormat(rate int)       { f.inputRates = append(f.inputRates, rate) }
-func (f *fakeTransport) SetLatency(ms int)             { f.latencies = append(f.latencies, ms) }
-func (f *fakeTransport) SetVolume(p float64)           { f.volumes = append(f.volumes, p) }
-func (f *fakeTransport) SetStrictReceiverAuth(v bool)  { f.strict = v }
-func (f *fakeTransport) SubmitPin(code string)         { f.pins = append(f.pins, code) }
-func (f *fakeTransport) WaitingForPin() bool           { return f.waitingPin }
-func (f *fakeTransport) InitialVolumePercent() (float64, bool) {
+func (f *fakeTransport) SetMemberChannel(key string, index int, mode sender.ChannelMode) {
+	if f.memberChannels == nil {
+		f.memberChannels = map[string]sender.ChannelMode{}
+	}
+	f.memberChannels[key+"\x00"+strconv.Itoa(index)] = mode
+}
+func (f *fakeTransport) SetStrictReceiverAuth(v bool) { f.strict = v }
+func (f *fakeTransport) SubmitPin(code string)        { f.pins = append(f.pins, code) }
+func (f *fakeTransport) WaitingForPin() bool          { return f.waitingPin }
+func (f *fakeTransport) InitialVolumePercentFor(key string) (float64, bool) {
+	if p, ok := f.initialByKey[key]; ok {
+		return p, true
+	}
 	return f.initialPct, f.hasInitial
 }
 func (f *fakeTransport) SetNowPlaying(title, artist, album string, cover []byte, coverMIME string) {
@@ -144,6 +152,7 @@ func (f *fakeCaptureSource) Stats() capture.Stats {
 type harness struct {
 	e        *Engine
 	fake     *fakeTransport
+	plan     sessionPlan
 	now      time.Time
 	sessions int
 	rings    []*ring.Buffer
@@ -220,11 +229,12 @@ func TestConnectAppliesRememberedVolume(t *testing.T) {
 	if !h.fake.started {
 		t.Fatal("session did not start")
 	}
-	if h.fake.authDev != testDeviceID || !h.fake.authAP2 {
-		t.Fatalf("auth not applied: dev=%q ap2=%v", h.fake.authDev, h.fake.authAP2)
+	m := h.plan.members[0]
+	if m.auth.deviceID != testDeviceID || !m.auth.airplay2 {
+		t.Fatalf("auth not applied: dev=%q ap2=%v", m.auth.deviceID, m.auth.airplay2)
 	}
-	if len(h.fake.volumes) == 0 || h.fake.volumes[len(h.fake.volumes)-1] != 42 {
-		t.Fatalf("remembered volume not applied: %v", h.fake.volumes)
+	if got := h.plan.targets[0]; !got.volumeSet || got.volume != 42 {
+		t.Fatalf("planned volume = %v set=%v, want 42 set", got.volume, got.volumeSet)
 	}
 }
 
@@ -271,12 +281,12 @@ func TestFirstLaunchAdoptsReceiverVolume(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.fake.initialPct, h.fake.hasInitial = 37, true
-	if len(h.fake.volumes) != 0 {
-		t.Fatalf("volume set before launch: %v", h.fake.volumes)
+	if len(h.fake.targetVolumes) != 0 {
+		t.Fatalf("volume sent before launch: %v", h.fake.targetVolumes)
 	}
 	h.launch()
-	if h.e.volume != 37 || h.e.setsValue.Volume != 37 {
-		t.Fatalf("volume = %f, want 37", h.e.volume)
+	if got := h.e.setsValue.Volume; got != 37 {
+		t.Fatalf("stored volume = %f, want 37", got)
 	}
 }
 
@@ -285,12 +295,12 @@ func TestVolumeCommandStoresPerDevice(t *testing.T) {
 	h.addDevice()
 	h.connect()
 	h.launch()
-	h.e.handleCommand(command{kind: cmdVolume, value: 55})
+	h.e.handleCommand(command{kind: cmdTargetVolume, deviceID: testDeviceID, value: 55})
 	if got := h.e.setsValue.VolumeByDevice[testDeviceID]; got != 55 {
 		t.Fatalf("per-device volume = %f, want 55", got)
 	}
-	if h.fake.volumes[len(h.fake.volumes)-1] != 55 {
-		t.Fatalf("volume not forwarded: %v", h.fake.volumes)
+	if got := h.fake.targetVolumes[testDeviceID]; got != 55 {
+		t.Fatalf("target volume = %f, want 55", got)
 	}
 }
 
@@ -661,6 +671,7 @@ func TestReconnectWaitThrottlesLogging(t *testing.T) {
 	// The device is gone entirely: the retry waits, logging only on entry
 	// and then once per minute.
 	h.e.selectedID = "AA:BB:CC:DD:EE:99"
+	h.e.wantedKeys = []string{h.e.selectedID}
 	h.advance(time.Second)
 	h.e.attemptReconnect()
 	h.advance(5 * time.Second)
@@ -671,6 +682,7 @@ func TestReconnectWaitThrottlesLogging(t *testing.T) {
 
 	// The device returns; the engine reconnects and clears the throttle.
 	h.e.selectedID = testDeviceID
+	h.e.wantedKeys = []string{testDeviceID}
 	h.e.setDevices([]device.Device{onlineDevice()})
 	h.e.attemptReconnect()
 	if h.sessions != 2 {
@@ -681,6 +693,7 @@ func TestReconnectWaitThrottlesLogging(t *testing.T) {
 	h.fake.state = sender.StateIdle
 	h.e.onClosed()
 	h.e.selectedID = "AA:BB:CC:DD:EE:99"
+	h.e.wantedKeys = []string{h.e.selectedID}
 	h.advance(time.Second)
 	h.e.attemptReconnect()
 	if n := countLogLines(h, "not discovered yet"); n != 2 {
@@ -737,11 +750,11 @@ func TestLatencyAndPasswordReachSession(t *testing.T) {
 		t.Fatal("password did not reach the DPAPI store")
 	}
 	h.connect()
-	if h.fake.authPW != "secret" {
-		t.Fatalf("password = %q", h.fake.authPW)
+	if got := string(h.plan.members[0].auth.password); got != "secret" {
+		t.Fatalf("password = %q", got)
 	}
-	if len(h.fake.latencies) == 0 || h.fake.latencies[len(h.fake.latencies)-1] != 500 {
-		t.Fatalf("latency at connect = %v", h.fake.latencies)
+	if got := h.plan.members[0].latencyMS; got != 500 {
+		t.Fatalf("latency at connect = %d, want 500", got)
 	}
 }
 
@@ -781,8 +794,8 @@ func TestMissingPasswordPromptsAndUsesIt(t *testing.T) {
 			}
 			h.e.handleCommand(command{kind: cmdPassword, deviceID: testDeviceID, name: "secret"})
 			h.connect()
-			if h.sessions != 1 || h.fake.authPW != "secret" {
-				t.Fatalf("sessions=%d password=%q, want one session with the entered password", h.sessions, h.fake.authPW)
+			if h.sessions != 1 || string(h.plan.members[0].auth.password) != "secret" {
+				t.Fatalf("sessions=%d password=%q, want one session with the entered password", h.sessions, h.plan.members[0].auth.password)
 			}
 			if h.e.Snapshot().PasswordRequired {
 				t.Fatal("password prompt stayed open after connecting")
@@ -925,7 +938,7 @@ func TestConnectSelectsTheDeviceBeingConnected(t *testing.T) {
 	// The previous session's device is stale: the user connected a different
 	// device from the list.
 	h.e.selectedID = staleID
-	h.e.setsValue.LastDeviceID = staleID
+	h.e.setsValue.LastTargets = []string{staleID}
 	h.e.setDevices([]device.Device{
 		{ID: staleID, Name: "REDMI", Model: "AppleTV3,2", Auth: device.AuthLegacyPin},
 		{ID: testDeviceID, Name: "客厅 HomePod", Host: "192.0.2.10", Port: 7000,
@@ -945,26 +958,26 @@ func TestConnectSelectsTheDeviceBeingConnected(t *testing.T) {
 		t.Fatalf("connected name = %q, want 客厅 HomePod", snap.ConnectedName)
 	}
 	h.flushSettings()
-	if got := h.e.sets.Load().LastDeviceID; got != testDeviceID {
-		t.Fatalf("persisted last device = %q, want %q", got, testDeviceID)
+	if got := h.e.sets.Load().LastTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("persisted last targets = %v, want [%s]", got, testDeviceID)
 	}
 }
 
-func TestFailedLaunchDoesNotReplaceLastDevice(t *testing.T) {
+func TestFailedLaunchDoesNotReplaceLastTargets(t *testing.T) {
 	h := newHarness(t)
-	const lastID = "AA:BB:CC:DD:EE:99"
-	h.e.setsValue.LastDeviceID = lastID
-	h.flushSettings() // the previous target is on disk
+	last := []string{"AA:BB:CC:DD:EE:99"}
+	h.e.setsValue.LastTargets = last
+	h.flushSettings() // the previous combination is on disk
 	h.addDevice()
 	h.connect()
 	h.fake.launch(false, "Device refused")
 	h.flushSettings()
 
-	if got := h.e.setsValue.LastDeviceID; got != lastID {
-		t.Fatalf("last device after a failed launch = %q, want %q", got, lastID)
+	if got := h.e.setsValue.LastTargets; !slices.Equal(got, last) {
+		t.Fatalf("last targets after a failed launch = %v, want %v", got, last)
 	}
-	if got := h.e.sets.Load().LastDeviceID; got != lastID {
-		t.Fatalf("failed launch replaced the persisted last device with %q", got)
+	if got := h.e.sets.Load().LastTargets; !slices.Equal(got, last) {
+		t.Fatalf("failed launch replaced the persisted combination with %v", got)
 	}
 }
 
@@ -1008,8 +1021,8 @@ func stereoPasswordGroup() device.Device {
 	return device.Device{
 		ID: device.StereoGroupID("tsid"), Name: "HomePods", StereoID: "tsid", Online: true,
 		Members: []device.Device{
-			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Host: "192.0.2.10", Auth: device.AuthHAPPassword, StereoID: "tsid", Online: true},
-			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Host: "192.0.2.11", Auth: device.AuthHAPPassword, StereoID: "tsid", Online: true},
+			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Host: "192.0.2.10", Port: 7000, Auth: device.AuthHAPPassword, StereoID: "tsid", Online: true},
+			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Host: "192.0.2.11", Port: 7000, Auth: device.AuthHAPPassword, StereoID: "tsid", Online: true},
 		},
 	}
 }
@@ -1042,7 +1055,8 @@ func TestStereoMemberPasswordPrompts(t *testing.T) {
 		h.e.handleCommand(command{kind: cmdConnect, deviceID: snap.PasswordTargetID})
 	}
 	if h.sessions != 1 {
-		t.Fatalf("sessions after both member passwords = %d, want 1", h.sessions)
+		snap := h.e.Snapshot()
+		t.Fatalf("sessions after both member passwords = %d, want 1 (error=%q key=%q args=%q)", h.sessions, snap.Error, snap.ErrorKey, snap.ErrorArgs)
 	}
 	if snap := h.e.Snapshot(); snap.PasswordRequired {
 		t.Fatal("the password prompt survived the submit")
@@ -1064,7 +1078,8 @@ func TestStereoGroupPasswordFallbackSkipsPrompt(t *testing.T) {
 		t.Fatal("prompted even though the pair's password is stored")
 	}
 	if h.sessions != 1 {
-		t.Fatalf("sessions = %d, want 1", h.sessions)
+		snap := h.e.Snapshot()
+		t.Fatalf("sessions = %d, want 1 (error=%q key=%q args=%q)", h.sessions, snap.Error, snap.ErrorKey, snap.ErrorArgs)
 	}
 }
 
@@ -1161,8 +1176,8 @@ func TestApplyLatencyRestartsActiveSession(t *testing.T) {
 	if h.sessions != before+1 {
 		t.Fatalf("sessions = %d, want %d after applying latency", h.sessions, before+1)
 	}
-	if len(h.fake.latencies) == 0 || h.fake.latencies[len(h.fake.latencies)-1] != 1500 {
-		t.Fatalf("new session latency = %v, want 1500", h.fake.latencies)
+	if got := h.plan.members[0].latencyMS; got != 1500 {
+		t.Fatalf("new session latency = %d, want 1500", got)
 	}
 }
 
@@ -1254,12 +1269,34 @@ func TestOnClosedRemembersRetransmitRatio(t *testing.T) {
 	h := newHarness(t)
 	const key = "AA:00"
 	h.e.reg.Put(receivers.Entry{Key: key, Kind: receivers.KindDiscovered})
-	h.e.selectedID = key
-	h.e.snap.Diagnostics = Diagnostics{Retransmits: 4, SentBlocks: 100}
+	h.e.snap.Targets = []TargetControl{{ID: key, Health: TargetHealth{Retransmits: 4, SentBlocks: 100}}}
 	h.e.onClosed()
 	entry, ok := h.e.reg.Get(key)
 	if !ok || entry.LastRetransmits != 4 || entry.LastSentBlocks != 100 {
 		t.Fatalf("remembered stats = %+v, ok=%v", entry, ok)
+	}
+}
+
+// TestRememberSessionStatsPerTarget pins the per-target fold: each target's
+// own counters land in its own registry entry, not the session total in the
+// primary's row.
+func TestRememberSessionStatsPerTarget(t *testing.T) {
+	h, b := connectTwo(t)
+	h.e.reg.Put(receivers.Entry{Key: b.ID, Kind: receivers.KindDiscovered})
+	h.fake.stats = []sender.Stats{
+		{Retransmits: 3, SentBlocks: 100},
+		{Retransmits: 5, SentBlocks: 200},
+	}
+	h.e.publish()
+	h.e.onClosed()
+
+	first, ok := h.e.reg.Get(testDeviceID)
+	if !ok || first.LastRetransmits != 3 || first.LastSentBlocks != 100 {
+		t.Fatalf("first target stats = %+v ok=%v", first, ok)
+	}
+	second, ok := h.e.reg.Get(b.ID)
+	if !ok || second.LastRetransmits != 5 || second.LastSentBlocks != 200 {
+		t.Fatalf("second target stats = %+v ok=%v", second, ok)
 	}
 }
 
@@ -1325,5 +1362,18 @@ func TestUnsupportedPlatformDropsAppSelection(t *testing.T) {
 	}
 	if h.e.dropUnsupportedAppSelection() {
 		t.Fatal("a second call reported a change")
+	}
+}
+
+// TestLastSessionFirstFallsBackToTheLegacyDeviceID pins the upgrade path: a
+// settings file written before LastTargets still seeds the selection.
+func TestLastSessionFirstFallsBackToTheLegacyDeviceID(t *testing.T) {
+	cfg := settings.Settings{LastDeviceID: "AA:00"}
+	if got := lastSessionFirst(cfg); got != "AA:00" {
+		t.Fatalf("fallback = %q, want the legacy device id", got)
+	}
+	cfg.LastTargets = []string{"combo:01", "AA:00"}
+	if got := lastSessionFirst(cfg); got != "combo:01" {
+		t.Fatalf("first = %q, want the remembered combo", got)
 	}
 }

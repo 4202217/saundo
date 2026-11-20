@@ -15,6 +15,9 @@ const (
 	GroupNone GroupKind = iota
 	GroupSingle
 	GroupStereo
+	// GroupCohort is more than one target. GroupSize counts senders, not
+	// targets, because the stats are per sender.
+	GroupCohort
 )
 
 // Diagnostics is the diagnostics data, aggregated once per publish on the

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -39,8 +40,9 @@ func newHarnessWithLog(t *testing.T, sets *settings.Store, credsStore *creds.Sto
 	h.e.endpoints = func() ([]capture.Endpoint, error) {
 		return []capture.Endpoint{{ID: "default-ep", Name: "Speakers"}}, nil
 	}
-	h.e.newSession = func(d device.Device) (transport, func(), error) {
+	h.e.newCohort = func(p sessionPlan) (transport, error) {
 		h.sessions++
+		h.plan = p
 		h.fake = newFakeTransport(sender.Events{
 			Launched:               h.e.onLaunched,
 			Closed:                 h.e.onClosed,
@@ -48,10 +50,11 @@ func newHarnessWithLog(t *testing.T, sets *settings.Store, credsStore *creds.Sto
 			CredentialsObtained:    h.e.onCredentials,
 			StateChanged:           h.e.onStateChanged,
 			ReceiverLatencyChanged: h.e.onReceiverLatency,
-			VolumeChanged:          h.e.onReceiverVolume,
+			VolumeChanged:          func(p float64) { h.e.onReceiverVolume(testDeviceID, p) },
 		})
+		h.fake.plan = p
 		h.fake.rings = h.rings
-		return h.fake, func() { h.fake.stopped = true }, nil
+		return h.fake, nil
 	}
 	h.e.captureStartFn = func(capture.Config) (captureSource, error) {
 		return &fakeCaptureSource{}, nil
@@ -194,13 +197,18 @@ func TestRememberedDeviceLeavesTheListsWhenOffline(t *testing.T) {
 	}
 }
 
-// TestOpenSessionRefusesAddresslessReceiver pins the dial guard: an offline
-// remembered group has no host or port, and opening its session must fail
-// closed instead of dialing :0.
-func TestOpenSessionRefusesAddresslessReceiver(t *testing.T) {
+// TestBuildPlanRefusesAddresslessReceiver pins the dial guard: a remembered
+// receiver with no host or port fails the plan closed instead of dialing :0.
+func TestBuildPlanRefusesAddresslessReceiver(t *testing.T) {
 	h := newHarnessWithRegistry(t)
-	if _, _, err := h.e.openSession(device.Device{ID: "stereo:gone", Name: "HomePods"}); err == nil {
-		t.Fatal("opened a session for an addressless receiver")
+	h.e.setDevices([]device.Device{{ID: testDeviceID, Name: "HomePods"}})
+	plan, err := h.e.buildPlan([]string{testDeviceID})
+	if err == nil {
+		t.Fatalf("built a plan for an addressless receiver: %+v", plan)
+	}
+	var pe *planError
+	if !errors.As(err, &pe) || pe.key != ErrSessionOpen {
+		t.Fatalf("plan error = %v, want sessionOpen", err)
 	}
 }
 
@@ -224,6 +232,155 @@ func TestAutoConnectConnectsRememberedDeviceOnceOnline(t *testing.T) {
 	}
 }
 
+// TestAutoConnectSkipsAStaleStereoPair pins the launch after the user unpaired
+// a remembered pair: the registry keeps the pair's auto-connect flag, but
+// discovery now advertises both members as standalone receivers. The launch
+// must start idle so the user can connect one and add the other, and the pair
+// entry stays for the settings page.
+func TestAutoConnectSkipsAStaleStereoPair(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	const (
+		leftID  = "AA:BB:CC:DD:EE:0A"
+		rightID = "AA:BB:CC:DD:EE:0B"
+	)
+	key := device.StereoGroupID("tsid-unpaired")
+	h.e.reg.Put(receivers.Entry{
+		Key: key, Kind: receivers.KindDiscovered, Name: "HomePods", AutoConnect: true,
+		Members: []receivers.Member{
+			{ID: leftID, Name: "L", Host: "192.0.2.10", Port: 7000, Model: "AudioAccessory5,1",
+				Auth: device.AuthHAPTransient, AirPlay2: true},
+			{ID: rightID, Name: "R", Host: "192.0.2.11", Port: 7000, Model: "AudioAccessory5,1",
+				Auth: device.AuthHAPTransient, AirPlay2: true},
+		},
+	})
+	left := testSingle(leftID, "192.0.2.10", "AudioAccessory5,1")
+	right := testSingle(rightID, "192.0.2.11", "AudioAccessory5,1")
+	h.e.setDevices([]device.Device{left, right})
+
+	if h.sessions != 0 || h.fake != nil {
+		t.Fatalf("auto-connect launched the unpaired pair (sessions=%d)", h.sessions)
+	}
+	if !h.e.autoTried {
+		t.Fatal("the launch wait did not end after skipping the stale pair")
+	}
+	if snap := h.e.Snapshot(); snap.Error != "" || snap.ErrorKey != "" {
+		t.Fatalf("skipping the stale pair published an error: %q %q", snap.ErrorKey, snap.Error)
+	}
+	if _, ok := h.e.reg.Get(key); !ok {
+		t.Fatal("the pair entry left the registry; the settings page must keep it")
+	}
+	if n := countLogLines(h, "stale stereo pair; skipping"); n != 1 {
+		t.Fatalf("stale-pair log lines = %d, want 1", n)
+	}
+}
+
+// TestAutoConnectLaunchesEveryFlaggedReceiver pins the multi-device launch:
+// every flagged row connects as one cohort in registry order, the same rows
+// a user click would use.
+func TestAutoConnectLaunchesEveryFlaggedReceiver(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	second := secondDevice()
+	h.e.reg.Put(receivers.Entry{Key: second.ID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	h.e.setDevices([]device.Device{onlineDevice(), second})
+
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the flagged set launched", h.sessions)
+	}
+	if got := h.e.plan.keys(); len(got) != 2 || got[0] != testDeviceID || got[1] != second.ID {
+		t.Fatalf("plan = %v, want both flagged receivers in registry order", got)
+	}
+	if h.e.plan.joinKey != testDeviceID {
+		t.Fatalf("join key = %q, want the first flagged row", h.e.plan.joinKey)
+	}
+}
+
+// TestAutoConnectLeavesUnflaggedReceiversOut pins the flags as the whole
+// launch contract: an unflagged receiver stays out of the launch set even
+// when it was in the last session's combination.
+func TestAutoConnectLeavesUnflaggedReceiversOut(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	second := secondDevice()
+	h.e.setsValue.LastTargets = []string{testDeviceID, second.ID}
+	h.e.setDevices([]device.Device{onlineDevice(), second})
+
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the flagged row only", h.sessions)
+	}
+	if got := h.e.plan.keys(); len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("plan = %v, want the flagged row only", got)
+	}
+}
+
+// TestAutoConnectKeepsALiveStereoPair pins the other side of the stale-pair
+// rule: while discovery still advertises the pair, stray single rows for its
+// members must not stop the launch from connecting it.
+func TestAutoConnectKeepsALiveStereoPair(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	pair := testPair("P", "AudioAccessory5,1")
+	// A discovered group carries its leader's endpoint, which is what the
+	// launch dials.
+	pair.Host, pair.Port = pair.Members[0].Host, pair.Members[0].Port
+	members := make([]receivers.Member, 0, len(pair.Members))
+	for _, m := range pair.Members {
+		members = append(members, receivers.Member{
+			ID: m.ID, Name: m.Name, Host: m.Host, Port: m.Port, Model: m.Model,
+			Auth: m.Auth, AirPlay2: m.AirPlay2,
+		})
+	}
+	h.e.reg.Put(receivers.Entry{
+		Key: pair.ID, Kind: receivers.KindDiscovered, Name: pair.Name,
+		AutoConnect: true, Members: members,
+	})
+	h.e.setDevices([]device.Device{pair, pair.Members[0], pair.Members[1]})
+
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the live pair to auto-connect once", h.sessions)
+	}
+	if h.plan.clock.role != ptpMaster {
+		t.Fatalf("clock role = %v, want the pair's master", h.plan.clock.role)
+	}
+}
+
+// TestRemovingALiveTargetEndsTheCohort pins the delete path: a manual target
+// removed while it plays cannot keep streaming or hold a wanted slot, so the
+// whole cohort ends the way Disconnect ends it.
+func TestRemovingALiveTargetEndsTheCohort(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.addDeviceOnline()
+	h.e.handleCommand(command{kind: cmdAddReceiver, spec: receivers.Spec{
+		Name: "书房", Type: receivers.TypeAirPlay2, Host: "192.0.2.33", Port: 7000,
+	}})
+	key := manualKey(h)
+	if key == "" {
+		t.Fatal("no manual row")
+	}
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
+	h.launch()
+	if got := h.e.wantedKeys; len(got) != 2 {
+		t.Fatalf("wanted keys before the remove = %v, want both targets", got)
+	}
+
+	h.e.handleCommand(command{kind: cmdRemoveReceiver, deviceID: key})
+
+	if h.e.tr != nil {
+		t.Fatal("the removed target left a live transport")
+	}
+	if len(h.e.wantedKeys) != 0 {
+		t.Fatalf("wanted keys survived the remove: %v", h.e.wantedKeys)
+	}
+	snap := h.e.Snapshot()
+	if snap.Active(key) || snap.Active(testDeviceID) {
+		t.Fatalf("active rows after the remove = %v", snap.ActiveTargets)
+	}
+	if snap.State != sender.StateIdle || snap.ConnectedName != "" {
+		t.Fatalf("state/name after the remove = %v/%q, want idle", snap.State, snap.ConnectedName)
+	}
+}
+
 func TestAutoConnectManualTargetIsImmediate(t *testing.T) {
 	h := newHarnessWithRegistry(t)
 	h.e.handleCommand(command{kind: cmdAddReceiver, spec: receivers.Spec{
@@ -233,14 +390,21 @@ func TestAutoConnectManualTargetIsImmediate(t *testing.T) {
 	if key == "" {
 		t.Fatal("no manual row")
 	}
-	h.e.reg.SingleAutoConnect(key, true)
+	entry := receivers.Entry{}
+	if e, ok := h.e.reg.Get(key); ok {
+		entry = e
+	} else {
+		entry = receivers.Entry{Key: key, Kind: receivers.KindDiscovered}
+	}
+	entry.AutoConnect = true
+	h.e.reg.Put(entry)
 	// The run loop's first act; no discovery cycle has reported yet.
 	h.e.maybeAutoConnect()
 	if h.sessions != 1 {
 		t.Fatalf("manual target did not connect without mDNS: sessions=%d", h.sessions)
 	}
-	if h.fake.authDev != key {
-		t.Fatalf("connected to %q, want the manual row", h.fake.authDev)
+	if got := h.plan.members[0].auth.deviceID; got != key {
+		t.Fatalf("connected to %q, want the manual row", got)
 	}
 }
 
@@ -332,8 +496,8 @@ func TestManualReceiverPasswordGatesAndServes(t *testing.T) {
 	}})
 	key := manualKey(h)
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
-	if h.fake.authPW != "" {
-		t.Fatalf("no-password manual got %q", h.fake.authPW)
+	if got := string(h.plan.members[0].auth.password); got != "" {
+		t.Fatalf("no-password manual got %q", got)
 	}
 	// Storing one flips the row to HAP password pairing and the session to
 	// the password.
@@ -342,8 +506,8 @@ func TestManualReceiverPasswordGatesAndServes(t *testing.T) {
 		t.Fatal("the row did not report a saved password")
 	}
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
-	if h.fake.authPW != "hunter2" {
-		t.Fatalf("password = %q, want hunter2", h.fake.authPW)
+	if got := string(h.plan.members[0].auth.password); got != "hunter2" {
+		t.Fatalf("password = %q, want hunter2", got)
 	}
 }
 
@@ -408,7 +572,7 @@ func TestSetReceiverHiddenFiltersFlyoutKeepsActive(t *testing.T) {
 	}
 }
 
-func TestTogglingAutoConnectClearsOthers(t *testing.T) {
+func TestTogglingAutoConnectKeepsOtherFlags(t *testing.T) {
 	h := newHarnessWithRegistry(t)
 	first := device.Device{ID: testDeviceID, Name: "客厅 HomePod", Host: "192.0.2.10", Port: 7000,
 		Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true}
@@ -420,31 +584,42 @@ func TestTogglingAutoConnectClearsOthers(t *testing.T) {
 		patch: receivers.Patch{AutoConnect: &on}})
 	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: second.ID,
 		patch: receivers.Patch{AutoConnect: &on}})
-	if e, _ := h.e.reg.Get(testDeviceID); e.AutoConnect {
-		t.Fatal("the previous auto-connect flag survived")
+	if e, _ := h.e.reg.Get(testDeviceID); !e.AutoConnect {
+		t.Fatal("the first flag did not survive the second toggle")
 	}
 	if e, _ := h.e.reg.Get(second.ID); !e.AutoConnect {
-		t.Fatal("the new flag did not land")
+		t.Fatal("the second flag did not land")
+	}
+	off := false
+	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: testDeviceID,
+		patch: receivers.Patch{AutoConnect: &off}})
+	if e, _ := h.e.reg.Get(testDeviceID); e.AutoConnect {
+		t.Fatal("the first flag did not clear")
+	}
+	if e, _ := h.e.reg.Get(second.ID); !e.AutoConnect {
+		t.Fatal("clearing one flag cleared the other")
 	}
 }
 
 func TestDelayJoinsLatencyAtConnectAndRestarts(t *testing.T) {
 	h := newHarnessWithRegistry(t)
-	h.addDevice()
+	h.addDeviceOnline()
 	h.e.handleCommand(command{kind: cmdLatency, value: 200})
 	delay := 120
 	h.e.handleCommand(command{kind: cmdUpdateReceiver, deviceID: testDeviceID,
 		patch: receivers.Patch{DelayMS: &delay}})
 	h.connect()
-	if got := h.fake.latencies[len(h.fake.latencies)-1]; got != 320 {
+	h.launch()
+	if got := h.plan.members[0].latencyMS; got != 320 {
 		t.Fatalf("latency at connect = %d, want 320", got)
 	}
 	if h.e.Snapshot().LatencyMS != 200 {
 		t.Fatalf("snapshot base latency = %d, want 200", h.e.Snapshot().LatencyMS)
 	}
-	// Changing the global base while streaming keeps the receiver's delay.
-	h.e.handleCommand(command{kind: cmdLatency, value: 300})
-	if got := h.fake.latencies[len(h.fake.latencies)-1]; got != 420 {
+	// Changing the global base while streaming keeps the receiver's delay
+	// and rebuilds the cohort, because a sender applies latency only at SETUP.
+	h.e.handleCommand(command{kind: cmdLatency, value: 300, reconnect: true})
+	if got := h.plan.members[0].latencyMS; got != 420 {
 		t.Fatalf("latency after base change = %d, want 420", got)
 	}
 	// Changing the active receiver's delay restarts the session with the
@@ -456,7 +631,7 @@ func TestDelayJoinsLatencyAtConnectAndRestarts(t *testing.T) {
 	if h.sessions != before+1 {
 		t.Fatalf("sessions = %d, want a restart", h.sessions)
 	}
-	if got := h.fake.latencies[len(h.fake.latencies)-1]; got != 2300 {
+	if got := h.plan.members[0].latencyMS; got != 2300 {
 		t.Fatalf("restarted latency = %d, want 2300", got)
 	}
 	// A delay change to an idle receiver does not start a session.
@@ -628,8 +803,8 @@ func TestMigratedPasswordServesFirstSighting(t *testing.T) {
 	if h.e.Snapshot().PasswordRequired {
 		t.Fatal("migrated password was treated as missing")
 	}
-	if h.fake.authPW != "pw-a" {
-		t.Fatalf("session password = %q, want the migrated one", h.fake.authPW)
+	if got := string(h.plan.members[0].auth.password); got != "pw-a" {
+		t.Fatalf("session password = %q, want the migrated one", got)
 	}
 }
 
@@ -691,7 +866,7 @@ func TestGroupDelayReachesTheTransport(t *testing.T) {
 	if h.sessions != 1 {
 		t.Fatalf("group session did not start: sessions=%d", h.sessions)
 	}
-	if got := h.fake.latencies[len(h.fake.latencies)-1]; got != 320 {
+	if got := h.plan.members[0].latencyMS; got != 320 {
 		t.Fatalf("group latency = %d, want 320", got)
 	}
 }
@@ -709,8 +884,8 @@ func TestRemoveActiveReceiverClearsSelection(t *testing.T) {
 	}
 	h.e.handleCommand(command{kind: cmdRemoveReceiver, deviceID: key})
 	snap := h.e.Snapshot()
-	if snap.SelectedID != "" || h.e.setsValue.LastDeviceID != "" {
-		t.Fatalf("selection survived removal: selected=%q last=%q", snap.SelectedID, h.e.setsValue.LastDeviceID)
+	if snap.SelectedID != "" || len(h.e.setsValue.LastTargets) != 0 {
+		t.Fatalf("selection survived removal: selected=%q last=%v", snap.SelectedID, h.e.setsValue.LastTargets)
 	}
 	for _, d := range snap.Devices {
 		if d.ID == key {
