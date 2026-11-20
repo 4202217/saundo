@@ -377,7 +377,7 @@ func sessionFromPayload(p *streamPayload) Session {
 		s.Updated = time.UnixMicro(p.Timestamp)
 	}
 	if p.ArtworkData != "" {
-		if raw, err := base64.StdEncoding.DecodeString(p.ArtworkData); err == nil && len(raw) > 0 {
+		if raw, err := base64.StdEncoding.DecodeString(p.ArtworkData); err == nil && usableArtwork(raw) {
 			s.Artwork = raw
 			s.ArtworkMIME = artworkMIME(raw)
 		}
