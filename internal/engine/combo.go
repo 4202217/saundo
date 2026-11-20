@@ -88,16 +88,26 @@ func (e *Engine) handleLinkReceivers(ids []string, name string) {
 	} else {
 		name = strings.Join([]string{left.Device.Name, right.Device.Name}, " + ")
 	}
+	// The members' launch flags move onto the combo: a linked member's row is
+	// hidden, so the combo is the only row a launch can act on. Either member
+	// flagged means the user wants this set to start with the app.
 	entry := receivers.Entry{
-		Key:  receivers.NewComboKey(),
-		Kind: receivers.KindCombo,
-		Name: name,
+		Key:         receivers.NewComboKey(),
+		Kind:        receivers.KindCombo,
+		Name:        name,
+		AutoConnect: left.Entry.AutoConnect || right.Entry.AutoConnect,
 		Members: []receivers.Member{
 			{ID: ids[0], Name: left.Device.Name},
 			{ID: ids[1], Name: right.Device.Name},
 		},
 	}
 	e.reg.Put(entry)
+	for _, key := range ids {
+		if member, ok := e.reg.Get(key); ok && member.AutoConnect {
+			member.AutoConnect = false
+			e.reg.Put(member)
+		}
+	}
 	e.clearError()
 	e.saveReceivers()
 	e.forgetLastTarget(ids[0])
@@ -116,6 +126,16 @@ func (e *Engine) handleUnlinkCombo(key string) {
 		return
 	}
 	e.reg.Delete(key)
+	// A launch flag the combo carried returns to both members, so the set the
+	// user asked to start with the app still does after the split.
+	if entry.AutoConnect {
+		for _, m := range entry.Members {
+			if member, ok := e.reg.Get(m.ID); ok {
+				member.AutoConnect = true
+				e.reg.Put(member)
+			}
+		}
+	}
 	e.forgetVolume(key)
 	e.forgetLastTarget(key)
 	e.clearError()

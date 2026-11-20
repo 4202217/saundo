@@ -871,3 +871,18 @@ func TestManageableKeepsAComboWithAnOfflineMember(t *testing.T) {
 		t.Fatal("a combo must stay manageable while a member is offline, like a manual row")
 	}
 }
+
+// TestAutoTargetsSkipsLinkedMembers pins the read-side guard: a member that
+// still carries a stale launch flag inside a combo never starts on its own,
+// because the combo carries the launch intent.
+func TestAutoTargetsSkipsLinkedMembers(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, AutoConnect: true},
+		{Key: "AA:01", Kind: KindDiscovered, AutoConnect: true},
+		{Key: "combo:01", Kind: KindCombo, Members: []Member{{ID: "AA:00"}, {ID: "AA:01"}}},
+	}}
+	got := AutoTargets(reg)
+	if len(got) != 0 {
+		t.Fatalf("linked members launched on their own: %v", got)
+	}
+}

@@ -311,3 +311,73 @@ func TestDelayRebuildRefusesAnOfflineMember(t *testing.T) {
 		t.Fatalf("error = %q, want latencyOffline", snap.ErrorKey)
 	}
 }
+
+// TestLinkComboMovesTheLaunchFlag pins the launch intent's home: a flagged
+// member hands its auto-connect flag to the combo, and the member rows keep
+// none, so a launch acts on the combo rather than the hidden members.
+func TestLinkComboMovesTheLaunchFlag(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.setDevices(comboDevices())
+	for _, key := range []string{testDeviceID, comboSecondDevice().ID} {
+		if e, ok := h.e.reg.Get(key); ok {
+			e.AutoConnect = true
+			h.e.reg.Put(e)
+		}
+	}
+	h.e.handleCommand(command{kind: cmdLinkReceivers, ids: []string{testDeviceID, comboSecondDevice().ID}})
+	key := comboKeyOf(h)
+	if key == "" {
+		t.Fatal("the combo was not created")
+	}
+	entry, _ := h.e.reg.Get(key)
+	if !entry.AutoConnect {
+		t.Fatal("the combo did not inherit the members' launch flag")
+	}
+	for _, memberKey := range []string{testDeviceID, comboSecondDevice().ID} {
+		if m, _ := h.e.reg.Get(memberKey); m.AutoConnect {
+			t.Fatalf("member %s kept its launch flag", memberKey)
+		}
+	}
+	if got := receivers.AutoTargets(h.e.reg); len(got) != 1 || got[0] != key {
+		t.Fatalf("launch set = %v, want the combo alone", got)
+	}
+}
+
+// TestUnlinkComboReturnsTheLaunchFlag pins the split: a combo that started the
+// app hands its flag back to both members, which become standalone rows.
+func TestUnlinkComboReturnsTheLaunchFlag(t *testing.T) {
+	h, key := linkCombo(t)
+	entry, _ := h.e.reg.Get(key)
+	entry.AutoConnect = true
+	h.e.reg.Put(entry)
+	h.e.handleCommand(command{kind: cmdUnlinkCombo, deviceID: key})
+	for _, memberKey := range []string{testDeviceID, comboSecondDevice().ID} {
+		m, ok := h.e.reg.Get(memberKey)
+		if !ok || !m.AutoConnect {
+			t.Fatalf("member %s did not get the flag back", memberKey)
+		}
+	}
+}
+
+// TestComboLinkEndsAMembersAutoConnect covers the reported bug: two flagged
+// receivers linked into a combo used to launch themselves while the combo
+// stayed idle. After the link the launch set is the combo alone.
+func TestComboLinkEndsAMembersAutoConnect(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	h.e.setDevices(comboDevices())
+	for _, key := range []string{testDeviceID, comboSecondDevice().ID} {
+		if e, ok := h.e.reg.Get(key); ok {
+			e.AutoConnect = true
+			h.e.reg.Put(e)
+		}
+	}
+	h.e.handleCommand(command{kind: cmdLinkReceivers, ids: []string{testDeviceID, comboSecondDevice().ID}})
+	key := comboKeyOf(h)
+	h.e.autoTried = false
+	if !h.e.maybeAutoConnect() {
+		t.Fatal("the launch did not start")
+	}
+	if len(h.e.plan.targets) != 1 || h.e.plan.targets[0].key != key {
+		t.Fatalf("launched %v, want the combo alone", h.e.plan.keys())
+	}
+}

@@ -298,11 +298,22 @@ func Visible(targets []Target, active map[string]bool) []device.Device {
 }
 
 // AutoTargets lists the flagged launch set in registry order: every entry
-// carrying the auto-connect flag. Empty when no entry asks to auto-connect.
+// carrying the auto-connect flag, minus any receiver linked into a combo. A
+// linked member's row is hidden, and the combo carries the launch intent, so
+// a stale member flag never launches that receiver on its own.
 func AutoTargets(reg Registry) []string {
+	linked := make(map[string]bool)
+	for _, e := range reg.Entries {
+		if !e.IsCombo() {
+			continue
+		}
+		for _, m := range e.Members {
+			linked[m.ID] = true
+		}
+	}
 	var keys []string
 	for _, e := range reg.Entries {
-		if e.AutoConnect {
+		if e.AutoConnect && !linked[e.Key] {
 			keys = append(keys, e.Key)
 		}
 	}
