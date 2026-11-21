@@ -59,12 +59,13 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 
 - **System audio capture** — everything the Mac or PC plays: WASAPI loopback on Windows, a Core Audio process tap on macOS, or, on macOS, one or more selected apps.
 - **AirPlay 2, properly timed** — uncompressed ALAC at 44.1 kHz, PTP-locked to the receiver's clock, encrypted control and event channels, retransmit on request. HomePod stereo pairs play in lockstep.
-- **Receivers, managed** — find them with mDNS or add an IP; keep them across power-offs; hide rows; choose one auto-connect target and set a per-receiver delay and password. Switch receivers from the panel or its right-click menu without stopping playback.
+- **Receivers, managed** — find them with mDNS or add an IP; keep them across power-offs; hide rows; flag any number of them for launch auto-connect; link two into a software stereo combo — any model or generation, where Apple's official pairing wants identical speakers — with one volume and a hot side swap; set a per-receiver channel and password. Switch receivers from the panel or its right-click menu without stopping playback.
+- **Multi-device playback** — one capture streams to several receivers at once as a member set: per-target volume and channel, a member that dies leaves the session while the survivors keep playing, and the connection page states the session's measured health.
 - **One tray surface** — the panel carries the media card, latency, volume, and ambient light; the right-click menu carries receiver rows that connect or switch, a session action, media controls, the ambient submenu, settings, updates, and quit. Animated faces follow the session.
 - **Ambient light** — a HomePod's top display follows the media cover or one of six three-color templates, and turns off after a chosen idle period.
 - **Mute the local output** — silences this computer while streaming and restores it on disconnect. With per-app capture on macOS, only the selected apps go quiet.
 - **Latency modes** — 200 ms, 1.5 s, 2 s, or a custom 20–2000 ms; switch while playing.
-- **Sessions that recover** — auto-reconnect with backoff, silence suspend, takeover handling, and receiver volume following.
+- **Sessions that recover** — auto-reconnect with backoff, silence suspend, takeover handling, receiver volume following, and a rejected password that opens the prompt instead of tearing the session down.
 - **Updates, languages, pairing** — the settings update page installs signed updates on both platforms; English and Simplified Chinese; the interface follows the desktop text scale; HomePod, Apple TV PIN, and receiver-password pairing with OS-secured credentials.
 
 ## Receiver support

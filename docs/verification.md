@@ -84,20 +84,21 @@ live state:
   the accepted cost). R disappeared from discovery and returned on power-on.
   The delay before the gap is the survivor's buffer plus TCP close detection,
   not extra session work.
-- Auto-connect after a member returns (2026-11-18, deferred by the user). A
-  receiver that is powered off and comes back mid-session is not connected
-  again: 启动时自动连接 is a launch-time single-target choice, evaluated when
-  the app starts, and nothing watches a member reappearing while another
-  target streams. This is the old single-target launch logic, which does not
-  model a multi-device wanted set; the user asked to leave it for now. The
-  eventual shape is either a per-receiver auto-recover or a launch choice that
-  restores the last wanted set.
+- Auto-connect after a member returns (2026-11-18, deferred by the user;
+  premise updated 2026-11-21). A receiver that is powered off and comes back
+  mid-session is not connected again: 启动时自动连接 is a launch-time
+  multi-select choice — the launch connects every flagged receiver —
+  evaluated when the app starts, and nothing watches a member reappearing
+  while another target streams. The user asked to leave it for now. The
+  eventual shape is either a per-receiver auto-recover or a launch choice
+  that restores the last wanted set.
 - Per-device volume and channel on real hardware: two standalone HomePods set
   left and right, a MacBook Air set stereo, different volumes on each, and the
   result confirmed by ear, from the flyout rows and the settings receiver rows.
   The settings row keeps the volume slider and the channel segment; the
-  flyout's live device rows carry each target's volume slider and an icon-only
-  channel button, and the playback card keeps the latency switch. The
+  flyout's live device rows carry each target's volume slider, a single
+  receiver's row adds the icon-only channel button, a stereo target draws
+  none, and the playback card keeps the latency switch. The
   per-device delay row was removed from settings at the user's request, and the
   engine keeps the per-device delay data and its `UpdateReceiver` delay path
   for a later UI. The split, live change, and registration paths are pinned by
@@ -116,9 +117,17 @@ live state:
   its band values, and a stereo pair's worst/sum aggregation. The parsing
   and aggregation are pinned by the sender and engine tests; no live device
   has reported `wiFiMetrics` yet, and no UI consumes the model.
+- A multi-homed receiver in a multi-device session (2026-11-21, after the
+  socket-ownership routing fix). A receiver that answers from two
+  interfaces, pooled with a second receiver: its timing replies and 0x55
+  retransmit requests must reach its own sender. The engine paths are
+  pinned by `TestCohortAttributesAUDPReplyToTheMemberThatOwnsTheSocket` and
+  `TestAutoConnectDropsASilentFlaggedReceiverAndLaunchesTheRest`; no
+  live multi-homed run exists yet.
 - A real default-device switch during playback.
-- Multi-room groups larger than two, a member dropping or reconnecting
-  mid-pair, and software stereo groups built from independent receivers.
+- Multi-room groups larger than two, and a member dropping or reconnecting
+  mid-pair. Software stereo groups are consolidated into the stereo combo
+  acceptance checklist above.
 - A live macOS in-app update: the mac updater now follows the ad-hoc darwin
   manifest. The first release with that manifest is the baseline, and the
   first live update from it measures whether TCC audio capture and Keychain
@@ -1715,119 +1724,189 @@ one took it from 1627.
   `TestStandalonePTPSessionSkipsSetPeers`,
   `TestGroupArtworkFansOutToBothCapableMembers`,
   `TestGroupArtworkSkipsIncapableMember`.
+- 2026-11-18 to 2026-11-21, covers, combos, and the observation rule:
+  Apple Music's idle SMTC session publishes a thumbnail that is a white
+  frame at alpha 63 over a transparent field; `usableArtwork` requires
+  one pixel at alpha >= 0.5, the session reads as no cover, and the card
+  draws its own placeholder (pins: `TestUsableArtworkRejectsAppleMusicIdlePlaceholder`
+  and the other `TestUsableArtwork*` tests; fixture
+  `internal/nowplaying/testdata/apple-music-idle.png`; the placeholder
+  rule lives in ui.md). Two independent receivers link into one software
+  stereo combo: a `combo:<hex>` registry row holds the members in
+  playback order, the plan gives each member one input side with no
+  group UUID and no SETPEERS peers, both members join the shared PTP
+  follower set, link moves the members' launch flags onto the combo and
+  unlink hands them back, and swap reorders and hot-applies the sides
+  (pins: `TestComboPlanPlaysLeftAndRight`, `TestSwapComboSidesFlipsMembers`,
+  `TestLinkComboMovesTheLaunchFlag`, `TestUnlinkComboReturnsTheLaunchFlag`,
+  `TestComboLinkEndsAMembersAutoConnect`, `TestAutoTargetsSkipsLinkedMembers`,
+  `TestComboVolumeReportConvergesTheMembers`, `TestLinkComboClearsAPendingPin`,
+  `TestDelayRebuildRefusesAnOfflineMember`, `TestReceiverComboRowRendersTheChannelMap`,
+  `TestFlyoutPairChannelButtonIsFixed`, `TestComboPickRowsExcludeTheOtherSide`,
+  `TestStereoIconFollowsMembers`; live acceptance stays in `Currently
+  pending`). An official stereo pair invalidates a manual combo over the
+  same members: the combo reads 不可用, connect refuses with
+  `ErrComboStale`, auto-connect skips it, and `Visible` drops it unless
+  it is the live target (pins:
+  `TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair`,
+  `TestValidateTargetRefusesAStaleCombo`, `TestInvalidComboRowIsMarked`,
+  `TestVisibleFiltersHiddenAndKeepsActive`). Grouping reads this
+  session's advertisements only — the registry caches preferences and
+  endpoints and never asserts a relationship — so a dissolved pair's
+  combo heals within one discovery cycle and a stale remembered entry is
+  cache hygiene (pin: `TestMergeLetsAStaleRememberedPairGo`;
+  architecture.md §5). The discovery merge takes the tsid from the
+  latest `_airplay` record and keeps `igl` monotonic, so a dissolved
+  pair de-synthesizes within one cycle (pins:
+  `TestMergeDropsThePairTsidWhenTheAdvertisementStopsCarryingIt`,
+  `TestGroupFieldsParsedAndMerged`).
 
-## 2026-11-18 — Apple Music's idle thumbnail is not a cover
+## 2026-11-21 — the launch deadline and the multi-homed cohort route
 
-An idle Apple Music session reports the title `未在播放` and a 300×300 PNG in
-the cover slot. The image is a white rounded frame and a note at alpha 63 over
-a transparent field, not a cover. Drawn at the card's 52-DIP poster the frame
-lands on one device pixel at 175% scaling and reads as a white line around the
-poster; compositing the captured bytes on the card's `#2d2d33` at 91×91 gives
-an edge pixel of 95,95,99 against the screenshot's 92,92,96, so the line is
-the image, not the card's drawing. The earlier tile-background fix addressed a
-sliver from the app's own image tile and could not cover this case.
+The 0.6.5 subset review's two Major risks are fixed. `maybeAutoConnect`
+held the whole flagged launch set forever when one flagged row had no
+address; the wait now runs on a 15-second deadline, past it the silent rows
+drop with a line and the rest launch, and the dropped row keeps its flag
+for the next app start (`3f88f23`; pin
+`TestAutoConnectDropsASilentFlaggedReceiverAndLaunchesTheRest`). A
+multi-homed receiver's UDP replies, arriving from an interface the plan did
+not dial, dropped in a multi-member cohort; the per-member forward
+goroutine now stamps every event with the member that owns the receiving
+socket, so the reply reaches its own sender and the timing answer returns
+over the dialed interface to the requesting port (`465fdc2`; pin
+`TestCohortAttributesAUDPReplyToTheMemberThatOwnsTheSocket`). Owed live: a
+receiver reachable on two interfaces in a two-receiver session, its timing
+replies and retransmit requests confirmed on the streaming member — see
+the multi-homed entry in Currently pending.
 
-`internal/nowplaying` now drops a thumbnail with no pixel at alpha ≥ 0.5 at
-both read boundaries (SMTC and the macOS adapter), so the session reads as
-having no cover and the card falls back to its own placeholder tile. The
-captured thumbnail is `internal/nowplaying/testdata/apple-music-idle.png`. A
-live `Read` with the app's two sessions open reports the Chrome cover intact
-(32,101 bytes) and the Apple Music session at zero artwork. Decode plus scan
-costs 0.3 ms for the 150×83 Chrome thumbnail and 6.6 ms for a synthetic
-1500×1500 PNG, once per 2 s poll. Checks: `go test ./internal/nowplaying -run
-TestUsableArtwork` passed 4 tests. Live check on the rebuilt app: with Apple
-Music idle and current, the flyout drew the card's own placeholder tile with
-no frame around it (user's capture, 2026-11-18).
+## 2026-11-21 — the verification skill's 0.6.5 maintenance run
 
-## 2026-11-20 — software stereo combos
+The skill maintenance audited all six feature pages from source and drove
+the live surface. Outcome: **changed** — the proven corrections landed as
+5827621: session-controls still described the retired global volume row
+and missed the session notice bar, the TargetState action verbs, and the
+no-tint rule; tray-and-flyout measured three rows at 500 instead of 433
+and read the tray accent as one device; ambient-light never said combo
+members take the lamp sync and that a combo's missing group UUID skips the
+first-light retry; discovery-and-connect missed the combo dialogs, the
+multi-select launch and its 15 s drop deadline, and the socket-ownership
+routing; updates cited five moved ranges and omitted the 本地构建 label.
+Live pass (evidence `/tmp/saundo-verify/20261121-171029`): the doctor on
+the running 0.6.4 instance found a live two-member HomePod L + R cohort
+streaming (RTSP GET/FEEDBACK 200s flowing), the log excerpt and 286-frame
+preview matrix are in the evidence dir, the headless UI suites passed, and
+the passive mDNS browse passed. Unreachable this run, with the concrete
+prerequisite: the receiver handshake drives (`SAUNDO_DEVICE_TEST=1`) —
+the receivers are members of the maintainer's live session, and the e2e
+UI harness shares the single-instance lock with the running app. Findings
+recorded, not fixed here: no combo lamp test exists, and a stale comment
+at `receivers_page.go:13-16` still names the per-receiver delay row.
 
-Two independent AirPlay 2 receivers can be linked into one stereo target: a
-`combo:<hex>` registry row holds the member keys in playback order, the merge
-projects one stereo-group row over the members' own rows, and the plan gives
-each member one input side. The same session path serves it: the combo sends
-no group UUID and no SETPEERS peers, and both members join the shared PTP
-follower set. Link moves the members' launch flags onto the combo and clears
-them on the members; unlink hands the flag back; the launch set skips any
-linked member, so a registry written before this change cannot start one by
-itself. Swap reorders the registry and hot-applies the opposite side per
-member without a rebuild. Removing a receiver unlinks its combo.
+## 2026-11-21 — the 0.6.5 candidate build and the maintainer's test
 
-`mingw32-make check` passed on the branch, including the new pins:
-`TestComboPlanPlaysLeftAndRight`, `TestSwapComboSidesFlipsMembers`,
-`TestLinkComboMovesTheLaunchFlag`, `TestUnlinkComboReturnsTheLaunchFlag`,
-`TestComboLinkEndsAMembersAutoConnect`, `TestAutoTargetsSkipsLinkedMembers`,
-`TestComboVolumeReportConvergesTheMembers`, `TestLinkComboClearsAPendingPin`,
-`TestDelayRebuildRefusesAnOfflineMember`, and the app-side
-`TestReceiverComboRowRendersTheChannelMap`, `TestFlyoutPairChannelButtonIsFixed`,
-`TestComboPickRowsExcludeTheOtherSide`, `TestStereoIconFollowsMembers`.
+The candidate build (`go tool mygo build -platform windows/amd64
+-skip-installer`, `MYGO_LDFLAGS=-X saundo/internal/app.Version=0.6.5`,
+signed with `MYGO_UPDATER_PRIVATE_KEY`) produced
+`cmd/saundo/build/windows-amd64/update-windows-amd64.json`: version 0.6.5,
+the English 0.6.5 changelog section as its notes, six signatures, and
+download URLs under `releases/download/v0.6.5/`; the update archive, three
+deltas (0.6.2/0.6.3/0.6.4 → 0.6.5), and `SHA256SUMS` sit beside it. The
+signing key's actual location is the Claude desktop container path
+(`AppData/Local/Packages/Claude_…/LocalCache/Roaming/mygo/update-keys/`)
+— where `mygo keygen` wrote it under that environment's APPDATA; the
+documented `%APPDATA%\mygo\update-keys` path does not exist on this
+machine, so `docs/releasing.md` still names the wrong default for this
+setup. The release request of 2026-11-21 stands as the maintainer's
+pre-release test confirmation: the build has been running on the
+maintainer's own PC through the 0.6.5 cycle (every `mingw32-make build`
+relaunch is on that machine), and the doctor's live observation above is
+that instance. Not run this round: the local install of the 0.6.5
+candidate over the running 0.6.4 (the maintainer's session was streaming).
 
-The maintainer ran the feature live during development and observed the combo
-card, the create dialog with per-side icon pickers, the flyout row with the
-立体声组合 tag and no channel button, and a streaming combo whose members both
-played. No log excerpt of a combo session is recorded in this entry, and the
-following remain owed: left and right judged by ear through a combo, swap and
-unlink while streaming, a member lost mid-stream from a combo, and a launch
-from auto-connect with a combo. The 1.37 s rebuild gap measured for a lost
-member applies to these paths unchanged.
+## 2026-11-21 — 0.6.5 commit range review
 
-## 2026-11-21 — an official pair invalidates a manual combo
+The release range v0.6.4..HEAD holds 43 commits, oldest 01729d5 (docs:
+record the 0.6.4 draft and publish), tip 465fdc2 (engine: cohort events
+route by the socket they arrived on). The two merge commits f17912b and
+bca6bd4 (PR #53) carry commits listed below. Ten are internal; thirty-one
+are user-visible and map to the changelog lines of the 0.6.5 section.
 
-The test home had a manual combo 书桌 over HomePod L and HomePod R, and an
-Apple Home stereo pair 卧室 over the same two speakers. Once the pair
-appeared, the standalone member rows went offline: the settings combo row
-read `● 0/2` in red while the flyout's 书桌 row stayed live in the session it
-had auto-connected. The rule is official-pair priority: Merge marks a combo
-invalid when any member ID belongs to a native pair, live or remembered. The
-settings row reads 不可用 with 成员已加入立体声组 and keeps only the layout,
-while its edit dialog still carries 解除组合; its members are released, so a member online on its own returns as a
-standalone row; the flyout and tray list only connectable targets and omit the
-combo; auto-connect skips it; `validateTarget` refuses it with
-`ErrComboStale`. Pinned by
-`TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair`,
-`TestValidateTargetRefusesAStaleCombo`, `TestInvalidComboRowIsMarked`, and
-`TestVisibleFiltersHiddenAndKeepsActive` — the last pins `Visible` dropping
-the invalid combo unless it is the live target, which is why the flyout has
-no row for it.
-Evidence: the registry entries HomePod L/R, 书桌 (combo members), and 卧室
-(`stereo:D175…`, members the same two IDs), plus the flyout and receivers-page
-screenshots from the report.
+Internal, no changelog line: 01729d5 (the 0.6.4 release record), 1401d30
+(multi-device docs), a8a2888 (settings schema 2 — an older build treats a
+v2 file as read-only instead of dropping the persisted lastTargets field),
+347cb3c (the underrun window's comment names its unit), 8039820 (the size
+gate counts only code lines), 78b711f and 8423af0 (site-only, not app
+behavior), 7a53163 (test pins for the combo edit path), 0f3ce44 (the
+preview matrix gains a scrolled receivers state), 6eb59d4 (the ui-mockup
+templates refreshed to the 0.6.5 interface).
 
-## 2026-11-21 — the remembered-half of the pair rule was dropped
+Post-review fixes, user-visible: 3f88f23 (the launch deadline drops a
+flagged receiver that never resolves an address — Fixed, the auto-connect
+grace line) and 465fdc2 (cohort events route by the socket they arrived on
+— Fixed, the multi-homed replies line). Both are the release subset
+review's two Major findings, fixed before the release commit.
 
-Same day, same test home: the 卧室 pair was dissolved in the Apple Home app
-while the 书桌 combo stayed in the registry. The two speakers advertise
-standalone again, but Merge's official map counted the remembered
-`stereo:D175…` entry's members, so the combo stayed 不可用 with
-成员已加入立体声组 for the whole GroupGrace window while no pair existed on
-any surface — memory out-argued reality, and the 24-hour wait was standing in
-for a fact that is directly observable (every remembered member advertising
-standalone). The rule is now observation-only: grouping reads from this
-session's advertisements, the registry caches endpoints and preferences and
-never asserts a relationship, and the stale entry is inert until
-PruneStaleGroups clears it as cache hygiene. What is not advertising now does
-not exist for decisions; `pairIsStandalone` keeps guarding the cold-start
-launch of a dissolved pair. The user's combos self-heal within one discovery
-cycle of a dissolution instead of after GroupGrace. Pinned by
-`TestMergeLetsAStaleRememberedPairGo` (fails on the remembered-half rule);
-`TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair` still pins the
-live-half. Design decision recorded in architecture.md §5.
+Internal, no changelog line: 01729d5 (the 0.6.4 release record), 1401d30
+(multi-device docs), a8a2888 (settings schema 2 — an older build treats a
+v2 file as read-only instead of dropping the persisted lastTargets field),
+347cb3c (the underrun window's comment names its unit), 8039820 (the size
+gate counts only code lines), 78b711f and 8423af0 (site-only, not app
+behavior), 7a53163 (test pins for the combo edit path).
 
-## 2026-11-21 — a dissolved pair never stopped advertising
+User-visible, by 0.6.5 changelog line:
 
-The user dissolved the 卧室 pair in the Apple Home app and no refresh ever
-revealed the split: the receivers page kept the pair row with a green `2/2`
-count and the combo stayed 不可用, while creating the pair had reflected
-immediately. Root cause in discovery's record merge, not in the new
-observation rule: `merge` kept the last non-empty `tsid` forever, and the
-directed pass refreshed the record's freshness from the speakers' current
-advertisements, so the synthesized pair stayed online indefinitely after the
-speakers had stopped carrying the tsid. The merge now takes the tsid from the
-latest `_airplay` record — the service the field rides on, per the 2026-11-06
-directed-discovery finding that losing the `_airplay` replies leaves
-`_raop`-only rows without a tsid — so the dissolved pair de-synthesizes within
-one cycle and the members return standalone. The leader flag (`igl`) stays
-merged monotonically: its staleness only picks the group's cosmetic base
-member, and `TestGroupFieldsParsedAndMerged` pins that an `_airplay` record
-must not erase `_raop`-carried group fields. Pinned by
-`TestMergeDropsThePairTsidWhenTheAdvertisementStopsCarryingIt` (fails on the
-monotonic tsid).
+- Added, multi-device playback: d664fa3 (cohort transport, per-target
+  volume and channel, per-target flyout rows), 4269409 (primary-target
+  concept retired, LastTargets), 2842972 (member set read by tray,
+  connection page, sidebar, latency line), 7b36a83 (member death keeps the
+  survivors playing), 9608099 (session notice bar), fe3242e (connection
+  page states devices and health), 49623ea (surfaces drop the primary
+  chip, sidebar counts members).
+- Added, software stereo combos: 3d6d106 (combo registry entry, plan, hot
+  side swap), 462a198 (create dialog, section, combo rows), af68096 (an
+  official pair makes a combo Unavailable), 706c3ad (in-place edit, Seen
+  separates advertisement from reachability).
+- Added, model detail switch: e2ea676 (the switch and the
+  parenthetical-hiding rule), b7f816e (the default flips to off).
+- Changed, auto-connect multi-select: 3e36d80 (every flagged receiver
+  connects as one cohort), 38ae9ea (a link moves the members' flags onto
+  the combo).
+- Changed, trailing-60-second stability verdict: 4f197e7.
+- Changed, receiver row state: 20ec64c (title chips, second line with
+  address, channel, model, version), 58eeef8 (rows name only what the
+  title does not; model identifiers leave settings).
+- Changed, per-section create actions on the receivers page: 2bc2baa.
+- Changed, flyout head and rows: 4a9c7b0 (the head shows only the latency
+  value), bc6939c (rows drop the selection tint).
+- Fixed, phantom underruns: 9475c85.
+- Fixed, the rejected-password prompt: 31e1c7e.
+- Fixed, a dissolved pair de-synthesizes in one cycle: 7f99017.
+- Fixed, Apple Music's idle thumbnail: f031863.
+- Fixed, combo and audit corrections: 7fa04d5 (picker exclusion, tag
+  placement, stereo channel row removed), 21bb7a8 (swap-side round trip,
+  registry schema 2, pair member not linkable, offline add refused,
+  takeover as member loss, combo delay and volume inheritance),
+  de1fd19 (create entry waits for two eligible receivers, refused saves
+  report on the page, notice resize, offline combo reads 离线, tray combo
+  glyph), 19b9add (chips and mixer marks sit level with the text).
+
+Code review: subset ran (15 commits) -> no P0. The two axes (Standards and
+Spec) each reported zero P0 and zero documented-standard breaches. The Spec
+axis recorded two Major behavioral risks, both fixed before the release
+commit: the launch's indefinite wait for a silent flagged row, fixed in
+3f88f23, and the cohort's dialed-IP-only event routing, fixed in 465fdc2.
+The Standards axis left judgement calls only: the repeated auth-reject pair
+in the sender, the duplicated password-prompt blocks in plan.go, and a
+stale comment at cohort.go:619.
+
+The 0.6.5 UI review ran the same day. The preview matrix (286 renders plus
+the probe frames) rendered into `.audit/release-0.6.5/ui-review/` in zh-CN
+and English, light and dark, and the copy gates passed
+(`TestCatalogKeyParity`, `TestCatalogHasNoDeadKeys`,
+`TestCatalogBannedTerms`, `TestCatalogUniqueValues`, `TestLatencyText`).
+The reviewed states — the receivers page and its combo rows, the create and
+unlink dialogs, the expanded row, the flyout's combo, notice, joining, and
+latency-head states, and the connection page's session cards — match
+docs/ui.md and docs/ui-copy.md; no P0 and no terminology finding. One
+coverage gap: no preview showed the model-detail card, fixed by the scrolled
+receivers state (0f3ce44).
