@@ -2,18 +2,41 @@ package engine
 
 import (
 	"errors"
+	"time"
 
 	"saundo/internal/airplay/device"
 	"saundo/internal/receivers"
 )
+
+// autoPendingWait bounds how long the launch waits for a flagged row that
+// has no address yet. Discovery usually answers within seconds; past the
+// wait, the silent row drops and the rest launch, so one receiver that never
+// comes back cannot hold the whole flagged set hostage.
+const autoPendingWait = 15 * time.Second
+
+// autoPendingWake is the launch wait's deadline for nextWake: past it,
+// maybeAutoConnect drops the silent flagged rows and launches the rest.
+func (e *Engine) autoPendingWake() time.Time {
+	if e.autoPendingAt.IsZero() {
+		return time.Time{}
+	}
+	return e.autoPendingAt.Add(autoPendingWait)
+}
+
+// autoPendingDue reports whether the launch wait has run out.
+func (e *Engine) autoPendingDue(now time.Time) bool {
+	return !e.autoTried && !e.autoPendingAt.IsZero() && !now.Before(e.autoPendingAt.Add(autoPendingWait))
+}
 
 // maybeAutoConnect connects the flagged receiver set once, when every row in
 // it is addressable: the registry's auto-connect flags are the launch set,
 // the same rows a user click would use, and they open as one cohort in
 // registry order. A manual row is addressable immediately, a discovered one
 // on the first snapshot that reports it online, and a remembered one through
-// its cached endpoint. A user connect or disconnect ends the launch phase,
-// and a failure falls through to the ordinary reconnect policy.
+// its cached endpoint. A row with no address holds the launch for discovery
+// up to autoPendingWait, then drops with a line and the rest launch. A user
+// connect or disconnect ends the launch phase, and a failure falls through
+// to the ordinary reconnect policy.
 func (e *Engine) maybeAutoConnect() bool {
 	if e.autoTried {
 		return false
@@ -21,19 +44,33 @@ func (e *Engine) maybeAutoConnect() bool {
 	flagged := receivers.AutoTargets(e.reg)
 	if len(flagged) == 0 {
 		e.autoTried = true
+		e.autoPendingAt = time.Time{}
 		return false
 	}
 	if e.tr != nil || e.reconnectWanted {
 		e.autoTried = true
+		e.autoPendingAt = time.Time{}
 		return false
 	}
 	keys, views, pending := e.autoConnectSet(flagged)
-	if pending {
-		return false // a flagged row has no endpoint yet; wait for discovery
+	if len(pending) > 0 {
+		if e.autoPendingAt.IsZero() {
+			e.autoPendingAt = e.now()
+			return false // a flagged row has no endpoint yet; wait for discovery
+		}
+		if e.now().Before(e.autoPendingAt.Add(autoPendingWait)) {
+			return false
+		}
+		// The wait is up: the silent rows drop and the rest launch. The flag
+		// stays on the dropped row, so the next app start tries it again.
+		for _, key := range pending {
+			e.logf("auto-connect: dropping %s; no address after %s", key, autoPendingWait)
+		}
 	}
 	// Every flagged row resolved into an attempt, a drop, or a skip; either
 	// way the launch phase ends here.
 	e.autoTried = true
+	e.autoPendingAt = time.Time{}
 	if len(keys) == 0 {
 		return false
 	}
@@ -46,9 +83,9 @@ func (e *Engine) maybeAutoConnect() bool {
 // same view a user click on the offline row would validate. A row that no
 // longer resolves or is structurally unusable (a stale unpaired group, the
 // local receiver) drops with a line; a row that merely has no endpoint yet
-// reports pending, so the caller waits for discovery rather than launching
-// a partial set.
-func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[string]receivers.Target, pending bool) {
+// joins pending, so the caller waits for discovery rather than launching a
+// partial set — and can drop exactly those rows once its wait runs out.
+func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[string]receivers.Target, pending []string) {
 	views = make(map[string]receivers.Target, len(flagged))
 	keys = make([]string, 0, len(flagged))
 	for _, key := range flagged {
@@ -72,7 +109,7 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 			// takes its live view, an offline one reads its cached endpoint,
 			// and a member with no address yet holds the launch for discovery.
 			members := make([]device.Device, 0, len(t.Entry.Members))
-			broken := false
+			broken, held := false, false
 			for _, m := range t.Entry.Members {
 				mt, mfound := e.target(m.ID)
 				if !mfound {
@@ -84,16 +121,22 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 				if !md.Online {
 					cached, ok := receivers.CachedDevice(mt.Entry, e.hasPassword(mt.Entry.Key))
 					if !ok {
-						return nil, nil, true
+						held = true
+						break
 					}
 					md = cached
 				}
 				if md.Host == "" || md.Port == 0 {
-					return nil, nil, true
+					held = true
+					break
 				}
 				members = append(members, md)
 			}
 			if broken {
+				continue
+			}
+			if held {
+				pending = append(pending, key)
 				continue
 			}
 			t.Device = receivers.ComboDevice(t.Entry, members)
@@ -118,18 +161,20 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 			// from a user click.
 			cached, ok := receivers.CachedDevice(t.Entry, e.hasPassword(t.Entry.Key))
 			if !ok {
-				return nil, nil, true
+				pending = append(pending, key)
+				continue
 			}
 			t.Device = cached
 			d = cached
 		}
 		if d.Host == "" || d.Port == 0 {
-			return nil, nil, true
+			pending = append(pending, key)
+			continue
 		}
 		keys = append(keys, key)
 		views[key] = t
 	}
-	return keys, views, false
+	return keys, views, pending
 }
 
 // connectLaunch opens the auto-connect cohort. It mirrors the user-click

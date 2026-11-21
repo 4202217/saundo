@@ -302,6 +302,7 @@ type Engine struct {
 	connectAuto          bool
 	pauseUnsupported     bool
 	autoTried            bool
+	autoPendingAt        time.Time
 
 	// track is the last Now Playing payload, replayed to a rebuilt cohort.
 	track trackInfo
@@ -713,11 +714,20 @@ func (e *Engine) nextWake() time.Time {
 	if !e.settingsDirtyAt.IsZero() && (wake.IsZero() || e.settingsDirtyAt.Before(wake)) {
 		wake = e.settingsDirtyAt
 	}
+	if w := e.autoPendingWake(); !w.IsZero() && (wake.IsZero() || w.Before(wake)) {
+		wake = w
+	}
 	return wake
 }
 
 func (e *Engine) onWake() {
 	now := e.now()
+	if e.autoPendingDue(now) {
+		e.maybeAutoConnect()
+		if e.tr != nil {
+			return // the launch opened a session; its own deadlines take over
+		}
+	}
 	if e.reconnectWanted && !e.reconnectAt.IsZero() && !now.Before(e.reconnectAt) {
 		e.attemptReconnect()
 		return

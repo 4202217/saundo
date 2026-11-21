@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-20 -->
+<!-- reviewed-through: 2026-11-21 -->
 
 # Implementation overview
 
@@ -265,9 +265,10 @@ per-device delay data and the `UpdateReceiver` delay path for a later UI. The
 per-device delay is the sync control across device types. The settings
 receiver row keeps the volume slider and the channel segment; the per-device
 delay row was removed from settings at the user's request. The flyout's live
-device rows carry each target's volume slider and an icon-only channel button;
-the playback card keeps the latency switch and is left out when it has
-neither media nor that row.
+device rows carry each target's volume slider, a single receiver's row adds
+the icon-only channel button, and a stereo target draws no channel control
+because its members play one side each; the playback card keeps the latency
+switch and is left out when it has neither media nor that row.
 
 Volume and stereo side are per target. `buildPlan` resolves each target's
 volume from `VolumeByDevice` and its channel from the registry entry, forcing
@@ -277,8 +278,8 @@ construction; a target with no remembered value adopts each member's reported
 controls that target and names it; a hardware knob report updates only that
 target's value. The row's speaker button mutes by taking the target volume to
 zero and restores the level it remembered in the app (`mutedVolume`, session
-state only). The row's channel button cycles stereo → left → right and saves
-the patch. A row's 断开连接 sends `DisconnectTarget`: the engine drops that key,
+state only). A single receiver's channel button cycles stereo → left → right
+and saves the patch; a stereo target has no channel button. A row's 断开连接 sends `DisconnectTarget`: the engine drops that key,
 rebuilds the cohort with the rest while holding the mute, and the last key
 takes the full-disconnect path. The flyout draws a member's mixer for as long
 as the target is a member, so a rebuild never takes an established row's
@@ -326,7 +327,10 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
    connect before discovery answers; discovery refreshes the view in
    parallel. A remembered pair whose members both advertise as standalone
    receivers is skipped (`autoconnect.go`), because the user unpaired it; the
-   launch starts idle so one receiver can be connected and the other added.
+   launch starts idle so one receiver can be connected and the other added. A
+   flagged row with no address holds the launch for discovery up to
+   `autoPendingWait` (15 s), then drops with a log line and the rest launch;
+   the flag stays on the dropped row for the next app start.
 3. The sender runs the protocol: pair-setup (transient / on-screen PIN /
    receiver password) → pair-verify → encrypted control channel →
    `GET /info` → session SETUP (a password-protected Mac answers 401 and
