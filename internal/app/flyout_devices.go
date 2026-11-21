@@ -138,14 +138,14 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 		// is joining, reopening, or failed is plain: nothing offers volume
 		// before playback, and the row's height does not change.
 		if hasTarget && target.State == engine.TargetMember {
-			deviceGlyph(c, p, d)
+			deviceGlyph(c, p, d, a.deviceSeen(d))
 			a.deviceMixer(c, p, d, target)
 		} else {
 			pick := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Gap(10).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(d.Name)
 			pick.OnClick(func() { a.selectDevice(d.ID) })
 			pick.Children(func() {
-				deviceGlyph(c, p, d)
+				deviceGlyph(c, p, d, a.deviceSeen(d))
 				// The plain row keeps the live row's rhythm: a 26 name line, a
 				// 2 gap, and a 20 second line. Shrink keeps the combo tag beside
 				// the name, spare width on the right.
@@ -153,6 +153,15 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 					ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
 						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
 						a.comboTag(c, p, d)
+						// A combo carries one password per member, so only a
+						// single receiver shows the gate on this row.
+						if !d.IsStereoGroup() {
+							if v, ok := a.receiverViewFor(d.ID); ok {
+								if pill := a.receiverAuthPill(v); pill.ok {
+									iconChip(c, p, pill.icon, pill.text, pill.tone, false)
+								}
+							}
+						}
 					})
 					ui.Row(c).Height(20).AlignItems(ui.Center).Children(func() {
 						ui.Text(c, a.rowSubtitle(d, target, hasTarget)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
@@ -183,8 +192,9 @@ func (a *App) comboTag(c *ui.Context, p palette, d device.Device) {
 }
 
 // rowSubtitle is a plain row's second line: a target the engine is working on
-// says so, in the wording the session state already uses; a stereo combo
-// names its two sides; every other row keeps its model and address.
+// says so, in the wording the session state already uses; every other row
+// keeps the channel, the family, and the system version; a combo names its
+// members in playback order.
 func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) string {
 	if has {
 		switch t.State {
@@ -194,21 +204,23 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 			return locales.StatusReconnecting()
 		}
 	}
-	if d.IsStereoGroup() {
-		if v, ok := a.receiverViewFor(d.ID); ok && v.Entry.IsCombo() {
-			return comboMemberSubtitle(d.Name, d.Members, deviceSubtitle(d))
-		}
+	if v, ok := a.receiverViewFor(d.ID); ok {
+		return flyoutDetail(v, a.cfg.ModelDetail)
 	}
-	return deviceSubtitle(d)
+	return flyoutDetail(receivers.View{Device: d, Stereo: d.IsStereoGroup()}, a.cfg.ModelDetail)
 }
 
 // deviceMixer is a member row's two-line content: the channel button and name,
 // then volume and percent. A stereo target draws no channel button — its two
-// members play one side each — so its name starts at the row's lead.
+// members play one side each — so its name starts at the row's lead. The 6 DIP
+// gap after the 16 DIP marks keeps the name and the rail one column, at the
+// pill's icon-to-text rhythm.
 func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	ui.Column(c).Grow(1).Gap(2).Children(func() {
-		ui.Row(c).Height(26).Gap(8).AlignItems(ui.Center).Children(func() {
-			if !t.Stereo {
+		ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
+			if t.Stereo {
+				stereoLead(c, p)
+			} else {
 				a.channelButton(c, p, d, t)
 			}
 			name := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Justify(ui.Start).
@@ -217,11 +229,10 @@ func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.Ta
 			name.Children(func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
-					a.comboTag(c, p, d)
 				})
 			})
 		})
-		ui.Row(c).Height(20).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Height(20).Gap(6).AlignItems(ui.Center).Children(func() {
 			a.volumeButton(c, p, d, t)
 			slider(c, p, a.targetVolume(t), 0, 100, locales.VolumeFor(t.Name), func(v float64) {
 				if a.eng != nil {
@@ -237,18 +248,22 @@ func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.Ta
 // volumeButton is the speaker glyph. One click mutes the target by taking its
 // volume to zero; the next click returns the volume it muted from. A target
 // already at zero without a remembered level comes back at the launch volume.
+// The 16 DIP ink keeps the column's left edge, and the glyph rides a full DIP
+// down to meet the slider's rail, which sits a DIP below the line's center.
+// Like the channel button, the body rides 3 DIP wider each side for the hover
+// pill, and negative margins hand the width back to the row.
 func (a *App) volumeButton(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	muted := t.Volume <= 0
 	label, icon := locales.MuteFor(t.Name), iconVolume
 	if muted {
 		label, icon = locales.UnmuteFor(t.Name), iconVolumeOff
 	}
-	b := ui.ButtonBase(c.Key("mute:" + d.ID)).Width(26).Height(20).Radius(6).Center().
-		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
+	b := ui.ButtonBase(c.Key("mute:"+d.ID)).Size(22, 20).Margin(0, -3, 0, -3).
+		Radius(6).Center().Label(label).Tooltip(label).Cursor(ui.CursorPointer)
 	b.OnClick(func() { a.toggleTargetMute(t) })
 	hoverFill(b, p.pill, 6, 0)
 	b.Children(func() {
-		ui.Icon(c, icon).Size(14, 14).TextColor(p.fg2)
+		ui.Icon(c, icon).Size(16, 16).TextColor(p.fg2).Margin(2, 0, 0, 0)
 	})
 }
 
@@ -287,19 +302,37 @@ func (a *App) targetVolume(t engine.TargetControl) *float64 {
 	return &v
 }
 
+// stereoLead is a stereo member's non-interactive mark, aligned with the
+// single receiver's channel button. A stereo target has no side to choose, so
+// the mark never takes focus or a click; the combo chip yields to it while the
+// row is a member. The 16 DIP body puts the mark's ink on the content column's
+// left edge, where the plain rows' names start, and the full-DIP drop levels
+// it with the name's low-riding glyphs.
+func stereoLead(c *ui.Context, p palette) {
+	ui.Box(c).Size(16, 16).Shrink(0).Margin(2, 0, 0, 0).
+		Label(locales.ChannelStereo()).Children(func() {
+		ui.Image(c, channelIcon(receivers.ChannelStereo)).Size(16, 16).TextColor(p.fg)
+	})
+}
+
 // channelButton is the icon-only channel control on a single receiver: the
 // solid side is the current side and a click cycles stereo → left → right. A
-// stereo target has no side to choose, so deviceMixer leaves it out.
+// stereo target has no side to choose, so deviceMixer leaves it out. The 16
+// DIP ink keeps the mark on the content column's edge, like stereoLead's; the
+// button rides 3 DIP wider each side for a hover pill worth pointing at, and
+// the negative margins hand that width back to the row, so the name holds its
+// column.
 func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	label := channelLabelText(t.Channel)
-	b := ui.ButtonBase(c.Key("channel:"+d.ID)).Size(26, 26).Radius(13).Center().
-		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
+	b := ui.ButtonBase(c.Key("channel:"+d.ID)).Size(22, 16).Margin(0, -3, 0, -3).
+		Radius(8).Center().Label(label).Tooltip(label).Cursor(ui.CursorPointer)
 	b.OnClick(func() { a.cycleChannel(t) })
-	hoverFill(b, p.pill, 13, 0)
+	hoverFill(b, p.pill, 8, 0)
 	b.Children(func() {
 		// Image, not Icon: the icon mask drops fill-opacity, and the faded
-		// side is the state. Image renders the SVG in the palette color.
-		ui.Image(c, channelIcon(t.Channel)).Size(16, 16).TextColor(p.fg2)
+		// side is the state. Image renders the SVG in the palette color. The
+		// full-DIP drop is stereoLead's, leveling the glyph with the name's.
+		ui.Image(c, channelIcon(t.Channel)).Size(16, 16).TextColor(p.fg).Margin(2, 0, 0, 0)
 	})
 }
 
@@ -348,13 +381,23 @@ func (a *App) cycleChannel(t engine.TargetControl) {
 	a.eng.UpdateReceiver(t.ID, receivers.Patch{Channel: &next})
 }
 
+// deviceSeen reports a live sighting for the row. A manual receiver is
+// Online because its address is attemptable, so its dot waits for discovery
+// instead of claiming it is there.
+func (a *App) deviceSeen(d device.Device) bool {
+	if v, ok := a.receiverViewFor(d.ID); ok {
+		return v.Seen
+	}
+	return d.Online
+}
+
 // deviceGlyph is the flyout row's round silhouette with the online dot; the
-// settings row draws its own at the page's inset.
-func deviceGlyph(c *ui.Context, p palette, d device.Device) {
+// settings row draws its online mark beside the name.
+func deviceGlyph(c *ui.Context, p palette, d device.Device, seen bool) {
 	g := ui.Box(c).Size(30, 30).Radius(15).Center().Shrink(0).Background(p.pill)
 	g.Children(func() {
-		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(p.fg2)
-		if d.Online {
+		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(p.fg)
+		if seen {
 			ui.Box(c).Size(9, 9).Radius(4.5).Background(p.green).
 				Shadow(0, 0, 0, 2, p.card).
 				Attach(ui.AnchorBottomRight, ui.AnchorBottomRight).Right(-1).Bottom(-1)

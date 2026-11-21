@@ -16,11 +16,34 @@ import (
 // combo like a remembered pair, minus the pair's own protocol: no group UUID,
 // no SETPEERS, and a follower clock per member instead of a sender master.
 
+// dispatchCombo runs the combo commands; the lifecycle stays in this file so
+// the engine's event loop names each command without carrying its handlers.
+func (e *Engine) dispatchCombo(cmd command) {
+	switch cmd.kind {
+	case cmdLinkReceivers:
+		e.handleLinkReceivers(cmd.ids, cmd.name)
+	case cmdUpdateCombo:
+		e.handleUpdateCombo(cmd.deviceID, cmd.ids, cmd.name)
+	case cmdUnlinkCombo:
+		e.handleUnlinkCombo(cmd.deviceID)
+	case cmdSwapComboSides:
+		e.handleSwapComboSides(cmd.deviceID)
+	}
+}
+
 // LinkReceivers creates a stereo combo: the first key plays the left side,
 // the second the right. Name is the combo's display name; empty derives
 // "A + B" from the two receivers' names.
 func (e *Engine) LinkReceivers(left, right, name string) {
 	e.send(command{kind: cmdLinkReceivers, ids: []string{left, right}, name: name})
+}
+
+// UpdateCombo edits a combo in place: the two receiver keys that play left
+// and right, and the display name. A side keeps its current receiver or takes
+// another one; changing the pair ends a live session, while reordering the
+// same two sides hot-applies like SwapComboSides.
+func (e *Engine) UpdateCombo(key, left, right, name string) {
+	e.send(command{kind: cmdUpdateCombo, deviceID: key, ids: []string{left, right}, name: name})
 }
 
 // UnlinkCombo deletes a stereo combo. Its member receivers return to
@@ -81,6 +104,43 @@ func (e *Engine) comboInUse(key string) bool {
 	return false
 }
 
+// comboLinkedElsewhere reports whether a combo other than keep holds key.
+func (e *Engine) comboLinkedElsewhere(key, keep string) bool {
+	for _, entry := range e.reg.Entries {
+		if !entry.IsCombo() || entry.Key == keep {
+			continue
+		}
+		for _, m := range entry.Members {
+			if m.ID == key {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// comboEditSide resolves one side of an edited combo: a receiver the combo
+// already holds stays even when it is no longer freshly linkable (its HomePod
+// may have joined an official pair, which the next merge marks anyway), and a
+// new receiver must pass the create dialog's rules and belong to no other
+// combo.
+func (e *Engine) comboEditSide(id, comboKey string, entry receivers.Entry) (receivers.Target, bool) {
+	for _, m := range entry.Members {
+		if m.ID != id {
+			continue
+		}
+		if t, ok := e.target(id); ok {
+			return t, true
+		}
+		return receivers.Target{Device: device.Device{ID: id, Name: m.Name}, Entry: receivers.Entry{Key: id}}, true
+	}
+	t, ok := e.linkable(id)
+	if !ok || e.comboLinkedElsewhere(id, comboKey) {
+		return t, false
+	}
+	return t, true
+}
+
 // handleLinkReceivers creates the combo. Linking a receiver that plays, or
 // waits in a wanted set, ends that session first: the plan cannot keep two
 // standalone keys that the registry now folds into one row.
@@ -139,6 +199,45 @@ func (e *Engine) handleLinkReceivers(ids []string, name string) {
 	e.rebuildTargets()
 }
 
+// handleUpdateCombo edits a combo in place. A name-only change leaves a live
+// session alone; reordering the same two receivers hot-applies the sides; a
+// different pair ends the session, because the plan carries the old members.
+func (e *Engine) handleUpdateCombo(key string, ids []string, name string) {
+	defer e.publish()
+	entry, ok := e.reg.Get(key)
+	if !ok || !entry.IsCombo() || len(ids) != 2 || ids[0] == ids[1] {
+		return
+	}
+	left, ok := e.comboEditSide(ids[0], key, entry)
+	right, ok2 := e.comboEditSide(ids[1], key, entry)
+	if !ok || !ok2 {
+		e.fail(ErrComboInvalid)
+		return
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = strings.Join([]string{left.Device.Name, right.Device.Name}, " + ")
+	}
+	samePair := len(entry.Members) == 2 &&
+		((entry.Members[0].ID == ids[0] && entry.Members[1].ID == ids[1]) ||
+			(entry.Members[0].ID == ids[1] && entry.Members[1].ID == ids[0]))
+	reordered := samePair && (entry.Members[0].ID != ids[0])
+	entry.Name = name
+	entry.Members = []receivers.Member{
+		{ID: ids[0], Name: left.Device.Name},
+		{ID: ids[1], Name: right.Device.Name},
+	}
+	e.reg.Put(entry)
+	e.clearError()
+	e.saveReceivers()
+	if reordered {
+		e.applyComboSides(key, entry)
+	} else if !samePair {
+		e.dropFromSession(key)
+	}
+	e.rebuildTargets()
+}
+
 // handleUnlinkCombo deletes the combo. A live combo ends its session; the
 // members keep playing nothing until the user connects them again.
 func (e *Engine) handleUnlinkCombo(key string) {
@@ -180,19 +279,29 @@ func (e *Engine) handleSwapComboSides(key string) {
 	e.reg.Put(entry)
 	e.clearError()
 	e.saveReceivers()
-	if e.tr != nil && e.plan.has(key) {
-		if t, planned := e.plan.target(key); planned {
-			for i := 0; i < t.count; i++ {
-				id := e.plan.members[t.first+i].device.ID
-				mode := sender.ChannelRight
-				if id == entry.Members[0].ID {
-					mode = sender.ChannelLeft
-				}
-				e.tr.SetMemberChannel(key, i, mode)
-			}
-		}
-	}
+	e.applyComboSides(key, entry)
 	e.rebuildTargets()
+}
+
+// applyComboSides re-points a live plan's member channels at the entry's
+// member order. The plan keeps its device order, so each member's side
+// follows the new order by device identity.
+func (e *Engine) applyComboSides(key string, entry receivers.Entry) {
+	if e.tr == nil || !e.plan.has(key) || len(entry.Members) != 2 {
+		return
+	}
+	t, planned := e.plan.target(key)
+	if !planned {
+		return
+	}
+	for i := 0; i < t.count; i++ {
+		id := e.plan.members[t.first+i].device.ID
+		mode := sender.ChannelRight
+		if id == entry.Members[0].ID {
+			mode = sender.ChannelLeft
+		}
+		e.tr.SetMemberChannel(key, i, mode)
+	}
 }
 
 // saveReceivers persists the registry, surfacing a failed write as the save

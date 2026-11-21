@@ -22,7 +22,7 @@ flag is in memory only.
   and download toggles, a check-now action, the primary action button
   (Install / Restart now / Retry by state), a Cancel link button, and the
   S1 card's What's New, Skip this version, and Remind me later links in the
-  row above the byte and percent progress row (`settings_window.go:400-411`).
+  row above the byte and percent progress row (`settings_window.go:397-415`).
 - Release-notes dialog: the offered version's notes plus, when fetchable,
   the history of every version since the running build — from `CHANGELOG.md`
   in English and `CHANGELOG.zh-CN.md` when the app language starts with
@@ -33,7 +33,7 @@ flag is in memory only.
   the cache key); a dialog already open keeps the language it loaded. The
   head's range select switches between the history since this build and the
   latest version only, and the older entries render as folded rows; a failed
-  history fetch adds a releases link (`update_dialog.go:36-45,132-137`). The fetch starts when the
+  history fetch adds a releases link (`update_dialog.go:36-45,144-149`). The fetch starts when the
   update is found
   (`TestFoundUpdatePrefetchesTheLocalizedNotes`), and a non-English dialog
   shows the loading row rather than flashing English
@@ -43,14 +43,14 @@ flag is in memory only.
   installer process runs). On macOS it stages the new bundle and a helper
   swaps it after the app quits, so the Dock keeps one tile. A separate
   立即重启 relaunches into the new version.
-- Update chip in the flyout **footer** (`flyout.go:465-485`, chip at
-  `:471-483`) shares state with the settings page; clicking it opens the
+- Update chip in the flyout **footer** (`flyout.go:387-399`) shares state
+  with the settings page; clicking it opens the
   更新 page. A waiting update also draws a dot on the 更新 sidebar item
-  (`settings_window.go:143-146`). The tray has no check action: its stateful
+  (`settings_window.go:139-142`). The tray has no check action: its stateful
   row appears only while an update is available, downloading, or ready and
   unskipped — download, disabled progress, or restart-and-install
-  (`tray_menu.go:376-398`) — and the tooltip appends the version or the
-  ready state (`tray_menu.go:414-424`; docs/ui.md).
+  (`tray_menu.go:385-407`) — and the tooltip appends the version or the
+  ready state (`tray_menu.go:427-433`; docs/ui.md).
 
 ## How to get to it (user POV)
 
@@ -101,7 +101,10 @@ A local `make build` (`mingw32-make build` on Windows) stamps `git
 describe`, such as `0.4.2-2-gab1c020-dirty`. A commit past a release sorts
 below it, so the public feed still offers that release and the notes dialog
 lists it with the history since the build. Installing an update replaces
-the app with that release; rebuild to return to a development stamp.
+the app with that release; rebuild to return to a development stamp. The
+interface never shows the raw describe suffix: a development stamp reads
+版本 X · 本地构建 on the About and update pages (`about.go:65-74`; pinned
+`app_test.go:520-521,540`).
 
 Headless coverage: the page shows the manifest version from the feed, the
 notes dialog opens with the release history in the app's language, and a

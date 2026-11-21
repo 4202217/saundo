@@ -74,23 +74,18 @@
   "statusStandby": "Standby · wakes when sound plays",
   "statusDisconnected": "Not connected",
   "statusConnectionFailed": "Connection failed",
-  "deviceStereoGroup": "{model} · Stereo pair {n, number}/2",
-  "@deviceStereoGroup": {
-    "placeholders": {
-      "model": {
-        "type": "String"
-      },
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "devicePinPairing": "{model} · PIN pairing",
-  "deviceNeedsPassword": "{model} · Password required",
-  "deviceUnsupported": "{model} · Not supported",
-  "deviceAuthSetup": "{model} · Authentication required",
-  "deviceAirPlay2": "{model} · AirPlay 2",
-  "deviceAirPlay1": "{model} · AirPlay 1",
+  "devicePinPairing": "PIN pairing",
+  "deviceNeedsPassword": "Password required",
+  "devicePasswordSaved": "Password saved",
+  "devicePasswordError": "Password incorrect",
+  "deviceUnsupported": "Not supported",
+  "deviceAuthSetup": "Authentication required",
+  "deviceComboOnline": "{n, number} online",
+  "deviceComboOffline": "{n, number} offline",
+  "deviceFamilyHomePod": "HomePod",
+  "deviceFamilyMac": "Mac",
+  "deviceFamilyAppleTV": "Apple TV",
+  "deviceFamilyOther": "AirPlay receiver",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "Receiver list",
   "flyoutRefreshDevices": "Refresh receivers",
@@ -392,7 +387,7 @@
       }
     }
   },
-  "settingsStabilityNote": "{drops} dropped · {underruns} underruns",
+  "settingsStabilityNote": "last 60 s · {drops} dropped · {underruns} underruns",
   "@settingsStabilityNote": {
     "placeholders": {
       "drops": {
@@ -433,7 +428,10 @@
   "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find",
   "receiverChipLocal": "Local",
   "receiverChipManual": "Manual",
-  "receiverChipAuto": "At launch",
+  "receiverChipAuto": "Connect at launch",
+  "receiverModelDetail": "Show model details",
+  "receiverModelDetailShort": "Model details",
+  "receiverModelDetailDesc": "Off hides the parenthetical part of the model name",
   "receiverChipHidden": "Hidden",
   "receiverEnableSwitch": "Show in the tray panel; off moves the row to the hidden group",
   "receiverAutoToggle": "Connect at launch",
@@ -448,13 +446,10 @@
   "receiverRemove": "Remove receiver",
   "receiverRemoveConfirm": "Remove",
   "receiverRemoveConfirmTitle": "Remove receiver?",
-  "receiverRemoveConfirmSub": "{name} · {model}",
+  "receiverRemoveConfirmSub": "{name}",
   "@receiverRemoveConfirmSub": {
     "placeholders": {
       "name": {
-        "type": "String"
-      },
-      "model": {
         "type": "String"
       }
     }
@@ -776,6 +771,14 @@
   "versionLocalTag": "Local build",
   "settingsShowInPanel": "Show in tray panel",
   "errorComboInvalid": "These receivers cannot form a stereo combo.",
+  "errorComboStale": "{name} is unavailable: a member now belongs to a stereo pair.",
+  "@errorComboStale": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "receiverGroupCombo": "Stereo combos",
   "receiverPairAddTitle": "Create stereo combo",
   "receiverPairAddSub": "One receiver per channel",
@@ -801,6 +804,8 @@
     }
   },
   "comboDialogSub": "Choose which receiver plays each side.",
+  "comboEditTitle": "Edit stereo combo",
+  "comboEditSub": "Change the combo's name or the receiver on each side.",
   "comboCreate": "Create",
   "comboErrorSame": "The two sides cannot be the same receiver",
   "comboErrorPick": "Choose a receiver for each side",
@@ -809,6 +814,8 @@
   "comboFieldLeft": "Left channel",
   "comboFieldRight": "Right channel",
   "comboTag": "Stereo combo",
+  "comboInvalid": "Unavailable",
+  "comboInvalidReason": "A member now belongs to a stereo pair",
   "receiverAddAction": "Add",
   "comboCreateAction": "New combo",
   "errorDeviceOffline": "{name} is offline, so it cannot join the session.",

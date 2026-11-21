@@ -350,7 +350,12 @@ func (s *Service) merge(d device.Device) {
 	if d.GroupName != "" {
 		merged.GroupName = d.GroupName
 	}
-	if d.StereoID != "" {
+	if d.AirPlay2 {
+		// The tsid is an _airplay advertisement fact, and the latest record
+		// wins: a member that stops carrying the tsid has left the pair.
+		// Keeping the old value would synthesize a dissolved pair forever,
+		// because the directed pass keeps the record's freshness without
+		// one. The _raop record carries no tsid, so it never writes here.
 		merged.StereoID = d.StereoID
 	}
 	merged.GroupLeader = merged.GroupLeader || d.GroupLeader

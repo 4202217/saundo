@@ -24,6 +24,7 @@ const (
 	receiverDialogPassword
 	receiverDialogRemove
 	receiverDialogComboCreate
+	receiverDialogComboEdit
 	receiverDialogComboUnlink
 )
 
@@ -126,11 +127,10 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 
 	// One section per type. A section's create action rides its head while the
 	// section has rows; an empty section replaces it with its dashed row. The
-	// combo section needs two eligible receivers to offer creation at all: with
-	// fewer, the dialog could never commit. It still renders when a combo
-	// exists, so its rows stay reachable.
-	candidates := len(a.comboCandidates())
-	canCreateCombo := candidates >= 2
+	// combo section follows the receiver list whenever the page shows a
+	// receiver: the create dialog lists the eligible receivers and keeps 组合
+	// disabled until both sides are chosen, so a page with too few of them
+	// explains itself instead of hiding the affordance.
 	a.receiverSectionHead(c, p, locales.ReceiverGroupEnabled(), len(singles), 6, len(singles) > 0,
 		locales.ReceiverAddAction(), func() { a.openAddReceiver() })
 	if len(singles) > 0 {
@@ -143,8 +143,8 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	} else {
 		a.receiverAddRow(c, p)
 	}
-	if len(combos) > 0 || (len(visible) > 0 && canCreateCombo) {
-		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0 && canCreateCombo,
+	if len(visible) > 0 {
+		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0,
 			locales.ComboCreateAction(), func() { a.openComboCreate() })
 		if len(combos) > 0 {
 			card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
@@ -194,6 +194,17 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 		})
 	}
 
+	// The model-detail switch is a page preference, not a receiver's, so it
+	// gets its own card below the sections.
+	settingCard := ui.Column(c).Margin(16, 0, 16, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
+	settingCard.Children(func() {
+		settingRow(c, p, locales.ReceiverModelDetailShort(), locales.ReceiverModelDetailDesc(), func() {
+			toggle(c, p, &a.cfg.ModelDetail, locales.ReceiverModelDetail(), func(on bool) {
+				a.setModelDetail(on)
+			})
+		})
+	})
+
 	a.receiverDialogs(c, p)
 }
 
@@ -201,17 +212,13 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 // the section has rows, its create action at the right. A section without
 // rows leaves the action to its dashed row, so no head offers an action twice.
 func (a *App) receiverSectionHead(c *ui.Context, p palette, label string, count int, topMargin float32, withAction bool, actionLabel string, fn func()) {
-	head := ui.Row(c).Margin(topMargin, 0, 0, 0).FillWidth().Gap(7).AlignItems(ui.Center).Shrink(0)
-	head.Children(func() {
-		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-		if count > 0 {
-			countBadge(c, p, count)
-		}
-		if withAction {
-			ui.Spacer(c)
+	var action func()
+	if withAction {
+		action = func() {
 			rowAction(c, p, "section:"+label, actionLabel, iconPlus, p.accent, fn)
 		}
-	})
+	}
+	groupHead(c, p, label, count, topMargin, action)
 }
 
 // openComboCreate opens the create-combo dialog over the page.
@@ -365,7 +372,11 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 			color = p.faint
 		}
 		ui.Icon(c, stereoIcon(v.Device, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
-		if v.Online && !hiddenGroup {
+		// Every target's online dot sits on the glyph, stereo groups and
+		// combos included; the group's count chip after the name adds the
+		// member count. The dot needs a live sighting: a manual address is
+		// attemptable without ever having been seen.
+		if v.Seen && !hiddenGroup {
 			ring := p.card
 			if open {
 				ring = p.sel
@@ -379,7 +390,7 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 
 func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open bool) {
 	col := ui.Column(c).Grow(1).Gap(2)
-	if v.IsManual() && open {
+	if (v.IsManual() || v.Entry.IsCombo()) && open {
 		// The attached edit button overlays this reserved gap.
 		col.Padding(0, 58, 0, 0)
 	}
@@ -391,73 +402,32 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			}
 			ui.Text(c, v.Name).FontSize(13).FontWeight(500).TextColor(nameColor).
 				SingleLine().Ellipsis("…").Shrink(1)
+			if v.Invalid {
+				iconChip(c, p, iconAlert, locales.ComboInvalid(), chipDanger, v.Hidden)
+			} else {
+				if v.Stereo {
+					a.receiverOnlineChip(c, p, v)
+				}
+				if pill := a.receiverAuthPill(v); pill.ok {
+					iconChip(c, p, pill.icon, pill.text, pill.tone, v.Hidden)
+				}
+			}
 			if v.Local {
 				inlineChip(c, p, locales.ReceiverChipLocal(), chipNeutral, v.Hidden)
 			}
 			if v.IsManual() {
 				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
 			}
-			if v.Entry.IsCombo() {
-				inlineChip(c, p, locales.ComboTag(), chipNeutral, v.Hidden)
-			}
-			if v.AutoConnect {
+			if v.AutoConnect && !v.Invalid {
 				inlineChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
 			}
 			if v.Hidden {
 				inlineChip(c, p, locales.ReceiverChipHidden(), chipNeutral, true)
 			}
 		})
-		sub := receiverSubtitle(v)
+		sub := receiverDetail(v, a.cfg.ModelDetail)
 		ui.Text(c, sub).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 	})
-}
-
-// receiverSubtitle names the model and either its address or its absence.
-// The mockup keeps the address visible on a row, which the auth-oriented
-// flyout subtitle cannot, so the receiver page has its own line.
-func receiverSubtitle(v receivers.View) string {
-	model := receiverModelLabel(v)
-	if v.Entry.IsCombo() {
-		sub := comboMemberSubtitle(v.Name, v.Device.Members, model)
-		if !v.Device.Online {
-			// The collapsed row is the only cue that the combo cannot start.
-			sub += " · " + locales.ActionOffline()
-		}
-		return sub
-	}
-	if !v.Device.Online {
-		return model + " · " + locales.ActionOffline()
-	}
-	if v.Stereo {
-		return locales.DeviceStereoGroup(model, len(v.Device.Members))
-	}
-	address := v.Address
-	if address == "" && v.Device.Host != "" {
-		address = v.Device.Host + ":" + receivers.PortText(v.Device.Port)
-	}
-	if address == "" {
-		return model
-	}
-	return model + " · " + address
-}
-
-// receiverModelLabel prefers the localized manual type name over the
-// internal fallback model a manual row carries.
-func receiverModelLabel(v receivers.View) string {
-	if v.IsManual() {
-		switch v.Type {
-		case receivers.TypeAirPortExpress:
-			return locales.ReceiverTypeExpress()
-		case receivers.TypeAirPlay1:
-			return locales.ReceiverTypeAP1()
-		case receivers.TypeAirPlay2:
-			return locales.ReceiverTypeAP2()
-		}
-	}
-	if v.Model != "" {
-		return v.Model
-	}
-	return locales.DeviceDefaultModel()
 }
 
 // receiverEditButton is the side button on an expanded manual row. It is

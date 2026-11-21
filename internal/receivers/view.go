@@ -19,8 +19,14 @@ type View struct {
 	// Volume is the target's remembered level in percent, filled by the engine.
 	Volume float64
 	// Channel is the stored stereo side, normalized to stereo, left, or right.
-	Channel     string
-	Stereo      bool
+	Channel string
+	Stereo  bool
+	// Invalid marks a combo whose member now belongs to an official stereo
+	// pair; the row is visible but cannot be connected or auto-connected.
+	Invalid bool
+	// Seen reports a live advertisement this session; a manual row is Online
+	// (attemptable) without it, so only Seen may draw an online dot.
+	Seen        bool
 	PasswordSet bool
 	// Device is the merged wire description behind the row, for the
 	// subtitle and icons.
@@ -46,6 +52,8 @@ func (t Target) View(hasPassword bool) View {
 		DelayMS:     e.DelayMS,
 		Channel:     ParseChannel(e.Channel),
 		Stereo:      t.Device.IsStereoGroup() || e.IsGroup(),
+		Invalid:     t.Invalid,
+		Seen:        t.Seen,
 		PasswordSet: hasPassword,
 		Device:      t.Device,
 		Entry:       e,

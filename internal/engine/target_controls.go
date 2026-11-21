@@ -31,7 +31,10 @@ const (
 type TargetHealth struct {
 	Retransmits uint64
 	SentBlocks  uint64
-	Underruns   uint64
+	// RecentUnderruns counts the audio packets padded with silence in the
+	// trailing stability window. The row names a device causing trouble now,
+	// not one that blipped when the session rebuilt.
+	RecentUnderruns uint64
 }
 
 // TargetControl is one active target's per-device audio settings and its role
@@ -117,6 +120,7 @@ func (e *Engine) targetHealth() map[string]TargetHealth {
 	if len(stats) != len(e.plan.members) {
 		return nil
 	}
+	recent := e.stability.recent.Members
 	out := make(map[string]TargetHealth, len(e.plan.targets))
 	i := 0
 	for _, t := range e.plan.targets {
@@ -125,7 +129,9 @@ func (e *Engine) targetHealth() map[string]TargetHealth {
 			s := stats[i]
 			h.Retransmits += s.Retransmits
 			h.SentBlocks += s.SentBlocks
-			h.Underruns += s.Underruns
+			if i < len(recent) {
+				h.RecentUnderruns += recent[i]
+			}
 			i++
 		}
 		out[t.key] = h

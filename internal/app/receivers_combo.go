@@ -44,9 +44,9 @@ func (a *App) receiverPairAddRow(c *ui.Context, p palette) {
 
 // receiverComboRow is one combo card row: stereo glyph, name with the combo
 // chip, the two member names as the sub, and the expanded body with the
-// channel map, the auto-connect flag, and one volume. 解除组合 rides the
-// head's tail cluster beside the switch while expanded, as the mockup pins
-// it — the row is its own card section, so the switch's x may move here.
+// channel map, the auto-connect flag, and one volume. While expanded the
+// head carries 编辑 in the gap before its switch, like a manual receiver's
+// edit button; 解除组合 lives in that dialog's footer.
 func (a *App) receiverComboRow(c *ui.Context, p palette, v receivers.View, hiddenGroup, divider bool) {
 	open := a.receiverOpen[v.Key]
 	row := ui.Column(c).Key(v.Key).Shrink(0).
@@ -83,25 +83,18 @@ func (a *App) receiverComboHead(c *ui.Context, p palette, v receivers.View, open
 	})
 	head.Children(func() {
 		a.receiverGlyph(c, p, v, open, hiddenGroup)
-		a.receiverNameCol(c, p, v, false)
+		a.receiverNameCol(c, p, v, open)
 		ui.Row(c).Gap(8).Shrink(0).AlignItems(ui.Center).Children(func() {
-			if open {
-				color := p.red
-				if hiddenGroup {
-					color = p.muted
-				}
-				rowAction(c, p, "unlink:"+v.Key, locales.ComboUnlink(), iconUnlink, color, func() {
-					a.receiverDialog = receiverDialogState{kind: receiverDialogComboUnlink, key: v.Key, entered: false}
-					a.receiverDialogOpen = true
-				})
-			}
 			shown := !v.Hidden
-			toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
+			sw := toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
 				a.eng.SetReceiverHidden(v.Key, !next)
 				if !next {
 					a.receiverHiddenOpen = true
 				}
 			})
+			if v.Invalid {
+				sw.Disabled(true).Opacity(0.4)
+			}
 			chev := ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted)
 			if open {
 				chev.TextColor(p.fg2)
@@ -109,6 +102,19 @@ func (a *App) receiverComboHead(c *ui.Context, p palette, v receivers.View, open
 				chev.Rotate(-90)
 			}
 		})
+		// The edit action overlays the gap before the fixed row tail, the
+		// same place a manual receiver's edit sits; 解除组合 moved into that
+		// dialog's footer, so no destructive action shares the row.
+		if open {
+			color := p.accent
+			if hiddenGroup {
+				color = p.muted
+			}
+			b := rowAction(c, p, "edit:"+v.Key, locales.ReceiverEditButton(), iconPencil, color, func() {
+				a.beginEditCombo(v)
+			})
+			b.Attach(ui.AnchorRight, ui.AnchorRight).Right(receiverTailInset)
+		}
 	})
 }
 
@@ -121,6 +127,17 @@ func (a *App) receiverComboBody(c *ui.Context, p palette, v receivers.View, hidd
 	}
 	body := ui.Column(c).Padding(0, 14, 4, 14).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0)
 	body.Children(func() {
+		if v.Invalid {
+			// An unavailable combo has nothing left to configure: the head
+			// names the reason, the layout says which devices it held, and
+			// 解除组合 sits in the head's tail. Auto-connect, volume, and the
+			// offline warning would all describe playback this combo cannot do.
+			ui.Column(c).Padding(8, 14).Gap(6).Children(func() {
+				ui.Text(c, locales.ComboMapLabel()).FontSize(13).FontWeight(500).TextColor(titleColor)
+				a.comboChannelMap(c, p, v, hiddenGroup || v.Invalid)
+			})
+			return
+		}
 		auto := v.AutoConnect
 		settingRowColors(c, p, locales.ReceiverAutoToggle(), locales.ReceiverAutoToggleDesc(),
 			titleColor, subColor, func() {
@@ -213,37 +230,6 @@ func (a *App) comboMapHalf(c *ui.Context, p palette, side string, m device.Devic
 			ui.Text(c, name).FontSize(12.5).TextColor(p.fg2).SingleLine().Ellipsis("…")
 		})
 	})
-}
-
-// comboMemberSubtitle names the combo's two sides in playback order. A combo
-// named with the derived default already carries both member names, so the
-// models stand in there — the name and the subtitle never repeat one string.
-// Two identical models read as one. The model also stands in while no member
-// name is known.
-func comboMemberSubtitle(name string, members []device.Device, fallback string) string {
-	render := func(pick func(m device.Device) string) string {
-		parts := make([]string, 0, len(members))
-		for _, m := range members {
-			if v := pick(m); v != "" {
-				parts = append(parts, v)
-			}
-		}
-		out := make([]string, 0, len(parts))
-		for i, part := range parts {
-			if i > 0 && part == parts[i-1] {
-				continue
-			}
-			out = append(out, part)
-		}
-		return strings.Join(out, " + ")
-	}
-	if names := render(func(m device.Device) string { return m.Name }); names != "" && names != name {
-		return names
-	}
-	if models := render(func(m device.Device) string { return m.Model }); models != "" && models != name {
-		return models
-	}
-	return fallback
 }
 
 // comboOfflineMember names the offline members of a combo for the warning

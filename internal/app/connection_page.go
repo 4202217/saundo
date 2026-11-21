@@ -18,7 +18,7 @@ import (
 
 // deviceUnhealthyRetransmit is the retransmit share that makes one device's
 // link worth naming. Below it the counters stay hidden, so a healthy session
-// is not noisy. Any underrun is notable by itself.
+// is not noisy. Any underrun in the stability window is notable by itself.
 const deviceUnhealthyRetransmit = 0.5
 
 func (a *App) connectionPage(c *ui.Context, p palette) {
@@ -58,7 +58,7 @@ func (a *App) connectionSession(c *ui.Context, p palette) {
 	if len(members) == 0 {
 		return
 	}
-	a.connectionSectionHead(c, p, locales.SettingsConnectionDevices(), len(members), 6)
+	groupHead(c, p, locales.SettingsConnectionDevices(), len(members), 6, nil)
 	card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
 	card.Children(func() {
 		for i, m := range members {
@@ -67,21 +67,9 @@ func (a *App) connectionSession(c *ui.Context, p palette) {
 	})
 	a.connectionLostNotice(c, p)
 	if phaseOf(a.snap) == phaseStreaming && a.snap.Diagnostics.HasStats {
-		a.connectionSectionHead(c, p, locales.SettingsConnectionThis(), 0, 12)
+		groupHead(c, p, locales.SettingsConnectionThis(), 0, 12, nil)
 		a.connectionSessionCard(c, p)
 	}
-}
-
-// connectionSectionHead is the page's group label: the same 11.5 / 600 /
-// letter-spaced muted style the receiver page and the flyout use, above the
-// card rather than inside it.
-func (a *App) connectionSectionHead(c *ui.Context, p palette, label string, count int, top float32) {
-	ui.Row(c).Margin(top, 0, 0, 0).Gap(7).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, label).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
-		if count > 0 {
-			countBadge(c, p, count)
-		}
-	})
 }
 
 // connectionDeviceRow is one connected target: the device's name, its audio
@@ -124,18 +112,16 @@ func connectionGlyph(c *ui.Context, p palette, d device.Device) {
 	})
 }
 
-// connectionDeviceMeta is the device's own audio state: model, channel, and
-// the level it is set to.
+// connectionDeviceMeta is the connected device's own audio state: its channel
+// and the level it is set to.
 func connectionDeviceMeta(m sessionMember) string {
-	model := m.Device.Model
-	if model == "" {
-		model = locales.DeviceDefaultModel()
+	if !m.HasTarget {
+		return ""
 	}
-	parts := []string{model}
-	if m.HasTarget {
-		parts = append(parts, channelDisplay(m.Target.Channel), locales.FlyoutVolumeValue(m.Target.Volume))
-	}
-	return strings.Join(parts, " · ")
+	return strings.Join([]string{
+		channelDisplay(m.Target.Channel),
+		locales.FlyoutVolumeValue(m.Target.Volume),
+	}, " · ")
 }
 
 func (a *App) connectionDeviceMetrics(m sessionMember) string {
@@ -147,8 +133,8 @@ func (a *App) connectionDeviceMetrics(m sessionMember) string {
 	if rate, ok := retransmitRate(h.Retransmits, h.SentBlocks); ok && rate >= deviceUnhealthyRetransmit {
 		parts = append(parts, locales.SettingsRetransmitShort(fmt.Sprintf("%.1f", rate)))
 	}
-	if h.Underruns > 0 {
-		parts = append(parts, locales.SettingsUnderrunsShort(int(h.Underruns)))
+	if h.RecentUnderruns > 0 {
+		parts = append(parts, locales.SettingsUnderrunsShort(int(h.RecentUnderruns)))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -212,7 +198,7 @@ func (a *App) connectionSessionCard(c *ui.Context, p palette) {
 				status, tone = locales.SettingsHealthDropsBad(), p.red
 			}
 			connectionStatCell(c, p, locales.SettingsHealthDrops(), status,
-				locales.SettingsStabilityNote(int(diag.Overflow), int(diag.Underruns)), tone)
+				locales.SettingsStabilityNote(int(diag.RecentDropped), int(diag.RecentUnderruns)), tone)
 		})
 		rowLine(c, p)
 		ui.Row(c).Padding(12, 14).Gap(18).Children(func() {

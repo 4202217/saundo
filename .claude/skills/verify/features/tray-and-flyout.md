@@ -10,9 +10,15 @@
 - Left click toggles the flyout; click outside or Escape dismisses it; the
   app stays in the tray.
 - Right click opens the menu: one row per visible receiver, up to six, each
-  with its receiver-family glyph in one icon column. The in-session receiver
-  draws that glyph in the accent color; an unreachable row keeps the 离线
-  subtitle and stays clickable. Clicking a row connects when idle, or adds
+  with its receiver-family glyph in one icon column. Every session member
+  (the member set, not one primary) draws that glyph in the accent color and
+  is disabled while streaming or in the error phase; a combo member draws
+  the mixed-size combo glyph (`stereoIconKey`,
+  `icons_sf_gen.go:538-558`); an unreachable row keeps the 离线
+  subtitle and stays clickable. Multi-member identity strings join the
+  member names (the footer's 正在通过 A + B 播放; the settings sidebar names
+  a multi-member session by its first member and a count,
+  `session_members.go:23-83`). Clicking a row connects when idle, or adds
   that receiver to the playing session and rebuilds the cohort while
   streaming; an already-active target is a silent no-op. Every active row is
   marked and disabled. While connecting every row is
@@ -88,8 +94,9 @@
   53 when its preset grid expands), and the playback section's head,
   borders, and gap (33) when neither media nor the latency row is drawn. The
   base constant is 438, but the function subtracts the old 62-DIP media row
-  and adds the 90-DIP lamp section, so three device rows with no media
-  measure 500. The empty playback section is pinned by
+  and adds the 90-DIP lamp section, so three device rows with no media and
+  no latency row measure 433 (pinned at `app_test.go:956`; a session notice
+  adds 52). The empty playback section is pinned by
   `TestFlyoutPlaybackSectionHidesWhenEmpty` and
   `TestFlyoutLatencySwitchCanHide`. There is no
   flexible spacer; the playback card follows the device card. Both windows

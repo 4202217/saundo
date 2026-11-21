@@ -274,11 +274,11 @@ func TestTargetControlsCarryMeasuredHealth(t *testing.T) {
 	h.e.publish()
 	snap := h.e.Snapshot()
 	first, _ := snap.Target(testDeviceID)
-	if got, want := first.Health, (TargetHealth{Retransmits: 3, SentBlocks: 100, Underruns: 1}); got != want {
+	if got, want := first.Health, (TargetHealth{Retransmits: 3, SentBlocks: 100, RecentUnderruns: 1}); got != want {
 		t.Fatalf("first target health = %+v, want %+v", got, want)
 	}
 	second, _ := snap.Target(b.ID)
-	if got, want := second.Health, (TargetHealth{Retransmits: 5, SentBlocks: 200, Underruns: 0}); got != want {
+	if got, want := second.Health, (TargetHealth{Retransmits: 5, SentBlocks: 200}); got != want {
 		t.Fatalf("second target health = %+v, want %+v", got, want)
 	}
 

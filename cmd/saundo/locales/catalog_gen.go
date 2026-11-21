@@ -396,76 +396,124 @@ func (msgs Messages) StatusConnectionFailed() string {
 	return Catalog.Format(msgs.locale, "statusConnectionFailed", nil)
 }
 
-// DeviceStereoGroup says "{model} · Stereo pair {n, number}/2"
+// DevicePinPairing says "PIN pairing"
 // in the language the app shows.
-func DeviceStereoGroup(model string, n int) string {
-	return In(i18n.Locale()).DeviceStereoGroup(model, n)
+func DevicePinPairing() string { return In(i18n.Locale()).DevicePinPairing() }
+
+// DevicePinPairing says "PIN pairing"
+// in the language of msgs.
+func (msgs Messages) DevicePinPairing() string {
+	return Catalog.Format(msgs.locale, "devicePinPairing", nil)
 }
 
-// DeviceStereoGroup says "{model} · Stereo pair {n, number}/2"
+// DeviceNeedsPassword says "Password required"
+// in the language the app shows.
+func DeviceNeedsPassword() string { return In(i18n.Locale()).DeviceNeedsPassword() }
+
+// DeviceNeedsPassword says "Password required"
 // in the language of msgs.
-func (msgs Messages) DeviceStereoGroup(model string, n int) string {
-	return Catalog.Format(msgs.locale, "deviceStereoGroup", map[string]any{"model": model, "n": n})
+func (msgs Messages) DeviceNeedsPassword() string {
+	return Catalog.Format(msgs.locale, "deviceNeedsPassword", nil)
 }
 
-// DevicePinPairing says "{model} · PIN pairing"
+// DevicePasswordSaved says "Password saved"
 // in the language the app shows.
-func DevicePinPairing(model string) string { return In(i18n.Locale()).DevicePinPairing(model) }
+func DevicePasswordSaved() string { return In(i18n.Locale()).DevicePasswordSaved() }
 
-// DevicePinPairing says "{model} · PIN pairing"
+// DevicePasswordSaved says "Password saved"
 // in the language of msgs.
-func (msgs Messages) DevicePinPairing(model string) string {
-	return Catalog.Format(msgs.locale, "devicePinPairing", map[string]any{"model": model})
+func (msgs Messages) DevicePasswordSaved() string {
+	return Catalog.Format(msgs.locale, "devicePasswordSaved", nil)
 }
 
-// DeviceNeedsPassword says "{model} · Password required"
+// DevicePasswordError says "Password incorrect"
 // in the language the app shows.
-func DeviceNeedsPassword(model string) string { return In(i18n.Locale()).DeviceNeedsPassword(model) }
+func DevicePasswordError() string { return In(i18n.Locale()).DevicePasswordError() }
 
-// DeviceNeedsPassword says "{model} · Password required"
+// DevicePasswordError says "Password incorrect"
 // in the language of msgs.
-func (msgs Messages) DeviceNeedsPassword(model string) string {
-	return Catalog.Format(msgs.locale, "deviceNeedsPassword", map[string]any{"model": model})
+func (msgs Messages) DevicePasswordError() string {
+	return Catalog.Format(msgs.locale, "devicePasswordError", nil)
 }
 
-// DeviceUnsupported says "{model} · Not supported"
+// DeviceUnsupported says "Not supported"
 // in the language the app shows.
-func DeviceUnsupported(model string) string { return In(i18n.Locale()).DeviceUnsupported(model) }
+func DeviceUnsupported() string { return In(i18n.Locale()).DeviceUnsupported() }
 
-// DeviceUnsupported says "{model} · Not supported"
+// DeviceUnsupported says "Not supported"
 // in the language of msgs.
-func (msgs Messages) DeviceUnsupported(model string) string {
-	return Catalog.Format(msgs.locale, "deviceUnsupported", map[string]any{"model": model})
+func (msgs Messages) DeviceUnsupported() string {
+	return Catalog.Format(msgs.locale, "deviceUnsupported", nil)
 }
 
-// DeviceAuthSetup says "{model} · Authentication required"
+// DeviceAuthSetup says "Authentication required"
 // in the language the app shows.
-func DeviceAuthSetup(model string) string { return In(i18n.Locale()).DeviceAuthSetup(model) }
+func DeviceAuthSetup() string { return In(i18n.Locale()).DeviceAuthSetup() }
 
-// DeviceAuthSetup says "{model} · Authentication required"
+// DeviceAuthSetup says "Authentication required"
 // in the language of msgs.
-func (msgs Messages) DeviceAuthSetup(model string) string {
-	return Catalog.Format(msgs.locale, "deviceAuthSetup", map[string]any{"model": model})
+func (msgs Messages) DeviceAuthSetup() string {
+	return Catalog.Format(msgs.locale, "deviceAuthSetup", nil)
 }
 
-// DeviceAirPlay2 says "{model} · AirPlay 2"
+// DeviceComboOnline says "{n, number} online"
 // in the language the app shows.
-func DeviceAirPlay2(model string) string { return In(i18n.Locale()).DeviceAirPlay2(model) }
+func DeviceComboOnline(n int) string { return In(i18n.Locale()).DeviceComboOnline(n) }
 
-// DeviceAirPlay2 says "{model} · AirPlay 2"
+// DeviceComboOnline says "{n, number} online"
 // in the language of msgs.
-func (msgs Messages) DeviceAirPlay2(model string) string {
-	return Catalog.Format(msgs.locale, "deviceAirPlay2", map[string]any{"model": model})
+func (msgs Messages) DeviceComboOnline(n int) string {
+	return Catalog.Format(msgs.locale, "deviceComboOnline", map[string]any{"n": n})
 }
 
-// DeviceAirPlay1 says "{model} · AirPlay 1"
+// DeviceComboOffline says "{n, number} offline"
 // in the language the app shows.
-func DeviceAirPlay1(model string) string { return In(i18n.Locale()).DeviceAirPlay1(model) }
+func DeviceComboOffline(n int) string { return In(i18n.Locale()).DeviceComboOffline(n) }
 
-// DeviceAirPlay1 says "{model} · AirPlay 1"
+// DeviceComboOffline says "{n, number} offline"
 // in the language of msgs.
-func (msgs Messages) DeviceAirPlay1(model string) string {
-	return Catalog.Format(msgs.locale, "deviceAirPlay1", map[string]any{"model": model})
+func (msgs Messages) DeviceComboOffline(n int) string {
+	return Catalog.Format(msgs.locale, "deviceComboOffline", map[string]any{"n": n})
+}
+
+// DeviceFamilyHomePod says "HomePod"
+// in the language the app shows.
+func DeviceFamilyHomePod() string { return In(i18n.Locale()).DeviceFamilyHomePod() }
+
+// DeviceFamilyHomePod says "HomePod"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyHomePod() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyHomePod", nil)
+}
+
+// DeviceFamilyMac says "Mac"
+// in the language the app shows.
+func DeviceFamilyMac() string { return In(i18n.Locale()).DeviceFamilyMac() }
+
+// DeviceFamilyMac says "Mac"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyMac() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyMac", nil)
+}
+
+// DeviceFamilyAppleTV says "Apple TV"
+// in the language the app shows.
+func DeviceFamilyAppleTV() string { return In(i18n.Locale()).DeviceFamilyAppleTV() }
+
+// DeviceFamilyAppleTV says "Apple TV"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyAppleTV() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyAppleTV", nil)
+}
+
+// DeviceFamilyOther says "AirPlay receiver"
+// in the language the app shows.
+func DeviceFamilyOther() string { return In(i18n.Locale()).DeviceFamilyOther() }
+
+// DeviceFamilyOther says "AirPlay receiver"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyOther() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyOther", nil)
 }
 
 // DeviceDefaultModel says "AirPlay"
@@ -1920,13 +1968,13 @@ func (msgs Messages) SettingsUptimeHoursWhole(h int) string {
 	return Catalog.Format(msgs.locale, "settingsUptimeHoursWhole", map[string]any{"h": h})
 }
 
-// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// SettingsStabilityNote says "last 60 s · {drops} dropped · {underruns} underruns"
 // in the language the app shows.
 func SettingsStabilityNote(drops int, underruns int) string {
 	return In(i18n.Locale()).SettingsStabilityNote(drops, underruns)
 }
 
-// SettingsStabilityNote says "{drops} dropped · {underruns} underruns"
+// SettingsStabilityNote says "last 60 s · {drops} dropped · {underruns} underruns"
 // in the language of msgs.
 func (msgs Messages) SettingsStabilityNote(drops int, underruns int) string {
 	return Catalog.Format(msgs.locale, "settingsStabilityNote", map[string]any{"drops": drops, "underruns": underruns})
@@ -2024,14 +2072,44 @@ func (msgs Messages) ReceiverChipManual() string {
 	return Catalog.Format(msgs.locale, "receiverChipManual", nil)
 }
 
-// ReceiverChipAuto says "At launch"
+// ReceiverChipAuto says "Connect at launch"
 // in the language the app shows.
 func ReceiverChipAuto() string { return In(i18n.Locale()).ReceiverChipAuto() }
 
-// ReceiverChipAuto says "At launch"
+// ReceiverChipAuto says "Connect at launch"
 // in the language of msgs.
 func (msgs Messages) ReceiverChipAuto() string {
 	return Catalog.Format(msgs.locale, "receiverChipAuto", nil)
+}
+
+// ReceiverModelDetail says "Show model details"
+// in the language the app shows.
+func ReceiverModelDetail() string { return In(i18n.Locale()).ReceiverModelDetail() }
+
+// ReceiverModelDetail says "Show model details"
+// in the language of msgs.
+func (msgs Messages) ReceiverModelDetail() string {
+	return Catalog.Format(msgs.locale, "receiverModelDetail", nil)
+}
+
+// ReceiverModelDetailShort says "Model details"
+// in the language the app shows.
+func ReceiverModelDetailShort() string { return In(i18n.Locale()).ReceiverModelDetailShort() }
+
+// ReceiverModelDetailShort says "Model details"
+// in the language of msgs.
+func (msgs Messages) ReceiverModelDetailShort() string {
+	return Catalog.Format(msgs.locale, "receiverModelDetailShort", nil)
+}
+
+// ReceiverModelDetailDesc says "Off hides the parenthetical part of the model name"
+// in the language the app shows.
+func ReceiverModelDetailDesc() string { return In(i18n.Locale()).ReceiverModelDetailDesc() }
+
+// ReceiverModelDetailDesc says "Off hides the parenthetical part of the model name"
+// in the language of msgs.
+func (msgs Messages) ReceiverModelDetailDesc() string {
+	return Catalog.Format(msgs.locale, "receiverModelDetailDesc", nil)
 }
 
 // ReceiverChipHidden says "Hidden"
@@ -2174,16 +2252,16 @@ func (msgs Messages) ReceiverRemoveConfirmTitle() string {
 	return Catalog.Format(msgs.locale, "receiverRemoveConfirmTitle", nil)
 }
 
-// ReceiverRemoveConfirmSub says "{name} · {model}"
+// ReceiverRemoveConfirmSub says "{name}"
 // in the language the app shows.
-func ReceiverRemoveConfirmSub(name string, model string) string {
-	return In(i18n.Locale()).ReceiverRemoveConfirmSub(name, model)
+func ReceiverRemoveConfirmSub(name string) string {
+	return In(i18n.Locale()).ReceiverRemoveConfirmSub(name)
 }
 
-// ReceiverRemoveConfirmSub says "{name} · {model}"
+// ReceiverRemoveConfirmSub says "{name}"
 // in the language of msgs.
-func (msgs Messages) ReceiverRemoveConfirmSub(name string, model string) string {
-	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name, "model": model})
+func (msgs Messages) ReceiverRemoveConfirmSub(name string) string {
+	return Catalog.Format(msgs.locale, "receiverRemoveConfirmSub", map[string]any{"name": name})
 }
 
 // ReceiverRemoveHint1 says "Removes it from settings and the tray panel; the receiver itself is not changed."
@@ -3848,6 +3926,16 @@ func (msgs Messages) ErrorComboInvalid() string {
 	return Catalog.Format(msgs.locale, "errorComboInvalid", nil)
 }
 
+// ErrorComboStale says "{name} is unavailable: a member now belongs to a stereo pair."
+// in the language the app shows.
+func ErrorComboStale(name string) string { return In(i18n.Locale()).ErrorComboStale(name) }
+
+// ErrorComboStale says "{name} is unavailable: a member now belongs to a stereo pair."
+// in the language of msgs.
+func (msgs Messages) ErrorComboStale(name string) string {
+	return Catalog.Format(msgs.locale, "errorComboStale", map[string]any{"name": name})
+}
+
 // ReceiverGroupCombo says "Stereo combos"
 // in the language the app shows.
 func ReceiverGroupCombo() string { return In(i18n.Locale()).ReceiverGroupCombo() }
@@ -3958,6 +4046,26 @@ func (msgs Messages) ComboDialogSub() string {
 	return Catalog.Format(msgs.locale, "comboDialogSub", nil)
 }
 
+// ComboEditTitle says "Edit stereo combo"
+// in the language the app shows.
+func ComboEditTitle() string { return In(i18n.Locale()).ComboEditTitle() }
+
+// ComboEditTitle says "Edit stereo combo"
+// in the language of msgs.
+func (msgs Messages) ComboEditTitle() string {
+	return Catalog.Format(msgs.locale, "comboEditTitle", nil)
+}
+
+// ComboEditSub says "Change the combo's name or the receiver on each side."
+// in the language the app shows.
+func ComboEditSub() string { return In(i18n.Locale()).ComboEditSub() }
+
+// ComboEditSub says "Change the combo's name or the receiver on each side."
+// in the language of msgs.
+func (msgs Messages) ComboEditSub() string {
+	return Catalog.Format(msgs.locale, "comboEditSub", nil)
+}
+
 // ComboCreate says "Create"
 // in the language the app shows.
 func ComboCreate() string { return In(i18n.Locale()).ComboCreate() }
@@ -4036,6 +4144,26 @@ func ComboTag() string { return In(i18n.Locale()).ComboTag() }
 // in the language of msgs.
 func (msgs Messages) ComboTag() string {
 	return Catalog.Format(msgs.locale, "comboTag", nil)
+}
+
+// ComboInvalid says "Unavailable"
+// in the language the app shows.
+func ComboInvalid() string { return In(i18n.Locale()).ComboInvalid() }
+
+// ComboInvalid says "Unavailable"
+// in the language of msgs.
+func (msgs Messages) ComboInvalid() string {
+	return Catalog.Format(msgs.locale, "comboInvalid", nil)
+}
+
+// ComboInvalidReason says "A member now belongs to a stereo pair"
+// in the language the app shows.
+func ComboInvalidReason() string { return In(i18n.Locale()).ComboInvalidReason() }
+
+// ComboInvalidReason says "A member now belongs to a stereo pair"
+// in the language of msgs.
+func (msgs Messages) ComboInvalidReason() string {
+	return Catalog.Format(msgs.locale, "comboInvalidReason", nil)
 }
 
 // ReceiverAddAction says "Add"

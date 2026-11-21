@@ -38,17 +38,22 @@ attribution is in `NOTICE`.
 
 ## Design notes
 
-The hero is the tray flyout, not a screenshot. It opens on a live session —
-glow already up, media paused, volume low — and when the panel sits in view
-it runs one scripted pass (play → Standard → volume → next track); any touch
-on the panel or the lamp controls hands control back, and `?demo=0` skips the
-run. It still answers the visitor: connects or disconnects a receiver, changes
-volume and latency, plays or pauses the media card, and switches the lamp.
+The hero is the tray flyout, not a screenshot. It opens on a live two-member
+session — glow already up, media paused, volume low — and when the panel sits
+in view it runs one scripted pass (play → Standard → both row volumes → next
+track); any touch on the panel or the lamp controls hands control back, and
+`?demo=0` skips the run. It still answers the visitor: every member row is a
+compact mixer with its own volume and mute, the single receiver carries an
+icon-only channel button, and rows connect, disconnect, or rejoin while the
+rest keep playing. The head's 全部断开 ends the session; removing one member
+leaves a notice under the device card with a retry, and adding one shows the
+join notice. The footer names the joined session, the way `ConnectedName`
+does.
 The tray media card and the bento media card render one shared media
 session: skipping tracks on either card updates both, and in cover mode the
 lamp palette follows the new artwork (five demo tracks, each with its own
 poster palette). The glow is gated on lamp × session — turning the lamp off
-or disconnecting the receiver fades it, and it returns with the state. The
+or ending the session fades it, and it returns with the state. The
 latency mode is one state behind the tray segment and
 the bento rail — either surface switches, both follow, and the ALAC line
 updates at once. The whole visual renders at `zoom: .85` on `.hero-visual` — panel, glow
@@ -96,10 +101,37 @@ The page mixes card sections (steps) with a bento feature grid, a flat trust
 section, and the FAQ, so it does not read as a pile of rounded boxes. The
 trust section sits right after the device strip — identity first, then how-to
 steps. The
-feature block is four cards: ambient light, the media card, latency, and
-receivers/pairing. Each card carries one small motion; the latency rail is the
-only interactive one. The clock-sync claim lives on the latency card as a
-small `PTP 时钟同步` chip under the rail — there is no separate sync section.
+feature block is five cards: a full-width band for multi-device
+playback, latency, the media card, receivers/pairing, and ambient light. Each card
+carries one small motion; the latency rail is the only interactive one. The
+multi-device band is a diagram, not another row list: the app sits at the
+centre, two HomePods and two minis at the corners, and one pulse leaves the
+centre while all four links carry it on the same beat. It is there for
+simultaneity; the hero owns the mixer rows and the loss notice. The clock-sync
+claim lives on the latency card
+as a small `PTP 时钟同步` chip under the rail — there is no separate sync
+section.
+
+The stereo-combo section sits between the feature block and the ambient demo,
+and its copy owns the claim the rest of the page does not repeat: a stereo
+combo links two standalone AirPlay 2 receivers, one on the left and one on the
+right, across models and generations. It describes the function without
+comparing it to Apple or naming the product. The left column is the heading,
+the lead, and two chips (one receiver per channel, swap sides live), with no
+eyebrow and no fine print. The right side is a stage, not a
+card, and it shows the real topology: a HomePod and a HomePod mini stand apart
+on one axis with no receiver-to-receiver link, because the combo is two
+independent AP2 sessions, not a native pair. The stage is static; it does not
+rotate models. The icon-only swap control sends one green signal down both
+segments: the first fill and its endpoint dots stay, a stream of smaller dots
+keeps running, and both bodies, the dots, and the line glow follow one
+2.4-second four-beat level envelope. Each packet arrival adds a small base
+ripple and a brief L/R watermark lift; two neutral sound rings leave both
+bodies once per bar; a manual swap flashes both lit lines once without breaking
+or redrawing them. Reduced motion stops the signal. It carries no channel
+words, no text on the swap control, no volume, and no launch switch.
+`立体声组` / stereo group is the official pair; `立体声组合` / stereo combo is
+the software one. Keep the two words apart in both languages.
 
 Each claim has one owner, and the sections that follow do not restate it. The
 feature cards carry the claims; the ambient section is the demo, so it is a
@@ -220,6 +252,20 @@ Clicked through in a headless browser: receiver connect, play and pause, the
 four latency modes, a template swatch, the lamp power, and an FAQ entry. The
 mobile menu opens with its download action visible and returns focus to its
 button when closed. A `#install` deep link opens the hashed FAQ entry.
+
+The multi-device flyout was clicked through as well: disconnecting one member
+leaves the loss notice with its retry while the rest keep playing, the head's
+全部断开 ends the session, and a reconnect from idle opens one target. Per-row
+volume, mute, and the channel cycle all work; a disconnected single receiver's
+second line follows the channel with the long word (立体声 / 左声道 / 右声道,
+Stereo / Left channel / Right channel). The stereo stage keeps the HomePod/mini
+pair static; the icon-only control trades the sides without breaking the lit
+line. The line fills once, streams dots, and drives both bodies, the dots, and
+the line glow from one 2.4s level envelope; arrival ripples, watermark lifts,
+the per-bar sound rings, and the one-shot swap flash are the added layers. The
+new cards and the stage layout were checked at 1440, 1020, 390, and 320 px in
+Chinese and English, and in both themes; nothing overflows its column. The
+final animation layers were not re-checked in a browser.
 
 Lighthouse on the local server (`?demo=0&theme=light&lang=en`): desktop
 accessibility 92, best practices 100, SEO 100, agentic browsing 100; mobile

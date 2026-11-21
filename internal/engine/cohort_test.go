@@ -60,6 +60,53 @@ func startMembers(c *cohortTransport) {
 	}
 }
 
+// TestCohortAttributesAUDPReplyToTheMemberThatOwnsTheSocket pins the
+// multi-homed routing fix: a receiver that answers UDP from an interface the
+// plan did not dial still reaches its own sender in a multi-member cohort.
+// Before the socket-ownership stamp, the source IP missed byPeer and the
+// datagram dropped once a second receiver joined; the same receiver worked
+// alone, because a one-member cohort forwards everything.
+func TestCohortAttributesAUDPReplyToTheMemberThatOwnsTheSocket(t *testing.T) {
+	c := &cohortTransport{
+		events: make(chan raopio.Event, 8), stopCh: make(chan struct{}),
+		dead: make(chan struct{}), byPeer: map[string]int{},
+		logf: func(string, ...any) {}, lampSkip: map[string]bool{},
+	}
+	c.gate = newCohortGate(2, nil)
+	nopLog := func(sender.Level, string, ...any) {}
+	rec := &recordingIO{}
+	for i := 0; i < 2; i++ {
+		id := fmt.Sprintf("AA:BB:CC:DD:EE:%02d", i+1)
+		m := device.Device{ID: id, Name: id, Host: fmt.Sprintf("10.0.0.%d", i+1), Port: 7000, Auth: device.AuthHAPTransient}
+		var io raopio.IO = rec
+		if i == 1 {
+			io = fakeIO{}
+		}
+		s := sender.New(io, c.memberEvents(i), nopLog)
+		c.members = append(c.members, &cohortMember{
+			index: i, device: m, host: raopio.NewHost(), sender: s, ring: ring.New(48000),
+			setLampArtwork: func([]byte, string, bool) {},
+		})
+		c.byPeer[m.Host] = i
+	}
+	startMembers(c)
+
+	// A timing request that member 0's receiver asked from a foreign
+	// interface. The socket-ownership stamp routes it home; the sender
+	// answers over the dialed interface to the requesting socket's port.
+	ev := raopio.Event{Kind: raopio.EventUDPDatagram, UDP: raopio.UDPTiming,
+		Peer: raopio.Endpoint{IP: "192.168.9.9", Port: 6002}, Data: make([]byte, 32)}
+	c.HandleEvent(attributeEvent(c.members[0], ev))
+
+	if len(rec.sends) != 1 {
+		t.Fatalf("timing replies = %d, want the datagram routed to member 0's sender", len(rec.sends))
+	}
+	if rec.sends[0].IP != "10.0.0.1" || rec.sends[0].Port != 6002 {
+		t.Fatalf("reply went to %s:%d, want 10.0.0.1:6002 (dialed host, source port)",
+			rec.sends[0].IP, rec.sends[0].Port)
+	}
+}
+
 // TestCohortForwardsReceiverLatency pins the member event wiring: every
 // member's sender reports the receiver's latency to the same engine callback.
 func TestCohortForwardsReceiverLatency(t *testing.T) {
@@ -91,15 +138,17 @@ func TestCohortForwardsPreemption(t *testing.T) {
 	}
 }
 
-// recordingIO counts the datagrams a sender sends, so a routing test can see
-// that its event reached a member.
+// recordingIO counts the datagrams a sender sends and records their
+// destinations, so a routing test can see that its event reached a member.
 type recordingIO struct {
 	fakeIO
 	udpSends int
+	sends    []raopio.Endpoint
 }
 
-func (r *recordingIO) UDPSend(raopio.UDPChannel, raopio.Endpoint, []byte) error {
+func (r *recordingIO) UDPSend(_ raopio.UDPChannel, to raopio.Endpoint, _ []byte) error {
 	r.udpSends++
+	r.sends = append(r.sends, to)
 	return nil
 }
 

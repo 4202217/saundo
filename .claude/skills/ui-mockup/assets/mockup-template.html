@@ -359,6 +359,30 @@
     color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .55px;
   }
   .group-toggle:hover { background: var(--pill); }
+  .head-action {
+    height: 26px; padding: 0 8px; border-radius: 13px; flex: none;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 500; color: var(--accent); white-space: nowrap;
+  }
+  .head-action .icon { width: 12px; height: 12px; }
+  .head-action:hover { background: var(--pill); }
+  .count.ok { background: var(--green-soft); color: var(--green); }
+  .count.bad { background: var(--red-soft); color: var(--red); }
+  .combo-sides { display: flex; align-items: stretch; gap: 10px; padding: 2px 14px 10px; }
+  .combo-side {
+    flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--pill); padding: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .combo-side .side-label { font-size: 11.5px; font-weight: 600; letter-spacing: .55px; color: var(--muted); }
+  .combo-side .side-member { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+  .combo-side .side-member .icon { width: 14px; height: 14px; color: var(--fg2); }
+  .combo-swap {
+    width: 30px; height: 30px; flex: none; border-radius: 15px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); border: 1px solid var(--line); background: var(--card);
+  }
+  .combo-swap .icon { width: 14px; height: 14px; }
 
   @media (max-width: 1120px) {
     .notes { width: min(720px, 100%); }
@@ -405,6 +429,8 @@ const ICON = {
   chevron: '<svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14.5 5.5l4 4"/></g></svg>',
   key: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="15.5" r="3.5"/><path d="M11 13 20 4M17 7l2.5 2.5M14.5 9.5l2 2"/></g></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></g></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.4v5.6"/><circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/></g></svg>',
   close: '<svg viewBox="0 0 12 12" fill="none"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
   min: '<svg viewBox="0 0 12 12" fill="none"><path d="M2.5 8.5h7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
   max: '<svg viewBox="0 0 12 12" fill="none"><rect x="2.7" y="2.7" width="6.6" height="6.6" rx="1" stroke="currentColor" stroke-width="1.1"/></svg>',
@@ -430,138 +456,135 @@ const NAV = [
 ];
 
 const PAGE = {
-  activeByView: { target: 'general', normal: 'receivers', edge: 'receivers' },
-  title:    { zh: '页面标题', en: 'Page title' },
-  subtitle: { zh: '一句话说明这个页面。', en: 'One sentence describing this page.' }
+  activeByView: { target: 'receivers', normal: 'receivers', edge: 'receivers' },
+  title:    { zh: '接收器', en: 'Receivers' },
+  subtitle: { zh: '管理接收器、自动连接、显示与声道。', en: 'Manage receivers, auto-connect, visibility, and channel.' }
 };
 
 const STATES = [
-  { id: 'target', zh: '目标态', en: 'Target' },
-  { id: 'normal', zh: '正常态', en: 'Normal' },
-  { id: 'edge',   zh: '边界态', en: 'Edge' }
+  { id: 'target', zh: '列表', en: 'List' },
+  { id: 'normal', zh: '组合展开', en: 'Combo expanded' },
+  { id: 'edge',   zh: '空页', en: 'Empty page' }
 ];
 
 const COPY = {
   zh: {
-    // target: a standard page card
-    cardTitle: '示例卡片', showInPanel: '托盘面板中显示',
-    senderTitle: '发送端名称', senderSub: '接收器上显示的名字',
-    senderValue: '声渡', save: '保存',
-    startTitle: '登录时自动启动', startSub: '登录后在托盘中静默运行',
-    trayAnimationTitle: '托盘动画', trayAnimationSub: '连接或播放时显示托盘动画',
-    languageTitle: '语言', languageSub: '界面与提示的语言', languageValue: '跟随系统',
-    appearanceTitle: '外观', appearanceSub: '跟随系统，或固定使用浅色或深色', appearanceValue: '跟随系统',
-    note: '开启“连接后静音本机输出”后，部分音频设备会让采集到的声音也静音。接收器没有声音时，请关闭这个开关。',
-    // normal and edge: the receiver list
-    section: '已启用',
-    addTitle: '添加接收器',
-    addSub: '手动填写 IP 或主机名，适用于无法通过 mDNS 发现的接收器',
-    rowA: '客厅 HomePod', rowASub: 'AudioAccessory5,1 · 192.168.1.20:7000',
-    rowB: '卧室 HomePod mini', rowBSub: 'AudioAccessory5,1 · 192.168.1.21:7000',
-    chipAuto: '启动时',
-    autoTitle: '启动时自动连接', autoSub: '同一时间仅一台；启用一台会关闭其他接收器',
-    delayTitle: 'DSP/DAC 延迟', delaySub: '补偿接收器的硬件音频延迟', delayValue: '200 ms',
+    // The receivers page: two sections with their own create actions, the
+    // expanded combo card, and the model-detail card below the sections.
+    sectionStandalone: '单独接收器', sectionCombo: '立体声组合',
+    add: '添加', createCombo: '创建组合',
+    addRowTitle: '添加接收器',
+    addRowSub: '手动填写 IP 或主机名，适用于无法通过 mDNS 发现的接收器',
+    createRowTitle: '创建立体声组合',
+    createRowSub: '两台接收器各播一个声道',
+    edit: '编辑',
+    rowA: '客厅 HomePod', rowAChips: ['launch'], rowASub: '192.168.1.20:7000 · 立体声 · HomePod mini',
+    rowB: '卧室 HomePod mini', rowBChips: [], rowBSub: '192.168.1.21:7000 · 立体声 · HomePod mini',
+    rowC: '书房 AirPort Express', rowCChips: ['auth', 'manual'], rowCSub: '192.168.1.32:5000 · 左声道 · AirPort Express',
+    rowD: '客厅立体声', rowDChips: [], rowDCount: '2/2', rowDSub: 'HomePod mini',
+    chipLaunch: '启动时连接', chipAuth: '需要认证', chipManual: '手动添加',
+    comboName: '书房组合', comboMembers: '客厅 HomePod · 书房 AirPort Express',
+    sideL: '左', sideR: '右',
+    sideMemberL: '客厅 HomePod', sideMemberR: '书房 AirPort Express',
+    layoutTitle: '声道布局',
+    autoTitle: '启动时自动连接', autoSub: '可勾选多台；启动时会一起连接',
+    volumeTitle: '音量', volumeValue: '40%',
+    channelTitle: '声道', channelSub: '左或右会把该声道复制到两个输出',
+    channels: ['立体声', '左', '右'],
     passwordTitle: '接收器密码', passwordSub: '已保存 · 用于 AirPlay 密码认证', passwordAction: '更改',
+    modelDetailTitle: '型号细节', modelDetailSub: '关闭后隐藏型号名括号内的内容',
     hidden: '已隐藏',
-    edgeTitle: '暂无接收器',
-    edgeHint: '网络上的 AirPlay 接收器会自动出现在这里。',
-    identity: '未选择接收器', identitySub: '未连接'
+    identity: '客厅 HomePod', identitySub: '已连接'
   },
   en: {
-    cardTitle: 'Example card', showInPanel: 'Show in tray panel',
-    senderTitle: 'Sender name', senderSub: 'The name receivers show',
-    senderValue: 'Saundo', save: 'Save',
-    startTitle: 'Start at login', startSub: 'Stay quietly in the tray after you sign in',
-    trayAnimationTitle: 'Tray animation', trayAnimationSub: 'Animate the tray icon while connecting or playing',
-    languageTitle: 'Language', languageSub: 'The interface and message language', languageValue: 'Follow system',
-    appearanceTitle: 'Appearance', appearanceSub: 'Light, dark, or follow the system', appearanceValue: 'Follow system',
-    note: 'With “Mute local output while connected” on, some audio devices mute capture too. Turn that switch off if the receiver goes silent.',
-    section: 'Enabled',
-    addTitle: 'Add receiver',
-    addSub: 'Fill in an IP address or hostname for receivers mDNS cannot find',
-    rowA: 'Living Room HomePod', rowASub: 'AudioAccessory5,1 · 192.168.1.20:7000',
-    rowB: 'Bedroom HomePod mini', rowBSub: 'AudioAccessory5,1 · 192.168.1.21:7000',
-    chipAuto: 'At launch',
-    autoTitle: 'Connect at launch', autoSub: 'One receiver at a time; enabling one turns the others off',
-    delayTitle: 'DSP/DAC delay', delaySub: 'Compensate the receiver\'s hardware audio delay', delayValue: '200 ms',
+    sectionStandalone: 'Standalone receivers', sectionCombo: 'Stereo combos',
+    add: 'Add', createCombo: 'Create combo',
+    addRowTitle: 'Add receiver',
+    addRowSub: 'Fill in an IP address or hostname for receivers mDNS cannot find',
+    createRowTitle: 'Create stereo combo',
+    createRowSub: 'One receiver per channel',
+    edit: 'Edit',
+    rowA: 'Living Room HomePod', rowAChips: ['launch'], rowASub: '192.168.1.20:7000 · Stereo · HomePod mini',
+    rowB: 'Bedroom HomePod mini', rowBChips: [], rowBSub: '192.168.1.21:7000 · Stereo · HomePod mini',
+    rowC: 'Study AirPort Express', rowCChips: ['auth', 'manual'], rowCSub: '192.168.1.32:5000 · Left channel · AirPort Express',
+    rowD: 'Living Room Pair', rowDChips: [], rowDCount: '2/2', rowDSub: 'HomePod mini',
+    chipLaunch: 'Connect at launch', chipAuth: 'Authentication required', chipManual: 'Manual',
+    comboName: 'Study combo', comboMembers: 'Living Room HomePod · Study AirPort Express',
+    sideL: 'L', sideR: 'R',
+    sideMemberL: 'Living Room HomePod', sideMemberR: 'Study AirPort Express',
+    layoutTitle: 'Channel layout',
+    autoTitle: 'Connect at launch', autoSub: 'Multi-select; the launch connects every flagged receiver',
+    volumeTitle: 'Volume', volumeValue: '40%',
+    channelTitle: 'Channel', channelSub: 'Left or right copies that channel to both outputs',
+    channels: ['Stereo', 'Left', 'Right'],
     passwordTitle: 'Receiver password', passwordSub: 'Saved · used for AirPlay password authentication', passwordAction: 'Change',
+    modelDetailTitle: 'Model detail', modelDetailSub: 'Off hides the parenthetical part of the model name',
     hidden: 'Hidden',
-    edgeTitle: 'No receivers yet',
-    edgeHint: 'AirPlay receivers on your network appear here automatically.',
-    identity: 'No receiver selected', identitySub: 'Not connected'
+    identity: 'Living Room HomePod', identitySub: 'Connected'
   }
 };
 
 /* Replace these three functions with the states you are deciding.
-   viewTarget shows the standard settings card: a card head and setting
-   rows. viewNormal and viewEdge show the receiver list's group head, rows,
-   add row, and hidden group. Keep the helpers; replace the sample copy. */
+   viewTarget shows the receivers list with its two sections and the
+   model-detail card. viewNormal shows the expanded combo card. viewEdge
+   shows the empty page: the standalone head with its dashed add row only.
+   Keep the helpers; replace the sample copy. */
 function viewTarget() {
-  const t = key => esc(COPY[state.lang][key]);
-  return '<div class="card page-card">' +
-    '<div class="card-head"><span class="tile">' + icon('info') + '</span>' +
-      '<span class="title">' + t('cardTitle') + '</span>' +
-      '<span class="cluster"><span class="chip">' + t('showInPanel') + '</span>' +
-      '<span class="switch on"></span></span>' +
-    '</div>' +
-    settingRow('senderTitle', 'senderSub', function() {
-      return '<span class="field">' + t('senderValue') + '</span>' +
-        '<span class="chip-button">' + t('save') + '</span>';
-    }) +
-    '<div class="divider"></div>' +
-    settingRow('startTitle', 'startSub', function() { return '<span class="switch"></span>'; }) +
-    '<div class="divider"></div>' +
-    settingRow('trayAnimationTitle', 'trayAnimationSub', function() { return '<span class="switch"></span>'; }) +
-    '<div class="divider"></div>' +
-    settingRow('languageTitle', 'languageSub', function() {
-      return '<span class="field select">' + t('languageValue') + icon('chevron') + '</span>';
-    }) +
-    '<div class="divider"></div>' +
-    settingRow('appearanceTitle', 'appearanceSub', function() {
-      return '<span class="field select">' + t('appearanceValue') + icon('chevron') + '</span>';
-    }) +
-  '</div>' +
-  '<div class="info-note">' + icon('info') + '<div class="lines">' + t('note') + '</div></div>';
-}
-function viewNormal() {
-  const t = key => esc(COPY[state.lang][key]);
-  return groupHead(t('section'), 2) +
+  const t = key => COPY[state.lang][key];
+  return groupHeadWithAction(t('sectionStandalone'), 4, t('add'), 'plus') +
     '<div class="card">' +
-      receiverRow(t('rowA'), t('rowASub'), t('chipAuto'), true, true) +
-      receiverRow(t('rowB'), t('rowBSub'), '', true, false) +
+      receiverRow(t('rowA'), t('rowASub'), t('rowAChips'), true, false) +
+      receiverRow(t('rowB'), t('rowBSub'), t('rowBChips'), true, false) +
+      receiverRow(t('rowC'), t('rowCSub'), t('rowCChips'), true, false) +
+      receiverRow(t('rowD'), t('rowDSub'), t('rowDChips'), true, false, t('rowDCount'), 'ok') +
     '</div>' +
-    addRowHTML() +
+    groupHead(t('sectionCombo'), 0) +
+    addRowHTML(t('createRowTitle'), t('createRowSub')) +
+    modelDetailCard() +
     '<div class="hidden-group">' +
       '<button type="button" class="group-toggle"><span class="chev closed">' + ICON.chevron + '</span>' +
         '<span>' + t('hidden') + '</span><span class="count">1</span></button>' +
     '</div>';
 }
+function viewNormal() {
+  const t = key => COPY[state.lang][key];
+  return groupHeadWithAction(t('sectionStandalone'), 2, t('add'), 'plus') +
+    '<div class="card">' +
+      receiverRow(t('rowA'), t('rowASub'), t('rowAChips'), true, false) +
+      receiverRow(t('rowB'), t('rowBSub'), t('rowBChips'), true, false) +
+    '</div>' +
+    groupHeadWithAction(t('sectionCombo'), 1, t('createCombo'), 'link') +
+    '<div class="card">' +
+      comboRow(t('comboName'), t('comboMembers'), t('sideL'), t('sideR')) +
+    '</div>' +
+    modelDetailCard();
+}
 function viewEdge() {
-  const t = key => esc(COPY[state.lang][key]);
-  return '<div class="empty-note">' +
-    '<div class="empty-note-title">' + t('edgeTitle') + '</div>' +
-    '<div class="empty-note-hint">' + t('edgeHint') + '</div>' +
-  '</div>' + addRowHTML();
+  const t = key => COPY[state.lang][key];
+  return groupHead(t('sectionStandalone'), 0) +
+    addRowHTML(t('addRowTitle'), t('addRowSub')) +
+    modelDetailCard();
 }
 
 /* Replace the notes with the stance, states, locale keys, and rejects. */
 function notesHTML() {
   return '<h2>设计说明 · Design notes</h2>' +
-    '<p class="notes-intro">One or two sentences: the stance this mockup commits to, and what it deliberately rejects. Replace this text.</p>' +
+    '<p class="notes-intro">Settings shell template for the 0.6.5 interface, sampled by the receivers page: two sections with their own create actions, receiver rows with state chips and a second line, the expanded combo card with the channel-layout half-cards, and the model-detail card below the sections. Replace the page body, keep the shell.</p>' +
     '<p class="kicker">状态 · STATES</p><ul>' +
-      '<li><b>目标态</b> The state this mockup exists to decide.</li>' +
-      '<li><b>正常态</b> The page with content, for rhythm and continuity.</li>' +
-      '<li><b>边界态</b> The empty, all-hidden, or failure state that shares the layout.</li>' +
+      '<li><b>列表</b> Four standalone rows (launch, auth + manual, and a 2/2 pair) over an empty combo section with its dashed create row, then the model-detail card and the hidden group.</li>' +
+      '<li><b>组合展开</b> The expanded combo: 编辑 rides the attached slot before the switch, the body holds the multi-select launch switch, the 声道布局 half-cards with the swap, and one shared volume.</li>' +
+      '<li><b>空页</b> No receivers: the standalone head with no pill or action, the dashed add row, and the model-detail card; the combo section waits for a first row.</li>' +
     '</ul>' +
     '<p class="kicker">组件 · WIDGETS</p><ul>' +
-      '<li><b>卡片</b> radius 12, 1px line border, 8 DIP after a group head and 12 DIP after the page head.</li>' +
+      '<li><b>分区头</b> The shared groupHead: a 26-DIP row, the 11.5/600 letter-spaced label, an 18-DIP count pill, and the trailing 26 head action (添加, 创建组合); a section with no rows drops the pill and the action for its dashed row.</li>' +
+      '<li><b>接收器行</b> 56 high: a 30 glyph with the seen dot, the name line with the stereo count chip and the password/auth chips, the second line with address · channel · model · version, the tail switch and chevron; the expanded row carries 编辑 in the attached slot before the switch.</li>' +
+      '<li><b>组合体</b> The 声道布局 block: two borderless pill half-cards with centered side labels over the member, a ghost swap button between, and one volume for both members.</li>' +
       '<li><b>卡头</b> 44 high: a fixed 22 tile (radius 6, 13 glyph in ctl), a 13/600 title, a trailing cluster.</li>' +
       '<li><b>设置行</b> 56 high, 8/14 padding: 13/500 title over an 11.5 muted line, control at the right.</li>' +
-      '<li><b>胶囊</b> 22 high / 11 radius / 11.5 text; the name chip is 20 high / 10 radius / 10.5 text.</li>' +
+      '<li><b>胶囊</b> 22 high / 11 radius / 11.5 text; the name chip is 20 high / 10 radius / 10.5 text; the count pill is 18.</li>' +
       '<li><b>动作阶梯</b> 26 row, 28 field commit, 30 card, 34 dialog.</li>' +
-      '<li><b>对话框</b> panel radius 14 over the shared scrim (rgba(20,22,30,.22)); header, body, then the 34 DIP pills.</li>' +
+      '<li><b>对话框</b> panel radius 14 over the shared scrim (rgba(20,22,30,.22)); header, body, then the 34 DIP pills; every dialog keeps a reserved error row.</li>' +
       '<li><b>开关</b> 32x19 track, 15 knob: off is line, on is fg with a bg knob.</li>' +
-      '<li><b>选择器</b> 150x28, radius 7, 12.5 text, a 10 glyph chevron at the right.</li>' +
       '<li><b>分段</b> 30 track / 8 radius; the selected 26 segment is card in light and pill-hover in dark.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
@@ -586,7 +609,14 @@ const state = {
 
 function t(key) { return COPY[state.lang][key]; }
 function groupHead(label, count) {
-  return '<div class="group-head"><span>' + esc(label) + '</span><span class="count">' + count + '</span></div>';
+  return '<div class="group-head"><span>' + esc(label) + '</span>' +
+    (count > 0 ? '<span class="count">' + count + '</span>' : '') + '</div>';
+}
+function groupHeadWithAction(label, count, action, actionName) {
+  return '<div class="group-head"><span>' + esc(label) + '</span>' +
+    (count > 0 ? '<span class="count">' + count + '</span>' : '') +
+    '<span style="flex:1"></span>' +
+    '<button type="button" class="head-action">' + icon(actionName) + esc(action) + '</button></div>';
 }
 function settingRow(title, sub, control) {
   return '<div class="setting-row">' +
@@ -595,13 +625,22 @@ function settingRow(title, sub, control) {
     '<div class="setting-control">' + control() + '</div>' +
   '</div>';
 }
-function receiverRow(name, sub, chip, on, open) {
+function chipHTML(kind) {
+  if (kind === 'launch') return '<span class="chip sm ok">' + esc(t('chipLaunch')) + '</span>';
+  if (kind === 'auth') return '<span class="chip sm">' + icon('alert') + esc(t('chipAuth')) + '</span>';
+  if (kind === 'manual') return '<span class="chip sm dim">' + esc(t('chipManual')) + '</span>';
+  return '';
+}
+function receiverRow(name, sub, chips, on, open, count, online) {
+  const chipHtml = (chips || []).map(chipHTML).join('') +
+    (count ? '<span class="chip sm ok">' + esc(count) + '</span>' : '');
   return '<div class="row' + (open ? ' expanded' : '') + '">' +
-    '<span class="glyph">' + icon('speaker') + '<i class="online"></i></span>' +
-    '<span class="namecol"><span class="name-line"><span class="name">' + esc(name) + '</span>' +
-      (chip ? '<span class="chip sm ok">' + esc(chip) + '</span>' : '') + '</span>' +
+    '<span class="glyph">' + icon('speaker') + (online && !count ? '<i class="online"></i>' : '') + '</span>' +
+    '<span class="namecol"><span class="name-line"><span class="name">' + esc(name) + '</span>' + chipHtml + '</span>' +
       '<span class="sub">' + esc(sub) + '</span></span>' +
-    '<span class="row-tail"><span class="switch' + (on ? ' on' : '') + '"></span>' +
+    '<span class="row-tail">' +
+      (open ? '<button type="button" class="row-action accent">' + icon('pencil') + esc(t('edit')) + '</button>' : '') +
+      '<span class="switch' + (on ? ' on' : '') + '"></span>' +
       '<span class="chev' + (open ? '' : ' closed') + '">' + ICON.chevron + '</span></span>' +
   '</div>' +
   (open ? receiverBody() : '');
@@ -613,12 +652,18 @@ function receiverBody() {
       '<span class="sub">' + esc(t('autoSub')) + '</span></div>' +
       '<div class="setting-control"><span class="switch on"></span></div>' +
     '</div>' +
-    '<div class="setting-row"><div class="setting-copy">' +
-      '<span class="title">' + esc(t('delayTitle')) + '</span>' +
-      '<span class="sub">' + esc(t('delaySub')) + '</span>' +
-    '</div><div class="setting-control">' + esc(t('delayValue')) + '</div></div>' +
-    '<div class="slider" style="--value:.1"><span class="slider-knob"></span></div>' +
-    '<div class="slider-scale"><span>0 ms</span><span>2 s</span></div>' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('volumeTitle')) + '</span></div>' +
+      '<div class="setting-control"><span style="font-size:12.5px;color:var(--fg2)">' + esc(t('volumeValue')) + '</span></div>' +
+    '</div>' +
+    '<div class="slider" style="--value:.4"><span class="slider-knob"></span></div>' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('channelTitle')) + '</span>' +
+      '<span class="sub">' + esc(t('channelSub')) + '</span></div>' +
+      '<div class="setting-control"><span class="seg" style="width:190px">' +
+        t('channels').map((c, i) => '<button type="button"' + (i === 0 ? ' class="active"' : '') + '>' + esc(c) + '</button>').join('') +
+      '</span></div>' +
+    '</div>' +
     '<div class="setting-row">' +
       '<div class="setting-copy"><span class="title">' + esc(t('passwordTitle')) + '</span>' +
       '<span class="sub">' + esc(t('passwordSub')) + '</span></div>' +
@@ -627,11 +672,54 @@ function receiverBody() {
     '</div>' +
   '</div>';
 }
-function addRowHTML() {
+function comboRow(name, members) {
+  return '<div class="row expanded">' +
+    '<span class="glyph">' + icon('link') + '<i class="online"></i></span>' +
+    '<span class="namecol"><span class="name-line"><span class="name">' + esc(name) + '</span>' +
+      '<span class="chip sm ok">2/2</span></span>' +
+      '<span class="sub">' + esc(members) + '</span></span>' +
+    '<span class="row-tail">' +
+      '<button type="button" class="row-action accent">' + icon('pencil') + esc(t('edit')) + '</button>' +
+      '<span class="switch on"></span>' +
+      '<span class="chev">' + ICON.chevron + '</span></span>' +
+  '</div>' +
+  '<div class="row-body">' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('autoTitle')) + '</span>' +
+      '<span class="sub">' + esc(t('autoSub')) + '</span></div>' +
+      '<div class="setting-control"><span class="switch"></span></div>' +
+    '</div>' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('layoutTitle')) + '</span></div>' +
+    '</div>' +
+    '<div class="combo-sides">' +
+      '<div class="combo-side"><span class="side-label">' + esc(t('sideL')) + '</span>' +
+        '<span class="side-member">' + icon('speaker') + esc(t('sideMemberL')) + '</span></div>' +
+      '<button type="button" class="combo-swap">' + icon('swap') + '</button>' +
+      '<div class="combo-side"><span class="side-label">' + esc(t('sideR')) + '</span>' +
+        '<span class="side-member">' + icon('screen') + esc(t('sideMemberR')) + '</span></div>' +
+    '</div>' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('volumeTitle')) + '</span></div>' +
+      '<div class="setting-control"><span style="font-size:12.5px;color:var(--fg2)">' + esc(t('volumeValue')) + '</span></div>' +
+    '</div>' +
+    '<div class="slider" style="--value:.4"><span class="slider-knob"></span></div>' +
+  '</div>';
+}
+function modelDetailCard() {
+  return '<div class="card page-card">' +
+    '<div class="setting-row">' +
+      '<div class="setting-copy"><span class="title">' + esc(t('modelDetailTitle')) + '</span>' +
+      '<span class="sub">' + esc(t('modelDetailSub')) + '</span></div>' +
+      '<div class="setting-control"><span class="switch"></span></div>' +
+    '</div>' +
+  '</div>';
+}
+function addRowHTML(title, sub) {
   return '<button type="button" class="add-row">' +
     '<span class="add-plus">' + icon('plus') + '</span>' +
-    '<span class="add-copy"><span class="add-title">' + esc(t('addTitle')) + '</span>' +
-    '<span class="add-sub">' + esc(t('addSub')) + '</span></span></button>';
+    '<span class="add-copy"><span class="add-title">' + esc(title) + '</span>' +
+    '<span class="add-sub">' + esc(sub) + '</span></span></button>';
 }
 
 function sidebarHTML() {

@@ -462,6 +462,7 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	connectionUnstable := fixture()
 	connectionUnstable.page = pageConnection
 	connectionUnstable.snap.Diagnostics.Degraded = true
+	connectionUnstable.snap.Diagnostics.RecentUnderruns = 3
 	save("settings-connection-unstable-light", connectionUnstable.settingsView, 720, 500, false)
 	save("settings-connection-unstable-dark", connectionUnstable.settingsView, 720, 500, true)
 
@@ -540,6 +541,13 @@ func renderPreviews(t *testing.T, dir, locale, suffix string) {
 	receiversHidden.applyReceiverFixtures()
 	receiversHidden.receiverHiddenOpen = true
 	save("settings-receivers-hidden-light", receiversHidden.settingsView, 720, 500, false)
+
+	// The model-detail card sits below the two sections; scroll down to it.
+	receiversScrolled := fixture()
+	receiversScrolled.page = pageReceivers
+	receiversScrolled.applyReceiverFixtures()
+	saveScrolled("settings-receivers-scrolled-light", receiversScrolled.settingsView, 720, 500, false, 460)
+	saveScrolled("settings-receivers-scrolled-dark", receiversScrolled.settingsView, 720, 500, true, 460)
 
 	// The created stereo combo: its expanded card, the two dialogs over the
 	// page, and the flyout's combo row.

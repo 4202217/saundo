@@ -67,13 +67,18 @@
   "statusStandby": "已待机 · 播放声音即唤醒",
   "statusDisconnected": "未连接",
   "statusConnectionFailed": "连接失败",
-  "deviceStereoGroup": "{model} · 立体声组 {n, number}/2",
-  "devicePinPairing": "{model} · PIN 配对",
-  "deviceNeedsPassword": "{model} · 需要密码",
-  "deviceUnsupported": "{model} · 暂不支持",
-  "deviceAuthSetup": "{model} · 需要认证",
-  "deviceAirPlay2": "{model} · AirPlay 2",
-  "deviceAirPlay1": "{model} · AirPlay 1",
+  "devicePinPairing": "PIN 配对",
+  "deviceNeedsPassword": "需要密码",
+  "devicePasswordSaved": "密码已保存",
+  "devicePasswordError": "密码错误",
+  "deviceUnsupported": "暂不支持",
+  "deviceAuthSetup": "需要认证",
+  "deviceComboOnline": "{n, number} 台在线",
+  "deviceComboOffline": "{n, number} 台离线",
+  "deviceFamilyHomePod": "HomePod",
+  "deviceFamilyMac": "Mac",
+  "deviceFamilyAppleTV": "Apple TV",
+  "deviceFamilyOther": "AirPlay 接收器",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "接收器列表",
   "flyoutRefreshDevices": "刷新接收器",
@@ -277,7 +282,7 @@
       }
     }
   },
-  "settingsStabilityNote": "丢样 {drops} · 欠载 {underruns}",
+  "settingsStabilityNote": "60 秒内丢样 {drops} · 欠载 {underruns}",
   "@settingsStabilityNote": {
     "placeholders": {
       "drops": {
@@ -318,7 +323,10 @@
   "receiverAddSub": "手动填写 IP 或主机名，适用于无法通过 mDNS 发现的接收器",
   "receiverChipLocal": "本机",
   "receiverChipManual": "手动添加",
-  "receiverChipAuto": "启动时",
+  "receiverChipAuto": "启动时连接",
+  "receiverModelDetail": "显示型号细节",
+  "receiverModelDetailShort": "型号细节",
+  "receiverModelDetailDesc": "关闭后隐藏型号名括号内的内容",
   "receiverChipHidden": "已隐藏",
   "receiverEnableSwitch": "在托盘面板中显示；关闭后移入“已隐藏”组",
   "receiverAutoToggle": "启动时自动连接",
@@ -333,13 +341,10 @@
   "receiverRemove": "移除接收器",
   "receiverRemoveConfirm": "移除",
   "receiverRemoveConfirmTitle": "移除接收器？",
-  "receiverRemoveConfirmSub": "{name} · {model}",
+  "receiverRemoveConfirmSub": "{name}",
   "@receiverRemoveConfirmSub": {
     "placeholders": {
       "name": {
-        "type": "String"
-      },
-      "model": {
         "type": "String"
       }
     }
@@ -661,6 +666,14 @@
   "versionLocalTag": "本地构建",
   "settingsShowInPanel": "托盘面板中显示",
   "errorComboInvalid": "这两台接收器无法组成立体声组合。",
+  "errorComboStale": "「{name}」不可用：成员已加入立体声组。",
+  "@errorComboStale": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "receiverGroupCombo": "立体声组合",
   "receiverPairAddTitle": "创建立体声组合",
   "receiverPairAddSub": "两台接收器各播一个声道",
@@ -686,6 +699,8 @@
     }
   },
   "comboDialogSub": "选择左、右声道各由哪台接收器播放。",
+  "comboEditTitle": "编辑立体声组合",
+  "comboEditSub": "修改组合名称或左右声道的接收器。",
   "comboCreate": "组合",
   "comboErrorSame": "两侧不能选择同一台接收器",
   "comboErrorPick": "请为两侧各选择一台接收器",
@@ -694,6 +709,8 @@
   "comboFieldLeft": "左声道",
   "comboFieldRight": "右声道",
   "comboTag": "立体声组合",
+  "comboInvalid": "不可用",
+  "comboInvalidReason": "成员已加入立体声组",
   "receiverAddAction": "添加",
   "comboCreateAction": "创建组合",
   "errorDeviceOffline": "{name} 未连接，无法加入会话。",

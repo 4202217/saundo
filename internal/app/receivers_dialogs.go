@@ -90,6 +90,20 @@ func (a *App) openAddReceiver() {
 	a.receiverDialogOpen = true
 }
 
+// beginEditCombo fills the combo edit dialog from a row's stored members and
+// name. The row's own pickers include the two members their linked rows hide.
+func (a *App) beginEditCombo(v receivers.View) {
+	left, right := "", ""
+	if len(v.Entry.Members) == 2 {
+		left, right = v.Entry.Members[0].ID, v.Entry.Members[1].ID
+	}
+	a.receiverDialog = receiverDialogState{
+		kind: receiverDialogComboEdit, key: v.Key,
+		comboLeft: left, comboRight: right, comboName: v.Name, entered: false,
+	}
+	a.receiverDialogOpen = true
+}
+
 // openRemoveReceiver asks before deleting a manual row.
 func (a *App) openRemoveReceiver(v receivers.View) {
 	a.receiverDialog = receiverDialogState{kind: receiverDialogRemove, key: v.Key, entered: false}
@@ -121,6 +135,8 @@ func (a *App) receiverDialogs(c *ui.Context, p palette) {
 			a.receiverRemoveDialog(c, p)
 		case receiverDialogComboCreate:
 			a.receiverComboCreateDialog(c, p)
+		case receiverDialogComboEdit:
+			a.receiverComboEditDialog(c, p)
 		case receiverDialogComboUnlink:
 			a.receiverComboUnlinkDialog(c, p)
 		}
@@ -391,10 +407,9 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 		a.closeReceiverDialog()
 		return
 	}
-	model := receiverModelLabel(v)
 	ui.Column(c).Children(func() {
 		dialogHead(c, p, iconSlash, locales.ReceiverRemoveConfirmTitle(),
-			locales.ReceiverRemoveConfirmSub(v.Name, model), true, nil)
+			locales.ReceiverRemoveConfirmSub(v.Name), true, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Gap(5).Children(func() {
 			ui.Text(c, locales.ReceiverRemoveHint1()).FontSize(11.5).TextColor(p.muted)
 			ui.Text(c, locales.ReceiverRemoveHint2()).FontSize(11.5).TextColor(p.muted)
@@ -549,37 +564,12 @@ func (a *App) comboPickSelect(c *ui.Context, p palette, value *string,
 func (a *App) receiverComboCreateDialog(c *ui.Context, p palette) {
 	d := &a.receiverDialog
 	candidates := a.comboCandidates()
-	// A slot whose receiver left the picker clears, so the form cannot hold a
-	// stale key the selects no longer show.
-	if d.comboLeft != "" && comboSideLabel(candidates, d.comboLeft) == "" {
-		d.comboLeft = ""
-	}
-	if d.comboRight != "" && comboSideLabel(candidates, d.comboRight) == "" {
-		d.comboRight = ""
-	}
-	leftLabel := comboSideLabel(candidates, d.comboLeft)
-	rightLabel := comboSideLabel(candidates, d.comboRight)
-	ready := d.comboLeft != "" && d.comboRight != ""
+	ready := a.comboDialogSlots(d, candidates)
 
 	ui.Column(c).Children(func() {
 		dialogHead(c, p, iconLink, locales.ReceiverPairAddTitle(), locales.ComboDialogSub(), false, nil)
 		ui.Column(c).Margin(13, 0, 0, 0).Children(func() {
-			fieldLabel(c, p, locales.ComboFieldLeft(), "")
-			a.comboPickSelect(c, p, &d.comboLeft, candidates, d.comboRight,
-				locales.ComboFieldLeft(), func() { d.comboError = "" })
-			fieldLabel(c, p, locales.ComboFieldRight(), "")
-			a.comboPickSelect(c, p, &d.comboRight, candidates, d.comboLeft,
-				locales.ComboFieldRight(), func() { d.comboError = "" })
-			// One muted line under the fields explains why a receiver may be
-			// missing from the pickers.
-			ui.Text(c, locales.ComboPickHint()).FontSize(11).TextColor(p.muted).Margin(6, 0, 0, 0)
-			fieldLabel(c, p, locales.ReceiverFieldName(), "")
-			suggest := ""
-			if ready {
-				suggest = leftLabel + " + " + rightLabel
-			}
-			dialogInput(c, p, &d.comboName, suggest, locales.ReceiverFieldName())
-			dialogErrorRow(c, p, d.comboError)
+			a.comboForm(c, p, d, candidates)
 		})
 		dialogFooter(c, p,
 			func() { ui.Spacer(c) },
@@ -588,20 +578,114 @@ func (a *App) receiverComboCreateDialog(c *ui.Context, p palette) {
 				if ready {
 					primaryButton(c, p, locales.ComboCreate(), func() { a.submitComboCreate() })
 				} else {
-					// The commit button shows its 40% disabled pose until both
-					// sides hold a receiver.
-					b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 16).Center().
-						Label(locales.ComboCreate())
-					b.Background(p.fg)
-					b.Disabled(true)
-					b.Opacity(0.4)
-					b.Children(func() {
-						ui.Text(c, locales.ComboCreate()).FontSize(13).FontWeight(500).TextColor(p.bg).SingleLine()
-					})
+					comboDisabledCommit(c, p, locales.ComboCreate())
 				}
 			},
 		)
 	})
+}
+
+// receiverComboEditDialog edits a combo in place: one picker per side and the
+// name. 解除组合 sits at the footer's left, the place the receiver edit
+// dialog gives 移除接收器, so the destructive action never shares the row
+// with 保存.
+func (a *App) receiverComboEditDialog(c *ui.Context, p palette) {
+	key := a.receiverDialog.key
+	v, ok := a.receiverViewFor(key)
+	if !ok || !v.Entry.IsCombo() {
+		a.closeReceiverDialog()
+		return
+	}
+	d := &a.receiverDialog
+	candidates := a.comboEditCandidates(v)
+	ready := a.comboDialogSlots(d, candidates)
+	ui.Column(c).Children(func() {
+		dialogHead(c, p, iconPencil, locales.ComboEditTitle(), locales.ComboEditSub(), false, nil)
+		ui.Column(c).Margin(13, 0, 0, 0).Children(func() {
+			a.comboForm(c, p, d, candidates)
+		})
+		dialogFooter(c, p,
+			func() {
+				quietDangerButton(c, p, locales.ComboUnlink(), func() {
+					a.receiverDialog = receiverDialogState{kind: receiverDialogComboUnlink, key: key, entered: false}
+				})
+			},
+			func() {
+				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
+				if ready {
+					primaryButton(c, p, locales.ReceiverDialogSave(), func() { a.submitComboEdit() })
+				} else {
+					comboDisabledCommit(c, p, locales.ReceiverDialogSave())
+				}
+			},
+		)
+	})
+}
+
+// comboDialogSlots clears a slot whose receiver the picker no longer lists,
+// so the form cannot hold a stale key, and reports whether both sides hold a
+// receiver.
+func (a *App) comboDialogSlots(d *receiverDialogState, candidates []receivers.View) bool {
+	if d.comboLeft != "" && comboSideLabel(candidates, d.comboLeft) == "" {
+		d.comboLeft = ""
+	}
+	if d.comboRight != "" && comboSideLabel(candidates, d.comboRight) == "" {
+		d.comboRight = ""
+	}
+	return d.comboLeft != "" && d.comboRight != ""
+}
+
+// comboForm is the fields both combo dialogs share: one picker per side, the
+// hint that says why a receiver may be missing, and the name field whose
+// placeholder is the derived 「A + B」.
+func (a *App) comboForm(c *ui.Context, p palette, d *receiverDialogState, candidates []receivers.View) {
+	fieldLabel(c, p, locales.ComboFieldLeft(), "")
+	a.comboPickSelect(c, p, &d.comboLeft, candidates, d.comboRight,
+		locales.ComboFieldLeft(), func() { d.comboError = "" })
+	fieldLabel(c, p, locales.ComboFieldRight(), "")
+	a.comboPickSelect(c, p, &d.comboRight, candidates, d.comboLeft,
+		locales.ComboFieldRight(), func() { d.comboError = "" })
+	ui.Text(c, locales.ComboPickHint()).FontSize(11).TextColor(p.muted).Margin(6, 0, 0, 0)
+	fieldLabel(c, p, locales.ReceiverFieldName(), "")
+	suggest := ""
+	if d.comboLeft != "" && d.comboRight != "" {
+		suggest = comboSideLabel(candidates, d.comboLeft) + " + " + comboSideLabel(candidates, d.comboRight)
+	}
+	dialogInput(c, p, &d.comboName, suggest, locales.ReceiverFieldName())
+	dialogErrorRow(c, p, d.comboError)
+}
+
+// comboDisabledCommit is the 40% commit pose the combo dialogs show while a
+// side holds no receiver.
+func comboDisabledCommit(c *ui.Context, p palette, label string) {
+	b := ui.ButtonBase(c).Height(34).Radius(17).Padding(0, 16).Center().Label(label)
+	b.Background(p.fg)
+	b.Disabled(true)
+	b.Opacity(0.4)
+	b.Children(func() {
+		ui.Text(c, label).FontSize(13).FontWeight(500).TextColor(p.bg).SingleLine()
+	})
+}
+
+// comboEditCandidates is the edit dialog's picker: the create list plus the
+// combo's current members, whose own rows the combo hides.
+func (a *App) comboEditCandidates(v receivers.View) []receivers.View {
+	candidates := a.comboCandidates()
+	for _, m := range v.Device.Members {
+		found := false
+		for _, c := range candidates {
+			if c.Key == m.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			candidates = append(candidates, receivers.View{
+				Key: m.ID, Name: m.Name, Model: m.Model, Device: m,
+			})
+		}
+	}
+	return candidates
 }
 
 // submitComboCreate validates the two slots against the picker's current
@@ -627,6 +711,44 @@ func (a *App) submitComboCreate() {
 		return
 	}
 	a.eng.LinkReceivers(d.comboLeft, d.comboRight, strings.TrimSpace(d.comboName))
+	a.closeReceiverDialog()
+}
+
+// submitComboEdit validates the two slots against the edit picker and sends
+// the in-place update. Like the create dialog, an invalid slot keeps the
+// dialog open with its error line so the refusal is not hidden behind it.
+func (a *App) submitComboEdit() {
+	d := &a.receiverDialog
+	v, ok := a.receiverViewFor(d.key)
+	if !ok {
+		a.closeReceiverDialog()
+		return
+	}
+	candidates := a.comboEditCandidates(v)
+	valid := func(key string) bool {
+		for _, c := range candidates {
+			if c.Key == key {
+				return true
+			}
+		}
+		return false
+	}
+	if !valid(d.comboLeft) || !valid(d.comboRight) {
+		d.comboError = locales.ComboErrorPick()
+		return
+	}
+	if d.comboLeft == d.comboRight {
+		d.comboError = locales.ComboErrorSame()
+		return
+	}
+	name := strings.TrimSpace(d.comboName)
+	// A name the user never replaced still follows its pair: leaving the
+	// derived 「A + B」 untouched after changing a side re-derives it from the
+	// new members. A typed name stays.
+	if len(v.Entry.Members) == 2 && name == v.Entry.Members[0].Name+" + "+v.Entry.Members[1].Name {
+		name = ""
+	}
+	a.eng.UpdateCombo(d.key, d.comboLeft, d.comboRight, name)
 	a.closeReceiverDialog()
 }
 

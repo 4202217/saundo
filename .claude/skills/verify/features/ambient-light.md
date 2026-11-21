@@ -81,7 +81,9 @@ per receiver.
 - Capability gate. `device.TopDisplayCapable` accepts any `AudioAccessory*`
   model at software 27.2 or later (6,1 included; there is no model
   whitelist) and fails closed on an unknown model or version. A stereo
-  group fans the image out to each capable member; the playback state goes
+  group or software combo fans the image out to each capable member — the
+  cohort's fan-out goes to every plan member, and a combo plans two
+  (`cohort.go:495-512`, `plan.go:281-324`); the playback state goes
   to every member.
 - Sound Glow must be enabled on the HomePod's own settings. Without it the
   top stays white.
@@ -91,7 +93,7 @@ per receiver.
   since the last push the engine sends playback state 2. The first audible
   sample sends state 1 and resumes; pressing 开启氛围灯 while the display is dark
   relights it immediately and holds it on until the next sound
-  (`lamp.go:226-236`; `engine.go:1187-1201`; the gate at `:841-847`, cleared
+  (`lamp.go:226-236`; `engine.go:840-864`; the gate at `:841-847`, cleared
   on sound at `:874-877`). The flyout chip reads 待机,
   the power action 开启氛围灯, and the footer 已待机 · 播放声音即唤醒.
 
@@ -248,3 +250,10 @@ and the off state survive a settings-window close/reopen and an app restart.
   on a PTP session, so it is not the display-sync seed; a pair member still
   sends it to gate the stream SETUP. If a
   follower is already stuck white, reconnect.
+- A software combo member is not a pair follower: its plan carries no group
+  UUID (`plan.go:292-297`), so the first-light retry and the explicit
+  state-1 preamble are not sent (`cover.go:131-134` and the playback-state
+  gate key on `groupUUID != ""`) — a combo member assumes playing and takes
+  the session's lamp sync like a standalone. A combo lamp run must show no
+  `playback state: 1` and no `cover: first-light retry`; no combo lamp test
+  exists yet (`combo_test.go` has none), so the live drive is the proof.

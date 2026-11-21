@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-20 -->
+<!-- reviewed-through: 2026-11-21 -->
 
 # Implementation overview
 
@@ -101,7 +101,7 @@ flyout cannot move the preview away from the top display.
 | `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), the stereo-to-mono channel mix (`channel.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
 | `internal/airplay/ptp` | `Follower` for one receiver that keeps its own grandmaster (`ptp.go`), `Followers` for several standalone receivers over one shared socket pair (`followers.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON on Windows (`dpapi_windows.go`), Keychain-master-key AES-256-GCM on macOS (`dpapi_darwin.go`) |
-| `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), and the top-display capability gate (`TopDisplayCapable`) used by the engine's lamp and stereo-group paths |
+| `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), the four HomePod identifiers (`homepodmodel.go`, `HomePodModelName`), the Apple TV identifiers (`appletvmodel.go`, `AppleTVModelName`), and the top-display capability gate (`TopDisplayCapable`) used by the engine's lamp and stereo-group paths |
 | `internal/lamp` | Six three-color palette templates whose 600×600 carriers are flat color fields, the Lab k-means cover palette used by the preview (`cover.go`), and a lazy per-palette JPEG cache |
 | `internal/receivers` | The receiver registry: `receivers.json` store (atomic, versioned, single writer), the pure merge/visibility/auto-target/latency functions, the local-receiver rule (forced hidden, no auto-connect), the manual-receiver spec, the settings migration, the cached stereo members and cached-device builder, the stereo-combo rows (a combo entry links two member keys; the merge synthesizes one stereo-group row over the members' own rows, and `DropLinked` hides the member rows at the projection point), and the duplicate policy. Rows key by deviceid, `stereo:<tsid>`, `combo:<hex>`, or `m:<uuid>` |
 | `internal/nowplaying` | Windows SMTC reader (sessions, media properties, timeline, artwork) with shell-resolved app names and icons (`appidentity_windows.go`); macOS reads the system session through the vendored MediaRemote adapter (`nowplaying_darwin.go`, `native/mediaremote-adapter`) with LaunchServices identity; transport commands (per-platform build split) |
@@ -182,11 +182,11 @@ the slowest member's effective latency. The tray, the connection page, the
 settings sidebar, and the playback head's latency line read that layer instead
 of a single selected device; the flyout already renders one row per member.
 The connection page draws two sections from it: 已连接设备 lists the members
-with their channel, volume, and state, naming retransmits and underruns only
-when notable, and 本次连接 reads `Snapshot.Diagnostics` for uptime, stability,
-the session retransmit share, and reconnects while the session streams. A
-dropped member leaves the list and appears as the engine notice's reconnect
-row. Neither card restates a setting or a device constant. Two selection
+with their channel, volume, and state, naming retransmits and trailing-window
+underruns only when notable, and 本次连接 reads `Snapshot.Diagnostics` for
+uptime, stability, the session retransmit share, and reconnects while the
+session streams. A dropped member leaves the list and appears as the engine
+notice's reconnect row. Neither card restates a setting or a device constant. Two selection
 semantics stay distinct: the engine's `SelectedID` is the primary target — the
 session's first key, which guards the reconnect policy and anchors the tray's
 retry — while the app's `selID` is the panel's view selection, seeded from the
@@ -199,18 +199,26 @@ engine calls it on the event loop and folds it once per publish. An underrun
 is a packet padded with silence while the ring was still being fed real
 audio — roughly two start cushions after the last fed packet; padding over an
 idle source is the stream's correct output and stays uncounted, so connecting
-with nothing playing reads zero. The engine
-owns the group rules: Wi-Fi, late ticks, and buffer take the worst member,
-resends and underruns sum, the overflow figure sums the members' session
-drops, and stability uses the max drop the connection card already shows. A
-stereo pair reports the oldest member's sync age, and `SyncValid` is false
-when any member has not sent a timing packet. The group shape comes from the
+with nothing playing reads zero. The engine owns the group rules: Wi-Fi, late
+ticks, and buffer take the worst member, resends sum, and the dropped-sample
+source sums the member rings' session drops. A stereo pair reports the oldest
+member's sync age, and `SyncValid` is false when any member has not sent a
+timing packet. The group shape comes from the
 plan: one stereo target reports `GroupStereo`, one single `GroupSingle`, and
-more than one target `GroupCohort` with the sender count as its size. The
-engine folds the model on
-each snapshot publish; no UI consumes it yet. The
-Wi-Fi object is the
-stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and
+more than one target `GroupCohort` with the sender count as its size.
+
+The stability verdict is a trailing-window reading, not a session total.
+`sessionStability` (`internal/engine/stability.go`) samples each sender's
+cumulative underruns and the session's dropped-sample count once per publish.
+`RecentUnderruns` and `RecentDropped` are the growth over the last 60 seconds,
+and `Degraded` reads only those; `TargetControl.Health.RecentUnderruns` uses
+the same per-member samples. Joining a receiver or rebuilding the cohort can
+pad a packet or two with silence, and that blip stops reading as 有卡顿 once
+it ages out. A counter that moves backwards means its sender session
+restarted, so its window starts over. While a session streams the engine
+publishes diagnostics every 5 seconds (`statsWake`), which is what expires a
+window on a quiet session; the engine folds the model on each snapshot
+publish. The Wi-Fi object is the stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and
 `wifiBand` 1/2/3 for 2.4/5/6 GHz); it is a device-side snapshot that can be up
 to 30 minutes old, and a missing object reads unknown.
 
@@ -257,9 +265,10 @@ per-device delay data and the `UpdateReceiver` delay path for a later UI. The
 per-device delay is the sync control across device types. The settings
 receiver row keeps the volume slider and the channel segment; the per-device
 delay row was removed from settings at the user's request. The flyout's live
-device rows carry each target's volume slider and an icon-only channel button;
-the playback card keeps the latency switch and is left out when it has
-neither media nor that row.
+device rows carry each target's volume slider, a single receiver's row adds
+the icon-only channel button, and a stereo target draws no channel control
+because its members play one side each; the playback card keeps the latency
+switch and is left out when it has neither media nor that row.
 
 Volume and stereo side are per target. `buildPlan` resolves each target's
 volume from `VolumeByDevice` and its channel from the registry entry, forcing
@@ -269,8 +278,8 @@ construction; a target with no remembered value adopts each member's reported
 controls that target and names it; a hardware knob report updates only that
 target's value. The row's speaker button mutes by taking the target volume to
 zero and restores the level it remembered in the app (`mutedVolume`, session
-state only). The row's channel button cycles stereo → left → right and saves
-the patch. A row's 断开连接 sends `DisconnectTarget`: the engine drops that key,
+state only). A single receiver's channel button cycles stereo → left → right
+and saves the patch; a stereo target has no channel button. A row's 断开连接 sends `DisconnectTarget`: the engine drops that key,
 rebuilds the cohort with the rest while holding the mute, and the last key
 takes the full-disconnect path. The flyout draws a member's mixer for as long
 as the target is a member, so a rebuild never takes an established row's
@@ -318,7 +327,15 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
    connect before discovery answers; discovery refreshes the view in
    parallel. A remembered pair whose members both advertise as standalone
    receivers is skipped (`autoconnect.go`), because the user unpaired it; the
-   launch starts idle so one receiver can be connected and the other added.
+   launch starts idle so one receiver can be connected and the other added. A
+   flagged row with no address holds the launch for discovery up to
+   `autoPendingWait` (15 s), then drops with a log line and the rest launch;
+   the flag stays on the dropped row for the next app start. The cohort's
+   per-member `forward` goroutine stamps every event with the member whose
+   sockets it arrived on, so a receiver that answers UDP from an interface
+   other than the dialed one still reaches its own sender in a multi-member
+   session; `HandleEvent` routes by that stamped host and drops only an
+   event no member claims.
 3. The sender runs the protocol: pair-setup (transient / on-screen PIN /
    receiver password) → pair-verify → encrypted control channel →
    `GET /info` → session SETUP (a password-protected Mac answers 401 and

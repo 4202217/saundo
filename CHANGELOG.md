@@ -5,6 +5,81 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## 0.6.5 - 2026-11-22
+
+### Added
+
+- Multi-device playback. One capture streams to several receivers at once as
+  a member set: each target gets its own flyout row with its own volume and
+  a stereo, left, or right channel; adding, cancelling, or disconnecting one
+  target rebuilds the rest without ending the session. A member that dies
+  leaves the session and the survivors keep playing, with a notice bar
+  naming the loss and offering a retry. The connection page states the
+  session: the connected devices with their channel and state, and the
+  measured health of this connection.
+- Software stereo combos. On the receivers page, link any two AirPlay 2
+  receivers into one stereo target, across the models and generations
+  Apple's official pairing won't mix: playback order with a hot side swap,
+  one volume for both, in-place editing and unlink, and a launch
+  auto-connect that starts the combo. An official stereo pair made in the
+  Apple Home app wins over a combo of the same speakers: the combo reads
+  Unavailable until the pair is dissolved, and its members return as
+  standalone rows.
+- A Model detail switch on the receivers page. Off by default, it hides the
+  parenthetical in model names: MacBook Air (M2, 2022) becomes MacBook Air.
+
+### Changed
+
+- Launch auto-connect accepts several receivers. Toggling one receiver no
+  longer clears the others; the launch connects every flagged receiver as
+  one cohort. A receiver linked into a combo hands its flag to the combo.
+- The stability verdict and the retransmit and underrun counters read the
+  trailing 60 seconds, so a join's padding blip clears instead of pinning
+  the card for the whole session.
+- Receiver rows show the state their title needs: a stereo pair's online
+  count, the password and authentication chips, and the launch chip; the
+  second line carries the address, channel, model, and system version. The
+  flyout is the only surface that keeps model identifiers.
+- The receivers page gives each section its create action: standalone
+  receivers add from the section head, stereo combos create there, and an
+  empty section keeps one dashed row. The enabled section is renamed
+  Standalone receivers.
+- The flyout playback head shows only the effective latency; the codec and
+  sync notes leave the line. Flyout rows drop their selection tint: rows
+  are peers, and the device section head carries Disconnect all for two or
+  more live targets.
+- The flyout's latency segments center their icon-and-label pairs,
+  matching the lamp, channel, and cover controls.
+
+### Fixed
+
+- Launch auto-connect no longer waits forever for a flagged receiver that
+  never reports an address: after a grace period it drops that row and
+  connects the rest, and the dropped row keeps its flag for the next start.
+- A receiver that answers from more than one network address keeps its event
+  replies inside a multi-device session: the cohort routes them by the
+  connection they arrived on, not by the address it dialed.
+- Connecting with nothing playing no longer reports phantom underruns:
+  silence padding counts only while the ring is being fed.
+- A receiver that refuses its saved password opens the password prompt
+  instead of tearing the session down; the survivors keep playing and no
+  retry ladder runs.
+- Dissolving an official stereo pair now de-synthesizes the pair within one
+  discovery cycle, and a member's own row returns when the pair stops
+  advertising.
+- Apple Music's idle thumbnail, a transparent frame with no opaque pixel,
+  no longer draws a white line around the cover placeholder.
+- Combo corrections: the create picker excludes the receiver the other side
+  already holds, a stereo target drops its channel button, swapping sides
+  twice restores the original sides, a pair member cannot be linked or
+  launched alone, and adding a receiver that just went offline is refused
+  before a healthy cohort stops.
+- The audit's surface fixes: the combo create entry waits for two eligible
+  receivers, a refused save, link, or add reports on the receivers page, a
+  dismissed or expired notice resizes the flyout, a collapsed offline combo
+  reads Offline, and the tray draws the mixed-size combo glyph.
+- Chips and mixer marks sit level with the text beside them.
+
 ## 0.6.4 - 2026-11-17
 
 ### Added

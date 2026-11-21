@@ -263,6 +263,10 @@ type Engine struct {
 	// sessionStartedAt is when the current session reached streaming, for
 	// diagnostics uptime. Zero when no session streams.
 	sessionStartedAt time.Time
+	// stability keeps the trailing-window trouble the connection card reads,
+	// and statsAt is the next diagnostics publish while a session streams.
+	stability sessionStability
+	statsAt   time.Time
 	// reconnectCount is how many automatic retries the current target has
 	// needed. A user connect or disconnect starts a new count.
 	reconnectCount       int
@@ -298,6 +302,7 @@ type Engine struct {
 	connectAuto          bool
 	pauseUnsupported     bool
 	autoTried            bool
+	autoPendingAt        time.Time
 
 	// track is the last Now Playing payload, replayed to a rebuilt cohort.
 	track trackInfo
@@ -703,14 +708,26 @@ func (e *Engine) nextWake() time.Time {
 	if !e.captureRetryAt.IsZero() && (wake.IsZero() || e.captureRetryAt.Before(wake)) {
 		wake = e.captureRetryAt
 	}
+	if stats := e.statsWake(); !stats.IsZero() && (wake.IsZero() || stats.Before(wake)) {
+		wake = stats
+	}
 	if !e.settingsDirtyAt.IsZero() && (wake.IsZero() || e.settingsDirtyAt.Before(wake)) {
 		wake = e.settingsDirtyAt
+	}
+	if w := e.autoPendingWake(); !w.IsZero() && (wake.IsZero() || w.Before(wake)) {
+		wake = w
 	}
 	return wake
 }
 
 func (e *Engine) onWake() {
 	now := e.now()
+	if e.autoPendingDue(now) {
+		e.maybeAutoConnect()
+		if e.tr != nil {
+			return // the launch opened a session; its own deadlines take over
+		}
+	}
 	if e.reconnectWanted && !e.reconnectAt.IsZero() && !now.Before(e.reconnectAt) {
 		e.attemptReconnect()
 		return
@@ -724,6 +741,9 @@ func (e *Engine) onWake() {
 	e.updateIdlePhase(now)
 	if e.tr != nil {
 		e.tr.Tick()
+	}
+	if e.statsDue(now) {
+		e.publish()
 	}
 }
 
@@ -1119,12 +1139,8 @@ func (e *Engine) handleCommand(cmd command) {
 		e.handleUpdateReceiver(cmd.deviceID, cmd.patch)
 	case cmdRemoveReceiver:
 		e.handleRemoveReceiver(cmd.deviceID)
-	case cmdLinkReceivers:
-		e.handleLinkReceivers(cmd.ids, cmd.name)
-	case cmdUnlinkCombo:
-		e.handleUnlinkCombo(cmd.deviceID)
-	case cmdSwapComboSides:
-		e.handleSwapComboSides(cmd.deviceID)
+	case cmdLinkReceivers, cmdUpdateCombo, cmdUnlinkCombo, cmdSwapComboSides:
+		e.dispatchCombo(cmd)
 	}
 }
 
@@ -2196,71 +2212,6 @@ func (e *Engine) publish() {
 	if e.onChange != nil {
 		e.onChange(snap)
 	}
-}
-
-// buildDiagnostics folds the active transport's per-member counters into the
-// page model. The group shape comes from the plan, not from the stats' length,
-// so a pair whose member is missing still reads as a pair. GroupSize counts
-// senders, because the stats are per sender.
-func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
-	kind, size, name := GroupNone, 0, ""
-	switch {
-	case len(e.plan.targets) > 1:
-		kind = GroupCohort
-		size = len(e.plan.members)
-		name = e.plan.connectedName()
-	case len(e.plan.targets) == 1:
-		t := e.plan.targets[0]
-		if t.stereo {
-			kind = GroupStereo
-			size = t.count
-			name = t.groupName
-			if name == "" {
-				name = t.name
-			}
-		} else {
-			kind = GroupSingle
-			size = 1
-		}
-	default:
-		// Idle keeps showing the last target's shape from the merged rows.
-		if dev, ok := e.find(e.selectedID); ok {
-			if dev.IsStereoGroup() {
-				kind = GroupStereo
-				size = len(dev.Members)
-				name = dev.GroupName
-				if name == "" {
-					name = dev.Name
-				}
-			} else {
-				kind = GroupSingle
-				size = 1
-			}
-		}
-	}
-	var uptime time.Duration
-	if !e.sessionStartedAt.IsZero() {
-		uptime = now.Sub(e.sessionStartedAt)
-		if uptime < 0 {
-			uptime = 0
-		}
-	}
-	var members []sender.Stats
-	if e.tr != nil {
-		members = e.tr.Stats()
-	}
-	overflow := dropped
-	if len(e.memberRings) > 0 {
-		// Member rings exist for every cohort, including one sender. The
-		// group's 欠载 / 溢出 row sums the members; DroppedSamples stays the
-		// max because stability is a session state, not a total.
-		overflow = e.memberDropped
-	}
-	d := aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, overflow, now)
-	if e.tr != nil {
-		d.DroppedEvents = e.tr.DroppedEvents()
-	}
-	return d
 }
 
 func clamp(v, lo, hi float64) float64 {

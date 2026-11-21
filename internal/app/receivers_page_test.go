@@ -2,6 +2,7 @@ package app
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,7 +37,7 @@ func receiverFixture() *App {
 	}}
 	a.selID = "AA:00"
 	a.snap.Devices = []device.Device{
-		{ID: "AA:00", Name: "客厅 HomePod", Host: "192.168.1.20", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
+		{ID: "AA:00", Name: "客厅 HomePod", Host: "192.168.1.20", Port: 7000, Model: "AudioAccessory5,1", Family: device.FamilyHomePod, Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
 	}
 	a.snap.Receivers = []receivers.View{
 		{
@@ -75,7 +76,7 @@ func receiverFixture() *App {
 			Model: "AudioAccessory5,1", Online: true, Stereo: true,
 			Channel: receivers.ChannelStereo,
 			Device: device.Device{ID: "stereo:1", Name: "客厅立体声", Model: "AudioAccessory5,1", StereoID: "1",
-				Members: []device.Device{{ID: "AA:10", Name: "L"}, {ID: "AA:11", Name: "R"}}, Online: true},
+				Members: []device.Device{{ID: "AA:10", Name: "L", Online: true}, {ID: "AA:11", Name: "R", Online: true}}, Online: true},
 			Entry: receivers.Entry{Key: "stereo:1", Kind: receivers.KindDiscovered, Name: "客厅立体声"},
 		},
 	}
@@ -90,15 +91,18 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	for _, want := range []string{
 		"接收器", "管理接收器、自动连接、显示与声道。",
 		locales.ReceiverGroupEnabled(), "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
-		"启动时", "手动添加", locales.ReceiverAddAction(), locales.ReceiverPairAddTitle(), "已隐藏", "卧室 HomePod mini",
-		"AudioAccessory5,1 · 192.168.1.20:7000",
-		"AirPort Express · 192.168.1.32:5000",
-		"AudioAccessory5,1 · 立体声组 2/2",
-		"AudioAccessory5,1 · 离线",
+		"启动时连接", "手动添加", locales.ReceiverAddAction(), locales.ReceiverPairAddTitle(), "已隐藏", "卧室 HomePod mini",
+		locales.DeviceAuthSetup(),
+		"192.168.1.20:7000 · 立体声 · HomePod mini",
+		"192.168.1.32:5000 · 左声道 · AirPort Express",
+		"2/2",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("receiver page is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	if tt.HasText("AudioAccessory5,1") {
+		t.Fatalf("a model code reached the receiver page; texts: %q", tt.Texts())
 	}
 }
 
@@ -541,12 +545,17 @@ func TestReceiverComboRowRendersTheChannelMap(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		locales.ReceiverGroupCombo(), locales.ComboTag(), locales.ComboMapLabel(),
-		locales.ChannelLeft(), locales.ChannelRight(), locales.ComboUnlink(),
+		locales.ChannelLeft(), locales.ChannelRight(), locales.ReceiverEditButton(),
 		locales.VolumeLabel(),
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("combo row is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	// The row offers the edit action; the destructive unlink moved into the
+	// dialog behind it.
+	if tt.HasText(locales.ComboUnlink()) {
+		t.Fatalf("the combo row still offers the unlink action: %q", tt.Texts())
 	}
 	// The combo replaces its members: the singles section has no rows, so its
 	// head carries no action and the add row stands in for the card.
@@ -563,6 +572,13 @@ func TestReceiverComboUnlinkOpensTheConfirmDialog(t *testing.T) {
 	a.page = pageReceivers
 	a.receiverOpen = map[string]bool{"combo:01": true}
 	tt := ui.NewTester(a.settingsView, 720, 560)
+	if err := tt.Click(locales.ReceiverEditButton()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText(locales.ComboEditTitle()) {
+		t.Fatalf("the edit dialog did not open; texts: %q", tt.Texts())
+	}
 	if err := tt.Click(locales.ComboUnlink()); err != nil {
 		t.Fatal(err)
 	}
@@ -587,19 +603,202 @@ func TestReceiverComboCreateDialogOpensAndNames(t *testing.T) {
 	}
 }
 
-func TestComboMemberSubtitleAvoidsRepeatingTheName(t *testing.T) {
-	members := []device.Device{
-		{Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
-		{Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
+func TestComboDetailUsesMemberNames(t *testing.T) {
+	members := []device.Device{{Name: "HomePod L"}, {Name: "HomePod R"}}
+	if got := comboDetail("客厅立体声", members); got != "HomePod L · HomePod R" {
+		t.Fatalf("custom-name detail = %q, want the member names", got)
 	}
-	if got := comboMemberSubtitle("客厅立体声", members, "fallback"); got != "HomePod L + HomePod R" {
-		t.Fatalf("custom-name sub = %q, want the member names", got)
+	if got := comboDetail("HomePod L · HomePod R", members); got != "" {
+		t.Fatalf("derived-name detail = %q, want no repeat", got)
 	}
-	if got := comboMemberSubtitle("HomePod L + HomePod R", members, "fallback"); got != "AudioAccessory5,1" {
-		t.Fatalf("derived-name sub = %q, want the deduped models", got)
+	if got := comboDetail("客厅立体声", nil); got != "" {
+		t.Fatalf("memberless detail = %q, want a blank line", got)
 	}
-	if got := comboMemberSubtitle("客厅立体声", nil, "fallback"); got != "fallback" {
-		t.Fatalf("memberless sub = %q, want the fallback", got)
+}
+
+func TestReceiverDetailCarriesAddressChannelFamilyAndVersion(t *testing.T) {
+	v := receivers.View{
+		Key: "AA:00", Channel: receivers.ChannelLeft,
+		Device: device.Device{ID: "AA:00", Host: "192.168.1.20", Port: 7000,
+			Family: device.FamilyHomePod, OSVersion: "27.2", Online: true},
+	}
+	if got, want := receiverDetail(v, true), "192.168.1.20:7000 · 左声道 · HomePod · 27.2"; got != want {
+		t.Fatalf("detail = %q, want %q", got, want)
+	}
+	v.Channel = receivers.ChannelRight
+	if got, want := receiverDetail(v, true), "192.168.1.20:7000 · 右声道 · HomePod · 27.2"; got != want {
+		t.Fatalf("right detail = %q, want %q", got, want)
+	}
+	v.Channel = receivers.ChannelStereo
+	if got, want := receiverDetail(v, true), "192.168.1.20:7000 · 立体声 · HomePod · 27.2"; got != want {
+		t.Fatalf("stereo detail = %q, want %q", got, want)
+	}
+	pair := receivers.View{Stereo: true, Device: device.Device{Members: []device.Device{
+		{Host: "192.168.31.46", Port: 7000}, {Host: "192.168.31.164", Port: 7000},
+	}}}
+	if got, want := receiverDetail(pair, true), "192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
+		t.Fatalf("pair detail = %q, want the two member addresses", got)
+	}
+	mini := v
+	mini.Device.Model = "AudioAccessory5,1"
+	if got, want := receiverDetail(mini, true), "192.168.1.20:7000 · 立体声 · HomePod mini · 27.2"; got != want {
+		t.Fatalf("HomePod mini detail = %q, want the marketing name", got)
+	}
+	if got, want := receiverDetail(mini, false), "192.168.1.20:7000 · 立体声 · HomePod mini · 27.2"; got != want {
+		t.Fatalf("detail with model off = %q, want the base name", got)
+	}
+	gen2 := mini
+	gen2.Device.Model = "AudioAccessory6,1"
+	if got, want := receiverDetail(gen2, true), "192.168.1.20:7000 · 立体声 · HomePod (2nd gen) · 27.2"; got != want {
+		t.Fatalf("second-generation HomePod detail = %q, want %q", got, want)
+	}
+	if got, want := receiverDetail(gen2, false), "192.168.1.20:7000 · 立体声 · HomePod · 27.2"; got != want {
+		t.Fatalf("second-generation HomePod detail with model off = %q, want %q", got, want)
+	}
+	mac := mini
+	mac.Device.Model = "Mac14,2"
+	mac.Device.Family = device.FamilyMac
+	if got, want := receiverDetail(mac, true), "192.168.1.20:7000 · 立体声 · MacBook Air (M2, 2022) · 27.2"; got != want {
+		t.Fatalf("Mac detail = %q, want %q", got, want)
+	}
+	if got, want := receiverDetail(mac, false), "192.168.1.20:7000 · 立体声 · MacBook Air · 27.2"; got != want {
+		t.Fatalf("Mac detail with model off = %q, want %q", got, want)
+	}
+	miniPair := receivers.View{Stereo: true, Device: device.Device{
+		Model:   "AudioAccessory5,1",
+		Members: []device.Device{{Host: "192.168.31.46", Port: 7000}, {Host: "192.168.31.164", Port: 7000}},
+	}}
+	if got, want := receiverDetail(miniPair, true), "HomePod mini · 192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
+		t.Fatalf("mini pair detail = %q, want the model before the addresses", got)
+	}
+}
+
+func TestFlyoutDetailDropsTheAddress(t *testing.T) {
+	single := receivers.View{Channel: receivers.ChannelLeft,
+		Device: device.Device{Family: device.FamilyHomePod, OSVersion: "27.2", Online: true}}
+	if got, want := flyoutDetail(single, true), "左声道 · HomePod · 27.2"; got != want {
+		t.Fatalf("single detail = %q, want %q", got, want)
+	}
+	pair := receivers.View{Stereo: true, Channel: receivers.ChannelStereo,
+		Device: device.Device{Model: "Mac14,2", Family: device.FamilyMac, OSVersion: "15.2", Online: true}}
+	if got, want := flyoutDetail(pair, true), "MacBook Air (M2, 2022) · 15.2"; got != want {
+		t.Fatalf("pair detail = %q, want %q", got, want)
+	}
+	if strings.Contains(flyoutDetail(pair, true), "Mac14,2") {
+		t.Fatalf("the flyout detail kept the model identifier")
+	}
+	if got, want := flyoutDetail(pair, false), "MacBook Air · 15.2"; got != want {
+		t.Fatalf("flyout detail with model off = %q, want the base name", got)
+	}
+	mini := receivers.View{Channel: receivers.ChannelLeft,
+		Device: device.Device{Model: "AudioAccessory5,1", Family: device.FamilyHomePod, OSVersion: "27.3", Online: true}}
+	if got, want := flyoutDetail(mini, true), "左声道 · HomePod mini · 27.3"; got != want {
+		t.Fatalf("HomePod mini flyout detail = %q, want %q", got, want)
+	}
+	tv := receivers.View{Channel: receivers.ChannelStereo,
+		Device: device.Device{Model: "AppleTV6,2", Family: device.FamilyAppleTV, Online: true}}
+	if got, want := flyoutDetail(tv, true), "立体声 · Apple TV 4K (1st gen)"; got != want {
+		t.Fatalf("Apple TV flyout detail = %q, want %q", got, want)
+	}
+	unknownTV := tv
+	unknownTV.Device.Model = "AppleTV99,9"
+	if got, want := flyoutDetail(unknownTV, true), "立体声 · Apple TV"; got != want {
+		t.Fatalf("unknown Apple TV detail = %q, want the family fallback", got)
+	}
+	if got, want := flyoutDetail(tv, false), "立体声 · Apple TV 4K"; got != want {
+		t.Fatalf("Apple TV detail with model off = %q, want the base name", got)
+	}
+}
+
+func TestReceiverPageModelDetailSwitch(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	tt := ui.NewTester(a.settingsView, 720, 700)
+	if !tt.HasText(locales.ReceiverModelDetailShort()) || !tt.HasText(locales.ReceiverModelDetail()) ||
+		!tt.HasText(locales.ReceiverModelDetailDesc()) {
+		t.Fatalf("the model-detail switch is missing: %q", tt.Texts())
+	}
+	if err := tt.Click(locales.ReceiverModelDetail()); err != nil {
+		t.Fatalf("model-detail switch click: %v", err)
+	}
+	// The default is off, so the click turns the switch on.
+	if !a.cfg.ModelDetail {
+		t.Fatal("the model-detail switch did not turn on")
+	}
+	for i := range a.snap.Receivers {
+		if a.snap.Receivers[i].Key == "AA:00" {
+			a.snap.Receivers[i].Device.Model = "Mac14,2"
+			a.snap.Receivers[i].Device.Family = device.FamilyMac
+		}
+	}
+	a.cfg.ModelDetail = true
+	tt = ui.NewTester(a.settingsView, 720, 700)
+	if !hasExactText(tt, "192.168.1.20:7000 · 立体声 · MacBook Air (M2, 2022)") {
+		t.Fatalf("the row lost the model detail: %q", tt.Texts())
+	}
+	a.cfg.ModelDetail = false
+	tt = ui.NewTester(a.settingsView, 720, 700)
+	if hasExactText(tt, "192.168.1.20:7000 · 立体声 · MacBook Air (M2, 2022)") {
+		t.Fatalf("the row kept the parenthetical with the switch off: %q", tt.Texts())
+	}
+	if !hasExactText(tt, "192.168.1.20:7000 · 立体声 · MacBook Air") {
+		t.Fatalf("the row lost the base name: %q", tt.Texts())
+	}
+}
+
+func TestInvalidComboRowIsMarked(t *testing.T) {
+	a := flyoutComboFixture()
+	a.page = pageReceivers
+	for i := range a.snap.Receivers {
+		if a.snap.Receivers[i].Key == "combo:01" {
+			a.snap.Receivers[i].Invalid = true
+		}
+	}
+	tt := ui.NewTester(a.settingsView, 720, 700)
+	if !tt.HasText(locales.ComboInvalid()) || !tt.HasText(locales.ComboInvalidReason()) {
+		t.Fatalf("the invalid combo row is not marked: %q", tt.Texts())
+	}
+	if tt.HasText("2/2") {
+		t.Fatalf("the invalid combo still shows an online count: %q", tt.Texts())
+	}
+	// The flyout lists only connectable targets, so the invalid combo is not
+	// a row there at all. The engine's Visible projection drops it; model
+	// that here and assert the other rows still render.
+	a.snap.ActiveTargets = nil
+	a.snap.Targets = nil
+	a.snap.SelectedID = ""
+	a.selID = ""
+	kept := a.snap.Devices[:0]
+	for _, d := range a.snap.Devices {
+		if d.ID != "combo:01" {
+			kept = append(kept, d)
+		}
+	}
+	a.snap.Devices = kept
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	if tt.HasText(locales.ComboInvalid()) || tt.HasText(locales.ComboInvalidReason()) || tt.HasText(locales.ComboTag()) {
+		t.Fatalf("the flyout still lists the invalid combo: %q", tt.Texts())
+	}
+	if !tt.HasText("MacBook Air") || !tt.HasText("卧室") {
+		t.Fatalf("the flyout dropped connectable rows with the invalid combo: %q", tt.Texts())
+	}
+}
+
+func TestReceiverAuthPillStates(t *testing.T) {
+	a := receiverFixture()
+	needs := receivers.View{Key: "AA:00", Device: device.Device{ID: "AA:00", Auth: device.AuthHAPPassword}}
+	if pill := a.receiverAuthPill(needs); !pill.ok || pill.text != locales.DeviceNeedsPassword() || pill.icon != iconLock {
+		t.Fatalf("needs pill = %+v", pill)
+	}
+	saved := needs
+	saved.PasswordSet = true
+	if pill := a.receiverAuthPill(saved); !pill.ok || pill.text != locales.DevicePasswordSaved() || pill.icon != iconKey {
+		t.Fatalf("saved pill = %+v", pill)
+	}
+	a.snap.ErrorKey = engine.ErrPasswordRejected
+	a.snap.PasswordTargetID = "AA:00"
+	if pill := a.receiverAuthPill(saved); !pill.ok || pill.text != locales.DevicePasswordError() || pill.icon != iconAlert {
+		t.Fatalf("error pill = %+v", pill)
 	}
 }
 
@@ -639,14 +838,14 @@ func flyoutComboFixture() *App {
 	return a
 }
 
-func TestFlyoutComboRowKeepsItsNameBesideTheTag(t *testing.T) {
+func TestFlyoutComboRowKeepsItsNameBesideTheLead(t *testing.T) {
 	a := flyoutComboFixture()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if !tt.HasText("HomePod L + HomePod R") {
-		t.Fatalf("the combo name truncated beside the tag: %q", tt.Texts())
+		t.Fatalf("the combo name truncated beside the lead: %q", tt.Texts())
 	}
-	if !tt.HasText(locales.ComboTag()) {
-		t.Fatalf("the combo tag missing: %q", tt.Texts())
+	if tt.HasText(locales.ComboTag()) {
+		t.Fatalf("the connected combo row still carries the combo chip: %q", tt.Texts())
 	}
 	if !tt.HasText(locales.VolumeFor("HomePod L + HomePod R")) {
 		t.Fatalf("the combo mixer lost its volume: %q", tt.Texts())

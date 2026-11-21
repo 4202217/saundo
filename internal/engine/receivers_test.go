@@ -232,6 +232,40 @@ func TestAutoConnectConnectsRememberedDeviceOnceOnline(t *testing.T) {
 	}
 }
 
+// TestAutoConnectDropsASilentFlaggedReceiverAndLaunchesTheRest pins the
+// launch deadline: a flagged row with no address holds the launch for
+// discovery up to autoPendingWait, then drops with a line and the rest
+// launch. Before the deadline one silent receiver blocked the whole flagged
+// set forever, and nothing auto-connected at all.
+func TestAutoConnectDropsASilentFlaggedReceiverAndLaunchesTheRest(t *testing.T) {
+	h := newHarnessWithRegistry(t)
+	// The silent row: remembered and flagged, but discovery has never
+	// answered for it, so it has no endpoint to launch from.
+	h.e.reg.Put(receivers.Entry{Key: "silent", Kind: receivers.KindDiscovered, Name: "Silent", AutoConnect: true})
+	h.e.reg.Put(receivers.Entry{Key: testDeviceID, Kind: receivers.KindDiscovered, AutoConnect: true})
+	h.e.setDevices([]device.Device{onlineDevice()})
+
+	if h.sessions != 0 {
+		t.Fatal("the launch started while a flagged row had no address")
+	}
+	h.now = h.now.Add(autoPendingWait / 2)
+	h.e.onWake()
+	if h.sessions != 0 {
+		t.Fatal("the deadline dropped the silent row early")
+	}
+	h.now = h.now.Add(autoPendingWait)
+	h.e.onWake()
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the ready row launched past the deadline", h.sessions)
+	}
+	if got := h.e.plan.keys(); len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("plan = %v, want the ready row only", got)
+	}
+	if n := countLogLines(h, "no address after"); n != 1 {
+		t.Fatalf("silent-row log lines = %d, want 1", n)
+	}
+}
+
 // TestAutoConnectSkipsAStaleStereoPair pins the launch after the user unpaired
 // a remembered pair: the registry keeps the pair's auto-connect flag, but
 // discovery now advertises both members as standalone receivers. The launch

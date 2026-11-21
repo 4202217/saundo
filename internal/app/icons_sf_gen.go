@@ -562,5 +562,8 @@ func stereoIconKey(d device.Device, stereo bool) string {
 // isHomePodModel reports whether the model identifier names a HomePod.
 func isHomePodModel(model string) bool { return strings.HasPrefix(model, "AudioAccessory") }
 
-// isMiniModel reports whether the model identifier names a HomePod mini.
-func isMiniModel(model string) bool { return strings.HasPrefix(model, "AudioAccessory5") }
+// isMiniModel reports whether the model identifier names a HomePod mini: the
+// 2020 model and the 2026 mini 2.
+func isMiniModel(model string) bool {
+	return strings.HasPrefix(model, "AudioAccessory5") || strings.HasPrefix(model, "AudioAccessory11")
+}

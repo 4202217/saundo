@@ -39,37 +39,110 @@ type Diagnostics struct {
 	HasStats    bool
 	Retransmits uint64
 	LateTicks   uint64
-	Underruns   uint64
 	SentBlocks  uint64
 	SendErrors  uint64
 	// DroppedEvents is how many host notifications the session's event queue
 	// discarded, summed across stereo members.
 	DroppedEvents uint64
-	// Overflow is the session's dropped sample count, already the worst
-	// member's when the target is a stereo pair.
-	Overflow     uint64
-	SendBufferMS float64
-	BufferValid  bool
-	WiFi         sender.WiFiMetrics
-	// Degraded is true when the session dropped samples or padded an audio
-	// packet with silence.
+	// RecentUnderruns and RecentDropped are the trailing stability window's
+	// counts: audio packets padded with silence, and samples the capture
+	// dropped, summed across members. The verdict reads only this span, so a
+	// join blip stops reading as stutter once it ages out.
+	RecentUnderruns uint64
+	RecentDropped   uint64
+	SendBufferMS    float64
+	BufferValid     bool
+	WiFi            sender.WiFiMetrics
+	// Degraded is true when the stability window saw a dropped sample, a
+	// packet padded with silence, or a refused audio datagram.
 	Degraded bool
 }
 
+// buildDiagnostics folds the active transport's per-member counters into the
+// page model. The group shape comes from the plan, not from the stats' length,
+// so a pair whose member is missing still reads as a pair. GroupSize counts
+// senders, because the stats are per sender.
+func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
+	kind, size, name := GroupNone, 0, ""
+	switch {
+	case len(e.plan.targets) > 1:
+		kind = GroupCohort
+		size = len(e.plan.members)
+		name = e.plan.connectedName()
+	case len(e.plan.targets) == 1:
+		t := e.plan.targets[0]
+		if t.stereo {
+			kind = GroupStereo
+			size = t.count
+			name = t.groupName
+			if name == "" {
+				name = t.name
+			}
+		} else {
+			kind = GroupSingle
+			size = 1
+		}
+	default:
+		// Idle keeps showing the last target's shape from the merged rows.
+		if dev, ok := e.find(e.selectedID); ok {
+			if dev.IsStereoGroup() {
+				kind = GroupStereo
+				size = len(dev.Members)
+				name = dev.GroupName
+				if name == "" {
+					name = dev.Name
+				}
+			} else {
+				kind = GroupSingle
+				size = 1
+			}
+		}
+	}
+	var uptime time.Duration
+	if !e.sessionStartedAt.IsZero() {
+		uptime = now.Sub(e.sessionStartedAt)
+		if uptime < 0 {
+			uptime = 0
+		}
+	}
+	var members []sender.Stats
+	if e.tr != nil {
+		members = e.tr.Stats()
+	}
+	overflow := dropped
+	if len(e.memberRings) > 0 {
+		// Member rings exist for every cohort, including one sender. The
+		// group's 欠载 / 溢出 row sums the members; DroppedSamples stays the
+		// max because stability is a session state, not a total.
+		overflow = e.memberDropped
+	}
+	if e.tr != nil {
+		e.stability.observe(now, members, overflow)
+	} else {
+		e.stability.reset()
+	}
+	d := aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, e.stability.recent, now)
+	if e.tr != nil {
+		d.DroppedEvents = e.tr.DroppedEvents()
+	}
+	return d
+}
+
 // aggregateDiagnostics folds the members' sender stats into one model.
-// The dropped count comes from the engine's session accounting, which already
-// scopes it to the session and takes the worst member.
+// recent is the trailing-window evidence from sessionStability; lifetime
+// counters that it does not window stay in their own fields.
 func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int, groupName string,
-	reconnects int, sessionUptime time.Duration, dropped uint64, now time.Time) Diagnostics {
+	reconnects int, sessionUptime time.Duration, recent stabilityCounts, now time.Time) Diagnostics {
 	d := Diagnostics{
-		Group:         group,
-		GroupSize:     groupSize,
-		GroupName:     groupName,
-		Reconnects:    reconnects,
-		SessionUptime: sessionUptime,
-		Overflow:      dropped,
-		Degraded:      dropped > 0,
-		HasStats:      len(members) > 0,
+		Group:           group,
+		GroupSize:       groupSize,
+		GroupName:       groupName,
+		Reconnects:      reconnects,
+		SessionUptime:   sessionUptime,
+		RecentUnderruns: recent.Underruns,
+		RecentDropped:   recent.Dropped,
+		Degraded:        recent.Underruns > 0 || recent.Dropped > 0 || recent.SendErrors > 0,
+		HasStats:        len(members) > 0,
 	}
 	if len(members) == 0 {
 		return d
@@ -89,7 +162,6 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 			wifiAll = false
 		}
 		d.Retransmits += m.Retransmits
-		d.Underruns += m.Underruns
 		d.SentBlocks += m.SentBlocks
 		d.SendErrors += m.SendErrors
 		if m.LateTicks > d.LateTicks {
@@ -122,9 +194,6 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 		if d.SyncAge < 0 {
 			d.SyncAge = 0
 		}
-	}
-	if d.Underruns > 0 || d.SendErrors > 0 {
-		d.Degraded = true
 	}
 	return d
 }

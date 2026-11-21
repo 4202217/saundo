@@ -12,20 +12,30 @@
   Keep the tokens, flyout chrome, toolbar, and helpers.
 
   The flyout is 420 wide. Its height follows flyoutHeightFor in
-  internal/app/flyout.go: base 439 for three device rows, 62 less because the
-  media card replaces the old Now Playing row, 90 for the permanent ambient
-  section, +150 while a media session exists, +44 for the latency row, +48 for
-  the connection error bar, +48 for the credential-recovery notice, and +53
+  internal/app/flyout_height.go: base 438 for three device rows (the constant
+  still subtracts the retired 62-DIP Now Playing row), 66-DIP device rows,
+  a 141 empty card, 90 for the permanent ambient section, +150 while a media
+  session exists, +44 for the latency row, +52 for the connection error bar,
+  +52 for the credential-recovery notice, +52 for the session notice, and +53
   for the expanded ambient grid (flyoutHeightForState). The device card and
   the playback card touch through the body's 8 DIP gap; there is no flexible
   spacer.
+
+  The device card lists one row per active target: a session member's row is
+  a compact mixer (name line, then that target's volume slider and percent
+  with a mute speaker button), a plain row carries the second line
+  (channel · model · system version, or the combo's member names). Rows carry
+  no selection tint; the trailing 92-DIP action column states membership with
+  取消 / 连接 / 断开连接 / 重试. An official-pair or combo lead shows a
+  non-interactive stereo mark; a plain combo row carries the 立体声组合 tag.
+  The section head carries 全部断开 while two or more targets are live.
 
   Render:
     chrome --headless=new --hide-scrollbars --window-size=1400,900 \
       --screenshot=.audit/previews/<topic>.png file:///.../flyout.html
 
   Headless shots can select a state from the URL:
-    ?state=idle|streaming|standby|empty|error|credential&lang=zh|en&dark=0|1
+    ?state=idle|streaming|notice|standby|empty|error|credential&lang=zh|en&dark=0|1
     &latency=0|1&media=0|1&lamp=cover|template|expanded&zoom=1|1.25|1.5
 -->
 <style>
@@ -165,12 +175,11 @@
   }
   .device-card { flex: none; }
   .device-row {
-    height: 56px; display: flex; align-items: center; gap: 10px;
+    height: 66px; display: flex; align-items: center; gap: 10px;
     padding: 9px 12px;
   }
   .device-row + .device-row { border-top: 1px solid var(--line2); }
-  .device-row.selected { background: var(--sel); }
-  .device-row:hover:not(.selected) { background: var(--card-hover); }
+  .device-row:hover { background: var(--card-hover); }
   .device-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
   .glyph {
     position: relative; width: 30px; height: 30px; flex: none;
@@ -178,16 +187,33 @@
     border-radius: 15px; background: var(--pill); color: var(--fg2);
   }
   .glyph .icon { width: 16px; height: 16px; }
-  .device-row.selected .glyph { background: var(--card); color: var(--accent); }
   .glyph .online {
     position: absolute; right: -1px; bottom: -1px;
     width: 9px; height: 9px; border-radius: 50%;
     background: var(--green); box-shadow: 0 0 0 2px var(--card);
   }
-  .device-row.selected .glyph .online { box-shadow: 0 0 0 2px var(--sel); }
   .namecol { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+  .name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .name { font-size: 13px; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .channel-ic { width: 16px; height: 16px; flex: none; color: var(--fg2); }
+  .channel-ic svg { display: block; width: 100%; height: 100%; }
+  .stereo-mark { width: 16px; height: 16px; flex: none; color: var(--fg2); }
+  .stereo-mark svg { display: block; width: 100%; height: 100%; }
   .sub { font-size: 11.5px; line-height: 1.35; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mixer { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .speaker-btn {
+    width: 22px; height: 22px; flex: none; border-radius: 11px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--fg2); margin: 0 -3px;
+  }
+  .speaker-btn:hover { background: var(--pill); }
+  .speaker-btn .icon { width: 16px; height: 16px; }
+  .mixer .range { flex: 1; }
+  .mixer-value {
+    width: 34px; flex: none; text-align: right;
+    font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .action-col { width: 92px; flex: none; display: flex; justify-content: flex-end; }
   .row-action {
     height: 26px; flex: none; display: inline-flex; align-items: center; gap: 5px;
     padding: 0 8px; border-radius: 13px;
@@ -199,6 +225,14 @@
   .row-action.muted { color: var(--muted); }
   .row-action.faint { color: var(--faint); }
   .row-action:hover { background: var(--pill); }
+  .notice-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px; min-height: 44px; padding: 8px 10px; border-radius: 8px;
+    background: var(--accent-soft); color: var(--accent); font-size: 11.5px;
+  }
+  .notice-bar.neutral { background: var(--pill); color: var(--fg2); }
+  .notice-bar .label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .notice-bar .icon { width: 13px; height: 13px; flex: none; }
 
   .empty-card {
     height: 141px; display: flex; flex-direction: column;
@@ -416,6 +450,9 @@ const ICON = {
   latencyStandard: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
   latencyStable: '<svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></g></svg>',
   sliders: '<svg viewBox="0 0 20 20" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></g><g fill="currentColor"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg>',
+  stereo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.4328 17.5208"><g fill="currentColor" fill-opacity=".85"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/></g><g fill="currentColor" fill-opacity=".85"><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.1872 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/></g><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z" fill="currentColor" fill-opacity=".85"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.4v5.6"/><circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/></g></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></g></svg>',
   moon: '<svg viewBox="0 0 20 20" fill="none"><path d="M16 12.4A6.4 6.4 0 0 1 7.6 4a6.5 6.5 0 1 0 8.4 8.4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
 };
 function icon(name, cls = '') { return '<span class="icon ' + cls + '" aria-hidden="true">' + ICON[name] + '</span>'; }
@@ -428,34 +465,42 @@ function esc(value) { return String(value).replace(/[&<>"']/g, c => ({ '&': '&am
 const COPY = {
   zh: {
     appName: '声渡', appSub: 'AIRPLAY 2',
-    devices: '接收器', playback: '播放', volume: '音量',
-    connect: '连接', disconnect: '断开', offline: '离线', retry: '重试',
+    devices: '接收器', playback: '播放',
+    cancel: '取消', connect: '连接', disconnect: '断开连接',
+    offline: '离线', retry: '重试', disconnectAll: '全部断开',
     searching: '正在搜索附近的 AirPlay 接收器…',
     searchHint: '请确认接收器与本机在同一网络，且 AirPlay 已开启。',
     searchAgain: '重新搜索',
-    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · 已同步', latencyNote: '延迟 200 ms',
+    latencyValue: '200 ms',
+    comboTag: '立体声组合', authChip: '需要认证', mute: '静音',
+    noticeLost: 'Apple TV 已断开，其他设备继续播放',
+    noticeJoin: '正在加入 卧室，其他设备暂停一下',
     appMusic: 'Apple Music', track: '夜航', trackArtist: '白鲸电台', elapsed: '2:08', remaining: '-1:56',
     lamp: '氛围灯', turnOff: '关灯', turnOn: '开灯', lampOff: '已关灯',
     lampCover: '封面', lampTemplate: '模板', presetDune: '沙丘',
     standby: '待机',
-    statusIdle: '未连接', statusStreaming: '正在通过 客厅 HomePod 播放', statusStandby: '已待机 · 播放声音即唤醒', statusError: '连接失败',
+    statusIdle: '未连接', statusStreaming: '正在通过 HomePod L + HomePod R 播放', statusStandby: '已待机 · 播放声音即唤醒', statusError: '连接失败',
     errorBar: '连接失败：请求超时',
     credentialBar: '保存的配对已重置，需要重新配对。',
     latencyModes: ['低延迟', '标准', '稳定', '自定义']
   },
   en: {
     appName: 'Saundo', appSub: 'AIRPLAY 2',
-    devices: 'Receivers', playback: 'Playback', volume: 'Volume',
-    connect: 'Connect', disconnect: 'Disconnect', offline: 'Offline', retry: 'Retry',
+    devices: 'Receivers', playback: 'Playback',
+    cancel: 'Cancel', connect: 'Connect', disconnect: 'Disconnect',
+    offline: 'Offline', retry: 'Retry', disconnectAll: 'Disconnect all',
     searching: 'Searching for AirPlay receivers nearby…',
     searchHint: 'Make sure the receiver is on the same network and AirPlay is on.',
     searchAgain: 'Search again',
-    format: 'ALAC · 44.1 kHz', syncPTP: 'PTP · Synced', latencyNote: 'Latency 200 ms',
+    latencyValue: '200 ms',
+    comboTag: 'Stereo combo', authChip: 'Authentication required', mute: 'Mute',
+    noticeLost: 'Apple TV disconnected; the other devices keep playing',
+    noticeJoin: 'Joining Bedroom; the others pause briefly',
     appMusic: 'Apple Music', track: 'Night Ferry', trackArtist: 'Signal Coast', elapsed: '2:08', remaining: '-1:56',
     lamp: 'Ambient light', turnOff: 'Turn off', turnOn: 'Turn on', lampOff: 'Off',
     lampCover: 'Cover', lampTemplate: 'Template', presetDune: 'Dune',
     standby: 'Standby',
-    statusIdle: 'Not connected', statusStreaming: 'Streaming to Living Room HomePod', statusStandby: 'Standby · wakes when sound plays', statusError: 'Connection failed',
+    statusIdle: 'Not connected', statusStreaming: 'Streaming to HomePod L + HomePod R', statusStandby: 'Standby · wakes when sound plays', statusError: 'Connection failed',
     errorBar: 'Connection failed: request timed out',
     credentialBar: 'Saved pairing was reset. Pair again.',
     latencyModes: ['Low', 'Standard', 'Stable', 'Custom']
@@ -465,6 +510,7 @@ const COPY = {
 const STATES = [
   { id: 'idle', zh: '空闲', en: 'Idle' },
   { id: 'streaming', zh: '播放', en: 'Streaming' },
+  { id: 'notice', zh: '成员通知', en: 'Member notice' },
   { id: 'standby', zh: '待机', en: 'Standby' },
   { id: 'empty', zh: '空态', en: 'Empty' },
   { id: 'error', zh: '失败', en: 'Error' },
@@ -472,51 +518,62 @@ const STATES = [
 ];
 
 /* One entry per row; the height follows the count. Edit these for the
-   real fixture. `action` is connect, disconnect, offline, or retry. */
+   real fixture. `action` is cancel, connect, disconnect, offline, or retry.
+   A member row (kind member) draws the compact mixer; a plain row draws the
+   second line. A single member leads with the channel button; a stereo or
+   combo member leads with the non-interactive stereo mark. A plain combo row
+   carries the combo tag and names its members. */
 const DEVICES = {
   idle: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, action: 'connect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: '书房组合', plain: true, tag: true, sub: '客厅 HomePod · 书房 AirPort Express', online: true, action: 'connect' },
+    { name: '书房 AirPort Express', plain: true, sub: '左声道 · AirPort Express', auth: true, online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', plain: true, sub: '立体声 · HomePod mini', online: false, action: 'offline' }
   ],
   streaming: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePod L + HomePod R', member: true, stereoMark: true, volume: .4, online: true, action: 'disconnect' },
+    { name: 'MacBook Air', member: true, channelBtn: true, volume: .3, online: true, action: 'disconnect' },
+    { name: '卧室 HomePod mini', plain: true, sub: '立体声 · HomePod mini', online: false, action: 'offline' }
+  ],
+  notice: [
+    { name: 'HomePod L + HomePod R', member: true, stereoMark: true, volume: .4, online: true, action: 'disconnect' },
+    { name: 'MacBook Air', member: true, channelBtn: true, volume: .3, online: true, action: 'disconnect' },
+    { name: 'Apple TV', plain: true, sub: '立体声 · Apple TV 4K', online: false, action: 'offline' }
   ],
   standby: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePod L + HomePod R', member: true, stereoMark: true, volume: .4, online: true, action: 'disconnect' },
+    { name: 'MacBook Air', plain: true, sub: '立体声 · MacBook Air', online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', plain: true, sub: '立体声 · HomePod mini', online: false, action: 'offline' }
   ],
   empty: [],
   error: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'retry' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: '客厅 HomePod', plain: true, sub: '立体声 · HomePod mini · 27.2', online: true, action: 'retry' },
+    { name: '书房组合', plain: true, tag: true, sub: '客厅 HomePod · 书房 AirPort Express', online: true, action: 'connect' },
+    { name: '卧室 HomePod mini', plain: true, sub: '立体声 · HomePod mini', online: false, action: 'offline' }
   ],
   credential: [
-    { name: '客厅 HomePod', model: 'AudioAccessory5,1', host: '192.168.1.20:7000', online: true, selected: true, action: 'disconnect' },
-    { name: '书房 AirPort Express', model: 'AirPort Express', host: '192.168.1.32:5000', online: true, action: 'connect' },
-    { name: '卧室 HomePod mini', model: 'AudioAccessory5,1', host: '192.168.1.21:7000', online: false, action: 'offline' }
+    { name: 'HomePod L + HomePod R', member: true, stereoMark: true, volume: .4, online: true, action: 'disconnect' },
+    { name: 'MacBook Air', member: true, channelBtn: true, volume: .3, online: true, action: 'disconnect' },
+    { name: '卧室 HomePod mini', plain: true, sub: '立体声 · HomePod mini', online: false, action: 'offline' }
   ]
 };
 
 /* Replace the notes with the stance, states, height rule, and rejects. */
 function notesHTML() {
   return '<h2>设计说明 · Design notes</h2>' +
-    '<p class="notes-intro">Flyout shell template. The width is 420 and the height follows the device count, the media card, the latency row, and the ambient section. Replace the sample devices and copy. The footer carries the face and the state only; the diagnostic log lives on the settings About page. A receiver on this machine never appears in the flyout.</p>' +
+    '<p class="notes-intro">Flyout shell template for the 0.6.5 interface: one row per active target, member rows are compact mixers, rows carry no selection tint, and the playback head shows the latency value alone. Replace the sample devices and copy. The footer carries the face and the state only; the diagnostic log lives on the settings About page. A receiver on this machine never appears in the flyout.</p>' +
     '<p class="kicker">状态 · STATES</p><ul>' +
-      '<li><b>空闲</b> Three devices, none connected; the footer is muted.</li>' +
-      '<li><b>播放</b> The first row is selected; the footer face and the ALAC line name the stream.</li>' +
+      '<li><b>空闲</b> Three targets, none connected; a named combo carries the 立体声组合 tag, the footer is muted.</li>' +
+      '<li><b>播放</b> Two live members: the combo lead shows the stereo mark over its mixer, the single member leads with the channel button; the section head carries 全部断开.</li>' +
+      '<li><b>成员通知</b> A member left while the others kept playing: the 44-DIP accent notice names it with 重试 and a dismiss, and the window grows 52.</li>' +
       '<li><b>待机</b> The stream is idle; the lamp row carries a 待机 chip, the power action reads 开灯, and the footer names the standby.</li>' +
       '<li><b>空态</b> No devices; the 141 high search card.</li>' +
-      '<li><b>失败</b> The 48 high error bar sits under the device card; the row action is Retry.</li>' +
-      '<li><b>配对重置</b> The saved pairing could not be read; the 48 high credential notice sits under the device card, below the error bar when both show, and opens a 380 wide dialog.</li>' +
+      '<li><b>失败</b> The 52 high error bar sits under the device card; the row action is Retry.</li>' +
+      '<li><b>配对重置</b> The saved pairing could not be read; the 52 high credential notice sits under the device card, below the error bar when both show, and opens a 380 wide dialog.</li>' +
     '</ul>' +
     '<p class="kicker">高度 · HEIGHT</p><ul>' +
-      '<li>439 base for three rows, -29 for the empty card, -56 per missing row, -62 for the old Now Playing row, +150 with the media card, +44 with the latency row, +90 for the ambient section, +48 for the error bar, +48 for the credential notice, +53 for the expanded grid.</li>' +
-      '<li>No flexible spacer: the playback and ambient cards hold the same 8 DIP gap as the device and playback cards.</li>' +
+      '<li>438 base for three 66-DIP rows (the constant still subtracts the retired 62-DIP Now Playing row), -66 per missing row, -59 for the empty card, +150 with the media card, +44 with the latency row, +90 for the ambient section, +52 for the error bar, +52 for the credential notice, +52 for the session notice, +53 for the expanded grid.</li>' +
+      '<li>The playback section drops out with neither media nor the latency row, taking its head, borders, and 33-DIP gap with it.</li>' +
+      '<li>No flexible spacer: the cards hold the same 8 DIP gap.</li>' +
     '</ul>' +
     '<p class="kicker">新增文案 · NEW STRINGS</p><ul>' +
       '<li><code>key</code> zh-CN / English</li>' +
@@ -545,23 +602,25 @@ const state = {
 function t(key) { return COPY[state.lang][key]; }
 
 /* Height rule, mirroring flyoutHeightFor and flyoutHeightForState:
-   439 base, 62 less for the old Now Playing row, 90 ambient, +150 media,
-   +44 latency, +48 error, +48 credential notice, +53 for the expanded
-   six-template grid. */
-const FLYOUT_BASE = 439, DEVICE_ROWS = 3, DEVICE_ROW_H = 56, DEVICE_EMPTY = 141;
-const NOW_ROW_H = 62, MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 48;
+   438 base for three 66-DIP rows (still subtracts the retired 62-DIP
+   Now Playing row), 141 empty card, 90 ambient, +150 media, +44 latency,
+   +52 error, +52 credential notice, +52 session notice, +53 for the
+   expanded six-template grid. */
+const FLYOUT_BASE = 438, DEVICE_ROWS = 3, DEVICE_ROW_H = 66, DEVICE_EMPTY = 141;
+const MEDIA_H = 150, LATENCY_H = 44, LAMP_H = 90, ERROR_H = 52, NOTICE_H = 52;
 function deviceCardHeight(n) { return n <= 0 ? DEVICE_EMPTY : Math.min(n, DEVICE_ROWS) * DEVICE_ROW_H + 2; }
 function lampGridHeight(count) {
   const rows = Math.min(Math.max(Math.ceil(count / 10), 1), 4);
   return rows * 30 + (rows - 1) * 8 + 22 + 1;
 }
-function flyoutHeight(n, latency, media, expanded, error, credential) {
-  let h = FLYOUT_BASE - (deviceCardHeight(DEVICE_ROWS) - deviceCardHeight(n)) - NOW_ROW_H;
+function flyoutHeight(n, latency, media, expanded, error, credential, notice) {
+  let h = FLYOUT_BASE - (deviceCardHeight(DEVICE_ROWS) - deviceCardHeight(n));
   if (media) h += MEDIA_H;
   if (latency) h += LATENCY_H;
   h += LAMP_H;
   if (error) h += ERROR_H;
   if (credential) h += ERROR_H;
+  if (notice) h += NOTICE_H;
   if (expanded) h += lampGridHeight(6);
   return h;
 }
@@ -593,27 +652,46 @@ function deviceIcon(model) {
   return 'speaker';
 }
 function actionIcon(action) {
-  return action === 'disconnect' ? 'unlink' : action === 'offline' ? 'slash' : action === 'retry' ? 'refresh' : 'link';
+  return action === 'disconnect' ? 'unlink' : action === 'offline' ? 'slash' : action === 'retry' ? 'refresh' : action === 'cancel' ? 'x' : 'link';
 }
 function actionClass(action) {
   return action === 'disconnect' ? 'strong' : action === 'offline' ? 'muted' : 'accent';
 }
 function deviceRowHTML(device) {
-  const cls = device.selected ? ' selected' : '';
-  const sub = device.model + ' · ' + device.host;
-  return '<div class="device-row' + cls + '">' +
+  let lead = '';
+  if (device.member && device.channelBtn) lead += '<button type="button" class="channel-ic" aria-label="声道">' + ICON.stereo + '</button>';
+  if (device.member && device.stereoMark) lead += '<span class="stereo-mark">' + ICON.stereo + '</span>';
+  let nameLine = lead + '<span class="name">' + esc(device.name) + '</span>';
+  if (device.tag) nameLine += '<span class="chip sm accent">' + esc(t('comboTag')) + '</span>';
+  if (device.auth) nameLine += '<span class="chip sm">' + esc(t('authChip')) + '</span>';
+  let lines;
+  if (device.member) {
+    const pct = Math.round((device.volume || 0) * 100);
+    lines = '<span class="mixer">' +
+      '<button type="button" class="speaker-btn" aria-label="' + esc(t('mute')) + '">' + icon('volume') + '</button>' +
+      '<div class="range" style="--value:' + (device.volume || 0) + '"><span class="range-knob"></span></div>' +
+      '<span class="mixer-value">' + pct + '%</span>' +
+    '</span>';
+  } else {
+    lines = '<span class="sub">' + esc(device.sub || '') + '</span>';
+  }
+  return '<div class="device-row">' +
     '<div class="device-pick">' +
-      '<span class="glyph">' + icon(deviceIcon(device.model)) + (device.online ? '<i class="online"></i>' : '') + '</span>' +
-      '<span class="namecol"><span class="name">' + esc(device.name) + '</span><span class="sub">' + esc(sub) + '</span></span>' +
+      '<span class="glyph">' + icon('speaker') + (device.online ? '<i class="online"></i>' : '') + '</span>' +
+      '<span class="namecol"><span class="name-line">' + nameLine + '</span>' + lines + '</span>' +
     '</div>' +
-    '<button type="button" class="row-action ' + actionClass(device.action) + '">' +
+    '<span class="action-col"><button type="button" class="row-action ' + actionClass(device.action) + '">' +
       icon(actionIcon(device.action)) + esc(t(device.action)) +
-    '</button>' +
+    '</button></span>' +
   '</div>';
 }
 function deviceSectionHTML(devices) {
+  const liveMembers = devices.filter(d => d.member).length;
   const head = '<div class="section-head"><span class="section-label">' + esc(t('devices')) + '</span>' +
-    '<span class="section-note">' + esc(deviceCount(devices.length)) + '</span></div>';
+    '<span class="section-note">' + esc(deviceCount(devices.length)) + '</span>' +
+    (liveMembers >= 2 ? '<button type="button" class="row-action muted" style="margin-left:auto">' +
+      icon('unlink') + esc(t('disconnectAll')) + '</button>' : '') +
+    '</div>';
   let body;
   if (devices.length === 0) {
     body = '<div class="card device-card"><div class="empty-card">' +
@@ -632,6 +710,13 @@ function deviceSectionHTML(devices) {
     body += '<div class="credential-bar"><span class="label">' + esc(t('credentialBar')) + '</span>' +
       icon('chevronRight') + '</div>';
   }
+  if (state.view === 'notice') {
+    body += '<div class="notice-bar"><span class="icon">' + ICON.alert + '</span>' +
+      '<span class="label">' + esc(t('noticeLost')) + '</span>' +
+      '<button type="button" class="row-action accent">' + esc(t('retry')) + '</button>' +
+      '<button type="button" class="row-action muted">' + icon('x') + '</button>' +
+    '</div>';
+  }
   return head + body;
 }
 function deviceCount(n) {
@@ -640,9 +725,7 @@ function deviceCount(n) {
   return n + (n === 1 ? ' receiver' : ' receivers');
 }
 function playbackNote() {
-  let note = t('format');
-  if (state.view === 'streaming' || state.view === 'credential') note += ' · ' + t('syncPTP');
-  return note + ' · ' + t('latencyNote');
+  return t('latencyValue');
 }
 function mediaCardHTML() {
   if (!state.media) return '';
@@ -675,6 +758,7 @@ function mediaCardHTML() {
   '</div>';
 }
 function playbackSectionHTML() {
+  if (!state.media && !state.latency) return '';
   const head = '<div class="section-head"><span class="section-label">' + esc(t('playback')) + '</span>' +
     '<span class="section-note">' + esc(playbackNote()) + '</span></div>';
   let card = '<div class="card playback-card">';
@@ -687,11 +771,7 @@ function playbackSectionHTML() {
       ['latencyLow', 'latencyStandard', 'latencyStable', 'sliders'].map((name, i) =>
         '<button type="button" class="' + (i === 0 ? 'active' : '') + '">' + icon(name) + esc(t('latencyModes')[i]) + '</button>').join('') +
     '</div></div>';
-    card += '<div class="line"></div>';
   }
-  card += '<div class="volume">' + icon('volume') +
-    '<div class="range" role="slider" aria-label="' + esc(t('volume')) + '" style="--value:.65"><span class="range-knob"></span></div>' +
-    '<span class="volume-value">65%</span></div>';
   card += '</div>';
   return head + card;
 }
@@ -727,6 +807,7 @@ function footerHTML() {
   const map = {
     idle: { face: 'faceIdle', status: 'statusIdle', cls: 'muted' },
     streaming: { face: 'faceStream', status: 'statusStreaming', cls: 'green' },
+    notice: { face: 'faceStream', status: 'statusStreaming', cls: 'green' },
     standby: { face: 'faceStream', status: 'statusStandby', cls: 'green' },
     empty: { face: 'faceSearch', status: 'statusIdle', cls: 'muted' },
     error: { face: 'faceError', status: 'statusError', cls: 'red' },
@@ -759,7 +840,7 @@ function render() {
   const devices = DEVICES[state.view] || DEVICES.idle;
   const expanded = state.lamp === 'expanded';
   const height = flyoutHeight(devices.length, state.latency, state.media, expanded,
-    state.view === 'error', state.view === 'credential');
+    state.view === 'error', state.view === 'credential', state.view === 'notice');
   document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
   document.body.classList.toggle('dark', state.dark);
   document.getElementById('brandMark').innerHTML = ICON.mark;
