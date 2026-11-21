@@ -330,7 +330,12 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
    launch starts idle so one receiver can be connected and the other added. A
    flagged row with no address holds the launch for discovery up to
    `autoPendingWait` (15 s), then drops with a log line and the rest launch;
-   the flag stays on the dropped row for the next app start.
+   the flag stays on the dropped row for the next app start. The cohort's
+   per-member `forward` goroutine stamps every event with the member whose
+   sockets it arrived on, so a receiver that answers UDP from an interface
+   other than the dialed one still reaches its own sender in a multi-member
+   session; `HandleEvent` routes by that stamped host and drops only an
+   event no member claims.
 3. The sender runs the protocol: pair-setup (transient / on-screen PIN /
    receiver password) → pair-verify → encrypted control channel →
    `GET /info` → session SETUP (a password-protected Mac answers 401 and

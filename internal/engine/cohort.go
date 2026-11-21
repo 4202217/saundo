@@ -228,6 +228,21 @@ func (c *cohortTransport) memberTargetKey(idx int) string {
 	return ""
 }
 
+// attributeEvent stamps an event with the member that owns the socket it
+// arrived on, which is what HandleEvent routes by. TCP events carry no
+// source address, so the old stamp filled only them; a multi-homed receiver
+// also answers UDP from an interface the plan did not dial, and by source IP
+// such a reply reached no member once a second receiver joined — the same
+// receiver worked alone and lost its control replies in a cohort. The socket
+// the event arrived on is the routing truth: one member's host owns those
+// sockets, so the event belongs to that member whatever the source says.
+// The source port survives, so a timing reply still goes back to the
+// requesting socket, over the dialed interface.
+func attributeEvent(m *cohortMember, ev raopio.Event) raopio.Event {
+	ev.Peer.IP = m.device.Host
+	return ev
+}
+
 // forward merges one member host's events into the cohort stream. One
 // goroutine per member, the only goroutine the cohort adds.
 func (c *cohortTransport) forward(m *cohortMember) {
@@ -236,9 +251,7 @@ func (c *cohortTransport) forward(m *cohortMember) {
 		case <-c.stopCh:
 			return
 		case ev := <-m.host.Events():
-			if ev.Peer.IP == "" {
-				ev.Peer.IP = m.device.Host
-			}
+			ev = attributeEvent(m, ev)
 			select {
 			case c.events <- ev:
 			case <-c.stopCh:
