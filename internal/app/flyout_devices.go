@@ -212,10 +212,12 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 
 // deviceMixer is a member row's two-line content: the channel button and name,
 // then volume and percent. A stereo target draws no channel button — its two
-// members play one side each — so its name starts at the row's lead.
+// members play one side each — so its name starts at the row's lead. The 6 DIP
+// gap after the 16 DIP marks keeps the name and the rail one column, at the
+// pill's icon-to-text rhythm.
 func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	ui.Column(c).Grow(1).Gap(2).Children(func() {
-		ui.Row(c).Height(26).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
 			if t.Stereo {
 				stereoLead(c, p)
 			} else {
@@ -230,7 +232,7 @@ func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.Ta
 				})
 			})
 		})
-		ui.Row(c).Height(20).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Height(20).Gap(6).AlignItems(ui.Center).Children(func() {
 			a.volumeButton(c, p, d, t)
 			slider(c, p, a.targetVolume(t), 0, 100, locales.VolumeFor(t.Name), func(v float64) {
 				if a.eng != nil {
@@ -246,18 +248,22 @@ func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.Ta
 // volumeButton is the speaker glyph. One click mutes the target by taking its
 // volume to zero; the next click returns the volume it muted from. A target
 // already at zero without a remembered level comes back at the launch volume.
+// The 16 DIP ink keeps the column's left edge, and the glyph rides a full DIP
+// down to meet the slider's rail, which sits a DIP below the line's center.
+// Like the channel button, the body rides 3 DIP wider each side for the hover
+// pill, and negative margins hand the width back to the row.
 func (a *App) volumeButton(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	muted := t.Volume <= 0
 	label, icon := locales.MuteFor(t.Name), iconVolume
 	if muted {
 		label, icon = locales.UnmuteFor(t.Name), iconVolumeOff
 	}
-	b := ui.ButtonBase(c.Key("mute:" + d.ID)).Width(26).Height(20).Radius(6).Center().
-		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
+	b := ui.ButtonBase(c.Key("mute:"+d.ID)).Size(22, 20).Margin(0, -3, 0, -3).
+		Radius(6).Center().Label(label).Tooltip(label).Cursor(ui.CursorPointer)
 	b.OnClick(func() { a.toggleTargetMute(t) })
 	hoverFill(b, p.pill, 6, 0)
 	b.Children(func() {
-		ui.Icon(c, icon).Size(14, 14).TextColor(p.fg2)
+		ui.Icon(c, icon).Size(16, 16).TextColor(p.fg2).Margin(2, 0, 0, 0)
 	})
 }
 
@@ -299,26 +305,34 @@ func (a *App) targetVolume(t engine.TargetControl) *float64 {
 // stereoLead is a stereo member's non-interactive mark, aligned with the
 // single receiver's channel button. A stereo target has no side to choose, so
 // the mark never takes focus or a click; the combo chip yields to it while the
-// row is a member.
+// row is a member. The 16 DIP body puts the mark's ink on the content column's
+// left edge, where the plain rows' names start, and the full-DIP drop levels
+// it with the name's low-riding glyphs.
 func stereoLead(c *ui.Context, p palette) {
-	ui.Box(c).Size(26, 26).Center().Shrink(0).Label(locales.ChannelStereo()).Children(func() {
+	ui.Box(c).Size(16, 16).Shrink(0).Margin(2, 0, 0, 0).
+		Label(locales.ChannelStereo()).Children(func() {
 		ui.Image(c, channelIcon(receivers.ChannelStereo)).Size(16, 16).TextColor(p.fg)
 	})
 }
 
 // channelButton is the icon-only channel control on a single receiver: the
 // solid side is the current side and a click cycles stereo → left → right. A
-// stereo target has no side to choose, so deviceMixer leaves it out.
+// stereo target has no side to choose, so deviceMixer leaves it out. The 16
+// DIP ink keeps the mark on the content column's edge, like stereoLead's; the
+// button rides 3 DIP wider each side for a hover pill worth pointing at, and
+// the negative margins hand that width back to the row, so the name holds its
+// column.
 func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	label := channelLabelText(t.Channel)
-	b := ui.ButtonBase(c.Key("channel:"+d.ID)).Size(26, 26).Radius(13).Center().
-		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
+	b := ui.ButtonBase(c.Key("channel:"+d.ID)).Size(22, 16).Margin(0, -3, 0, -3).
+		Radius(8).Center().Label(label).Tooltip(label).Cursor(ui.CursorPointer)
 	b.OnClick(func() { a.cycleChannel(t) })
-	hoverFill(b, p.pill, 13, 0)
+	hoverFill(b, p.pill, 8, 0)
 	b.Children(func() {
 		// Image, not Icon: the icon mask drops fill-opacity, and the faded
-		// side is the state. Image renders the SVG in the palette color.
-		ui.Image(c, channelIcon(t.Channel)).Size(16, 16).TextColor(p.fg)
+		// side is the state. Image renders the SVG in the palette color. The
+		// full-DIP drop is stereoLead's, leveling the glyph with the name's.
+		ui.Image(c, channelIcon(t.Channel)).Size(16, 16).TextColor(p.fg).Margin(2, 0, 0, 0)
 	})
 }
 

@@ -217,9 +217,10 @@ func chip(c *ui.Context, p palette, label string, tone chipTone) {
 }
 
 // inlineChip is the 20-DIP chip beside a row's name. dimmed greys it in the
-// hidden group.
+// hidden group. The half-DIP drop keeps the box-centered chip level with the
+// name, whose glyphs ride low in their line box.
 func inlineChip(c *ui.Context, p palette, label string, tone chipTone, dimmed bool) {
-	e := ui.Box(c).Height(20).Radius(10).Padding(0, 8).Center().Shrink(0)
+	e := ui.Box(c).Height(20).Radius(10).Padding(0, 8).Center().Shrink(0).Margin(1, 0, 0, 0)
 	color := p.fg2
 	switch {
 	case dimmed:
@@ -241,10 +242,12 @@ func inlineChip(c *ui.Context, p palette, label string, tone chipTone, dimmed bo
 
 // iconChip is the 20-DIP status chip with a leading glyph: the settings and
 // flyout rows use it for a password or auth gate. dimmed greys it in the
-// hidden group.
+// hidden group. The chip drops half a DIP and the glyph a full DIP below the
+// row's center: text glyphs ride low in their line box, so box-centered marks
+// read high beside them, and the glyph reads high even inside the chip.
 func iconChip(c *ui.Context, p palette, ic *ui.SVG, label string, tone chipTone, dimmed bool) {
 	e := ui.Row(c).Height(20).Radius(10).Padding(0, 7).Gap(4).AlignItems(ui.Center).Shrink(0).
-		Label(label)
+		Margin(1, 0, 0, 0).Label(label)
 	color := p.fg2
 	switch {
 	case dimmed:
@@ -264,14 +267,15 @@ func iconChip(c *ui.Context, p palette, ic *ui.SVG, label string, tone chipTone,
 		color = p.muted
 	}
 	e.Children(func() {
-		ui.Icon(c, ic).Size(12, 12).TextColor(color)
+		ui.Icon(c, ic).Size(12, 12).TextColor(color).Margin(2, 0, 0, 0)
 		ui.Text(c, label).FontSize(10.5).TextColor(color).SingleLine()
 	})
 }
 
 // countChip is the stereo group's online count, just the member count in a
 // pill: green when every member is online and red when one is down. The
-// group's glyph carries no dot, and the chip adds none of its own.
+// group's glyph carries no dot, and the chip adds none of its own. The
+// half-DIP drop is inlineChip's, for the same low-riding name glyphs.
 func countChip(c *ui.Context, p palette, text, label string, full bool, dimmed bool) {
 	bg, color := p.greenSoft, p.green
 	switch {
@@ -281,7 +285,7 @@ func countChip(c *ui.Context, p palette, text, label string, full bool, dimmed b
 		bg, color = p.redSoft, p.red
 	}
 	e := ui.Row(c).Height(20).Radius(10).Padding(0, 7).AlignItems(ui.Center).Shrink(0).
-		Background(bg).Label(label).Tooltip(label)
+		Margin(1, 0, 0, 0).Background(bg).Label(label).Tooltip(label)
 	e.Children(func() {
 		ui.Text(c, text).FontSize(10.5).TextColor(color).FontFeatures("tnum").SingleLine()
 	})
