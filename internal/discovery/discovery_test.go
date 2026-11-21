@@ -222,6 +222,43 @@ func TestParseEntryUsesTheAdvertisedService(t *testing.T) {
 // TestMergeKeepsOSVersion covers the two advertisements: the AirPlay record
 // carries osvers while the RAOP record does not, and the merged device keeps
 // it.
+// TestMergeDropsThePairTsidWhenTheAdvertisementStopsCarryingIt pins the
+// observation rule at the record level: the tsid and the leader flag describe
+// the pair as it advertises right now, so a member whose fresh advertisement
+// stops carrying them has left the pair. The old merge kept the last tsid
+// forever, and the directed pass kept the record fresh, so a pair dissolved
+// in the Home app synthesized forever and its members never returned as
+// standalone receivers.
+func TestMergeDropsThePairTsidWhenTheAdvertisementStopsCarryingIt(t *testing.T) {
+	s := New(0, 0)
+	paired, _ := parseEntry(&mdns.ServiceEntry{
+		Name: "Living Room", AddrV4: net.IPv4(192, 0, 2, 46), Port: 7000,
+		InfoFields: []string{
+			"deviceid=AA:BB:CC:DD:EE:01", "model=AudioAccessory5,1",
+			"tsid=D1750001", "igl=1", "gpn=卧室",
+		},
+	}, airplayService)
+	s.merge(paired)
+	got := s.Snapshot()
+	if len(got) != 1 || got[0].StereoID != "D1750001" {
+		t.Fatalf("the paired member merged as %+v, want the pair's tsid", got)
+	}
+	if len(got[0].Members) != 1 || !got[0].Members[0].GroupLeader {
+		t.Fatalf("the member's leader flag did not travel into the group: %+v", got[0].Members)
+	}
+	// The pair is dissolved in the Home app: the speaker's advertisements
+	// stop carrying the tsid, and the cached member must follow.
+	standalone, _ := parseEntry(&mdns.ServiceEntry{
+		Name: "Living Room", AddrV4: net.IPv4(192, 0, 2, 46), Port: 7000,
+		InfoFields: []string{"deviceid=AA:BB:CC:DD:EE:01", "model=AudioAccessory5,1"},
+	}, airplayService)
+	s.merge(standalone)
+	got = s.Snapshot()
+	if len(got) != 1 || got[0].StereoID != "" {
+		t.Fatalf("after dissolution the member still advertises the pair: %+v", got)
+	}
+}
+
 func TestMergeKeepsOSVersion(t *testing.T) {
 	s := New(0, 0)
 	raop, _ := parseEntry(&mdns.ServiceEntry{

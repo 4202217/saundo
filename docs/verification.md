@@ -1791,3 +1791,43 @@ no row for it.
 Evidence: the registry entries HomePod L/R, 书桌 (combo members), and 卧室
 (`stereo:D175…`, members the same two IDs), plus the flyout and receivers-page
 screenshots from the report.
+
+## 2026-11-21 — the remembered-half of the pair rule was dropped
+
+Same day, same test home: the 卧室 pair was dissolved in the Apple Home app
+while the 书桌 combo stayed in the registry. The two speakers advertise
+standalone again, but Merge's official map counted the remembered
+`stereo:D175…` entry's members, so the combo stayed 不可用 with
+成员已加入立体声组 for the whole GroupGrace window while no pair existed on
+any surface — memory out-argued reality, and the 24-hour wait was standing in
+for a fact that is directly observable (every remembered member advertising
+standalone). The rule is now observation-only: grouping reads from this
+session's advertisements, the registry caches endpoints and preferences and
+never asserts a relationship, and the stale entry is inert until
+PruneStaleGroups clears it as cache hygiene. What is not advertising now does
+not exist for decisions; `pairIsStandalone` keeps guarding the cold-start
+launch of a dissolved pair. The user's combos self-heal within one discovery
+cycle of a dissolution instead of after GroupGrace. Pinned by
+`TestMergeLetsAStaleRememberedPairGo` (fails on the remembered-half rule);
+`TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair` still pins the
+live-half. Design decision recorded in architecture.md §5.
+
+## 2026-11-21 — a dissolved pair never stopped advertising
+
+The user dissolved the 卧室 pair in the Apple Home app and no refresh ever
+revealed the split: the receivers page kept the pair row with a green `2/2`
+count and the combo stayed 不可用, while creating the pair had reflected
+immediately. Root cause in discovery's record merge, not in the new
+observation rule: `merge` kept the last non-empty `tsid` forever, and the
+directed pass refreshed the record's freshness from the speakers' current
+advertisements, so the synthesized pair stayed online indefinitely after the
+speakers had stopped carrying the tsid. The merge now takes the tsid from the
+latest `_airplay` record — the service the field rides on, per the 2026-11-06
+directed-discovery finding that losing the `_airplay` replies leaves
+`_raop`-only rows without a tsid — so the dissolved pair de-synthesizes within
+one cycle and the members return standalone. The leader flag (`igl`) stays
+merged monotonically: its staleness only picks the group's cosmetic base
+member, and `TestGroupFieldsParsedAndMerged` pins that an `_airplay` record
+must not erase `_raop`-carried group fields. Pinned by
+`TestMergeDropsThePairTsidWhenTheAdvertisementStopsCarryingIt` (fails on the
+monotonic tsid).

@@ -48,17 +48,11 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		live[d.ID] = d
 	}
 	// A speaker inside an official stereo pair advertises as the pair, not as
-	// a standalone receiver. The official pair wins: a combo that lists any
-	// of these member IDs is invalid, whether the pair is live or remembered.
+	// a standalone receiver. Grouping reads from this session's advertisements
+	// only: the registry caches endpoints and preferences, it never asserts a
+	// relationship, so a remembered pair whose members advertise standalone is
+	// stale memory and neither invalidates a combo nor hides the members.
 	official := make(map[string]bool)
-	for _, e := range reg.Entries {
-		if e.IsCombo() || len(e.Members) == 0 {
-			continue
-		}
-		for _, m := range e.Members {
-			official[m.ID] = true
-		}
-	}
 	for _, d := range discovered {
 		if !d.IsStereoGroup() {
 			continue

@@ -918,6 +918,43 @@ func TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair(t *testing.T) {
 	}
 }
 
+// TestMergeLetsAStaleRememberedPairGo pins the observation rule: grouping
+// reads from this session's advertisements only. A remembered pair entry
+// whose members advertise standalone is stale memory — it neither invalidates
+// a combo nor hides the members' rows. The registry caches endpoints and
+// preferences; it never asserts a relationship.
+func TestMergeLetsAStaleRememberedPairGo(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "HomePod L"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "HomePod R"},
+		{Key: "combo:01", Kind: KindCombo, Name: "书桌", Members: []Member{
+			{ID: "AA:00", Name: "HomePod L"}, {ID: "AA:01", Name: "HomePod R"},
+		}},
+		{Key: "stereo:S1", Kind: KindDiscovered, Name: "卧室", Members: []Member{
+			{ID: "AA:00", Name: "HomePod L"}, {ID: "AA:01", Name: "HomePod R"},
+		}},
+	}}
+	// The official pair is gone; the two speakers advertise standalone again.
+	targets := Merge(reg, []device.Device{
+		discovered("AA:00", "HomePod L", "192.0.2.46", 7000),
+		discovered("AA:01", "HomePod R", "192.0.2.164", 7000),
+	}, nil)
+	byKey := map[string]Target{}
+	for _, tg := range targets {
+		byKey[tg.Entry.Key] = tg
+	}
+	combo, ok := byKey["combo:01"]
+	if !ok {
+		t.Fatal("the combo row vanished")
+	}
+	if combo.Invalid {
+		t.Fatal("a remembered pair entry still invalidates the combo: memory asserted a relationship")
+	}
+	if !combo.Device.Online {
+		t.Fatal("the combo's members are live; the combo reads offline")
+	}
+}
+
 func TestManageableKeepsAComboWithAnOfflineMember(t *testing.T) {
 	combo := Target{Device: device.Device{ID: "combo:01", Online: false}, Entry: Entry{Key: "combo:01", Kind: KindCombo}}
 	got := Manageable([]Target{combo}, nil)

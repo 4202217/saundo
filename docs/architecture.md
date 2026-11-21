@@ -257,6 +257,8 @@ next auto-connect target.
 
 **Capture discontinuities are not errors.** Loopback sets `DATA_DISCONTINUITY` when the render stream pauses, the device is reconfigured, or spuriously; capture ignores the flag, and a successful capture notification clears any stale error instead of leaving one on screen.
 
+**Advertisements are the truth; memory caches and restores, never asserts.** Grouping (official stereo pairs, combo membership) reads from this session's advertisements only. The registry remembers user preferences and endpoint caches keyed by stable identity, so a powered-off receiver returns intact; it never asserts a relationship, so a remembered pair whose members advertise standalone is stale memory that changes nothing — a combo over those members is valid again the moment the pair stops advertising, and PruneStaleGroups clears the dead entry as cache hygiene. What is not advertising now does not exist for decisions; this is the same rule the online dot already follows (Seen, not Online). The failure this replaced: a remembered pair kept a combo 不可用 for the whole GroupGrace window after the pair was dissolved in the Home app, because memory out-argued reality. See [devices.md](devices.md).
+
 ## 6. Risks
 
 **Event channel and keep-alive.** This is the most likely cause of "connected but silent." Response headers must be minimal, and every event must be decrypted and answered with 200. Cover it with the C++ blueprint and fake-receiver tests.
