@@ -83,7 +83,7 @@ func (a *App) latencySwitch(c *ui.Context, p palette) {
 		{locales.SettingsLatencyStable(), iconLatencyStable},
 		{locales.SettingsLatencyCustom(), iconSliders},
 	}
-	track := segmented(c, p, &seg, items, 0, false, segmentLeading, locales.SettingsLatency())
+	track := segmented(c, p, &seg, items, 0, false, segmentCenter, locales.SettingsLatency())
 	if track.Changed() {
 		a.setLatencyMode(latencyModeAt(seg))
 	}
