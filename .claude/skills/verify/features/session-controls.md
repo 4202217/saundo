@@ -1,23 +1,40 @@
 # Session controls
 
 The flyout's playback area: the Now Playing media card, the latency
-segments, and the volume slider. Capture status lives on the settings 采集
-page, and the diagnostics log row lives on the settings 关于 page.
+segments, and the per-target mixers on the session's device rows. Capture
+status lives on the settings 采集 page, and the diagnostics log row lives
+on the settings 关于 page.
 
 ## Sub-features
 
-- Volume slider: the flyout row is a 16-DIP speaker glyph on the 22-DIP
-  content column, the slider, and the integer percent in a fixed 34-DIP
-  right column. It sends `SET_PARAMETER volume` while streaming; 0 mutes
+- Per-target volume: a session member's device row is a compact mixer — a
+  mute speaker button, that target's slider, and the integer percent in a
+  fixed 34-DIP right column — and each target keeps its mixer while the
+  cohort re-establishes (`flyout_devices.go:109-174,218-303`; the mute
+  button at `:255-268` takes the target volume to zero and restores
+  `mutedVolume`). It sends `SET_PARAMETER volume` for that member while
+  streaming (`target_controls.go:202-212` → `cohort.go:395-401`); 0 mutes
   (the `-144` dBFS sentinel); a remembered device reconnects at its stored
   volume; a first connection adopts the receiver's `initialVolume`. An
   absent, malformed, non-numeric, or positive `initialVolume` sends no
   volume request and the receiver keeps its own level; `-144` stays the mute
   sentinel. While streaming, the sender polls `GET /info` every second — a
-  knob moved on the receiver itself mirrors back into the slider. AP2 only;
-  an AP1 session never arms the poll.
+  knob moved on the receiver itself mirrors back into that row's slider.
+  AP2 only; an AP1 session never arms the poll.
+- Row actions and the notice bar: the trailing action column is one fixed
+  92 DIP and its verb comes from the published TargetState — the joining row
+  offers 取消, members and reopening rows offer 断开连接, a failed row offers
+  重试 (`flyout_devices.go:425-478`; `target_controls.go:12-26,145-180`);
+  rows carry no selection tint (`flyout_devices.go:126-133`), and the device
+  head carries 全部断开 only for two or more live targets. A member that
+  dies while the rest keep playing, or a join that briefly pauses the
+  others, shows a 44-DIP accent bar under the device card — the loss names
+  the member with 重试 and a dismiss, the join warns with a dismiss; it
+  clears on the next user action or after 8 s, and the flyout grows 52 DIP
+  while it shows (`session_notice.go:53-121`; `flyout_height.go:47`;
+  `TestMemberDeathPublishesANotice`, `TestSessionNoticeAddsItsHeight`).
 - Latency: the flyout's four segments (低延迟 / 标准 / 稳定 / 自定义, default
-  低延迟) sit under the media card and above the volume row; the values
+  低延迟) sit under the media card; the values
   (200 ms / 1.5 s / 2 s / 20–2000 ms) are the settings 音频 tile text. Their
   14-DIP mode glyphs lead-align with an 8-DIP inner inset, and the first
   glyph sits on the 22-DIP content column. The effective value shows on the
@@ -50,8 +67,9 @@ page, and the diagnostics log row lives on the settings 关于 page.
   when the thumbnail is absent; the tile uses the card's own fill, so the
   first-artwork placeholder has no light edge.
   With no session at all the card is not drawn: the playback card keeps the
-  latency row and then the volume row, and `fitFlyout` shrinks the flyout by
-  the card's 150 DIP. The 正在播放 settings page controls the card: the 媒体卡片
+  latency row alone — and with neither media nor the latency row the whole
+  playback section drops out, taking its head, borders, and 33-DIP gap with
+  it — and `fitFlyout` shrinks the flyout by the card's 150 DIP. The 正在播放 settings page controls the card: the 媒体卡片
   header's 托盘面板中显示 switch, 封面 (无/默认/媒体), 播放控制, 封面配色,
   and 音频电平. The switch only hides the flyout card and shortens the
   flyout; the preview stays live and the option rows stay active. The
@@ -85,8 +103,8 @@ page, and the diagnostics log row lives on the settings 关于 page.
   cohort restores the local output.
 - Takeover: a clean control close during streaming is terminal. The flyout
   footer reads 已被其他设备接管 and the active receiver row offers
-  重新连接 (`flyout.go:502-510`; the row action at
-  `flyout_devices.go:307-325`; `docs/ui.md`).
+  重新连接 (`flyout.go:418-426`; the row action at
+  `flyout_devices.go:459-478`; `docs/ui.md`).
 - Idle standby: after the configured silence threshold the engine sends
   playback state 2, the top display goes dark, and the flyout lamp card
   shows the 待机 chip (`engine.go:874-936`; the dark gate at `:841-847`;
@@ -136,12 +154,12 @@ must show an empty progress track, not a status line or a fake fill. In the
 and the flyout shortens, while the preview stays live and the option rows
 stay active; turn it on again and the card returns. Close
 every player and confirm the media card disappears entirely and the flyout
-shrinks; the latency and volume rows remain, with no empty card,
+shrinks; the latency row remains, with no empty card,
 status line, or reserved blank under the device card.
 
-Proven end state: the playback head carries the selected latency, the slider
-matches the receiver's own volume, and the settings 采集状态 names the
-endpoint that is actually rendering.
+Proven end state: the playback head carries the selected latency, the
+member row's mixer matches the receiver's own volume, and the settings
+采集状态 names the endpoint that is actually rendering.
 
 ## Gotchas
 

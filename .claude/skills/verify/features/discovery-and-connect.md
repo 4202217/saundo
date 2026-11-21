@@ -41,6 +41,23 @@
   skips it, and `validateTarget` refuses it with `ErrComboStale`. `DropLinked`
   exempts an invalid combo, so an online standalone member returns as its own
   row.
+- A software stereo combo is created, edited in place, and unlinked from the
+  receivers page's 立体声组合 section (`receivers_dialogs.go:136-140,610,755`).
+  Linking moves the members' launch flags onto the combo and unlinking hands
+  them back; swapping sides hot-applies the new channels without a rebuild
+  (`TestLinkComboMovesTheLaunchFlag`,
+  `TestSwapComboSidesFlipsMembers`).
+- The launch auto-connect flags are a set: toggling one receiver never
+  clears the others, and every flagged row connects as one cohort in
+  registry order. A flagged row with no address yet holds the launch for
+  discovery up to `autoPendingWait` (15 s), then drops with a log line and
+  the rest launch; the flag stays on the dropped row for the next app start
+  (`TestAutoConnectDropsASilentFlaggedReceiverAndLaunchesTheRest`).
+- Cohort events route by the socket they arrived on: the per-member forward
+  goroutine stamps every event with its member's dialed host, so a
+  multi-homed receiver's UDP replies reach its own sender in a multi-member
+  session instead of being dropped as an unknown peer
+  (`TestCohortAttributesAUDPReplyToTheMemberThatOwnsTheSocket`).
 - Local receiver: an advertisement whose address belongs to this host is
   marked Local (`discovery.go:291,328-330`, `unicast.go:82`), forced into the
   hidden
