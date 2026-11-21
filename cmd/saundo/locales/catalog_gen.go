@@ -2082,6 +2082,36 @@ func (msgs Messages) ReceiverChipAuto() string {
 	return Catalog.Format(msgs.locale, "receiverChipAuto", nil)
 }
 
+// ReceiverModelDetail says "Show model details"
+// in the language the app shows.
+func ReceiverModelDetail() string { return In(i18n.Locale()).ReceiverModelDetail() }
+
+// ReceiverModelDetail says "Show model details"
+// in the language of msgs.
+func (msgs Messages) ReceiverModelDetail() string {
+	return Catalog.Format(msgs.locale, "receiverModelDetail", nil)
+}
+
+// ReceiverModelDetailShort says "Model details"
+// in the language the app shows.
+func ReceiverModelDetailShort() string { return In(i18n.Locale()).ReceiverModelDetailShort() }
+
+// ReceiverModelDetailShort says "Model details"
+// in the language of msgs.
+func (msgs Messages) ReceiverModelDetailShort() string {
+	return Catalog.Format(msgs.locale, "receiverModelDetailShort", nil)
+}
+
+// ReceiverModelDetailDesc says "Off hides the parenthetical part of the model name"
+// in the language the app shows.
+func ReceiverModelDetailDesc() string { return In(i18n.Locale()).ReceiverModelDetailDesc() }
+
+// ReceiverModelDetailDesc says "Off hides the parenthetical part of the model name"
+// in the language of msgs.
+func (msgs Messages) ReceiverModelDetailDesc() string {
+	return Catalog.Format(msgs.locale, "receiverModelDetailDesc", nil)
+}
+
 // ReceiverChipHidden says "Hidden"
 // in the language the app shows.
 func ReceiverChipHidden() string { return In(i18n.Locale()).ReceiverChipHidden() }

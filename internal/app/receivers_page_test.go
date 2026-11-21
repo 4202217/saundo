@@ -37,7 +37,7 @@ func receiverFixture() *App {
 	}}
 	a.selID = "AA:00"
 	a.snap.Devices = []device.Device{
-		{ID: "AA:00", Name: "客厅 HomePod", Host: "192.168.1.20", Port: 7000, Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
+		{ID: "AA:00", Name: "客厅 HomePod", Host: "192.168.1.20", Port: 7000, Model: "AudioAccessory5,1", Family: device.FamilyHomePod, Auth: device.AuthHAPTransient, AirPlay2: true, Online: true},
 	}
 	a.snap.Receivers = []receivers.View{
 		{
@@ -610,33 +610,53 @@ func TestReceiverDetailCarriesAddressChannelFamilyAndVersion(t *testing.T) {
 		Device: device.Device{ID: "AA:00", Host: "192.168.1.20", Port: 7000,
 			Family: device.FamilyHomePod, OSVersion: "27.2", Online: true},
 	}
-	if got, want := receiverDetail(v), "192.168.1.20:7000 · 左声道 · HomePod · 27.2"; got != want {
+	if got, want := receiverDetail(v, true), "192.168.1.20:7000 · 左声道 · HomePod · 27.2"; got != want {
 		t.Fatalf("detail = %q, want %q", got, want)
 	}
 	v.Channel = receivers.ChannelRight
-	if got, want := receiverDetail(v), "192.168.1.20:7000 · 右声道 · HomePod · 27.2"; got != want {
+	if got, want := receiverDetail(v, true), "192.168.1.20:7000 · 右声道 · HomePod · 27.2"; got != want {
 		t.Fatalf("right detail = %q, want %q", got, want)
 	}
 	v.Channel = receivers.ChannelStereo
-	if got, want := receiverDetail(v), "192.168.1.20:7000 · 立体声 · HomePod · 27.2"; got != want {
+	if got, want := receiverDetail(v, true), "192.168.1.20:7000 · 立体声 · HomePod · 27.2"; got != want {
 		t.Fatalf("stereo detail = %q, want %q", got, want)
 	}
 	pair := receivers.View{Stereo: true, Device: device.Device{Members: []device.Device{
 		{Host: "192.168.31.46", Port: 7000}, {Host: "192.168.31.164", Port: 7000},
 	}}}
-	if got, want := receiverDetail(pair), "192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
+	if got, want := receiverDetail(pair, true), "192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
 		t.Fatalf("pair detail = %q, want the two member addresses", got)
 	}
 	mini := v
 	mini.Device.Model = "AudioAccessory5,1"
-	if got, want := receiverDetail(mini), "192.168.1.20:7000 · 立体声 · HomePod mini · 27.2"; got != want {
+	if got, want := receiverDetail(mini, true), "192.168.1.20:7000 · 立体声 · HomePod mini · 27.2"; got != want {
 		t.Fatalf("HomePod mini detail = %q, want the marketing name", got)
+	}
+	if got, want := receiverDetail(mini, false), "192.168.1.20:7000 · 立体声 · HomePod mini · 27.2"; got != want {
+		t.Fatalf("detail with model off = %q, want the base name", got)
+	}
+	gen2 := mini
+	gen2.Device.Model = "AudioAccessory6,1"
+	if got, want := receiverDetail(gen2, true), "192.168.1.20:7000 · 立体声 · HomePod (2nd gen) · 27.2"; got != want {
+		t.Fatalf("second-generation HomePod detail = %q, want %q", got, want)
+	}
+	if got, want := receiverDetail(gen2, false), "192.168.1.20:7000 · 立体声 · HomePod · 27.2"; got != want {
+		t.Fatalf("second-generation HomePod detail with model off = %q, want %q", got, want)
+	}
+	mac := mini
+	mac.Device.Model = "Mac14,2"
+	mac.Device.Family = device.FamilyMac
+	if got, want := receiverDetail(mac, true), "192.168.1.20:7000 · 立体声 · MacBook Air (M2, 2022) · 27.2"; got != want {
+		t.Fatalf("Mac detail = %q, want %q", got, want)
+	}
+	if got, want := receiverDetail(mac, false), "192.168.1.20:7000 · 立体声 · MacBook Air · 27.2"; got != want {
+		t.Fatalf("Mac detail with model off = %q, want %q", got, want)
 	}
 	miniPair := receivers.View{Stereo: true, Device: device.Device{
 		Model:   "AudioAccessory5,1",
 		Members: []device.Device{{Host: "192.168.31.46", Port: 7000}, {Host: "192.168.31.164", Port: 7000}},
 	}}
-	if got, want := receiverDetail(miniPair), "HomePod mini · 192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
+	if got, want := receiverDetail(miniPair, true), "HomePod mini · 192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
 		t.Fatalf("mini pair detail = %q, want the model before the addresses", got)
 	}
 }
@@ -644,31 +664,72 @@ func TestReceiverDetailCarriesAddressChannelFamilyAndVersion(t *testing.T) {
 func TestFlyoutDetailDropsTheAddress(t *testing.T) {
 	single := receivers.View{Channel: receivers.ChannelLeft,
 		Device: device.Device{Family: device.FamilyHomePod, OSVersion: "27.2", Online: true}}
-	if got, want := flyoutDetail(single), "左声道 · HomePod · 27.2"; got != want {
+	if got, want := flyoutDetail(single, true), "左声道 · HomePod · 27.2"; got != want {
 		t.Fatalf("single detail = %q, want %q", got, want)
 	}
 	pair := receivers.View{Stereo: true, Channel: receivers.ChannelStereo,
 		Device: device.Device{Model: "Mac14,2", Family: device.FamilyMac, OSVersion: "15.2", Online: true}}
-	if got, want := flyoutDetail(pair), "MacBook Air (M2, 2022) · 15.2"; got != want {
+	if got, want := flyoutDetail(pair, true), "MacBook Air (M2, 2022) · 15.2"; got != want {
 		t.Fatalf("pair detail = %q, want %q", got, want)
 	}
-	if strings.Contains(flyoutDetail(pair), "Mac14,2") {
+	if strings.Contains(flyoutDetail(pair, true), "Mac14,2") {
 		t.Fatalf("the flyout detail kept the model identifier")
+	}
+	if got, want := flyoutDetail(pair, false), "MacBook Air · 15.2"; got != want {
+		t.Fatalf("flyout detail with model off = %q, want the base name", got)
 	}
 	mini := receivers.View{Channel: receivers.ChannelLeft,
 		Device: device.Device{Model: "AudioAccessory5,1", Family: device.FamilyHomePod, OSVersion: "27.3", Online: true}}
-	if got, want := flyoutDetail(mini), "左声道 · HomePod mini · 27.3"; got != want {
+	if got, want := flyoutDetail(mini, true), "左声道 · HomePod mini · 27.3"; got != want {
 		t.Fatalf("HomePod mini flyout detail = %q, want %q", got, want)
 	}
 	tv := receivers.View{Channel: receivers.ChannelStereo,
 		Device: device.Device{Model: "AppleTV6,2", Family: device.FamilyAppleTV, Online: true}}
-	if got, want := flyoutDetail(tv), "立体声 · Apple TV 4K (1st gen)"; got != want {
+	if got, want := flyoutDetail(tv, true), "立体声 · Apple TV 4K (1st gen)"; got != want {
 		t.Fatalf("Apple TV flyout detail = %q, want %q", got, want)
 	}
 	unknownTV := tv
 	unknownTV.Device.Model = "AppleTV99,9"
-	if got, want := flyoutDetail(unknownTV), "立体声 · Apple TV"; got != want {
+	if got, want := flyoutDetail(unknownTV, true), "立体声 · Apple TV"; got != want {
 		t.Fatalf("unknown Apple TV detail = %q, want the family fallback", got)
+	}
+	if got, want := flyoutDetail(tv, false), "立体声 · Apple TV 4K"; got != want {
+		t.Fatalf("Apple TV detail with model off = %q, want the base name", got)
+	}
+}
+
+func TestReceiverPageModelDetailSwitch(t *testing.T) {
+	a := receiverFixture()
+	a.page = pageReceivers
+	tt := ui.NewTester(a.settingsView, 720, 700)
+	if !tt.HasText(locales.ReceiverModelDetailShort()) || !tt.HasText(locales.ReceiverModelDetail()) ||
+		!tt.HasText(locales.ReceiverModelDetailDesc()) {
+		t.Fatalf("the model-detail switch is missing: %q", tt.Texts())
+	}
+	if err := tt.Click(locales.ReceiverModelDetail()); err != nil {
+		t.Fatalf("model-detail switch click: %v", err)
+	}
+	if a.cfg.ModelDetail {
+		t.Fatal("the model-detail switch did not turn off")
+	}
+	for i := range a.snap.Receivers {
+		if a.snap.Receivers[i].Key == "AA:00" {
+			a.snap.Receivers[i].Device.Model = "Mac14,2"
+			a.snap.Receivers[i].Device.Family = device.FamilyMac
+		}
+	}
+	a.cfg.ModelDetail = true
+	tt = ui.NewTester(a.settingsView, 720, 700)
+	if !hasExactText(tt, "192.168.1.20:7000 · 立体声 · MacBook Air (M2, 2022)") {
+		t.Fatalf("the row lost the model detail: %q", tt.Texts())
+	}
+	a.cfg.ModelDetail = false
+	tt = ui.NewTester(a.settingsView, 720, 700)
+	if hasExactText(tt, "192.168.1.20:7000 · 立体声 · MacBook Air (M2, 2022)") {
+		t.Fatalf("the row kept the parenthetical with the switch off: %q", tt.Texts())
+	}
+	if !hasExactText(tt, "192.168.1.20:7000 · 立体声 · MacBook Air") {
+		t.Fatalf("the row lost the base name: %q", tt.Texts())
 	}
 }
 

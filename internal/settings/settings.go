@@ -122,27 +122,30 @@ type Settings struct {
 	// order. It seeds the UI's pre-session selection; the launch auto-connect
 	// reads each row's flag instead. lastDeviceId is the legacy single-device
 	// record and the fallback when LastTargets is empty.
-	LastTargets         []string        `json:"lastTargets"`
-	StrictReceiverAuth  bool            `json:"strictReceiverAuth"`
-	AutoConnect         bool            `json:"autoConnect"`
-	Reconnect           bool            `json:"reconnect"`
-	ShowNowPlayingPanel bool            `json:"showNowPlayingPanel"`
-	PlaybackControls    bool            `json:"playbackControls"`
-	CoverColors         bool            `json:"coverColors"`
-	CoverMode           CoverMode       `json:"coverMode"`
-	AudioLevel          bool            `json:"audioLevel"`
-	MuteLocalOnConnect  bool            `json:"muteLocalOnConnect"`
-	Lamp                LampSettings    `json:"lamp"`
-	Standby             StandbySettings `json:"standby"`
-	TrayAnimation       bool            `json:"trayAnimation"`
-	LaunchAtStart       bool            `json:"launchAtStart"`
-	Language            string          `json:"language"`
-	Theme               ThemeMode       `json:"theme"`
-	Beta                bool            `json:"beta"`
-	AutoUpdate          bool            `json:"autoUpdate"`
-	AutoDownload        bool            `json:"autoDownload"`
-	SkippedVersion      string          `json:"skippedVersion"`
-	LastCheck           string          `json:"lastCheck"`
+	LastTargets         []string `json:"lastTargets"`
+	StrictReceiverAuth  bool     `json:"strictReceiverAuth"`
+	AutoConnect         bool     `json:"autoConnect"`
+	Reconnect           bool     `json:"reconnect"`
+	ShowNowPlayingPanel bool     `json:"showNowPlayingPanel"`
+	// ModelDetail shows the parenthetical generation and year in a receiver's
+	// model label; off keeps the base name (MacBook Air, Apple TV 4K).
+	ModelDetail        bool            `json:"modelDetail"`
+	PlaybackControls   bool            `json:"playbackControls"`
+	CoverColors        bool            `json:"coverColors"`
+	CoverMode          CoverMode       `json:"coverMode"`
+	AudioLevel         bool            `json:"audioLevel"`
+	MuteLocalOnConnect bool            `json:"muteLocalOnConnect"`
+	Lamp               LampSettings    `json:"lamp"`
+	Standby            StandbySettings `json:"standby"`
+	TrayAnimation      bool            `json:"trayAnimation"`
+	LaunchAtStart      bool            `json:"launchAtStart"`
+	Language           string          `json:"language"`
+	Theme              ThemeMode       `json:"theme"`
+	Beta               bool            `json:"beta"`
+	AutoUpdate         bool            `json:"autoUpdate"`
+	AutoDownload       bool            `json:"autoDownload"`
+	SkippedVersion     string          `json:"skippedVersion"`
+	LastCheck          string          `json:"lastCheck"`
 }
 
 // Default returns the first-run configuration.
@@ -160,6 +163,7 @@ func Default() Settings {
 		LatencyCustomMS:     DefaultLatencyCustomMS,
 		ShowLatencySwitch:   true,
 		ShowNowPlayingPanel: true,
+		ModelDetail:         true,
 		PlaybackControls:    true,
 		CoverColors:         true,
 		CoverMode:           CoverMedia,

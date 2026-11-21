@@ -11,6 +11,7 @@ var (
 	appOwnedFields = []string{
 		"ShowLatencySwitch",
 		"ShowNowPlayingPanel",
+		"ModelDetail",
 		"PlaybackControls",
 		"CoverColors",
 		"CoverMode",

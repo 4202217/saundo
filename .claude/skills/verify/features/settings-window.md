@@ -71,6 +71,12 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   instead (添加接收器 / 创建立体声组合). A page with no receivers shows only the
   单独接收器 head and the 添加接收器 row; the combo section waits for a first
   row.
+- The 接收器 page's 型号细节 card sits below the receiver sections: one
+  setting row, title 型号细节 over 关闭后隐藏型号名括号内的内容, with the
+  switch at its right (accessible name 显示型号细节). Off hides the
+  parenthetical part of every model label (MacBook Air, Apple TV 4K,
+  HomePod), here and in the flyout. Pinned by
+  `TestReceiverPageModelDetailSwitch`.
 - Every receiver row's title line carries the stereo group's online count
   chip after the name (a dot plus 2/2 in green, or 1/2 in red), the password
   or auth chip after the name (密码锁 + 需要密码, 钥匙 + 密码已保存, 感叹号 + 密码错误,

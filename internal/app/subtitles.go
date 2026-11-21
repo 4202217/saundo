@@ -80,7 +80,7 @@ func (a *App) receiverOnlineChip(c *ui.Context, p palette, v receivers.View) {
 // receiverDetail is the settings row's second line: the address, the channel,
 // the model and the system version. A stereo group starts at the model and
 // lists both members' addresses; a combo lists its members in playback order.
-func receiverDetail(v receivers.View) string {
+func receiverDetail(v receivers.View, showModel bool) string {
 	if v.Entry.IsCombo() {
 		return comboDetail(v.Name, v.Device.Members)
 	}
@@ -88,7 +88,7 @@ func receiverDetail(v receivers.View) string {
 		// The glyph and the online count already say this is a stereo group;
 		// the line names only the model and the two members' addresses.
 		parts := make([]string, 0, len(v.Device.Members)+1)
-		if model := stereoModelLabel(v); model != "" {
+		if model := stereoModelLabel(v, showModel); model != "" {
 			parts = append(parts, model)
 		}
 		for _, m := range v.Device.Members {
@@ -103,7 +103,7 @@ func receiverDetail(v receivers.View) string {
 		parts = append(parts, addr)
 	}
 	parts = append(parts, channelFull(v.Channel))
-	if model := receiverModelLabel(v); model != "" {
+	if model := receiverModelLabel(v, showModel); model != "" {
 		parts = append(parts, model)
 	}
 	if os := receiverOSVersion(v); os != "" {
@@ -114,7 +114,7 @@ func receiverDetail(v receivers.View) string {
 
 // flyoutDetail is the flyout row's second line: the same facts without the
 // address. A combo still lists its members in playback order.
-func flyoutDetail(v receivers.View) string {
+func flyoutDetail(v receivers.View, showModel bool) string {
 	if v.Entry.IsCombo() {
 		return comboDetail(v.Name, v.Device.Members)
 	}
@@ -122,7 +122,7 @@ func flyoutDetail(v receivers.View) string {
 	if !v.Stereo {
 		parts = append(parts, channelFull(v.Channel))
 	}
-	if model := receiverModelLabel(v); model != "" {
+	if model := receiverModelLabel(v, showModel); model != "" {
 		parts = append(parts, model)
 	}
 	if os := receiverOSVersion(v); os != "" {
@@ -183,10 +183,11 @@ func channelFull(channel string) string {
 }
 
 // receiverModelLabel names the receiver's model for the detail line. A known
-// HomePod, Apple TV, or Mac identifier gets its marketing name; an unknown
-// identifier falls back to the family. A manual row carries no advertised
-// family, so only the Express type has one worth naming.
-func receiverModelLabel(v receivers.View) string {
+// HomePod, Apple TV, or Mac identifier gets its marketing name; with the
+// model-detail setting off it keeps the base name (MacBook Air, Apple TV 4K),
+// and an unknown identifier falls back to the family. A manual row carries no
+// advertised family, so only the Express type has one worth naming.
+func receiverModelLabel(v receivers.View, showModel bool) string {
 	if v.IsManual() {
 		if v.Type == receivers.TypeAirPortExpress {
 			return locales.ReceiverTypeExpress()
@@ -194,8 +195,17 @@ func receiverModelLabel(v receivers.View) string {
 		return ""
 	}
 	if model := modelNameFor(v.Device.Model); model != "" {
-		return model
+		if showModel {
+			return model
+		}
+		return modelBaseName(model)
 	}
+	return receiverFamilyLabel(v)
+}
+
+// receiverFamilyLabel is the family fallback: HomePod, Mac, Apple TV, or the
+// AirPort Express type.
+func receiverFamilyLabel(v receivers.View) string {
 	switch v.Device.Family {
 	case device.FamilyHomePod:
 		return locales.DeviceFamilyHomePod()
@@ -213,25 +223,28 @@ func receiverModelLabel(v receivers.View) string {
 
 // stereoModelLabel names a stereo group's model when both members agree. A
 // mixed pair or an unknown identifier falls back to the group's own model,
-// then to the family.
-func stereoModelLabel(v receivers.View) string {
+// then to the family; with the setting off each name drops its parenthetical.
+func stereoModelLabel(v receivers.View, showModel bool) string {
 	first, known := "", 0
 	for _, m := range v.Device.Members {
 		name := modelNameFor(m.Model)
 		if name == "" {
 			continue
 		}
+		if !showModel {
+			name = modelBaseName(name)
+		}
 		known++
 		if first == "" {
 			first = name
 		} else if name != first {
-			return receiverModelLabel(v)
+			return receiverModelLabel(v, showModel)
 		}
 	}
 	if first != "" && known == len(v.Device.Members) {
 		return first
 	}
-	return receiverModelLabel(v)
+	return receiverModelLabel(v, showModel)
 }
 
 // modelNameFor maps a known HomePod, Apple TV, or Mac identifier to its
@@ -246,9 +259,27 @@ func modelNameFor(model string) string {
 	return device.MacModelName(model)
 }
 
+// modelBaseName drops a trailing parenthetical from a marketing name:
+// MacBook Air (M2, 2022) becomes MacBook Air and Apple TV 4K (1st gen)
+// becomes Apple TV 4K. A name without one is unchanged.
+func modelBaseName(name string) string {
+	if i := strings.LastIndex(name, " ("); i >= 0 && strings.HasSuffix(name, ")") {
+		return name[:i]
+	}
+	return name
+}
+
 func receiverOSVersion(v receivers.View) string {
 	if v.Device.OSVersion != "" {
 		return v.Device.OSVersion
 	}
 	return v.Entry.OSVersion
+}
+
+// setModelDetail persists the receiver-model detail preference. Both windows
+// redraw from it, so the receiver rows and the flyout change together.
+func (a *App) setModelDetail(on bool) {
+	a.cfg.ModelDetail = on
+	a.saveSettings()
+	a.updateUI(func() {})
 }

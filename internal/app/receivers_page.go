@@ -194,6 +194,17 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 		})
 	}
 
+	// The model-detail switch is a page preference, not a receiver's, so it
+	// gets its own card below the sections.
+	settingCard := ui.Column(c).Margin(16, 0, 16, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
+	settingCard.Children(func() {
+		settingRow(c, p, locales.ReceiverModelDetailShort(), locales.ReceiverModelDetailDesc(), func() {
+			toggle(c, p, &a.cfg.ModelDetail, locales.ReceiverModelDetail(), func(on bool) {
+				a.setModelDetail(on)
+			})
+		})
+	})
+
 	a.receiverDialogs(c, p)
 }
 
@@ -408,7 +419,7 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 				inlineChip(c, p, locales.ReceiverChipHidden(), chipNeutral, true)
 			}
 		})
-		sub := receiverDetail(v)
+		sub := receiverDetail(v, a.cfg.ModelDetail)
 		ui.Text(c, sub).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 	})
 }

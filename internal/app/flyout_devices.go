@@ -205,9 +205,9 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 		}
 	}
 	if v, ok := a.receiverViewFor(d.ID); ok {
-		return flyoutDetail(v)
+		return flyoutDetail(v, a.cfg.ModelDetail)
 	}
-	return flyoutDetail(receivers.View{Device: d, Stereo: d.IsStereoGroup()})
+	return flyoutDetail(receivers.View{Device: d, Stereo: d.IsStereoGroup()}, a.cfg.ModelDetail)
 }
 
 // deviceMixer is a member row's two-line content: the channel button and name,
