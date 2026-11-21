@@ -40,7 +40,7 @@ A commit that touches `internal/airplay/` (crypto, sender, ptp, creds), `interna
 Audit the docs against the tree before the release commit. Fix drift in the same commit.
 
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, `docs/architecture.md`, and `docs/platforms.md`: the code and behavior they describe.
-- `docs/verification.md`: the `Currently pending` list and the dated evidence. Keep every unverified feature in the list.
+- `docs/verification.md`: the `Currently pending` list and the dated evidence. Keep every unverified feature in the list. Graduate this release's fully-homed dated batches into Graduated in the same audit — the audit never leaves its own release's batch for later.
 - `CHANGELOG.md`: the English canonical. It must be ASCII and use English UI descriptions. Add the `## <version> - <date>` section.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart with the same version headings. The app's update history reads it when the app language (`i18n.Locale`) starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.

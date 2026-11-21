@@ -8,12 +8,13 @@ receiver. Real-device behavior is verified with the steps below.
 
 Dated results append below and are never rewritten. They are compressed,
 never deleted, once every claim in a dated section has a durable home: a
-named test pins it, devices.md or protocol.md records it, the code that owns
+named test, devices.md or protocol.md records it, the code that owns
 the behavior documents it, or a later dated entry supersedes it. The release
 audit moves whatever qualifies to the Graduated section at the end of this
-file — one entry per batch: date, surviving conclusion, pin. When the file
-passes roughly 800 lines, compress at the next opportunity without waiting
-for a release.
+file — one entry per batch: date, surviving conclusion, pin. Each release's
+audit graduates that release's own dated batch; it never defers the batch
+it just produced. When the file passes roughly 800 lines, compress at the
+next opportunity without waiting for a release.
 
 ## Currently pending
 
@@ -373,806 +374,6 @@ The app binds both. Windows Firewall must allow inbound UDP to `saundo.exe`
 on the private network, as it must for mDNS replies and NTP timing. The app
 cannot synchronize the clock and will not start the stream if those packets are
 blocked; the UI reports a PTP timeout with this hint.
-
-## 2026-11-14 — release 0.6.3 UI review
-
-The 250-image preview matrix (`.audit/release-0.6.3/previews`, zh-CN and
-English, light and dark) was rendered, fixed, and re-rendered. P0 fixes: the
-English flyout latency segment truncated to "Low late…", now the single word
-Low (`TestFlyoutLatencyLowFitsItsSegment` fails on the old label); the
-capture page said "a single app" where macOS ships multi-select, now
-"System audio, or one or more apps."; the tray mute row now reads Unmute
-local output while the preference is on
-(`TestTrayMenuMuteLabelFollowsThePreference`). English per-app copy is
-plural-neutral. The Windows per-app mute caveat and its Windows-only test
-were removed: the engine drops an unsupported app selection at load, so the
-state could not occur and the test manufactured it. Both mockup templates
-already described the shipped interface: the flyout height rule is 439
-base, -62 for the removed Now Playing row, +90 ambient, +150 media, +44
-latency, +48 error, +48 credential, +53 expanded, with latency labels Low,
-Standard, Stable, Custom; 44 renders in `.audit/release-0.6.3/mockups/`.
-Two independent reviewers on different model families checked the findings
-and the fixes. The verification skill corrected all six feature pages from
-source, in their own commit before the release commit. The release
-candidate was built with the updater key and launched against the HomePods
-pair; the live flyout capture is
-`.audit/release-0.6.3/live/flyout-0.6.3.png`.
-
-## 2026-11-14 — 0.6.3 release
-
-The release workflow (run 43468834016) first failed `check-macos` on a
-test-only `fatal error: concurrent map writes` in
-`TestMuteGuardRecoversAfterCrash`: the harness's mute worker raced the
-test's direct `recoverMuteGuard` call. The job passed on re-run,
-`build-macos` passed, and the flake fix landed as `acd63dc` on main after
-the tag (`2f14bc5`). The draft carried `install.ps1`, `install.sh`, the
-Windows installer, both update archives, four deltas, both signed
-manifests, the arm64 dmg, and `SHA256SUMS`; `sha256sum -c` passed all ten
-checksummed files. Published 2026-11-13T17:23Z with bilingual notes; both
-feed manifests serve 0.6.3 with signatures. A live update from 0.6.2 is
-still owed and stays on the pending list.
-
-## 2026-11-14 — tray receiver rows toggle their session
-
-- **Decision.** A tray receiver row now toggles the session it carries. The
-  row whose ID is `Snapshot.SelectedID` while the phase is streaming
-  disconnects; while connecting it cancels the attempt, matching the flyout's
-  active-row action; a failed row still retries. Every other row connects or
-  switches, as before. The decision is `trayRowAction`, which reuses the
-  flyout's `rowActionKind` vocabulary, and `trayDeviceClick` dispatches it.
-  No separate 断开连接 row is added.
-- **Not run live.** The click path needs a real receiver and a live session,
-  which would stream this Mac's desktop audio to the HomePods pair; the last
-  live tray run (2026-11-13) stands for the menu shape.
-- **Pins.** `TestTrayRowActionTogglesTheSession`.
-- **Superseded 2026-11-16.** Receiver rows connect or switch only; the
-  session action row carries the cancel, disconnect, and retry actions.
-
-## 2026-11-16 — tray menu around quick actions
-
-- **Decision.** This supersedes the 2026-11-13 flat menu and the 2026-11-14
-  row-toggle decision. The menu keeps one flat row per visible receiver, up to
-  six, and every row connects or switches; the in-session row is disabled and the
-  session action row below the list carries 取消连接, 断开连接, or 重试连接.
-  The media group follows when the system media session has controls and
-  `PlaybackControls` is on: 上一首, 暂停 or 播放, and 下一首; the menu shows no
-track title.
-  The ambient light is one submenu row: the power
-  action, the 封面 choice, and the six template choices, each with a round
-  color preview. The ambient choices are disabled while the light is off; the
-  power row turns the light on, then a choice can be picked, matching the
-  flyout and settings. The stored choice carries 上次 while off; the current
-  choice is disabled while lit and its label ends in a single-color ✔. The update row is stateful (下载更新, 正在下载, 重启并安装);
-  更多接收器… opens the receivers page past six; with no visible receiver,
-  重新搜索 with 暂无接收器 sits first. No row uses a check column; the current ambient choice is
-  disabled and greyed while lit.
-  While the light is on, the parent row's icon is the current preview; off uses
-  the lamp-off glyph.
-- **Evidence.** The mockup at `.audit/mockups/tray-menu/mockup.html` established the layout;
-  the final live menu drops the track title and uses the current preview as
-  the ambient parent icon. The menu is cached and rebuilt on every right
-  click so media, lamp, and update rows are current.
-- **Not run live.** The native menu visuals still need a live right-click on
-  Windows and macOS; the unit tests pin the model, item order, labels, the current
-  suffix, and preview PNGs.
-- **Pins.** `TestTrayMenuShape`, `TestTrayMenuSessionRow`,
-  `TestTrayMenuMediaRowsFollowSession`, `TestTrayMenuMediaControlSendsAction`,
-  `TestTrayMenuLampSubmenu`, `TestTrayMenuLampOffDisablesChoices`,
-  `TestTrayMenuUpdateRow`, `TestTrayMenuMoreReceivers`,
-  `TestTrayMenuEmptyState`, `TestTrayMenuLampPresetOrder`,
-  `TestTrayMenuDeviceSubtitle`, `TestTrayMenuKey`, `TestMenuPreviewPNG`, and
-  `TestCoverPreviewColors`.
-
-## 2026-11-15 — cold-start stereo ambient light
-
-A cold start auto-connects a remembered stereo pair from the receiver
-registry before mDNS answers. The cached `Member` entries did not persist
-`OSVersion`, and `offlineDevice` dropped the member list entirely, so the
-`TopDisplayCapable` gate failed closed and the sender skipped both members
-(`ambient light: ... does not support top-display artwork; skipped`). The
-media cover path was not gated, so a pair could still light one top from the
-cover while the template never reached either. Whether the other top stayed
-dark because the cover missed it or because its renderer was paused was not
-isolated; a later reconnect uses the discovered record with `osVersion` and
-restores the template path.
-
-`receivers.Member` and `receivers.Entry` now persist `osVersion`;
-`CachedDevice` restores it per member and falls back to the entry's value;
-`offlineDevice` reuses the cached device so the registry projection and the
-cold-start connect describe the same pair. Sender log lines now carry the
-member name, and each RTSP reply names its method, content type, and byte
-count, so the two members are distinguishable. `SetPlaybackState` logs when
-a state is assumed rather than sent.
-
-Verified live on 2026-11-15 with HomePod L/R (`AudioAccessory5,1`, software
-27.3). Before the fix both members were skipped at launch. After it, a cold
-start logged `cover: 11108 bytes, lamp=true` for each member, each replied
-`200 OK` to `SET_PARAMETER image/jpeg (11108 B)`, and both tops lit. The
-state-1 launch assumption is unchanged; the intermittent single-dark
-occurrence on the media-cover path was not reproduced after the fix and
-remains open. Pins: `TestCachedDeviceGroupKeepsTopDisplayCapability`,
-`TestCachedDeviceGroupFallsBackToTheEntryOSVersion`,
-`TestMergeKeepsCachedGroupMembers`,
-`TestRememberedStereoPairKeepsTopDisplayCapability`,
-`TestSenderLogTagsTheReceiver`, `TestPendingRequestLabelNamesTheArtwork`.
-
-## 2026-11-16 — stereo first light is re-sent after the pair sync
-
-A first connect to the stereo pair occasionally left one HomePod's top
-display on its white placeholder until a manual disconnect and reconnect.
-The 18:44:25 first light was delivered to both members and both answered
-`200 OK` to `SET_PARAMETER image/jpeg (11108 B)`, so the RTSP layer did not
-drop it. The follower's top follows the pair's HomeKit/tightSync
-media-system sync, not its own session's artwork stream; the session's
-first light is the one image it takes from its own session, and it is sent
-at the earliest instant the session streams. When the sync has not yet
-established the Now Playing item, the image is acknowledged without
-reaching the LED renderer, and artwork-only pushes later in the same
-session do not recover it (2026-11-15 experiments below). A new session
-does, which is why the reconnect worked.
-
-The 2026-11-15 SETPEERS attribution does not survive later evidence: a
-PTP session makes SETPEERS a no-op on the receiver, so it cannot seed the
-display sync. The 2026-11-15 live success came from the freshly
-power-cycled pair, as the commit body already noted.
-
-Fix as shipped: a pair member re-sends the session's first effective cover
-2 s after the first cover send (`internal/airplay/sender` `coverRetry`),
-which gives the follower's media-system sync time to attach the item. The
-retry is one-shot per session, follows a template change made inside the
-window, and is skipped on a standalone receiver. Pins:
-`TestFirstCoverResendsOnceOnAPair`,
-`TestFirstCoverRetrySendsTheCurrentCover`,
-`TestFirstCoverRetrySkipsAStandalone`,
-`TestFirstCoverRetryStopsWithTheSession`.
-
-Live sender run 2026-11-16 20:03 on the pair: the first light at
-20:03:25.403 and the retry at 20:03:27.403 each answered `200 OK` on both
-members; the real track metadata arrived at 20:03:26.936, inside the
-window, the same race as the 18:44 failure. The LED observation is the
-user's and stays open. The 2 s delay is the first attempt; if a follower
-still stays white, the next step is to gate the first light on each
-member's first event-channel `updateInfo` instead of a fixed delay.
-
-Follow-up 2026-11-16 20:14: the retry did not change the symptom because
-the follower was dark, not missing the retry. On a cold start R stayed
-off while L showed the template; tapping R's glass woke it with the
-template colors, then it turned white, and later template changes did not
-follow. The sender assumed playing and sent no state `1` on either
-member (`playback state: 1 unchanged, not sent`). A pair follower does
-not assume playing, so a pair member now sends an explicit state `1` at
-stream start, before the first cover (`sender.Start`; `beginPlayback`
-sends the state before the metadata and cover). A standalone receiver
-keeps the image-only first light. Pins:
-`TestPairSessionSendsPlayingStateBeforeTheFirstCover`,
-`TestPairSessionKeepsAPreStartPause`,
-`TestStandaloneSessionStillAssumesPlaying`. Live sender run 2026-11-16
-20:30 on the pair: `playback state: 1` precedes the cover on both
-members, both answered `200 OK` to the state command and the image, and
-the 2 s retry followed. The user confirmed R lights on the first connect
-without tapping the glass.
-
-## 2026-11-17 — 0.6.4 UI mockup templates
-
-The two ui-mockup templates were compared with the shipped interface and
-refreshed. The flyout template's media card head now carries the 18-DIP app
-icon and the 20-DIP session switch on the 24-DIP top-aligned row, the pill
-pads 10 DIP on top, and the main row keeps its 2-DIP top margin; the height
-notes name the 62-DIP Now Playing row and the 48-DIP error bar. The settings
-template's General sample carries all five shipped rows, including tray
-animation and appearance, in both languages. The palette and the height rule
-already matched `theme.go` and `flyoutHeightFor`. Renders: 40 states under
-`.audit/release-0.6.4/mockups/` (settings target/normal/edge and flyout
-idle/streaming/empty/error in zh-CN and English, light and dark, plus the
-media-off and ambient template/expanded states); every render was inspected
-for clipping, overflow, and wrapped copy, and none was found.
-
-## 2026-11-17 — 0.6.4 commit range review
-
-Range `v0.6.3..HEAD`: 41 commits, oldest `0672dd1`, tip `ecaf44e`.
-Classified from the diff, not the subject alone. A user-visible commit names
-the `CHANGELOG.md` 0.6.4 line that describes it. A merge commit has no
-content of its own, so the commits it brings in are classified here.
-
-- `ecaf44e` app: media card head at an 18-DIP icon and a 20-DIP switch —
-  user-visible; "The media card's head places its app icon, name, and
-  session switch on one top-aligned line..."
-- `3c0d7cc` merge PR #50 — merge; its commits are below.
-- `a16d5fc` docs: mygo guides in the code map — internal.
-- `75b47bf` docs: release range review step — internal.
-- `4c12210` app: top-align the media card head — user-visible; the same
-  media-card-head line as `ecaf44e`.
-- `8a0f6bc` merge PR #49 `app/tray-menu` — merge; its commits are below.
-- `8f5079a` merge PR #48 `fix/ambient-ring` — merge; its commits are below.
-- `bd42208` app: tray menu around quick actions — user-visible; "Media
-  controls in the tray menu..." and "The tray menu is rebuilt around the
-  session..."
-- `42ab568` landing: no vignette on the light pod — internal (site only).
-- `cc89459` docs: outside comparison sources dropped — internal (docs and
-  site copy).
-- `b62c4ac` docs: settings e2e driving block — internal.
-- `215261b` merge PR #47 — merge.
-- `b4429b6` docs: e2e wording platform-neutral — internal.
-- `bd7a68d` merge PR #46 — merge.
-- `108a482` docs: e2e UI driving on macOS — internal.
-- `d4ffc31` sender: stereo follower before its first light — user-visible;
-  "A cold start to a stereo pair lights both top displays..."
-- `34d9dca` verify: mygo automation plugin — internal.
-- `e0eaf3c` build: mygo v0.9.1 — internal (the documented render diff is
-  subpixel; the bump is a prerequisite for the render plugin).
-- `7337398` merge: mygo audit app fixes — merge.
-- `03a98a0` merge: landing glow lattice — merge.
-- `6c1c580` app: desktop text scale and mygo identities — user-visible;
-  "The interface follows the desktop text scale..."
-- `a26a8e4` build: `time.Sleep` ban in sans-I/O — internal.
-- `a9df430` build: dependency allowlist — internal.
-- `aad9751` build: channel gate across files — internal.
-- `2099d6a` docs: skills point at the Makefile — internal.
-- `b142fb6` build: release runbook in step with the gates — internal.
-- `d73ea15` build: architecture rules as gates — internal (test-only
-  refactors in engine and receivers).
-- `bee1aaa` landing: glow noise lattice floor — internal (site only).
-- `47d4103` sender: SETPEERS seeds the pair member sync — user-visible;
-  "Ambient light changes made during playback reach the second HomePod's
-  top display again..."
-- `d285983` build: rename landing to site — internal (structure).
-- `f4d9ae6` build: landing deploy to Pages — internal (site only).
-- `91b39eb` landing: modernize page, glow renderer — internal (site only).
-- `de0f660` landing: bilingual landing page — internal (site only).
-- `57aa077` engine: a user connect restarts the reconnect budget —
-  user-visible; "Retry after the automatic reconnect attempts are used up
-  starts a fresh backoff..."
-- `6735e3d` receivers: stereo member OS version for the cold-start light —
-  user-visible; the same cold-start line as `d4ffc31`.
-- `28bce7f` docs: tray-toggle feature in the verified docs — internal.
-- `a1ae9d4` docs: verification log compressed — internal.
-- `271b576` docs: every doc checked against 0.6.3 — internal.
-- `e059453` app: tray receiver rows toggle on click — user-visible in
-  principle, superseded inside this range by `bd42208`; the shipped
-  behavior is the "The tray menu is rebuilt around the session..." line.
-- `6737a5b` docs: 0.6.3 draft and publish recorded — internal.
-- `0672dd1` engine: mute worker stopped in the guard tests — internal
-  (test).
-
-Code review: subset ran (7 commits) -> fixed in `12c6fdf` and `844e475`;
-the result entry is below.
-
-## 2026-11-17 — release 0.6.4 UI review
-
-The copy inventory (`cmd/saundo/locales/en.json`, `zh-CN.json`) and the
-rendered preview matrix (`.audit/release-0.6.4/previews/`, 254 PNGs across
-both locales, light and dark, every settings page, the dialogs, the flyout
-states, and 1.25x text) were reviewed against `docs/ui-copy.md` and
-`docs/ui.md` before the changelogs. The new tray strings follow the
-terminology table (接收器, 托盘面板, 取消连接 / 断开连接 / 重试连接,
-关闭氛围灯 / 开启氛围灯, 上次 / Last used, single-color ✔); the catalog
-gates are green and no string truncates. The media card head was checked at
-both locales and themes and at 1.25x text with no clipping. Outcome: clean —
-no P0 or terminology finding, so no product fix commit.
-
-## 2026-11-17 — 0.6.4 verification skill audit
-
-All six feature pages were read against source (one reader per page) and
-`go run ./scripts/verify-map` resolves every name and path. Outcome:
-changed — the proven corrections landed as their own commit, `verify: the
-feature map matches the 0.6.4 tree`: the tray media rows (no track title),
-row order past six receivers, the ambient submenu, the reconnect budget reset
-on a user connect, the tray as a second connect entry point, text-scale
-window sizing and the page-switch scroll, the update surface's removed tray
-check action, and the citations that moved with the recent app changes.
-The live pass did not run: the release instance (pid 6532) is up and the e2e
-build shares the single-instance lock, so stopping the user's instance needs
-consent. The doctor passed read-only. Coverage gap: live driving of the six
-pages (tracked under Currently pending). No product defect was found.
-
-## 2026-11-17 — 0.6.4 release
-
-- Version `0.6.4`; the release commit is `build: release 0.6.4` and the tag
-  `v0.6.4` is created locally. At the maintainer's request this release is
-  not pushed: no workflow run, draft, publish, or public-feed check happened
-  in this run, so the draft and feed steps remain for the push.
-- Docs audit: `architecture.md`, `implementation.md`, `platforms.md`,
-  `protocol.md`, `devices.md`, `ui.md`, and `ui-copy.md` were reviewed
-  against the tree and corrected where the code and the documents disagreed:
-  the runtime roles and socket owner, the AP1 raw-PCM scope, the PTP
-  fail-closed gate, SETPEERS on a pair member's PTP session, the event
-  channel's direction, the AP2 request headers, the flyout heights and tray
-  ambient row, and the check summaries in `AGENTS.md` and `platforms.md`.
-  Reviewed-through dates bumped to 2026-11-17.
-- Gate: `mingw32-make check` green — gofmt, 364 catalog messages, `go vet`
-  under the default, `updateharness`, and `e2e` tags, `mygo vet`, check-arch
-  "architecture seams hold", check-size "120 files within their line budget",
-  all package tests, verify map "map ok", and check-platforms on
-  windows/amd64 and darwin/arm64.
-- Candidate: `go tool mygo build -platform windows/amd64` produced
-  `saundo-setup-0.6.4-amd64.exe`, `saundo-0.6.4-windows-amd64.tar.gz`, deltas
-  from 0.6.1, 0.6.2, and 0.6.3, and `update-windows-amd64.json` carrying
-  version 0.6.4, the English 0.6.4 notes, and an 88-character signature. The
-  candidate was not installed: the running instance holds the
-  single-instance lock.
-- Maintainer's pre-release test: the release request (2026-11-17) authorized
-  the release and carried no separate hands-on statement for this build, so
-  none is recorded. A pre-push install and smoke run remains owed.
-
-## 2026-11-17 — 0.6.4 critical-path code review (post-tag)
-
-The critical-path code review rule landed after `v0.6.4` was tagged. The
-0.6.4 range touches `internal/airplay/sender`, `internal/engine`, and
-`internal/app/update*.go`, so the subset review is owed before the local tag
-is pushed. Code review: not run -> the rule did not exist when the release
-commit was cut. The next release's range review carries the line.
-
-## 2026-11-17 — 0.6.4 critical-path code review result
-
-`/code-review` ran on `v0.6.3...v0.6.4`, restricted to `internal/airplay`,
-`internal/engine`, `internal/capture`, `internal/app/update*.go`, and
-`internal/app/migrate.go`: 7 commits, 25 files. Code review: subset ran
-(7 commits) -> fixed in `12c6fdf` and `844e475`.
-
-Standards findings. Hard: the sender comment and two test comments still
-taught the refuted SETPEERS display-sync mechanism that `d4ffc31` corrected
-in the docs (fixed in `12c6fdf`); commit `6735e3d` mixes the OSVersion cache
-fix with reply-label diagnostics, which cannot be split after the tag and is
-recorded as a history exception. Judgement: the update notes dialog cached
-its Markdown theme on the appearance only, so high contrast left stale
-hairlines, muted copy, and headings (fixed in `844e475`); the 2 s
-stop-with-timeout select is duplicated in `mute.go` and `silence.go` (kept:
-two call sites); `onCoverRetry` logs `cover: first-light retry` even when
-`sendCover` skipped an empty image (kept: the retry is armed only after a
-cover and the line is diagnostics); `Features.Persisted` travels as a pair
-into the receiver cache (kept: that pair is the store's shape).
-
-Spec findings. The high-contrast notes theme (c1) and the SETPEERS comments
-(c2) are the fixes above. Partial: `6735e3d` said every RTSP reply carries
-the method, content type, and byte count, but only `sendRequest` labels the
-request, so AP2 and pairing replies log the method alone (kept as a
-diagnostics gap; extend the label at the next attribution run). Scope:
-the notes-theme cache was not named in a commit body and now carries
-`844e475`.
-
-`mingw32-make check` is green after the fixes (`check-size` 120 files,
-`app.go` baseline lowered to 1259). The candidate build was not rebuilt:
-it would no longer match `v0.6.4`. The tag stays on `04fdd96`; the two
-fixes are after it and nothing is pushed.
-
-## 2026-11-17 — 0.6.4 re-cut
-
-The first `v0.6.4` tag (`04fdd96`) was pushed and its release workflow was
-canceled before any release was created; the tag was deleted locally and
-remotely, and the release commit was re-cut on top of the critical-path
-fixes (`12c6fdf`, `844e475`). The version, both changelogs, and both READMEs
-are unchanged; the tag now includes the fixes, and the range review carries
-the `Code review:` line the new preflight requires. The candidate built from
-the first cut is stale; CI builds the published assets from the new tag.
-
-## 2026-11-17 — 0.6.4 draft and publish
-
-Workflow `44022602002` succeeded on tag `v0.6.4` (`117508a`): `check`,
-`check-macos`, `draft`, `build`, and `build-macos` all green. The draft
-carried the Windows installer, both update archives, both signed manifests,
-`install.ps1`, `install.sh`, the dmg, `SHA256SUMS`, and the deltas from
-0.6.1-0.6.3. `gh release download` plus `sha256sum -c SHA256SUMS` passed for
-every asset. Both manifests carry version 0.6.4, the English 0.6.4 notes,
-and an 88-character signature. The bilingual release notes were set from
-`scripts/release-notes.sh`, and the release was published at
-2026-11-17T05:21:56Z. The public feed serves `update-windows-amd64.json` and
-`update-darwin-arm64.json` at version 0.6.4 with signatures; the installer
-and dmg return 200. A live update from 0.6.3 was not run, and the
-maintainer's pre-release test of the candidate remains unrecorded. The first
-`v0.6.4` tag (`04fdd96`) was canceled before any release existed; this
-release is the re-cut at `117508a`, which includes the code review fixes.
-
-## 2026-11-17 — multi-device cohort, engine first
-
-One session plan and one cohort transport replace the single-receiver session
-and the stereo group transport. A target is a single receiver or a stereo
-pair, every member shares one `StartGate` epoch and one capture trim, and a
-session runs at most one PTP role. `mingw32-make check` passed, and
-`go test -race` passed on the engine, PTP, and receivers packages. The
-behavioral tests named in the pending multi-device item pin the add,
-rejection, retry, latency, gate, and N-peer paths. A five-dimension review
-confirmed 18 defects; all 12 accepted fixes ship with a failing-before test,
-including the mixed AP1/AP2 pause, removing a live target, the capture-rate
-change between arrivals, same-host routing, retry pruning, Now Playing
-replay, and the error-bar scope.
-
-A local build of the first implementation auto-connected to the HomePod
-stereo pair and streamed both members through the cohort path. The log showed
-the per-member 200 ms plan latency, both sessions streaming, and a clean
-takeover stop when another sender took the pair. This is a stereo regression
-check, not a multi-device run. The multi-device session and the two-pair,
-four-peer run above remain pending, and no live multi-device run exists.
-
-## 2026-11-17 — follower set for standalone PTP receivers
-
-An unpaired pair leaves two standalone HomePods, each keeping its own PTP
-grandmaster. One `ptp.Followers` now owns UDP 319/320 and demultiplexes replies
-by source IPv4 address, so the engine's clock plan has a follower set instead
-of one follower. Every peer keeps its own offset and readiness, each member's
-stream SETUP waits for its own clock, and the plan still rejects a follower set
-beside a sender-side master. A remembered `stereo:<tsid>` auto-connect entry is
-skipped when discovery reports both members as standalone receivers, so the
-launch starts idle instead of failing on the missing pair.
-
-Checks: `go test -count=1 ./internal/engine ./internal/app` passed;
-`go test -run 'Followers|PlanClock|ClockPlan|StalePair' ./internal/airplay/ptp
-./internal/engine` passed, plus explicit runs of
-`TestAddSecondStandalonePTPReceiver` and `TestAutoConnectSkipsAStaleStereoPair`;
-`go vet ./internal/engine ./internal/airplay/ptp ./internal/app` passed;
-`go run ./scripts/check-size` passed after the `engine.go` extraction lowered
-its baseline to 2518. `mingw32-make check` was not run: the running app holds
-UDP 319/320, so the full gate waits for it to stop.
-
-The live two-HomePod run remains owed and is recorded in Currently pending.
-Each receiver maps the shared RTP timeline onto its own clock, so the rooms
-align only as well as the two grandmasters; no live two-HomePod run exists yet.
-Pins: `TestFollowersDemuxBySourceIP`, `TestClockPlanRoles`,
-`TestClockPlanRejectsConflicts`, `TestAddSecondStandalonePTPReceiver`,
-`TestAutoConnectSkipsAStaleStereoPair`, and
-`TestAutoConnectKeepsALiveStereoPair`.
-
-## 2026-11-17 — live three-receiver session
-
-The follower set ran on real hardware. Two standalone HomePods (the pair
-unpaired, both `AudioAccessory5,1`) and a MacBook Air joined one cohort, all
-three as standalone PTP receivers. The app log shows the per-target plan
-latency for all three and `streaming to HomePod L + HomePod R + MacBook Air`
-at 19:17, after the live adds rebuilt the cohort. The user confirmed
-synchronized playback by ear at the per-target latency the log shows, 200 ms
-for all three; a 1500 ms probe preceded that confirmation. The follower set
-maps each receiver's clock onto the shared timeline, but the device output
-timing comes from each target's presentation latency, the global base plus
-that receiver's delay. The sync is a property of those per-device latency
-settings, not of the follower set alone.
-
-Not yet measured: the left/right offset between rooms, drift over a longer
-soak, the delay values that align a HomePod with a Mac of a different output
-latency, the two-pair master run, and a member dropping mid-session. The gate
-after the follower change was `mingw32-make check` and `go test -race` on
-engine, PTP, receivers, and sender, both passing on build
-`v0.6.4-1-g01729d5-dirty`.
-
-Pins: `TestFollowersDemuxBySourceIP`, `TestClockPlanRoles`,
-`TestAddSecondStandalonePTPReceiver`, and `TestAutoConnectSkipsAStaleStereoPair`.
-The live evidence is the app log lines above and the user's ear confirmation.
-
-## 2026-11-17 — per-target volume and channel
-
-Each live target now has its own volume and stereo side. A stereo pair shares
-one volume and is forced to stereo; a single receiver can play stereo, left, or
-right. The sender mixes each 352-frame block after resampling and before ALAC,
-so a live channel change reaches the next packet without a session rebuild;
-the engine stores the channel in `receivers.json`, applies it to the target's
-live members, and a pair ignores a non-stereo patch. Volume is stored per
-target in `VolumeByDevice`; an unset target adopts each member's reported
-`initialVolume` when the session launches, and a hardware knob report updates
-only its own target. The per-device delay remains the sync control: the live
-three-receiver session above used 200 ms for both HomePods and the MacBook Air
-after a 1500 ms probe, and the delay slider stays beside the volume slider and
-channel segment in the settings audio group.
-
-No live per-device volume or channel run exists. The split, the live change,
-the per-target command, the launch adoption, and the pair rule are pinned by
-the sender, engine, registry, and app tests named in Currently pending.
-
-Checks: `go test -count=1 ./internal/engine ./internal/app ./internal/receivers
-./internal/airplay/sender` passed; `go test -count=1 -run
-'Channel|TargetVolume|TargetControl|ReceiverChannel' ./internal/...` passed;
-`go vet` on the four packages passed; `go run ./scripts/check-size` reported
-127 files within budget after `engine.go` fell to 2503 and its baseline moved
-with it; `go run ./scripts/check-arch` held; `go tool mygo i18n check
-cmd/saundo` reported 371 messages. `mingw32-make check` and the host build were
-not run because the running app holds UDP 319/320; both remain for after it
-stops.
-
-## 2026-11-17 — settings receiver rows drop the delay and volume controls
-
-The settings receiver row now carries only the channel segment. At the user's
-request, the per-device DSP/DAC delay slider and the per-device volume slider
-were removed from the settings page; their two delay copy keys were deleted.
-The global latency section in the settings audio page and the flyout's latency
-switch stay. The flyout's volume slider still controls the selected target,
-and the per-device volume storage and engine APIs stay unchanged. The engine
-keeps the per-device delay data and the `UpdateReceiver` delay path for a
-later UI; the app's 500 ms receiver-delay debounce is gone because it served
-only the removed slider.
-
-Checks: `go test -count=1 ./internal/app ./internal/receivers
-./internal/engine` passed; `go test -count=1 -run
-'Receiver|Channel|Volume|Latency' ./internal/app ./internal/receivers
-./internal/engine` passed; `go run ./scripts/check-size` reported 127 files
-within budget after `engine.go` fell to 2502 and `app.go` to 1242, both
-baselines moved with them; `go run ./scripts/check-arch` held; `go tool mygo
-i18n check cmd/saundo` reported 369 messages. `mingw32-make check` and the host
-build were not run because the running app holds UDP 319/320; both remain for
-after it stops.
-
-## 2026-11-17 — settings receiver volume restored
-
-At the user's request the settings receiver row has its volume slider back
-next to the channel segment. The per-device delay slider stays out of
-settings; the engine keeps the delay data and the `UpdateReceiver` path, and
-the global latency mode remains. The flyout still names and controls the
-selected target's volume. The page tests assert the volume and channel
-together; a pair shows its one shared volume and the disabled stereo.
-
-Checks: `go test -count=1 ./internal/app ./internal/engine ./internal/receivers`
-passed; `go run ./scripts/check-size` reported 127 files within budget;
-`go run ./scripts/check-arch` held; gofmt over the changed files printed
-nothing. The port-free `mingw32-make check`, race, and host build run after
-the running app stops.
-
-## 2026-11-18 — flyout per-device mixer
-
-Every flyout device row is 66 DIP high, connected or not; a live target's row
-carries its own volume slider and percent under the name, an icon-only channel
-button before the name, and the connect action in its own centered trailing
-column. The channel button uses the SF Symbols dot.radiowaves symbol with the
-left or right arc group at 25% fill, so the solid side is the current side; a
-click cycles stereo → left → right, and a stereo pair shows a disabled
-stereo. The playback card lost its one-for-all volume row and is not drawn
-when it has neither media nor the latency row. A failed target keeps the plain
-row for its 重试 action. The flyout height is now 428 with three 66 rows; a
-media session plus the latency row measures 650 and the latency-only idle 500.
-
-The speaker glyph is a button: one click takes that target's volume to zero,
-shows the muted speaker, and the next restores the level it muted from (kept in
-the app's `mutedVolume`, session state only). The channel glyph is 16 DIP wide
-so it does not outweigh the 14-DIP speaker, and a plain row now uses the live
-row's 26/2/20 line rhythm, giving the name and model the same breathing room
-as the name and volume row.
-
-Checks: `mingw32-make check` passed (373 messages, 128 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/app` passed. The faded-side render is pinned by
-`TestChannelIconFadesTheOtherSide`: the icon mask drops fill-opacity, so the
-button draws the SVG through `ui.Image` instead. The mute and unmute actions
-are pinned by `TestFlyoutVolumeButtonNamesItsAction`. The muted glyph was
-checked in a one-off muted render; the plain-row rhythm and the 16-DIP
-channel glyph were checked in the light and dark streaming previews. The preview matrix was rendered
-for idle, connecting, streaming, failed, and the credential notice in both
-themes. The per-device live run with the two HomePods and the MacBook Air is
-recorded under Currently pending.
-
-## 2026-11-18 — flyout phase rules and per-target disconnect
-
-The flyout's mixer now exists only while a target streams: a connecting or
-failed row keeps its name, model, and action, so volume and channel are not
-offered before playback. The trailing action column is a fixed 92 DIP, so the
-name, slider, and percent do not move when the action label changes between
-取消, 连接, 断开连接, and 重新连接. A row's 断开连接 now sends `DisconnectTarget`:
-the engine drops that key and rebuilds the cohort with the remaining targets
-while holding the connection mute, and the last key takes the full disconnect
-path. The device section head carries 全部断开 while a session is live and
-grows 10 DIP for it, so one click still ends the whole session.
-
-Checks: `mingw32-make check` passed (374 messages, 130 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/engine ./internal/app` passed. The per-target
-leave is pinned by `TestDisconnectTargetLeavesOthers`; the phase rule by
-`TestFlyoutConnectingRowHidesMixer`; the head button by
-`TestFlyoutDisconnectAllButtonFollowsSession`. The connecting, streaming,
-idle, and error flyouts were rendered and inspected in the preview matrix.
-
-## 2026-11-18 — connecting rows keep their own action
-
-Adding a target while another streams used to give every active row the same
-Cancel action, because the phase is session-wide. The app now remembers the
-target a Connect started for (`joinID`) and refines the row action: the
-joining row (or the sole active target when no mark exists) offers 取消, and
-the rows already in the session keep 断开连接. Cancel on the joining row now
-sends `DisconnectTarget`, so it removes that target instead of ending the
-whole session; the header 全部断开 still ends everything. The same
-session-wide phase made a per-target disconnect rebuild turn the remaining
-row into Cancel; the app now marks a rebuild (a target left, a latency apply)
-and no row offers 取消 during it. A present cohort
-now counts as live for the leave path even before its first state, so a
-cancel in the brief window before the handshake rebuilds with the remaining
-target instead of merely shrinking the wanted set and leaving both members
-connecting.
-
-Checks: `mingw32-make check` passed (374 messages, 130 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/engine ./internal/app` passed. The per-row
-policy is pinned by `TestConnectingRowActions`, the pre-stream cancel by
-`TestDisconnectJoiningTargetBeforeStreaming`, and the existing
-`TestFlyoutConnectingRowHidesMixer` exercises the joining mark.
-
-## 2026-11-18 — the engine names the row the join started
-
-The previous entry's app-side marks (`joinID`, `suppressCancel`) could not be
-kept true: a join rebuilds the whole cohort, so during it every wanted key is
-re-opening and the session-wide phase cannot tell the target the user just
-added from a member that is merely re-establishing. A diagnostic test
-constructed both cases and printed the same snapshot in every field the flyout
-read (`state=handshake active=[A B] targets=2`), which is why two patch rounds
-each surfaced another wrong row. The engine now owns the fact:
-`sessionPlan.joinKey` carries the target a user connect started or added (a
-rebuild carries it only while that target stays planned, and the launch
-resolves it), and `TargetControl.State` publishes one of `TargetMember`,
-`TargetJoining`, `TargetReopening`, or `TargetFailed` per active key. Wanted
-keys now keep a `TargetControl` while a retry waits, so every active row has a
-published role. The flyout maps one state to one verb (member and reopening →
-断开连接, joining → 取消, failed → 重试, no role → connect/disabled/offline),
-keeps a member's mixer through a rebuild, and shows 正在连接… on a joining
-row's second line and 正在重连… on a reopening one. The app's session markers
-and `trackConnect` are deleted. A cross-judge pass found the dead-transport arm
-closed the session without publishing, so a failed launch could leave the rows
-reading member until the next tick; the arm now publishes after
-`closeSession`.
-
-Checks: `mingw32-make check` passed (374 messages, 131 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/engine ./internal/app` passed. Pins:
-`TestJoinAndRebuildPublishTheSameAudioFields` (the premise),
-`TestConnectPublishesJoiningThenMember`, `TestAddPublishesMemberAndJoining`,
-`TestRejectedAddKeepsMembers`, `TestCancelJoiningLeavesMember`,
-`TestLeaveAndLatencyRebuildsKeepMembers`,
-`TestFailedAttemptPublishesRetryOrReopening`, `TestTakeoverPublishesFailed`,
-and on the app side `TestRowActionFollowsTargetState`,
-`TestFlyoutJoiningRowHidesMixer`, `TestRebuildRowsOfferNoCancel`,
-`TestReopeningRowSaysReconnecting`. The device head's 26-DIP action slot is
-reserved in every state: the 全部断开 button used to grow the head by 10 DIP
-when it appeared, which resized the panel; the slot now holds an invisible
-26-high spacer when no session runs, the base height is 438, and
-`TestDeviceHeadKeepsItsHeight` pins identical label and card geometry with and
-without a live session. `mingw32-make build` produced the 0.6.4 binary and
-relaunched it. Not run: a live two-HomePod join; the preview matrix
-renders the joining state (`flyout-joining-light`, `flyout-joining-dark`).
-
-## 2026-11-18 — the session member set reaches every surface
-
-The flyout already rendered one row per active target, but the tray, the
-connection page, the settings sidebar, and the ALAC latency line still spoke
-for one selected device. The app now reads a session through `sessionMembers`
-(`internal/app/session_members.go`): active targets in snapshot order, each
-with its row and published controls, plus the joined session name and the
-slowest member's effective latency. The tray accents and disables every member
-row, not only the primary; the connection card shows the joined name and a
-member count while the sidebar shows the joined name; the ALAC line reports the
-slowest member's base-plus-delay so a mixed-delay cohort does not claim one
-member's value. Idle behavior is unchanged.
-
-Checks: `mingw32-make check` passed (375 messages, 133 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/app` passed. Pins:
-`TestSessionMembersFollowActiveTargets`, `TestSessionNameJoinsWhileOpening`,
-`TestSessionLatencyUsesSlowestMember`, `TestTrayMenuMarksEveryMember`,
-`TestConnectionPageSpeaksForTheSession`. Not run: a live two-receiver session
-with different per-device delays to see the ALAC line and the tray in the real
-app.
-
-## 2026-11-18 — a dead member leaves the cohort instead of retrying it
-
-The two-HomePod acceptance pass found that powering off one receiver while
-both streamed took the other one down. The dead signal closed the whole
-cohort, and the automatic retry rebuilt the full wanted set, including the
-unreachable receiver. The run's log shows the retry ladder on HomePod L's
-dial failure with `session stopped` for HomePod R on every attempt
-(20:26:13 to 20:26:31), so the surviving room was interrupted for the whole
-ladder. The cohort now records the target whose member closed first
-(`LostTarget`), and the engine rebuilds without it while the rest keep their
-session; the lost target leaves the wanted set, so no retry includes it. A
-single-target session keeps the close-and-retry path. The lost target's row
-leaves the session immediately; discovery's offline marking is a separate,
-slower signal.
-
-Checks: `mingw32-make check` passed (375 messages, 134 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/engine ./internal/app ./internal/receivers`
-passed. Pins: `TestCohortMemberCloseBeforeLaunchSignalsEngine` (the transport
-records the lost target), `TestMemberDeathKeepsOthersPlaying`,
-`TestPrimaryDeathPromotesTheRemainingTarget`,
-`TestMemberDeathOfTheOnlyTargetKeepsTheRetry`. Not run: the same power-off
-pass on real hardware after the fix.
-
-## 2026-11-18 — session notices explain a lost member and a join
-
-A member death already kept the rest playing, but the flyout explained nothing:
-the room paused and the row simply left the session. The engine now publishes a
-`SessionNotice` when it isolates a lost member, and the flyout renders a
-44-DIP bar under the device card with the member's name, 重试, and a dismiss.
-The bar clears on the next user connect or after 8 s. A join in progress is
-derived from a `TargetJoining` member beside an existing one and uses the same
-bar to warn that the other devices pause briefly. The window adds 52 DIP while
-a notice shows. The connection-error and credential-recovery bars now share
-that 44-DIP geometry, left glyph, and border, so the three read as one family.
-
-Checks: `mingw32-make check` passed (378 messages, 136 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/engine ./internal/app` passed. The preview
-matrix renders `flyout-notice-light` and `flyout-notice-dark`. Pins:
-`TestMemberDeathPublishesANotice`, `TestSessionNoticeShowsLostMember`,
-`TestSessionNoticeJoinCopy`, `TestSessionNoticeAddsItsHeight`. Not run: the
-notice in a live two-receiver session.
-
-## 2026-11-18 — a refused password prompts instead of retrying
-
-Adding a receiver with a saved but wrong password to a live cohort used to take
-the whole session down and burn the five-step reconnect ladder. The MacBook Air
-answered the stream SETUP with 401, the digest replay with another 401, and the
-cohort closed; every retry rebuilt both members and failed on the same
-password, and the run ended with 自动重连 5 次后停止 instead of a password error
-(log 21:41:05 to 21:41:46, `session failed: MacBook Air：The password was not
-accepted by the device`). The sender now marks a refused password from both the
-RTSP digest replay and the HAP pairing rejection (`PasswordRejected`), the
-cohort records that member's target and device, and the engine treats the
-failure as auth: no retry is scheduled, `ErrPasswordRejected` is published, and
-the password prompt opens for that receiver. The dead arm drops the refused
-member and rebuilds the survivors, so the rest keep playing; a single-target
-session keeps the prompt without a ladder.
-
-Checks: `mingw32-make check` passed (379 messages, 138 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/airplay/sender ./internal/engine ./internal/app`
-passed. Pins: `TestHAPPasswordWrongPasswordFailsWithoutPrompt`,
-`TestRejectedPasswordPromptsInsteadOfRetrying`,
-`TestRejectedPasswordOnTheOnlyTargetDoesNotRetry`. Not run: the same add with a
-wrong saved password on real hardware after the fix.
-
-## 2026-11-18 — password rejection live pass
-
-The user re-ran the add-with-wrong-password case on the rebuilt app and
-confirmed it. The log shows HomePod R streaming, the MacBook Air refused at
-21:57:43 with `session failed: MacBook Air did not accept the password`, and
-HomePod R streaming again 1.7 s later with no retry ladder; after the correct
-password the same pair reached `streaming to HomePod R + MacBook Air` at
-21:57:56. A second rejection at 21:58:16 repeated the pattern. This supersedes
-the "not run" line in the previous entry; its pins still hold.
-
-## 2026-11-18 — the connection page states the session, not its settings
-
-The old 连接 page repeated values that did not answer a question: the latency
-mode was a setting already on 音频, and 接收器处理 was a receiver constant no
-user can change. The page now draws the session itself. 已连接设备 lists every
-target with its channel, volume, and state, and names per-device retransmits
-and underruns only when notable; a dropped member leaves the list and appears
-as the engine notice's `{name} 已断开` row with 重新连接. 本次连接 appears only
-while streaming and the engine has measurements: 已连接时长, 稳定性 with 丢样
-和 欠载, 网络重传, and 重连 in a 2×2 grid above one full-width hairline. Both
-section labels use the group style above the cards. The engine now publishes
-`TargetControl.Health`, folding each target's members' retransmits, sent
-blocks, and underruns; a stats slice that does not line up with the plan keeps
-health at zero. The page copy adds the session labels, the uptime formats, the
-stability note, and the notable-device counters.
-
-Checks: `mingw32-make check` passed (381 messages, 138 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok); `go test -race ./internal/engine ./internal/app` passed. The preview
-matrix renders the page in both themes and at 640 DIP
-(`settings-connection-*`). Pins: `TestTargetControlsCarryMeasuredHealth`,
-`TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
-`TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
-`TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
-`TestConnectionPagePairRow`. Not run: the reworked page against a live
-two-receiver session.
-
-## 2026-11-20 — the stability verdict reads the last 60 seconds
-
-The 连接 page's 稳定性 verdict and both counters beside it now answer "is this
-session stuttering now" instead of "did it ever stumble". `sessionStability`
-in `internal/engine/stability.go` samples each sender's cumulative underruns
-and the session's dropped-sample count once per publish; `RecentUnderruns`,
-`RecentDropped`, and `TargetControl.Health.RecentUnderruns` report growth over
-the trailing 60 seconds, and `Degraded` reads only that span. Joining a second
-receiver rebuilds the cohort and can pad a packet or two with silence; that
-blip now clears after a minute instead of pinning the card to 有卡顿 for the
-rest of the session. A counter that moves backwards marks a restarted sender
-session and restarts its window. While a session streams the engine publishes
-diagnostics every 5 seconds, so the window ages out on an otherwise quiet
-session; that also keeps 已连接时长 current. The note reads
-`60 秒内丢样 {drops} · 欠载 {underruns}` / `last 60 s · {drops} dropped ·
-{underruns} underruns`.
-
-Checks: `mingw32-make check` passed (398 messages, 143 files within their line
-budget, all packages, windows/amd64 and darwin/arm64 build and vet, verify map
-ok). The preview matrix rendered `settings-connection-*` in both languages at
-720, 640, and large text. Pins: `TestDiagnosticsUnderrunsAgeOutOfTheWindow`,
-`TestDiagnosticsSingleAggregates`, `TestDiagnosticsStereoTakesWorstAndSums`,
-`TestTargetControlsCarryMeasuredHealth`, `TestConnectionPageSessionCard`,
-`TestConnectionPageSessionCardDegraded`,
-`TestConnectionPageDeviceHealthNotableOnly`. Not run: a live two-device join
-on real receivers to watch an underrun blip clear from the card.
 
 ## Graduated
 
@@ -1760,6 +961,125 @@ one took it from 1627.
   pair de-synthesizes within one cycle (pins:
   `TestMergeDropsThePairTsidWhenTheAdvertisementStopsCarryingIt`,
   `TestGroupFieldsParsedAndMerged`).
+- 2026-11-14 to 11-16, the 0.6.3 release and the tray menu: the 250-image
+  preview review fixed three P0s — the English latency segment truncated to
+  "Low late…" → Low (`TestFlyoutLatencyLowFitsItsSegment`), the capture page
+  copy, and the tray mute row's Unmute label
+  (`TestTrayMenuMuteLabelFollowsThePreference`); a manufactured Windows
+  per-app-mute-caveat test was deleted. Release run 43468834016's first
+  `check-macos` failure was a test-only concurrent-map flake
+  (`TestMuteGuardRecoversAfterCrash` racing `recoverMuteGuard`), fixed
+  post-tag in `acd63dc`; all ten checksums passed; 0.6.3 published
+  2026-11-13T17:23Z with both feeds serving signed manifests; the live
+  0.6.2→0.6.3 update stays owed in `Currently pending`. The 2026-11-14
+  tray row-toggle decision (`TestTrayRowActionTogglesTheSession`) was
+  superseded 2026-11-16 by the quick-actions menu: flat rows connect or
+  switch, the session action row carries 取消连接/断开连接/重试连接, the
+  media group, the ambient submenu with previews and the 上次/✔ rules, the
+  stateful update row, 更多接收器…, and the 重新搜索 empty state; the live
+  right-click on both platforms stays under `Currently pending`. Pins:
+  `TestTrayMenuShape`, `TestTrayMenuSessionRow`,
+  `TestTrayMenuMediaRowsFollowSession`, `TestTrayMenuLampSubmenu`,
+  `TestTrayMenuLampOffDisablesChoices`, `TestTrayMenuUpdateRow`,
+  `TestTrayMenuMoreReceivers`, `TestTrayMenuEmptyState`,
+  `TestMenuPreviewPNG`, `TestCoverPreviewColors`.
+- 2026-11-15 to 11-16, stereo ambient first light: registry members persist
+  `osVersion`, `CachedDevice` restores it per member, `offlineDevice` reuses
+  the cached device, and sender log lines carry the member name (verified
+  live 2026-11-15 on HomePod L/R software 27.3: both tops lit on a cold
+  start). The one-dark-top race is a follower that does not assume playing:
+  a pair member now sends an explicit state `1` at stream start before the
+  first cover, and re-sends the first cover 2 s later (`coverRetry`,
+  one-shot per session, standalone skipped). Live runs confirmed the order
+  on both members and the user confirmed R lights on the first connect
+  without tapping. The 2026-11-15 SETPEERS attribution did not survive: on
+  a PTP session SETPEERS is a receiver no-op and cannot seed display sync;
+  protocol.md §11 records the mechanism. Pins:
+  `TestCachedDeviceGroupKeepsTopDisplayCapability`,
+  `TestRememberedStereoPairKeepsTopDisplayCapability`,
+  `TestSenderLogTagsTheReceiver`, `TestFirstCoverResendsOnceOnAPair`,
+  `TestFirstCoverRetrySendsTheCurrentCover`,
+  `TestFirstCoverRetrySkipsAStandalone`,
+  `TestPairSessionSendsPlayingStateBeforeTheFirstCover`,
+  `TestStandaloneSessionStillAssumesPlaying`.
+- 2026-11-17, the 0.6.4 release run: the range review classified
+  `v0.6.3..HEAD` (41 commits); the UI review's 254-frame matrix and the
+  skill audit (changed) ran clean; the critical-path subset review landed
+  after the tag as `12c6fdf` and `844e475` (the high-contrast notes-theme
+  cache and the refuted SETPEERS comments; a history exception: `6735e3d`
+  mixes the OSVersion cache fix with reply-label diagnostics, un-splittable
+  after the tag; kept: the 2 s select duplication in `mute.go`/`silence.go`,
+  the cover-retry diagnostics line, `Features.Persisted` as the store's
+  shape; kept gap: RTSP replies log the method alone), the first tag
+  `04fdd96` was re-cut as `117508a` on top of the fixes, and workflow
+  44022602002 published 0.6.4 at 2026-11-17T05:21:56Z with every asset
+  checksum verified and both feeds serving signed manifests. The mockup
+  templates refreshed with 40 renders under `.audit/release-0.6.4/mockups/`.
+  A live update from 0.6.3 and the 0.6.4 pre-release install remain owed.
+- 2026-11-17, the multi-device engine: one `sessionPlan` and one cohort
+  transport replace the single-receiver session and the stereo-group
+  transport — one `StartGate` epoch and one capture trim per session, at
+  most one PTP role per session. An 18-defect review shipped 12 fixes, each
+  with a failing-before test (mixed AP1/AP2 pause, removing a live target,
+  capture-rate change between arrivals, same-host routing, retry pruning,
+  Now Playing replay, the error-bar scope). One `ptp.Followers` owns UDP
+  319/320 and demultiplexes by source IPv4, so unpaired standalones share
+  the follower set, and a stale remembered pair is skipped at launch. The
+  live three-receiver session (two standalone HomePods + MacBook Air)
+  streamed at 19:17 with the user confirming sync by ear at 200 ms — the
+  sync rides the per-device latency settings, not the follower set alone.
+  Per-target volume and channel mix per 352-frame block before ALAC; the
+  channel stores in receivers.json, a pair is forced stereo, `VolumeByDevice`
+  is per target, an unset target adopts `initialVolume`, and a knob report
+  updates only its target. Pins:
+  `TestFollowersDemuxBySourceIP`, `TestClockPlanRoles`,
+  `TestClockPlanRejectsConflicts`, `TestAddSecondStandalonePTPReceiver`,
+  `TestAutoConnectSkipsAStaleStereoPair`,
+  `TestAutoConnectKeepsALiveStereoPair`; the live gaps (offset measurement,
+  drift soak, the two-pair master run, a mid-session member drop, per-device
+  volume and channel by ear) live in `Currently pending`.
+- 2026-11-17 to 11-20, the session surfaces: the settings receiver row
+  drops the per-device delay and volume at the user's request, then keeps
+  the volume beside the channel segment (the engine keeps the delay data and
+  `UpdateReceiver` for a later UI). The flyout device row is 66 DIP with a
+  per-target mixer — slider, mute speaker (`mutedVolume`, session state
+  only), and the channel button cycling stereo → left → right with the
+  faded-side icon — and the playback card is not drawn without media or the
+  latency row. The mixer exists only while a target streams; the trailing
+  action column is one fixed 92 DIP; 断开连接 sends `DisconnectTarget` and
+  rebuilds with the rest holding the mute; the head's 全部断开 keeps a
+  reserved 26-DIP slot so the panel never resizes (base 438). The engine
+  owns the join: `sessionPlan.joinKey` and `TargetControl.State` publish
+  member/joining/reopening/failed per active key, one verb per state, a
+  member's mixer survives a rebuild, and the dead-transport arm publishes
+  after `closeSession`. `sessionMembers` reads the member set for the tray
+  (every member accented and disabled), the connection card, the sidebar,
+  and the slowest-member latency. A dead member leaves the cohort
+  (`LostTarget`) and the survivors keep playing; the engine publishes a
+  `SessionNotice` and the 44-DIP bar family (loss, join, error, credential)
+  shares one geometry, +52 DIP while shown. A refused password prompts
+  instead of burning the ladder, and the live pass confirmed it twice
+  (2026-11-18 21:57/21:58). The connection page states the session
+  (已连接设备 with notable counters, 本次连接 health grid) and the
+  stability verdict reads the trailing 60 seconds
+  (`internal/engine/stability.go`). Pins:
+  `TestChannelIconFadesTheOtherSide`, `TestFlyoutVolumeButtonNamesItsAction`,
+  `TestDisconnectTargetLeavesOthers`, `TestFlyoutConnectingRowHidesMixer`,
+  `TestFlyoutDisconnectAllButtonFollowsSession`,
+  `TestConnectingRowActions`, `TestDisconnectJoiningTargetBeforeStreaming`,
+  `TestConnectPublishesJoiningThenMember`,
+  `TestFailedAttemptPublishesRetryOrReopening`,
+  `TestRowActionFollowsTargetState`, `TestDeviceHeadKeepsItsHeight`,
+  `TestSessionMembersFollowActiveTargets`,
+  `TestSessionLatencyUsesSlowestMember`, `TestTrayMenuMarksEveryMember`,
+  `TestMemberDeathKeepsOthersPlaying`, `TestMemberDeathPublishesANotice`,
+  `TestSessionNoticeAddsItsHeight`,
+  `TestRejectedPasswordPromptsInsteadOfRetrying`,
+  `TestTargetControlsCarryMeasuredHealth`, `TestConnectionPageDeviceList`,
+  `TestConnectionPageSessionCard`,
+  `TestDiagnosticsUnderrunsAgeOutOfTheWindow`; the live gaps (the notice in
+  a live session, the reworked page on real receivers) live in
+  `Currently pending`.
 
 ## 2026-11-21 — the launch deadline and the multi-homed cohort route
 
