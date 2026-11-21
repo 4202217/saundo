@@ -1232,6 +1232,24 @@ docs/ui.md and docs/ui-copy.md; no P0 and no terminology finding. One
 coverage gap: no preview showed the model-detail card, fixed by the scrolled
 receivers state (0f3ce44).
 
+## 2026-11-22 — 0.6.5 draft and publish
+
+Workflow 44927966383 succeeded on the re-cut release commit (`cb183b4`):
+`check`, `check-macos`, `draft`, `build`, and `build-macos` all green. The
+draft carried fifteen assets — the Windows installer, both update
+archives, both signed manifests, `install.ps1`, `install.sh`, the dmg,
+`SHA256SUMS`, and the 0.6.2/0.6.3/0.6.4 deltas for both platforms — and
+`sha256sum -c SHA256SUMS` passed every asset. Both manifests carry version
+0.6.5, the English notes (including the latency-segment line), and six
+signatures. The bilingual release notes were set from
+`scripts/release-notes.sh`, and the release was published 2026-11-22 at
+https://github.com/4202217/Saundo/releases/tag/v0.6.5. The public feed
+serves `update-windows-amd64.json` and `update-darwin-arm64.json` at
+version 0.6.5 with signatures; the installer and dmg return 200. The
+repository answers at its renamed casing `4202217/Saundo`; the
+`4202217/saundo` URLs redirect. Not run: a live update from 0.6.4 — it
+needs an installed 0.6.4 build and stays in `Currently pending`.
+
 ## 2026-11-22 — 0.6.5 re-cut
 
 The first `v0.6.5` tag (`f5a9f6b`) failed the workflow's `check` job and
