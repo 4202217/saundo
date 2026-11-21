@@ -1910,3 +1910,43 @@ latency-head states, and the connection page's session cards — match
 docs/ui.md and docs/ui-copy.md; no P0 and no terminology finding. One
 coverage gap: no preview showed the model-detail card, fixed by the scrolled
 receivers state (0f3ce44).
+
+## 2026-11-21 — a re-created pair member stalled stream SETUP until a power cycle
+
+The maintainer reported connects slower than before. The log disagrees
+with a sender regression and agrees with a wedged receiver: from
+13:33:37, every connect to the 卧室 official pair waited 5.4–6.5 s for
+HomePod L's (192.168.31.46) final stream SETUP reply — 13:33:38.706 →
+44.967, 13:36:33.888 → 39.969, 13:49:48.401 → 54.379, 15:08:32.030 →
+38.038, 15:37:33.129 → 39.225, 19:29:41.184 → 47.407, 19:30:08.497 →
+14.253, 21:27:30.209 → 36.703 — for a total of ~8 s against ~1 s that
+morning. Every earlier stage on the same control connection stayed
+sub-100 ms: pairing, session SETUP, RECORD, SETPEERS, and the PTP wait all
+answered promptly, and HomePod R answered its own stream SETUP in 43–129
+ms inside the same stalled sessions. Combo and standalone connects on the
+same minutes stayed fast (13:35:06, the combo, 0.03 s), so the network
+path was sound. The slow reply and the member's event-channel
+`POST /command` flush arrived in the same millisecond (21:27:36.703), the
+signature of a receiver-side pipeline releasing both connections at once,
+not of a lost segment.
+
+The onset rules the sender out: binary 0.6.4-38-g7f99017 connected the
+same pair in 0.03 s at 13:32:38 and stalled at 13:33:37, the plain 0.6.4
+candidate stalled at 13:49, and a later dev build stalled again — the
+stall survives every build while sitting on one receiver at one stage.
+The onset also sits minutes after the pair was dissolved and re-created
+in the Home app during the de-synthesize test (five `stereo:` UUIDs
+accumulated in the registry that afternoon; the re-created pair is
+`stereo:31932A59…`). The wire sequence is unchanged: the 08:33 fast
+session and the slow ones run the same stages with the same 1188-byte
+session SETUP.
+
+A power cycle of HomePod L cleared it: 21:45:28.196 → 29.827 (1.63 s,
+L's stream SETUP 178 ms) and 21:49:26.930 → 28.669 (1.74 s, 219 ms), both
+the same 卧室 pair path with SETPEERS. Finding: an `AudioAccessory5,1`
+27.3 pair member can wedge its stream-SETUP handling after Home-app
+re-pairing, holding each connect to a fixed multi-second stall until the
+speaker power cycles; the sender treats it as receiver state and carries
+no workaround. Evidence: the maintainer's `saundo.log` and `saundo.log.1`
+for 2026-11-21; the profile note lives in devices.md's HomePod stereo
+pair section. No code change, so nothing is pinned.
