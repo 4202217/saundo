@@ -543,6 +543,9 @@ html[data-theme="dark"] .amhub-face{box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1
   color:color-mix(in srgb,var(--text) 10%,transparent);pointer-events:none;user-select:none}
 .ss-mark-l{left:calc(30% - 60px)}
 .ss-mark-r{left:calc(70% - 60px)}
+.ss-mark::after{content:attr(data-mark);position:absolute;inset:0;color:color-mix(in srgb,var(--text) 22%,transparent);
+  opacity:0;pointer-events:none;animation:ssMarkFlash .55s var(--ease) 1.6s 1,ssMarkFlash .6s var(--ease) 2.2s infinite}
+@keyframes ssMarkFlash{0%{opacity:.55}65%{opacity:0}100%{opacity:0}}
 .ss-field{position:absolute;top:92px;width:250px;height:250px;border-radius:50%;pointer-events:none;filter:blur(34px);
   background:radial-gradient(circle,color-mix(in srgb,var(--text) 9%,transparent),transparent 68%);
   opacity:.45;animation:ssField 4.6s var(--ease) infinite}
@@ -551,58 +554,137 @@ html[data-theme="dark"] .amhub-face{box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1
 @keyframes ssField{0%,100%{opacity:.35;transform:scale(.96)}50%{opacity:.7;transform:scale(1.04)}}
 .ss-ground{position:absolute;left:6%;right:6%;top:236px;height:1px;
   background:linear-gradient(90deg,transparent,var(--line) 10%,var(--line) 90%,transparent)}
-/* the shared signal: one green beat leaves the channel control for both
-   receivers at once, the grey line turning green behind it; on arrival both
-   bodies pulse on the same level */
+/* the shared signal: the line fills once and stays lit, smaller dots keep
+   running it, and both bodies, the dots, and the line glow follow one level
+   envelope, so the two receivers read as playing the same sound */
 .ss-flow{position:absolute;top:236px;height:2px;margin-top:-1px;pointer-events:none;z-index:1}
 .ss-flow-l{left:30%;right:50%}
 .ss-flow-r{left:50%;right:30%}
 .ss-flow .fill{position:absolute;inset:0;border-radius:2px;background:var(--green);transform:scaleX(0);
-  animation:ssFlowFill 3.4s linear infinite}
+  animation:ssFlowFill 1.6s linear 1 forwards}
+.ss-flow .fill::after{content:"";position:absolute;inset:-3px;border-radius:4px;background:var(--green);
+  filter:blur(6px);opacity:.15;pointer-events:none;animation:ssLevelLine 2.4s linear 1.6s infinite}
+/* a manual swap lights both lines once; the link itself never breaks */
+.ss-flow .flash{position:absolute;inset:0;border-radius:2px;background:color-mix(in srgb,var(--green) 55%,#fff);
+  opacity:0;pointer-events:none}
+.sstage.swap .ss-flow .flash{animation:ssSwapFlash .55s var(--ease) 1}
+@keyframes ssSwapFlash{0%{opacity:0}18%{opacity:.9}100%{opacity:0}}
 .ss-flow-l .fill{transform-origin:100% 50%}
 .ss-flow-r .fill{transform-origin:0 50%}
 .ss-flow .dot{position:absolute;inset:0;opacity:0}
 .ss-flow .dot::before{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;
-  background:var(--green);box-shadow:0 0 8px color-mix(in srgb,var(--green) 55%,transparent)}
-.ss-flow-l .dot{animation:ssFlowDotL 3.4s linear infinite}
-.ss-flow-r .dot{animation:ssFlowDotR 3.4s linear infinite}
-.ss-flow-l .dot::before{right:0}
-.ss-flow-r .dot::before{left:0}
+  background:var(--green);box-shadow:0 0 0 2px var(--bg),0 0 8px color-mix(in srgb,var(--green) 55%,transparent);
+  animation:ssLevelDot 2.4s linear 1.6s infinite}
+.ss-flow-l .dot{animation:ssFlowDotL 1.6s linear 1 forwards}
+.ss-flow-r .dot{animation:ssFlowDotR 1.6s linear 1 forwards}
+.ss-flow-l .dot::before{right:-3px}
+.ss-flow-r .dot::before{left:-3px}
+/* after the first fill the line stays lit; smaller, brighter dots keep running
+   the segment so the pair reads as live rather than sent once */
+.ss-flow .run{position:absolute;inset:0;opacity:0}
+.ss-flow .run::before{content:"";position:absolute;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;
+  background:var(--green-text);box-shadow:0 0 8px color-mix(in srgb,var(--green) 65%,transparent);
+  animation:ssLevelDot 2.4s linear 1.6s infinite}
+.ss-flow-l .run::before{right:-2.5px}
+.ss-flow-r .run::before{left:-2.5px}
+.ss-flow-l .run{animation:ssRunL .6s linear 1.6s infinite}
+.ss-flow-r .run{animation:ssRunR .6s linear 1.6s infinite}
 @keyframes ssFlowFill{
-  0%,8%{transform:scaleX(0);opacity:0}
-  12%{opacity:1}
-  48%,60%{transform:scaleX(1);opacity:1}
-  66%,100%{transform:scaleX(1);opacity:0}
+  0%{transform:scaleX(0);opacity:0}
+  6%{opacity:1}
+  100%{transform:scaleX(1);opacity:1}
 }
 @keyframes ssFlowDotL{
-  0%,8%{transform:translateX(0);opacity:0}
-  12%{opacity:1}
-  48%,60%{transform:translateX(-100%);opacity:1}
-  66%,100%{transform:translateX(-100%);opacity:0}
+  0%{transform:translateX(0);opacity:0}
+  6%{opacity:1}
+  100%{transform:translateX(-100%);opacity:1}
 }
 @keyframes ssFlowDotR{
-  0%,8%{transform:translateX(0);opacity:0}
-  12%{opacity:1}
-  48%,60%{transform:translateX(100%);opacity:1}
-  66%,100%{transform:translateX(100%);opacity:0}
+  0%{transform:translateX(0);opacity:0}
+  6%{opacity:1}
+  100%{transform:translateX(100%);opacity:1}
+}
+@keyframes ssRunL{
+  0%{transform:translateX(0);opacity:0}
+  8%{opacity:1}
+  92%{transform:translateX(-92%);opacity:1}
+  100%{transform:translateX(-100%);opacity:0}
+}
+@keyframes ssRunR{
+  0%{transform:translateX(0);opacity:0}
+  8%{opacity:1}
+  92%{transform:translateX(92%);opacity:1}
+  100%{transform:translateX(100%);opacity:0}
 }
 .ss-dev{position:absolute;top:118px;width:220px;display:grid;justify-items:center;pointer-events:none}
+/* the arriving packet gives one small ring at the base, then the level pulse */
+.ss-ripple{position:absolute;left:50%;top:118px;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
+  border:1.5px solid var(--green);opacity:0;pointer-events:none;
+  animation:ssRipple .55s var(--ease) 1.6s 1,ssRipple .6s var(--ease) 2.2s infinite}
+@keyframes ssRipple{0%{transform:scale(.4);opacity:.65}70%{transform:scale(2.4);opacity:0}100%{opacity:0}}
 .ss-dev-l{left:calc(30% - 110px)}
 .ss-dev-r{left:calc(70% - 110px)}
 .ss-glyph{position:relative;height:118px;display:flex;align-items:flex-end;justify-content:center;
-  transform-origin:50% 100%;animation:ssPlay 3.4s linear infinite}
-@keyframes ssPlay{
-  0%,48%{transform:scale(1)}
-  51%{transform:scale(1.035)}
-  54%{transform:scale(1)}
-  57%{transform:scale(1.03)}
-  60%,100%{transform:scale(1)}
+  transform-origin:50% 100%;animation:ssLevelBody 2.4s linear 1.6s infinite}
+@keyframes ssLevelBody{
+  0%{transform:scale(1.03)}
+  7%{transform:scale(1)}
+  22%{transform:scale(1)}
+  25%{transform:scale(1.012)}
+  32%{transform:scale(1)}
+  47%{transform:scale(1)}
+  50%{transform:scale(1.035)}
+  57%{transform:scale(1)}
+  72%{transform:scale(1)}
+  75%{transform:scale(1.015)}
+  82%,100%{transform:scale(1)}
 }
+@keyframes ssLevelDot{
+  0%{transform:scale(1.4)}
+  7%{transform:scale(1)}
+  22%{transform:scale(1)}
+  25%{transform:scale(1.15)}
+  32%{transform:scale(1)}
+  47%{transform:scale(1)}
+  50%{transform:scale(1.5)}
+  57%{transform:scale(1)}
+  72%{transform:scale(1)}
+  75%{transform:scale(1.2)}
+  82%,100%{transform:scale(1)}
+}
+@keyframes ssLevelLine{
+  0%{opacity:.6}
+  8%{opacity:.15}
+  22%{opacity:.15}
+  25%{opacity:.3}
+  33%{opacity:.15}
+  47%{opacity:.15}
+  50%{opacity:.65}
+  58%{opacity:.15}
+  72%{opacity:.15}
+  75%{opacity:.35}
+  83%,100%{opacity:.15}
+}
+/* the first fill runs when the stage enters view, so the arrival is seen */
+.js .ss-flow .fill,.js .ss-flow .dot,.js .ss-flow .run,.js .ss-glyph,
+.js .ss-flow .dot::before,.js .ss-flow .run::before,.js .ss-flow .fill::after,
+.js .ss-ripple,.js .ss-mark::after,.js .ss-wave i{animation-play-state:paused}
+.js .sstage.flow .ss-flow .fill,.js .sstage.flow .ss-flow .dot,.js .sstage.flow .ss-flow .run,.js .sstage.flow .ss-glyph,
+.js .sstage.flow .ss-flow .dot::before,.js .sstage.flow .ss-flow .run::before,.js .sstage.flow .ss-flow .fill::after,
+.js .sstage.flow .ss-ripple,.js .sstage.flow .ss-mark::after,.js .sstage.flow .ss-wave i{animation-play-state:running}
 .ss-figure{position:relative;display:block;width:max-content;line-height:0}
 /* an inline svg without a viewBox defaults to 300×150, so each model carries
    its own width; the symbol's viewBox does the scaling after a swap */
 .ss-figure svg{height:118px;width:calc(118px * 1065.362637 / 1361.756996);display:block;fill:currentColor;color:var(--ss-device)}
 .ss-figure.mini svg{height:80px;width:calc(80px * 1264.451493 / 1157.657815)}
+/* both bodies answer with the same two-ring, omnidirectional wave; the ring
+   is neutral so it reads as sound, not as another data link */
+.ss-wave{position:absolute;left:50%;top:50%;width:100%;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none}
+.ss-wave i{position:absolute;inset:0;border-radius:50%;border:1.2px solid color-mix(in srgb,var(--text) 30%,transparent);opacity:0}
+.ss-wave i:first-child{animation:ssWaveIn 2.4s var(--ease) 1.6s infinite}
+.ss-wave i:last-child{animation:ssWaveOut 2.4s var(--ease) 1.6s infinite}
+@keyframes ssWaveIn{0%{transform:scale(.5);opacity:.5}25%{transform:scale(1.6);opacity:0}100%{opacity:0}}
+@keyframes ssWaveOut{0%{transform:scale(.75);opacity:.3}25%{transform:scale(1.9);opacity:0}100%{opacity:0}}
 .ss-label{margin-top:14px;display:grid;justify-items:center;text-align:center;white-space:nowrap}
 .ss-label b{font-size:13px;font-weight:500;color:var(--text)}
 .ss-swap{position:absolute;left:50%;top:236px;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;
@@ -612,7 +694,11 @@ html[data-theme="dark"] .amhub-face{box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1
 .ss-swap:hover{color:var(--green-text);border-color:var(--green)}
 .ss-swap:active{transform:translate(-50%,-50%) scale(.94)}
 .ss-swap svg{width:15px;height:15px}
-@media (prefers-reduced-motion:reduce){.ss-field{animation:none;opacity:.5}.ss-flow .fill,.ss-flow .dot,.ss-glyph{animation:none}}
+@media (prefers-reduced-motion:reduce){.ss-field{animation:none;opacity:.5}
+  .ss-flow .fill,.ss-flow .dot,.ss-flow .run,.ss-glyph,
+  .ss-flow .dot::before,.ss-flow .run::before,.ss-flow .fill::after,
+  .ss-ripple,.ss-mark::after,.ss-wave i{animation:none}
+  .sstage.swap .ss-flow .flash{animation:none}}
 @media (max-width:1020px){
   .stereo-layout{grid-template-columns:1fr;gap:var(--sp-600)}
   .stereo-copy{justify-self:center;justify-items:center;text-align:center;max-width:620px}
@@ -633,6 +719,7 @@ html[data-theme="dark"] .amhub-face{box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1
   .ss-dev-l{left:calc(28% - 80px)}
   .ss-dev-r{left:calc(72% - 80px)}
   .ss-glyph{height:96px}
+  .ss-ripple{top:96px}
   .ss-figure svg{height:96px;width:calc(96px * 1065.362637 / 1361.756996)}
   .ss-figure.mini svg{height:66px;width:calc(66px * 1264.451493 / 1157.657815)}
   .ss-label{margin-top:18px}
@@ -1512,18 +1599,47 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
         </div>
       </div>
       <div class="bento">
-        <article class="card blamp reveal">
-          <div class="blamp-body">
+        <article class="card bmulti reveal">
+          <div class="bm-body">
             <span class="bnum">01</span>
-            <h3 data-en="New cover. New light.">封面一换，灯就换。</h3>
-            <p data-en="Three colors from the artwork, a new set with every track. Or pick one of six templates.">封面取三色，切歌就换。也能手选六套模板。</p>
+            <h3 data-en="Connect as many as you like.">想连几台，就连几台。</h3>
+            <p data-en="One computer connects to several receivers at once and plays to all of them. Add or drop one mid-song; the rest keep going.">一台电脑同时连接多台接收器，一起播放。中途加一台、撤一台，其余的继续。</p>
           </div>
           <div class="art" aria-hidden="true">
-            <div class="art-ambient fa-amb"><span class="orb"><span class="orb-swirl"></span><span class="orb-glass"></span></span></div>
+            <div class="amhub">
+              <svg class="amhub-lines" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true">
+                <g class="base"><path d="M160 75 Q88 32 22 22"/><path d="M160 75 Q232 62 298 22"/><path d="M160 75 Q88 88 22 128"/><path d="M160 75 Q232 118 298 128"/></g>
+                <g class="pulse"><path pathLength="100" d="M160 75 Q88 32 22 22"/><path pathLength="100" d="M160 75 Q232 62 298 22"/><path pathLength="100" d="M160 75 Q88 88 22 128"/><path pathLength="100" d="M160 75 Q232 118 298 128"/></g>
+              </svg>
+              <span class="amhub-core"><span class="amhub-face"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="eye" cx="15" cy="17" r="2.2"/><circle class="eye" cx="25" cy="17" r="2.2"/><path class="mouth" d="M14 26 Q20 31 26 26"/></svg></span></span>
+              <span class="amhub-node nw"><span class="amhub-glyph pair"><svg class="sfg"><use href="#g-homepod-pair"/></svg></span><i class="amhub-dot"></i></span>
+              <span class="amhub-node ne"><span class="amhub-glyph mix"><svg class="sfg"><use href="#g-homepod-mini-combo"/></svg></span><i class="amhub-dot"></i></span>
+              <span class="amhub-node sw"><span class="amhub-glyph mini"><svg class="sfg"><use href="#g-homepod-mini"/></svg></span><i class="amhub-dot"></i></span>
+              <span class="amhub-node se"><span class="amhub-glyph"><svg class="sfg"><use href="#g-homepod"/></svg></span><i class="amhub-dot"></i></span>
+            </div>
           </div>
         </article>
-        <article class="card bmedia reveal" data-d="1">
+        <article class="card reveal" data-d="1">
           <span class="bnum">02</span>
+          <h3 data-en="Latency. Your call.">延迟，自己定。</h3>
+          <p data-en="Three presets at 200 ms, 1.5 s, and 2 s, or set anything from 20 to 2000 ms. Switching briefly restarts the stream.">200 ms、1.5 s、2 s 三档预设，也可以自己填 20 到 2000 ms。切档会短暂重启音频流。</p>
+          <div class="art">
+            <div class="fa-lat">
+              <div class="fa-rail" aria-hidden="true">
+                <i class="fa-tick" style="left:12.5%"></i><i class="fa-tick" style="left:37.5%"></i><i class="fa-tick" style="left:62.5%"></i><i class="fa-tick" style="left:87.5%"></i>
+                <i class="fa-mark" id="faMark"></i>
+              </div>
+              <div class="fa-lat-modes" role="group" aria-label="延迟模式">
+                <button class="on" type="button" data-fa-lat="200" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span>200 ms</span></button>
+                <button type="button" data-fa-lat="1500" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span>1.5 s</span></button>
+                <button type="button" data-fa-lat="2000" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span>2 s</span></button>
+                <button type="button" data-fa-lat="custom" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-en="Custom" data-zh="自定义">自定义</span></button>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="card bmedia reveal" data-d="2">
+          <span class="bnum">03</span>
           <h3 data-en="The tray knows what's playing.">放什么，托盘知道。</h3>
           <p data-en="Play a song. Title, artist, progress, and artwork land in the tray.">歌一放，曲名、艺人、进度、封面，自己出现在托盘里。</p>
           <div class="art">
@@ -1546,25 +1662,6 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
                 <span class="fclock">2:08</span>
                 <span class="ftrack"><i class="ffill" style="width:52%"></i><i class="fthumb" style="left:calc(52% - 4.5px)"></i></span>
                 <span class="fclock">-1:56</span>
-              </div>
-            </div>
-          </div>
-        </article>
-        <article class="card reveal" data-d="2">
-          <span class="bnum">03</span>
-          <h3 data-en="Latency. Your call.">延迟，自己定。</h3>
-          <p data-en="Three presets at 200 ms, 1.5 s, and 2 s, or set anything from 20 to 2000 ms. Switching briefly restarts the stream.">200 ms、1.5 s、2 s 三档预设，也可以自己填 20 到 2000 ms。切档会短暂重启音频流。</p>
-          <div class="art">
-            <div class="fa-lat">
-              <div class="fa-rail" aria-hidden="true">
-                <i class="fa-tick" style="left:12.5%"></i><i class="fa-tick" style="left:37.5%"></i><i class="fa-tick" style="left:62.5%"></i><i class="fa-tick" style="left:87.5%"></i>
-                <i class="fa-mark" id="faMark"></i>
-              </div>
-              <div class="fa-lat-modes" role="group" aria-label="延迟模式">
-                <button class="on" type="button" data-fa-lat="200" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2.2 5.4 13.1h4.7l-1.2 8.7 8.1-11.2h-4.8l1-8.4z" fill="currentColor"/></svg><span>200 ms</span></button>
-                <button type="button" data-fa-lat="1500" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg><span>1.5 s</span></button>
-                <button type="button" data-fa-lat="2000" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span>2 s</span></button>
-                <button type="button" data-fa-lat="custom" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-en="Custom" data-zh="自定义">自定义</span></button>
               </div>
             </div>
           </div>
@@ -1593,24 +1690,14 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
             </div>
           </div>
         </article>
-        <article class="card bmulti reveal" data-d="4">
-          <div class="bm-body">
+        <article class="card blamp reveal" data-d="4">
+          <div class="blamp-body">
             <span class="bnum">05</span>
-            <h3 data-en="Connect as many as you like.">想连几台，就连几台。</h3>
-            <p data-en="One computer connects to several receivers at once and plays to all of them. Add or drop one mid-song; the rest keep going.">一台电脑同时连接多台接收器，一起播放。中途加一台、撤一台，其余的继续。</p>
+            <h3 data-en="New cover. New light.">封面一换，灯就换。</h3>
+            <p data-en="Three colors from the artwork, a new set with every track. Or pick one of six templates.">封面取三色，切歌就换。也能手选六套模板。</p>
           </div>
           <div class="art" aria-hidden="true">
-            <div class="amhub">
-              <svg class="amhub-lines" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true">
-                <g class="base"><path d="M160 75 Q88 32 22 22"/><path d="M160 75 Q232 62 298 22"/><path d="M160 75 Q88 88 22 128"/><path d="M160 75 Q232 118 298 128"/></g>
-                <g class="pulse"><path pathLength="100" d="M160 75 Q88 32 22 22"/><path pathLength="100" d="M160 75 Q232 62 298 22"/><path pathLength="100" d="M160 75 Q88 88 22 128"/><path pathLength="100" d="M160 75 Q232 118 298 128"/></g>
-              </svg>
-              <span class="amhub-core"><span class="amhub-face"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="eye" cx="15" cy="17" r="2.2"/><circle class="eye" cx="25" cy="17" r="2.2"/><path class="mouth" d="M14 26 Q20 31 26 26"/></svg></span></span>
-              <span class="amhub-node nw"><span class="amhub-glyph pair"><svg class="sfg"><use href="#g-homepod-pair"/></svg></span><i class="amhub-dot"></i></span>
-              <span class="amhub-node ne"><span class="amhub-glyph mix"><svg class="sfg"><use href="#g-homepod-mini-combo"/></svg></span><i class="amhub-dot"></i></span>
-              <span class="amhub-node sw"><span class="amhub-glyph mini"><svg class="sfg"><use href="#g-homepod-mini"/></svg></span><i class="amhub-dot"></i></span>
-              <span class="amhub-node se"><span class="amhub-glyph"><svg class="sfg"><use href="#g-homepod"/></svg></span><i class="amhub-dot"></i></span>
-            </div>
+            <div class="art-ambient fa-amb"><span class="orb"><span class="orb-swirl"></span><span class="orb-glass"></span></span></div>
           </div>
         </article>
       </div>
@@ -1632,20 +1719,22 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
       </div>
       <div class="stereo-stage reveal" data-d="1">
         <div class="sstage" id="comboCard">
-          <span class="ss-mark ss-mark-l" aria-hidden="true">L</span>
-          <span class="ss-mark ss-mark-r" aria-hidden="true">R</span>
+          <span class="ss-mark ss-mark-l" data-mark="L" aria-hidden="true">L</span>
+          <span class="ss-mark ss-mark-r" data-mark="R" aria-hidden="true">R</span>
           <span class="ss-field ss-field-l" aria-hidden="true"></span>
           <span class="ss-field ss-field-r" aria-hidden="true"></span>
           <span class="ss-ground" aria-hidden="true"></span>
-          <span class="ss-flow ss-flow-l" aria-hidden="true"><i class="fill"></i><span class="dot"></span></span>
-          <span class="ss-flow ss-flow-r" aria-hidden="true"><i class="fill"></i><span class="dot"></span></span>
+          <span class="ss-flow ss-flow-l" aria-hidden="true"><i class="fill"></i><i class="flash"></i><span class="dot"></span><i class="run"></i></span>
+          <span class="ss-flow ss-flow-r" aria-hidden="true"><i class="fill"></i><i class="flash"></i><span class="dot"></span><i class="run"></i></span>
           <div class="ss-dev ss-dev-l" id="comboLeft">
-            <span class="ss-glyph"><span class="ss-figure"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg></span></span>
+            <span class="ss-glyph"><span class="ss-figure"><span class="ss-wave" aria-hidden="true"><i></i><i></i></span><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg></span></span>
+            <span class="ss-ripple" aria-hidden="true"></span>
             <span class="ss-label"><b>HomePod</b></span>
           </div>
           <button class="ss-swap" id="comboSwap" type="button" aria-label="交换左右声道"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
           <div class="ss-dev ss-dev-r" id="comboRight">
-            <span class="ss-glyph"><span class="ss-figure mini"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg></span></span>
+            <span class="ss-glyph"><span class="ss-figure mini"><span class="ss-wave" aria-hidden="true"><i></i><i></i></span><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg></span></span>
+            <span class="ss-ripple" aria-hidden="true"></span>
             <span class="ss-label"><b>HomePod mini</b></span>
           </div>
         </div>
@@ -3155,7 +3244,7 @@ function comboRender(){
   });
   document.getElementById("comboSwap").setAttribute("aria-label", t("交换左右声道"));
 }
-var comboBusy = false;
+var comboBusy = false, comboSwapFlashTimer = null;
 /* the manual control only trades sides; the models on stage stay the same */
 function comboSwap(){
   if(comboBusy) return;
@@ -3166,6 +3255,14 @@ function comboSwap(){
     comboRender();
   }
   if(RM || typeof left.animate !== "function"){ apply(); return; }
+  var stage = document.getElementById("comboCard");
+  if(stage){
+    stage.classList.remove("swap");
+    void stage.offsetWidth;
+    stage.classList.add("swap");
+    clearTimeout(comboSwapFlashTimer);
+    comboSwapFlashTimer = setTimeout(function(){ stage.classList.remove("swap"); }, 650);
+  }
   comboBusy = true;
   var d = 20, ease = "cubic-bezier(.22,1,.36,1)";
   var out = [
@@ -3194,6 +3291,18 @@ function comboSwap(){
 }
 document.getElementById("comboSwap").addEventListener("click", comboSwap);
 comboRender();
+/* run the first fill only when the stage is in view; the stream follows */
+(function(){
+  var stage = document.getElementById("comboCard");
+  if(!stage) return;
+  if(!("IntersectionObserver" in window)){ stage.classList.add("flow"); return; }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){ stage.classList.add("flow"); io.disconnect(); }
+    });
+  }, {threshold:.35});
+  io.observe(stage);
+})();
 
 /* ---------- hero demo: one scripted pass through the real flow ----------
    The page opens on a live session — glow up, media paused, volume low. When

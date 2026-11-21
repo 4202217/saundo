@@ -121,12 +121,14 @@ live), with no eyebrow and no fine print. The right side is a stage, not a
 card, and it shows the real topology: a HomePod and a HomePod mini stand apart
 on one axis with no receiver-to-receiver link, because the combo is two
 independent AP2 sessions, not a native pair. The stage is static; it does not
-rotate models. A loop leaves the icon-only swap control for both devices at
-once: two green beats travel the grey axis while it turns green behind them,
-and on arrival both bodies take the same two-beat level pulse, so the two
-independent sessions read as playing the same sound. Reduced motion stops the
-signal. It carries no channel words, no text on the swap control, no volume,
-and no launch switch.
+rotate models. The icon-only swap control sends one green signal down both
+segments: the first fill and its endpoint dots stay, a stream of smaller dots
+keeps running, and both bodies, the dots, and the line glow follow one
+2.4-second four-beat level envelope. Each packet arrival adds a small base
+ripple and a brief L/R watermark lift; two neutral sound rings leave both
+bodies once per bar; a manual swap flashes both lit lines once without breaking
+or redrawing them. Reduced motion stops the signal. It carries no channel
+words, no text on the swap control, no volume, and no launch switch.
 `立体声组` / stereo group is the official pair; `立体声组合` / stereo combo is
 the software one. Keep the two words apart in both languages; the FAQ uses the
 same pair.
@@ -256,14 +258,14 @@ leaves the loss notice with its retry while the rest keep playing, the head's
 全部断开 ends the session, and a reconnect from idle opens one target. Per-row
 volume, mute, and the channel cycle all work; a disconnected single receiver's
 second line follows the channel with the long word (立体声 / 左声道 / 右声道,
-Stereo / Left channel / Right channel). The stereo stage is static: the
-icon-only axis control trades the current HomePod/mini sides, and a looping
-green signal from that control to both devices turns the grey line green and
-pulses both bodies on the same two beats; reduced motion stops the signal. The
+Stereo / Left channel / Right channel). The stereo stage keeps the HomePod/mini
+pair static; the icon-only control trades the sides without breaking the lit
+line. The line fills once, streams dots, and drives both bodies, the dots, and
+the line glow from one 2.4s level envelope; arrival ripples, watermark lifts,
+the per-bar sound rings, and the one-shot swap flash are the added layers. The
 new cards and the stage layout were checked at 1440, 1020, 390, and 320 px in
 Chinese and English, and in both themes; nothing overflows its column. The
-final signal overlay is a same-axis addition and was not re-checked in a
-browser.
+final animation layers were not re-checked in a browser.
 
 Lighthouse on the local server (`?demo=0&theme=light&lang=en`): desktop
 accessibility 92, best practices 100, SEO 100, agentic browsing 100; mobile
