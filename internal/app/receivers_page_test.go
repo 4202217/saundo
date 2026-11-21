@@ -545,12 +545,17 @@ func TestReceiverComboRowRendersTheChannelMap(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 560)
 	for _, want := range []string{
 		locales.ReceiverGroupCombo(), locales.ComboTag(), locales.ComboMapLabel(),
-		locales.ChannelLeft(), locales.ChannelRight(), locales.ComboUnlink(),
+		locales.ChannelLeft(), locales.ChannelRight(), locales.ReceiverEditButton(),
 		locales.VolumeLabel(),
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("combo row is missing %q; texts: %q", want, tt.Texts())
 		}
+	}
+	// The row offers the edit action; the destructive unlink moved into the
+	// dialog behind it.
+	if tt.HasText(locales.ComboUnlink()) {
+		t.Fatalf("the combo row still offers the unlink action: %q", tt.Texts())
 	}
 	// The combo replaces its members: the singles section has no rows, so its
 	// head carries no action and the add row stands in for the card.
@@ -567,6 +572,13 @@ func TestReceiverComboUnlinkOpensTheConfirmDialog(t *testing.T) {
 	a.page = pageReceivers
 	a.receiverOpen = map[string]bool{"combo:01": true}
 	tt := ui.NewTester(a.settingsView, 720, 560)
+	if err := tt.Click(locales.ReceiverEditButton()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText(locales.ComboEditTitle()) {
+		t.Fatalf("the edit dialog did not open; texts: %q", tt.Texts())
+	}
 	if err := tt.Click(locales.ComboUnlink()); err != nil {
 		t.Fatal(err)
 	}
@@ -748,15 +760,26 @@ func TestInvalidComboRowIsMarked(t *testing.T) {
 	if tt.HasText("2/2") {
 		t.Fatalf("the invalid combo still shows an online count: %q", tt.Texts())
 	}
-	// The flyout offers the same mark instead of a connect action when the
-	// combo is not the live target.
+	// The flyout lists only connectable targets, so the invalid combo is not
+	// a row there at all. The engine's Visible projection drops it; model
+	// that here and assert the other rows still render.
 	a.snap.ActiveTargets = nil
 	a.snap.Targets = nil
 	a.snap.SelectedID = ""
 	a.selID = ""
+	kept := a.snap.Devices[:0]
+	for _, d := range a.snap.Devices {
+		if d.ID != "combo:01" {
+			kept = append(kept, d)
+		}
+	}
+	a.snap.Devices = kept
 	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	if !tt.HasText(locales.ComboInvalid()) || !tt.HasText(locales.ComboInvalidReason()) {
-		t.Fatalf("the flyout does not mark the invalid combo: %q", tt.Texts())
+	if tt.HasText(locales.ComboInvalid()) || tt.HasText(locales.ComboInvalidReason()) || tt.HasText(locales.ComboTag()) {
+		t.Fatalf("the flyout still lists the invalid combo: %q", tt.Texts())
+	}
+	if !tt.HasText("MacBook Air") || !tt.HasText("卧室") {
+		t.Fatalf("the flyout dropped connectable rows with the invalid combo: %q", tt.Texts())
 	}
 }
 

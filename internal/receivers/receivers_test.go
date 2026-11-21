@@ -266,6 +266,19 @@ func TestVisibleFiltersHiddenAndKeepsActive(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("the active session's hidden row was dropped: %+v", got)
 	}
+	// An invalid combo cannot be connected, so the flyout leaves it out; a
+	// session that started before the official pair appeared keeps its row.
+	invalid := Target{
+		Device:  device.Device{ID: "combo:01", Name: "书桌", StereoID: "combo:01", Online: true},
+		Entry:   Entry{Key: "combo:01", Kind: KindCombo},
+		Invalid: true,
+	}
+	if got := Visible([]Target{invalid}, nil); len(got) != 0 {
+		t.Fatalf("the invalid combo leaked into the flyout: %+v", got)
+	}
+	if got := Visible([]Target{invalid}, map[string]bool{"combo:01": true}); len(got) != 1 {
+		t.Fatalf("the live invalid combo lost its row: %+v", got)
+	}
 }
 
 func TestAutoTargetsListsEveryFlag(t *testing.T) {

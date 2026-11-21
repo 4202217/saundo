@@ -111,7 +111,8 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   Pinned by
   `TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair` and
   `TestValidateTargetRefusesAStaleCombo`; `TestInvalidComboRowIsMarked` pins
-  the settings row, and its flyout half is owed a rewrite to assert absence.
+  the settings row and the flyout's absence, and
+  `TestVisibleFiltersHiddenAndKeepsActive` pins the projection.
   The expanded
   body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
   member, the offline side dimmed, a swap button between them that flips the

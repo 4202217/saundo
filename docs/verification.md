@@ -1783,11 +1783,11 @@ while its edit dialog still carries 解除组合; its members are released, so a
 standalone row; the flyout and tray list only connectable targets and omit the
 combo; auto-connect skips it; `validateTarget` refuses it with
 `ErrComboStale`. Pinned by
-`TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair` and
-`TestValidateTargetRefusesAStaleCombo`; `TestInvalidComboRowIsMarked` still
-pins the settings row, while its flyout half is owed a rewrite that asserts
-the combo is absent (test updates are deferred until this iteration is
-final).
+`TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair`,
+`TestValidateTargetRefusesAStaleCombo`, `TestInvalidComboRowIsMarked`, and
+`TestVisibleFiltersHiddenAndKeepsActive` — the last pins `Visible` dropping
+the invalid combo unless it is the live target, which is why the flyout has
+no row for it.
 Evidence: the registry entries HomePod L/R, 书桌 (combo members), and 卧室
 (`stereo:D175…`, members the same two IDs), plus the flyout and receivers-page
 screenshots from the report.
