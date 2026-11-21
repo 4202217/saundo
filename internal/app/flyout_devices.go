@@ -138,14 +138,14 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 		// is joining, reopening, or failed is plain: nothing offers volume
 		// before playback, and the row's height does not change.
 		if hasTarget && target.State == engine.TargetMember {
-			deviceGlyph(c, p, d)
+			deviceGlyph(c, p, d, a.deviceSeen(d))
 			a.deviceMixer(c, p, d, target)
 		} else {
 			pick := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Gap(10).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).Label(d.Name)
 			pick.OnClick(func() { a.selectDevice(d.ID) })
 			pick.Children(func() {
-				deviceGlyph(c, p, d)
+				deviceGlyph(c, p, d, a.deviceSeen(d))
 				// The plain row keeps the live row's rhythm: a 26 name line, a
 				// 2 gap, and a 20 second line. Shrink keeps the combo tag beside
 				// the name, spare width on the right.
@@ -367,13 +367,23 @@ func (a *App) cycleChannel(t engine.TargetControl) {
 	a.eng.UpdateReceiver(t.ID, receivers.Patch{Channel: &next})
 }
 
+// deviceSeen reports a live sighting for the row. A manual receiver is
+// Online because its address is attemptable, so its dot waits for discovery
+// instead of claiming it is there.
+func (a *App) deviceSeen(d device.Device) bool {
+	if v, ok := a.receiverViewFor(d.ID); ok {
+		return v.Seen
+	}
+	return d.Online
+}
+
 // deviceGlyph is the flyout row's round silhouette with the online dot; the
-// settings row draws its own at the page's inset.
-func deviceGlyph(c *ui.Context, p palette, d device.Device) {
+// settings row draws its online mark beside the name.
+func deviceGlyph(c *ui.Context, p palette, d device.Device, seen bool) {
 	g := ui.Box(c).Size(30, 30).Radius(15).Center().Shrink(0).Background(p.pill)
 	g.Children(func() {
 		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(p.fg)
-		if d.Online {
+		if seen {
 			ui.Box(c).Size(9, 9).Radius(4.5).Background(p.green).
 				Shadow(0, 0, 0, 2, p.card).
 				Attach(ui.AnchorBottomRight, ui.AnchorBottomRight).Right(-1).Bottom(-1)

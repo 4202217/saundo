@@ -44,9 +44,9 @@ func (a *App) receiverPairAddRow(c *ui.Context, p palette) {
 
 // receiverComboRow is one combo card row: stereo glyph, name with the combo
 // chip, the two member names as the sub, and the expanded body with the
-// channel map, the auto-connect flag, and one volume. 解除组合 rides the
-// head's tail cluster beside the switch while expanded, as the mockup pins
-// it — the row is its own card section, so the switch's x may move here.
+// channel map, the auto-connect flag, and one volume. While expanded the
+// head carries 编辑 in the gap before its switch, like a manual receiver's
+// edit button; 解除组合 lives in that dialog's footer.
 func (a *App) receiverComboRow(c *ui.Context, p palette, v receivers.View, hiddenGroup, divider bool) {
 	open := a.receiverOpen[v.Key]
 	row := ui.Column(c).Key(v.Key).Shrink(0).
@@ -83,18 +83,8 @@ func (a *App) receiverComboHead(c *ui.Context, p palette, v receivers.View, open
 	})
 	head.Children(func() {
 		a.receiverGlyph(c, p, v, open, hiddenGroup)
-		a.receiverNameCol(c, p, v, false)
+		a.receiverNameCol(c, p, v, open)
 		ui.Row(c).Gap(8).Shrink(0).AlignItems(ui.Center).Children(func() {
-			if open {
-				color := p.red
-				if hiddenGroup {
-					color = p.muted
-				}
-				rowAction(c, p, "unlink:"+v.Key, locales.ComboUnlink(), iconUnlink, color, func() {
-					a.receiverDialog = receiverDialogState{kind: receiverDialogComboUnlink, key: v.Key, entered: false}
-					a.receiverDialogOpen = true
-				})
-			}
 			shown := !v.Hidden
 			sw := toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
 				a.eng.SetReceiverHidden(v.Key, !next)
@@ -112,6 +102,19 @@ func (a *App) receiverComboHead(c *ui.Context, p palette, v receivers.View, open
 				chev.Rotate(-90)
 			}
 		})
+		// The edit action overlays the gap before the fixed row tail, the
+		// same place a manual receiver's edit sits; 解除组合 moved into that
+		// dialog's footer, so no destructive action shares the row.
+		if open {
+			color := p.accent
+			if hiddenGroup {
+				color = p.muted
+			}
+			b := rowAction(c, p, "edit:"+v.Key, locales.ReceiverEditButton(), iconPencil, color, func() {
+				a.beginEditCombo(v)
+			})
+			b.Attach(ui.AnchorRight, ui.AnchorRight).Right(receiverTailInset)
+		}
 	})
 }
 

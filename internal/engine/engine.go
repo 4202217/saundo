@@ -1129,12 +1129,8 @@ func (e *Engine) handleCommand(cmd command) {
 		e.handleUpdateReceiver(cmd.deviceID, cmd.patch)
 	case cmdRemoveReceiver:
 		e.handleRemoveReceiver(cmd.deviceID)
-	case cmdLinkReceivers:
-		e.handleLinkReceivers(cmd.ids, cmd.name)
-	case cmdUnlinkCombo:
-		e.handleUnlinkCombo(cmd.deviceID)
-	case cmdSwapComboSides:
-		e.handleSwapComboSides(cmd.deviceID)
+	case cmdLinkReceivers, cmdUpdateCombo, cmdUnlinkCombo, cmdSwapComboSides:
+		e.dispatchCombo(cmd)
 	}
 }
 

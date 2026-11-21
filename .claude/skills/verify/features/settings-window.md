@@ -68,20 +68,24 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   and 立体声组合 sections each draw a head: the label, its count pill while the
   section has rows, and its create action at the right (添加 / 创建组合). A
   section with no rows drops the pill and the action and shows its dashed row
-  instead (添加接收器 / 创建立体声组合). A page with no receivers shows only the
-  单独接收器 head and the 添加接收器 row; the combo section waits for a first
-  row.
+  instead (添加接收器 / 创建立体声组合). A page with no visible receivers shows only the
+  单独接收器 head and the 添加接收器 row; once a receiver shows, the combo
+  section follows, with its dashed create row when no combo exists — the
+  candidate count never hides it.
 - The 接收器 page's 型号细节 card sits below the receiver sections: one
   setting row, title 型号细节 over 关闭后隐藏型号名括号内的内容, with the
   switch at its right (accessible name 显示型号细节). Off hides the
   parenthetical part of every model label (MacBook Air, Apple TV 4K,
   HomePod), here and in the flyout. Pinned by
   `TestReceiverPageModelDetailSwitch`.
-- Every receiver row's title line carries the stereo group's online count
-  chip after the name (a dot plus 2/2 in green, or 1/2 in red), the password
-  or auth chip after the name (密码锁 + 需要密码, 钥匙 + 密码已保存, 感叹号 + 密码错误,
-  key + PIN 配对, alert + 需要认证 / 暂不支持), and the 手动添加 / 启动时连接 /
-  已隐藏 chips. The second line reads address · 声道 · model · version
+- Every target's glyph carries the green online dot at its bottom-right —
+  single receiver, stereo group, or combo — only when discovery has seen it;
+  a manual address is attemptable without ever being seen, so it shows none.
+  A stereo group's title line also shows 2/2 in green (or 1/2 in red) in a
+  pill with no dot glyph after the name, accessible name 2 台在线 / 1 台离线. After the name
+  come the password or auth chip (密码锁 + 需要密码, 钥匙 + 密码已保存,
+  感叹号 + 密码错误, key + PIN 配对, alert + 需要认证 / 暂不支持) and the
+  手动添加 / 启动时连接 / 已隐藏 chips. The second line reads address · 声道 · model · version
   (左声道 / 右声道 / 立体声) with the marketing name for a known HomePod,
   Apple TV, or Mac identifier (HomePod mini, Apple TV 4K (3rd gen),
   MacBook Air (M2, 2022)); unknown identifiers fall back to the family. A
@@ -95,12 +99,13 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
 - 立体声组合 section (`receiverComboRow`): created combos live in their own
   card under the same group-head style, so the combo's expanded body never
   runs into a single receiver's card. The row shows the stereo glyph, the
-  online count chip after the name, and the name with no 立体声组合 chip
+  online count chip (no dot glyph) after the name, and the name with no 立体声组合 chip
   (the section head labels it); the second line joins the member names with
   「 · 」 in playback order, or stays empty when the name already carries
   both. If any member ID belongs to an official stereo pair, the pair wins:
   the row carries 不可用 with 成员已加入立体声组, its expanded body keeps only
-  the layout map with the swap disabled, the enable switch is disabled, the
+  the layout map with the swap disabled, its edit dialog still reaches
+  解除组合, the enable switch is disabled, the
   flyout and tray omit it (they list connectable targets only), a member that
   is online on its own returns as a standalone row, and auto-connect skips it.
   Pinned by
@@ -111,8 +116,13 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
   member, the offline side dimmed, a swap button between them that flips the
   sides in place without a rebuild), a warning bar naming an offline member,
-  and one volume for both members. 解除组合 rides the head's tail while
-  expanded and opens the red confirm dialog. 创建立体声组合 (the dashed row, or the
+  and one volume for both members. While expanded the head carries 编辑 in
+  the attached slot before the switch, the same one a manual row uses; it
+  opens the combo edit dialog (编辑立体声组合): a picker per side that keeps
+  the combo's current members listed, the name, 解除组合 at the footer's left,
+  and 取消/保存. Saving renames or changes a side in place; a reorder of the
+  same pair hot-applies, a different pair ends the session. 解除组合 opens the
+  red confirm dialog. 创建立体声组合 (the dashed row, or the
   立体声组合 head's 创建组合 once the section has rows) opens the create dialog: a 左/右 select per side,
   the derived 「A + B」 name suggestion, and 组合 at 40% until both sides are
   chosen. Members drop from the list and the flyout while linked

@@ -24,6 +24,7 @@ const (
 	receiverDialogPassword
 	receiverDialogRemove
 	receiverDialogComboCreate
+	receiverDialogComboEdit
 	receiverDialogComboUnlink
 )
 
@@ -126,11 +127,10 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 
 	// One section per type. A section's create action rides its head while the
 	// section has rows; an empty section replaces it with its dashed row. The
-	// combo section needs two eligible receivers to offer creation at all: with
-	// fewer, the dialog could never commit. It still renders when a combo
-	// exists, so its rows stay reachable.
-	candidates := len(a.comboCandidates())
-	canCreateCombo := candidates >= 2
+	// combo section follows the receiver list whenever the page shows a
+	// receiver: the create dialog lists the eligible receivers and keeps 组合
+	// disabled until both sides are chosen, so a page with too few of them
+	// explains itself instead of hiding the affordance.
 	a.receiverSectionHead(c, p, locales.ReceiverGroupEnabled(), len(singles), 6, len(singles) > 0,
 		locales.ReceiverAddAction(), func() { a.openAddReceiver() })
 	if len(singles) > 0 {
@@ -143,8 +143,8 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	} else {
 		a.receiverAddRow(c, p)
 	}
-	if len(combos) > 0 || (len(visible) > 0 && canCreateCombo) {
-		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0 && canCreateCombo,
+	if len(visible) > 0 {
+		a.receiverSectionHead(c, p, locales.ReceiverGroupCombo(), len(combos), 12, len(combos) > 0,
 			locales.ComboCreateAction(), func() { a.openComboCreate() })
 		if len(combos) > 0 {
 			card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
@@ -372,9 +372,11 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 			color = p.faint
 		}
 		ui.Icon(c, stereoIcon(v.Device, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
-		// A stereo group carries its online count as a chip beside the name;
-		// the glyph dot would repeat it.
-		if v.Online && !hiddenGroup && !v.Stereo {
+		// Every target's online dot sits on the glyph, stereo groups and
+		// combos included; the group's count chip after the name adds the
+		// member count. The dot needs a live sighting: a manual address is
+		// attemptable without ever having been seen.
+		if v.Seen && !hiddenGroup {
 			ring := p.card
 			if open {
 				ring = p.sel
@@ -388,7 +390,7 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 
 func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open bool) {
 	col := ui.Column(c).Grow(1).Gap(2)
-	if v.IsManual() && open {
+	if (v.IsManual() || v.Entry.IsCombo()) && open {
 		// The attached edit button overlays this reserved gap.
 		col.Padding(0, 58, 0, 0)
 	}

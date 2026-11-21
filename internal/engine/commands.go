@@ -37,6 +37,9 @@ const (
 	// cmdLinkReceivers creates a stereo combo over two receiver keys, in
 	// command order: the first plays left, the second right.
 	cmdLinkReceivers
+	// cmdUpdateCombo edits a combo in place: its name and the two receiver
+	// keys that play left and right.
+	cmdUpdateCombo
 	// cmdUnlinkCombo deletes a stereo combo; its member receivers return to
 	// standalone rows with their own settings.
 	cmdUnlinkCombo

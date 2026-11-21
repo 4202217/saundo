@@ -1778,8 +1778,8 @@ appeared, the standalone member rows went offline: the settings combo row
 read `● 0/2` in red while the flyout's 书桌 row stayed live in the session it
 had auto-connected. The rule is official-pair priority: Merge marks a combo
 invalid when any member ID belongs to a native pair, live or remembered. The
-settings row reads 不可用 with 成员已加入立体声组 and keeps only the layout and
-解除组合; its members are released, so a member online on its own returns as a
+settings row reads 不可用 with 成员已加入立体声组 and keeps only the layout,
+while its edit dialog still carries 解除组合; its members are released, so a member online on its own returns as a
 standalone row; the flyout and tray list only connectable targets and omit the
 combo; auto-connect skips it; `validateTarget` refuses it with
 `ErrComboStale`. Pinned by

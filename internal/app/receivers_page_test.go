@@ -733,6 +733,33 @@ func TestReceiverPageModelDetailSwitch(t *testing.T) {
 	}
 }
 
+func TestInvalidComboRowIsMarked(t *testing.T) {
+	a := flyoutComboFixture()
+	a.page = pageReceivers
+	for i := range a.snap.Receivers {
+		if a.snap.Receivers[i].Key == "combo:01" {
+			a.snap.Receivers[i].Invalid = true
+		}
+	}
+	tt := ui.NewTester(a.settingsView, 720, 700)
+	if !tt.HasText(locales.ComboInvalid()) || !tt.HasText(locales.ComboInvalidReason()) {
+		t.Fatalf("the invalid combo row is not marked: %q", tt.Texts())
+	}
+	if tt.HasText("2/2") {
+		t.Fatalf("the invalid combo still shows an online count: %q", tt.Texts())
+	}
+	// The flyout offers the same mark instead of a connect action when the
+	// combo is not the live target.
+	a.snap.ActiveTargets = nil
+	a.snap.Targets = nil
+	a.snap.SelectedID = ""
+	a.selID = ""
+	tt = ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	if !tt.HasText(locales.ComboInvalid()) || !tt.HasText(locales.ComboInvalidReason()) {
+		t.Fatalf("the flyout does not mark the invalid combo: %q", tt.Texts())
+	}
+}
+
 func TestReceiverAuthPillStates(t *testing.T) {
 	a := receiverFixture()
 	needs := receivers.View{Key: "AA:00", Device: device.Device{ID: "AA:00", Auth: device.AuthHAPPassword}}

@@ -4046,6 +4046,26 @@ func (msgs Messages) ComboDialogSub() string {
 	return Catalog.Format(msgs.locale, "comboDialogSub", nil)
 }
 
+// ComboEditTitle says "Edit stereo combo"
+// in the language the app shows.
+func ComboEditTitle() string { return In(i18n.Locale()).ComboEditTitle() }
+
+// ComboEditTitle says "Edit stereo combo"
+// in the language of msgs.
+func (msgs Messages) ComboEditTitle() string {
+	return Catalog.Format(msgs.locale, "comboEditTitle", nil)
+}
+
+// ComboEditSub says "Change the combo's name or the receiver on each side."
+// in the language the app shows.
+func ComboEditSub() string { return In(i18n.Locale()).ComboEditSub() }
+
+// ComboEditSub says "Change the combo's name or the receiver on each side."
+// in the language of msgs.
+func (msgs Messages) ComboEditSub() string {
+	return Catalog.Format(msgs.locale, "comboEditSub", nil)
+}
+
 // ComboCreate says "Create"
 // in the language the app shows.
 func ComboCreate() string { return In(i18n.Locale()).ComboCreate() }

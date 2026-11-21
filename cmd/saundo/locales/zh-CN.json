@@ -699,6 +699,8 @@
     }
   },
   "comboDialogSub": "选择左、右声道各由哪台接收器播放。",
+  "comboEditTitle": "编辑立体声组合",
+  "comboEditSub": "修改组合名称或左右声道的接收器。",
   "comboCreate": "组合",
   "comboErrorSame": "两侧不能选择同一台接收器",
   "comboErrorPick": "请为两侧各选择一台接收器",

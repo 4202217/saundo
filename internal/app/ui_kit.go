@@ -269,8 +269,9 @@ func iconChip(c *ui.Context, p palette, ic *ui.SVG, label string, tone chipTone,
 	})
 }
 
-// countChip is the stereo group's online count: a dot and the member count,
-// green when every member is online and red when one is down.
+// countChip is the stereo group's online count, just the member count in a
+// pill: green when every member is online and red when one is down. The
+// group's glyph carries no dot, and the chip adds none of its own.
 func countChip(c *ui.Context, p palette, text, label string, full bool, dimmed bool) {
 	bg, color := p.greenSoft, p.green
 	switch {
@@ -279,10 +280,9 @@ func countChip(c *ui.Context, p palette, text, label string, full bool, dimmed b
 	case !full:
 		bg, color = p.redSoft, p.red
 	}
-	e := ui.Row(c).Height(20).Radius(10).Padding(0, 8).Gap(5).AlignItems(ui.Center).Shrink(0).
+	e := ui.Row(c).Height(20).Radius(10).Padding(0, 7).AlignItems(ui.Center).Shrink(0).
 		Background(bg).Label(label).Tooltip(label)
 	e.Children(func() {
-		ui.Box(c).Size(6, 6).Radius(3).Background(color)
 		ui.Text(c, text).FontSize(10.5).TextColor(color).FontFeatures("tnum").SingleLine()
 	})
 }

@@ -804,6 +804,8 @@
     }
   },
   "comboDialogSub": "Choose which receiver plays each side.",
+  "comboEditTitle": "Edit stereo combo",
+  "comboEditSub": "Change the combo's name or the receiver on each side.",
   "comboCreate": "Create",
   "comboErrorSame": "The two sides cannot be the same receiver",
   "comboErrorPick": "Choose a receiver for each side",

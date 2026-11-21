@@ -10,11 +10,16 @@ import (
 // Target is one row the engine manages: the wire description the sender
 // needs plus the registry configuration attached to it. Invalid marks a combo
 // whose member now belongs to an official stereo pair: the official pair wins,
-// so the combo cannot be connected or auto-connected.
+// so the combo cannot be connected or auto-connected. Seen reports a live
+// advertisement this session — a discovered receiver, a manual row the engine
+// has also seen, or a combo whose members are all seen. A manual address is
+// Online by definition because it is attemptable without mDNS, so Seen, not
+// Online, is what an online dot may claim.
 type Target struct {
 	Device  device.Device
 	Entry   Entry
 	Invalid bool
+	Seen    bool
 }
 
 // Merge joins the registry with discovery's current view. It returns every
@@ -71,21 +76,23 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		var t Target
 		if e.IsManual() {
 			d := manualDevice(e, hasPassword != nil && hasPassword(e.Key))
-			if seen, ok := live[e.Key]; ok {
-				d = claimedDevice(d, seen)
-				delete(live, seen.ID)
+			present := false
+			if adv, ok := live[e.Key]; ok {
+				d = claimedDevice(d, adv)
+				delete(live, adv.ID)
+				present = true
 			}
 			if d.Local {
 				e = localEntry(e)
 			}
-			t = Target{Device: d, Entry: e}
+			t = Target{Device: d, Entry: e, Seen: present}
 		} else if d, ok := live[e.Key]; ok {
 			delete(live, d.ID)
 			d = pinnedDevice(e, d)
 			if d.Local {
 				e = localEntry(e)
 			}
-			t = Target{Device: d, Entry: e}
+			t = Target{Device: d, Entry: e, Seen: true}
 		} else {
 			t = Target{Device: offlineDevice(e, hasPassword), Entry: e}
 		}
@@ -105,7 +112,7 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		if d.Local {
 			entry = localEntry(entry)
 		}
-		out = append(out, Target{Device: d, Entry: entry})
+		out = append(out, Target{Device: d, Entry: entry, Seen: true})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i].Entry, out[j].Entry
@@ -126,18 +133,24 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 // combo stays visible and unlinkable instead of vanishing.
 func ComboTarget(e Entry, rows map[string]Target, official map[string]bool) Target {
 	invalid := false
+	seen := len(e.Members) > 0
 	members := make([]device.Device, 0, len(e.Members))
 	for _, m := range e.Members {
 		if official[m.ID] {
 			invalid = true
 		}
-		if t, ok := rows[m.ID]; ok {
-			members = append(members, t.Device)
+		row, ok := rows[m.ID]
+		if !ok {
+			seen = false
+			members = append(members, device.Device{ID: m.ID, Name: m.Name})
 			continue
 		}
-		members = append(members, device.Device{ID: m.ID, Name: m.Name})
+		if !row.Seen {
+			seen = false
+		}
+		members = append(members, row.Device)
 	}
-	return Target{Device: ComboDevice(e, members), Entry: e, Invalid: invalid}
+	return Target{Device: ComboDevice(e, members), Entry: e, Invalid: invalid, Seen: seen}
 }
 
 // ComboDevice builds the wire description of a stereo combo: one synthesized
