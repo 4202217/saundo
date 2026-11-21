@@ -396,16 +396,6 @@ func (msgs Messages) StatusConnectionFailed() string {
 	return Catalog.Format(msgs.locale, "statusConnectionFailed", nil)
 }
 
-// DeviceStereoGroup says "Stereo pair {n, number}/2"
-// in the language the app shows.
-func DeviceStereoGroup(n int) string { return In(i18n.Locale()).DeviceStereoGroup(n) }
-
-// DeviceStereoGroup says "Stereo pair {n, number}/2"
-// in the language of msgs.
-func (msgs Messages) DeviceStereoGroup(n int) string {
-	return Catalog.Format(msgs.locale, "deviceStereoGroup", map[string]any{"n": n})
-}
-
 // DevicePinPairing says "PIN pairing"
 // in the language the app shows.
 func DevicePinPairing() string { return In(i18n.Locale()).DevicePinPairing() }
@@ -436,24 +426,14 @@ func (msgs Messages) DevicePasswordSaved() string {
 	return Catalog.Format(msgs.locale, "devicePasswordSaved", nil)
 }
 
-// DeviceAirPlay2 says "AirPlay 2"
+// DevicePasswordError says "Password incorrect"
 // in the language the app shows.
-func DeviceAirPlay2() string { return In(i18n.Locale()).DeviceAirPlay2() }
+func DevicePasswordError() string { return In(i18n.Locale()).DevicePasswordError() }
 
-// DeviceAirPlay2 says "AirPlay 2"
+// DevicePasswordError says "Password incorrect"
 // in the language of msgs.
-func (msgs Messages) DeviceAirPlay2() string {
-	return Catalog.Format(msgs.locale, "deviceAirPlay2", nil)
-}
-
-// DeviceAirPlay1 says "AirPlay 1"
-// in the language the app shows.
-func DeviceAirPlay1() string { return In(i18n.Locale()).DeviceAirPlay1() }
-
-// DeviceAirPlay1 says "AirPlay 1"
-// in the language of msgs.
-func (msgs Messages) DeviceAirPlay1() string {
-	return Catalog.Format(msgs.locale, "deviceAirPlay1", nil)
+func (msgs Messages) DevicePasswordError() string {
+	return Catalog.Format(msgs.locale, "devicePasswordError", nil)
 }
 
 // DeviceUnsupported says "Not supported"
@@ -494,6 +474,46 @@ func DeviceComboOffline(n int) string { return In(i18n.Locale()).DeviceComboOffl
 // in the language of msgs.
 func (msgs Messages) DeviceComboOffline(n int) string {
 	return Catalog.Format(msgs.locale, "deviceComboOffline", map[string]any{"n": n})
+}
+
+// DeviceFamilyHomePod says "HomePod"
+// in the language the app shows.
+func DeviceFamilyHomePod() string { return In(i18n.Locale()).DeviceFamilyHomePod() }
+
+// DeviceFamilyHomePod says "HomePod"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyHomePod() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyHomePod", nil)
+}
+
+// DeviceFamilyMac says "Mac"
+// in the language the app shows.
+func DeviceFamilyMac() string { return In(i18n.Locale()).DeviceFamilyMac() }
+
+// DeviceFamilyMac says "Mac"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyMac() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyMac", nil)
+}
+
+// DeviceFamilyAppleTV says "Apple TV"
+// in the language the app shows.
+func DeviceFamilyAppleTV() string { return In(i18n.Locale()).DeviceFamilyAppleTV() }
+
+// DeviceFamilyAppleTV says "Apple TV"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyAppleTV() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyAppleTV", nil)
+}
+
+// DeviceFamilyOther says "AirPlay receiver"
+// in the language the app shows.
+func DeviceFamilyOther() string { return In(i18n.Locale()).DeviceFamilyOther() }
+
+// DeviceFamilyOther says "AirPlay receiver"
+// in the language of msgs.
+func (msgs Messages) DeviceFamilyOther() string {
+	return Catalog.Format(msgs.locale, "deviceFamilyOther", nil)
 }
 
 // DeviceDefaultModel says "AirPlay"
@@ -2052,11 +2072,11 @@ func (msgs Messages) ReceiverChipManual() string {
 	return Catalog.Format(msgs.locale, "receiverChipManual", nil)
 }
 
-// ReceiverChipAuto says "At launch"
+// ReceiverChipAuto says "Connect at launch"
 // in the language the app shows.
 func ReceiverChipAuto() string { return In(i18n.Locale()).ReceiverChipAuto() }
 
-// ReceiverChipAuto says "At launch"
+// ReceiverChipAuto says "Connect at launch"
 // in the language of msgs.
 func (msgs Messages) ReceiverChipAuto() string {
 	return Catalog.Format(msgs.locale, "receiverChipAuto", nil)

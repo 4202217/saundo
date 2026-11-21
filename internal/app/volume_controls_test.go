@@ -381,7 +381,7 @@ func TestReceiverPairChannelIsDisabledStereo(t *testing.T) {
 		}
 	}
 	for _, absent := range []string{locales.ChannelLeft(), locales.ChannelRight(), locales.ReceiverChannelDesc()} {
-		if tt.HasText(absent) {
+		if hasExactText(tt, absent) {
 			t.Fatalf("pair row offers the single-receiver option %q; texts: %q", absent, tt.Texts())
 		}
 	}

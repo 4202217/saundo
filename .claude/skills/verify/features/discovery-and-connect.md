@@ -3,9 +3,12 @@
 ## Sub-features
 
 - mDNS browse on the LAN; `_raop`/`_airplay` advertisements merge into one
-  device row; the subtitle shows the model plus an auth label for PIN,
-  password, unsupported, or auth-required receivers. Transient and open
-  receivers show `model · AirPlay 2` or `AirPlay 1`.
+  device row; the name line carries a password or auth chip (密码锁 +
+  需要密码, 钥匙 + 密码已保存, 感叹号 + 密码错误, key + PIN 配对, alert +
+  需要认证 / 暂不支持), and the second line reads 声道 · model · version
+  for a single (model · version for a stereo group), with the marketing name
+  for a known HomePod, Apple TV, or Mac identifier, without the raw
+  identifier or the address. A combo row keeps the 立体声组合 tag and lists its members.
 - Directed fallback every fifth cycle (15 s at the 3 s interval): a unicast
   DNS-SD query on UDP 5353 to the Windows ARP neighbors and the remembered
   receiver hosts, for both `_airplay._tcp` and `_raop._tcp`, feeding the same

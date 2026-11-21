@@ -71,12 +71,28 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   instead (添加接收器 / 创建立体声组合). A page with no receivers shows only the
   单独接收器 head and the 添加接收器 row; the combo section waits for a first
   row.
+- Every receiver row's title line carries the stereo group's online count
+  chip after the name (a dot plus 2/2 in green, or 1/2 in red), the password
+  or auth chip after the name (密码锁 + 需要密码, 钥匙 + 密码已保存, 感叹号 + 密码错误,
+  key + PIN 配对, alert + 需要认证 / 暂不支持), and the 手动添加 / 启动时连接 /
+  已隐藏 chips. The second line reads address · 声道 · model · version
+  (左声道 / 右声道 / 立体声) with the marketing name for a known HomePod,
+  Apple TV, or Mac identifier (HomePod mini, Apple TV 4K (3rd gen),
+  MacBook Air (M2, 2022)); unknown identifiers fall back to the family. A
+  stereo group starts at
+  the model and lists its two member addresses; a combo lists its member
+  names instead. No
+  model identifier reaches the page. Pinned by
+  `TestReceiverPageRendersGroupsAndRows`,
+  `TestReceiverDetailCarriesAddressChannelFamilyAndVersion`, and
+  `TestReceiverAuthPillStates`.
 - 立体声组合 section (`receiverComboRow`): created combos live in their own
   card under the same group-head style, so the combo's expanded body never
   runs into a single receiver's card. The row shows the stereo glyph, the
-  立体声组合 chip, and either the two member names or the online count as
-  the subtitle (the count when the name already carries both sides, or when
-  a member is down); the expanded
+  online count chip after the name, and the name with no 立体声组合 chip
+  (the section head labels it); the second line joins the member names with
+  「 · 」 in playback order, or stays empty when the name already carries
+  both. The expanded
   body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
   member, the offline side dimmed, a swap button between them that flips the
   sides in place without a rebuild), a warning bar naming an offline member,
@@ -149,7 +165,7 @@ and the app stays in the tray.
 Headless UI pins the split and rendering:
 
 ```bash
-go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestConnectionPageDeviceHealthNotableOnly|TestConnectionPageSessionCardDegraded|TestConnectionPagePairRow|TestConnectionPageSpeaksForTheSession|TestReceiverComboRowRendersTheChannelMap|TestReceiverComboUnlinkOpensTheConfirmDialog|TestReceiverComboCreateDialogOpensAndNames|TestReceiverComboOfflineWarning|TestComboCreateRefusesAnIncompleteForm|TestComboSubtitleAvoidsRepeatingTheName|TestReceiverSubtitleNamesOnlyThePasswordPresence|TestFlyoutComboRowKeepsItsNameBesideTheTag|TestComboPickRowsExcludeTheOtherSide|TestReceiverPageShowsSaveErrors|TestStereoIconFollowsMembers' -v ./internal/app/
+go test -run 'TestSettingsPageSwitchStartsAtTop|TestDesignCarriesTextScaleAsZoom|TestPaletteFollowsHighContrast|TestScaledSizes|TestSettingsPagesRender|TestSettingsColumnCapsAndCenters|TestAudioPageKeepsLatencyTextInsideItsCards|TestLampTemplateTilesKeepTheirSize|TestNowPlayingCoverOptionsSitInTheRow|TestCaptureStatusRowKeepsItsTitle|TestCaptureStatusCountsMultipleApps|TestCaptureStatusWaitsForTheApp|TestCaptureStatusShowsPartialSelection|TestAppCapturePickerChoosesMultipleApps|TestMigrateLegacyAppSelection|TestConnectionMuteCopyNamesTheSelectedApp|TestCapturePageHidesPerAppWhenUnsupported|TestConnectionPageMuteLocalStates|TestConnectionPageDeviceList|TestConnectionPageSessionCard|TestConnectionPageLostNotice|TestMuteLocalSettingPersists|TestFlyoutKeepsPlaybackControlsOnly|TestSettingsAudioPageScrollsAtMinimumHeight|TestReceiverPageRendersGroupsAndRows|TestReceiverPageEmptyListShowsTheAddRow|TestReceiverPageAllHiddenShowsTheListHead|TestNowPlayingCoverModes|TestNowPlayingCoverModePersists|TestNowPlayingSettingsPersist|TestNowPlayingPanelHiddenWhenOff|TestNowPlayingControlsSetting|TestConnectionPageDeviceHealthNotableOnly|TestConnectionPageSessionCardDegraded|TestConnectionPagePairRow|TestConnectionPageSpeaksForTheSession|TestReceiverComboRowRendersTheChannelMap|TestReceiverComboUnlinkOpensTheConfirmDialog|TestReceiverComboCreateDialogOpensAndNames|TestReceiverComboOfflineWarning|TestComboCreateRefusesAnIncompleteForm|TestComboDetailUsesMemberNames|TestReceiverDetailCarriesAddressChannelFamilyAndVersion|TestFlyoutDetailDropsTheAddress|TestReceiverAuthPillStates|TestFlyoutComboRowKeepsItsNameBesideTheLead|TestComboPickRowsExcludeTheOtherSide|TestReceiverPageShowsSaveErrors|TestStereoIconFollowsMembers' -v ./internal/app/
 ```
 
 Settings defaults:

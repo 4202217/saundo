@@ -2,6 +2,7 @@ package app
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,7 +76,7 @@ func receiverFixture() *App {
 			Model: "AudioAccessory5,1", Online: true, Stereo: true,
 			Channel: receivers.ChannelStereo,
 			Device: device.Device{ID: "stereo:1", Name: "客厅立体声", Model: "AudioAccessory5,1", StereoID: "1",
-				Members: []device.Device{{ID: "AA:10", Name: "L"}, {ID: "AA:11", Name: "R"}}, Online: true},
+				Members: []device.Device{{ID: "AA:10", Name: "L", Online: true}, {ID: "AA:11", Name: "R", Online: true}}, Online: true},
 			Entry: receivers.Entry{Key: "stereo:1", Kind: receivers.KindDiscovered, Name: "客厅立体声"},
 		},
 	}
@@ -90,10 +91,11 @@ func TestReceiverPageRendersGroupsAndRows(t *testing.T) {
 	for _, want := range []string{
 		"接收器", "管理接收器、自动连接、显示与声道。",
 		locales.ReceiverGroupEnabled(), "客厅 HomePod", "书房 AirPort Express", "客厅立体声",
-		"启动时", "手动添加", locales.ReceiverAddAction(), locales.ReceiverPairAddTitle(), "已隐藏", "卧室 HomePod mini",
+		"启动时连接", "手动添加", locales.ReceiverAddAction(), locales.ReceiverPairAddTitle(), "已隐藏", "卧室 HomePod mini",
 		locales.DeviceAuthSetup(),
-		locales.DeviceStereoGroup(2),
-		locales.ActionOffline(),
+		"192.168.1.20:7000 · 立体声 · HomePod mini",
+		"192.168.1.32:5000 · 左声道 · AirPort Express",
+		"2/2",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("receiver page is missing %q; texts: %q", want, tt.Texts())
@@ -589,81 +591,102 @@ func TestReceiverComboCreateDialogOpensAndNames(t *testing.T) {
 	}
 }
 
-func TestComboSubtitleAvoidsRepeatingTheName(t *testing.T) {
-	members := []device.Device{
-		{Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
-		{Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
+func TestComboDetailUsesMemberNames(t *testing.T) {
+	members := []device.Device{{Name: "HomePod L"}, {Name: "HomePod R"}}
+	if got := comboDetail("客厅立体声", members); got != "HomePod L · HomePod R" {
+		t.Fatalf("custom-name detail = %q, want the member names", got)
 	}
-	if got := comboSubtitle("客厅立体声", members); got != "HomePod L + HomePod R" {
-		t.Fatalf("custom-name sub = %q, want the member names", got)
+	if got := comboDetail("HomePod L · HomePod R", members); got != "" {
+		t.Fatalf("derived-name detail = %q, want no repeat", got)
 	}
-	if got := comboSubtitle("HomePod L + HomePod R", members); got != locales.DeviceComboOnline(2) {
-		t.Fatalf("derived-name sub = %q, want the online count", got)
-	}
-	if got := comboSubtitle("客厅立体声", nil); got != locales.ActionOffline() {
-		t.Fatalf("memberless sub = %q, want the offline state", got)
-	}
-	half := []device.Device{
-		{Name: "HomePod L", Online: true},
-		{Name: "HomePod R", Online: false},
-	}
-	if got := comboSubtitle("HomePod L + HomePod R", half); got != locales.DeviceComboOffline(1) {
-		t.Fatalf("half-offline sub = %q, want one offline member", got)
+	if got := comboDetail("客厅立体声", nil); got != "" {
+		t.Fatalf("memberless detail = %q, want a blank line", got)
 	}
 }
 
-func TestComboMemberSubtitleKeepsTheModelFallback(t *testing.T) {
-	members := []device.Device{
-		{Name: "HomePod L", Model: "AudioAccessory5,1", Online: true},
-		{Name: "HomePod R", Model: "AudioAccessory5,1", Online: true},
+func TestReceiverDetailCarriesAddressChannelFamilyAndVersion(t *testing.T) {
+	v := receivers.View{
+		Key: "AA:00", Channel: receivers.ChannelLeft,
+		Device: device.Device{ID: "AA:00", Host: "192.168.1.20", Port: 7000,
+			Family: device.FamilyHomePod, OSVersion: "27.2", Online: true},
 	}
-	if got := comboMemberSubtitle("客厅立体声", members, "fallback"); got != "HomePod L + HomePod R" {
-		t.Fatalf("custom-name sub = %q, want the member names", got)
+	if got, want := receiverDetail(v), "192.168.1.20:7000 · 左声道 · HomePod · 27.2"; got != want {
+		t.Fatalf("detail = %q, want %q", got, want)
 	}
-	if got := comboMemberSubtitle("HomePod L + HomePod R", members, "fallback"); got != "AudioAccessory5,1" {
-		t.Fatalf("derived-name sub = %q, want the deduped models", got)
+	v.Channel = receivers.ChannelRight
+	if got, want := receiverDetail(v), "192.168.1.20:7000 · 右声道 · HomePod · 27.2"; got != want {
+		t.Fatalf("right detail = %q, want %q", got, want)
 	}
-	if got := comboMemberSubtitle("客厅立体声", nil, "fallback"); got != "fallback" {
-		t.Fatalf("memberless sub = %q, want the fallback", got)
+	v.Channel = receivers.ChannelStereo
+	if got, want := receiverDetail(v), "192.168.1.20:7000 · 立体声 · HomePod · 27.2"; got != want {
+		t.Fatalf("stereo detail = %q, want %q", got, want)
+	}
+	pair := receivers.View{Stereo: true, Device: device.Device{Members: []device.Device{
+		{Host: "192.168.31.46", Port: 7000}, {Host: "192.168.31.164", Port: 7000},
+	}}}
+	if got, want := receiverDetail(pair), "192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
+		t.Fatalf("pair detail = %q, want the two member addresses", got)
+	}
+	mini := v
+	mini.Device.Model = "AudioAccessory5,1"
+	if got, want := receiverDetail(mini), "192.168.1.20:7000 · 立体声 · HomePod mini · 27.2"; got != want {
+		t.Fatalf("HomePod mini detail = %q, want the marketing name", got)
+	}
+	miniPair := receivers.View{Stereo: true, Device: device.Device{
+		Model:   "AudioAccessory5,1",
+		Members: []device.Device{{Host: "192.168.31.46", Port: 7000}, {Host: "192.168.31.164", Port: 7000}},
+	}}
+	if got, want := receiverDetail(miniPair), "HomePod mini · 192.168.31.46:7000 · 192.168.31.164:7000"; got != want {
+		t.Fatalf("mini pair detail = %q, want the model before the addresses", got)
 	}
 }
 
-func TestFlyoutDeviceSubtitleKeepsTheModelLine(t *testing.T) {
-	mac := device.Device{ID: "mac:01", Model: "Mac14,2", Auth: device.AuthHAPPassword, Online: true}
-	if got, want := deviceSubtitle(mac), "Mac14,2 · "+locales.DeviceNeedsPassword(); got != want {
-		t.Fatalf("password sub = %q, want %q", got, want)
+func TestFlyoutDetailDropsTheAddress(t *testing.T) {
+	single := receivers.View{Channel: receivers.ChannelLeft,
+		Device: device.Device{Family: device.FamilyHomePod, OSVersion: "27.2", Online: true}}
+	if got, want := flyoutDetail(single), "左声道 · HomePod · 27.2"; got != want {
+		t.Fatalf("single detail = %q, want %q", got, want)
 	}
-	pair := device.Device{ID: "stereo:1", Model: "AudioAccessory5,1", StereoID: "1", Online: true,
-		Members: []device.Device{{ID: "AA:00"}, {ID: "AA:01"}}}
-	if got, want := deviceSubtitle(pair), "AudioAccessory5,1 · "+locales.DeviceStereoGroup(2); got != want {
-		t.Fatalf("pair sub = %q, want %q", got, want)
+	pair := receivers.View{Stereo: true, Channel: receivers.ChannelStereo,
+		Device: device.Device{Model: "Mac14,2", Family: device.FamilyMac, OSVersion: "15.2", Online: true}}
+	if got, want := flyoutDetail(pair), "MacBook Air (M2, 2022) · 15.2"; got != want {
+		t.Fatalf("pair detail = %q, want %q", got, want)
+	}
+	if strings.Contains(flyoutDetail(pair), "Mac14,2") {
+		t.Fatalf("the flyout detail kept the model identifier")
+	}
+	mini := receivers.View{Channel: receivers.ChannelLeft,
+		Device: device.Device{Model: "AudioAccessory5,1", Family: device.FamilyHomePod, OSVersion: "27.3", Online: true}}
+	if got, want := flyoutDetail(mini), "左声道 · HomePod mini · 27.3"; got != want {
+		t.Fatalf("HomePod mini flyout detail = %q, want %q", got, want)
+	}
+	tv := receivers.View{Channel: receivers.ChannelStereo,
+		Device: device.Device{Model: "AppleTV6,2", Family: device.FamilyAppleTV, Online: true}}
+	if got, want := flyoutDetail(tv), "立体声 · Apple TV 4K (1st gen)"; got != want {
+		t.Fatalf("Apple TV flyout detail = %q, want %q", got, want)
+	}
+	unknownTV := tv
+	unknownTV.Device.Model = "AppleTV99,9"
+	if got, want := flyoutDetail(unknownTV), "立体声 · Apple TV"; got != want {
+		t.Fatalf("unknown Apple TV detail = %q, want the family fallback", got)
 	}
 }
 
-func TestReceiverSubtitleNamesOnlyThePasswordPresence(t *testing.T) {
-	needs := receivers.View{
-		Device: device.Device{Auth: device.AuthHAPPassword, Online: true},
-	}
-	if got := receiverSubtitle(needs); got != locales.DeviceNeedsPassword() {
-		t.Fatalf("no saved password sub = %q", got)
+func TestReceiverAuthPillStates(t *testing.T) {
+	a := receiverFixture()
+	needs := receivers.View{Key: "AA:00", Device: device.Device{ID: "AA:00", Auth: device.AuthHAPPassword}}
+	if pill := a.receiverAuthPill(needs); !pill.ok || pill.text != locales.DeviceNeedsPassword() || pill.icon != iconLock {
+		t.Fatalf("needs pill = %+v", pill)
 	}
 	saved := needs
 	saved.PasswordSet = true
-	if got := receiverSubtitle(saved); got != locales.DevicePasswordSaved() {
-		t.Fatalf("saved password sub = %q", got)
+	if pill := a.receiverAuthPill(saved); !pill.ok || pill.text != locales.DevicePasswordSaved() || pill.icon != iconKey {
+		t.Fatalf("saved pill = %+v", pill)
 	}
-	ready := receivers.View{
-		Device: device.Device{Auth: device.AuthHAPTransient, Online: true},
-	}
-	if got := receiverSubtitle(ready); got != "" {
-		t.Fatalf("ready single sub = %q, want a blank line", got)
-	}
-	manual := receivers.View{
-		Kind: receivers.KindManual, Address: "192.0.2.1:7000",
-		Device: device.Device{Auth: device.AuthHAPTransient, Online: true},
-	}
-	if got := receiverSubtitle(manual); got != "192.0.2.1:7000" {
-		t.Fatalf("manual sub = %q, want the address", got)
+	a.snap.ErrorKey = engine.ErrPasswordRejected
+	a.snap.PasswordTargetID = "AA:00"
+	if pill := a.receiverAuthPill(saved); !pill.ok || pill.text != locales.DevicePasswordError() || pill.icon != iconAlert {
+		t.Fatalf("error pill = %+v", pill)
 	}
 }
 
@@ -703,14 +726,14 @@ func flyoutComboFixture() *App {
 	return a
 }
 
-func TestFlyoutComboRowKeepsItsNameBesideTheTag(t *testing.T) {
+func TestFlyoutComboRowKeepsItsNameBesideTheLead(t *testing.T) {
 	a := flyoutComboFixture()
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
 	if !tt.HasText("HomePod L + HomePod R") {
-		t.Fatalf("the combo name truncated beside the tag: %q", tt.Texts())
+		t.Fatalf("the combo name truncated beside the lead: %q", tt.Texts())
 	}
-	if !tt.HasText(locales.ComboTag()) {
-		t.Fatalf("the combo tag missing: %q", tt.Texts())
+	if tt.HasText(locales.ComboTag()) {
+		t.Fatalf("the connected combo row still carries the combo chip: %q", tt.Texts())
 	}
 	if !tt.HasText(locales.VolumeFor("HomePod L + HomePod R")) {
 		t.Fatalf("the combo mixer lost its volume: %q", tt.Texts())

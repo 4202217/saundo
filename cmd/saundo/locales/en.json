@@ -74,23 +74,18 @@
   "statusStandby": "Standby · wakes when sound plays",
   "statusDisconnected": "Not connected",
   "statusConnectionFailed": "Connection failed",
-  "deviceStereoGroup": "Stereo pair {n, number}/2",
-  "@deviceStereoGroup": {
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
   "devicePinPairing": "PIN pairing",
   "deviceNeedsPassword": "Password required",
   "devicePasswordSaved": "Password saved",
-  "deviceAirPlay2": "AirPlay 2",
-  "deviceAirPlay1": "AirPlay 1",
+  "devicePasswordError": "Password incorrect",
   "deviceUnsupported": "Not supported",
   "deviceAuthSetup": "Authentication required",
   "deviceComboOnline": "{n, number} online",
   "deviceComboOffline": "{n, number} offline",
+  "deviceFamilyHomePod": "HomePod",
+  "deviceFamilyMac": "Mac",
+  "deviceFamilyAppleTV": "Apple TV",
+  "deviceFamilyOther": "AirPlay receiver",
   "deviceDefaultModel": "AirPlay",
   "deviceListLabel": "Receiver list",
   "flyoutRefreshDevices": "Refresh receivers",
@@ -433,7 +428,7 @@
   "receiverAddSub": "Fill in an IP address or hostname for receivers mDNS cannot find",
   "receiverChipLocal": "Local",
   "receiverChipManual": "Manual",
-  "receiverChipAuto": "At launch",
+  "receiverChipAuto": "Connect at launch",
   "receiverChipHidden": "Hidden",
   "receiverEnableSwitch": "Show in the tray panel; off moves the row to the hidden group",
   "receiverAutoToggle": "Connect at launch",

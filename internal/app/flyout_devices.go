@@ -153,6 +153,15 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 					ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
 						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
 						a.comboTag(c, p, d)
+						// A combo carries one password per member, so only a
+						// single receiver shows the gate on this row.
+						if !d.IsStereoGroup() {
+							if v, ok := a.receiverViewFor(d.ID); ok {
+								if pill := a.receiverAuthPill(v); pill.ok {
+									iconChip(c, p, pill.icon, pill.text, pill.tone, false)
+								}
+							}
+						}
 					})
 					ui.Row(c).Height(20).AlignItems(ui.Center).Children(func() {
 						ui.Text(c, a.rowSubtitle(d, target, hasTarget)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
@@ -183,8 +192,9 @@ func (a *App) comboTag(c *ui.Context, p palette, d device.Device) {
 }
 
 // rowSubtitle is a plain row's second line: a target the engine is working on
-// says so, in the wording the session state already uses; a stereo combo
-// names its two sides; every other row keeps its model and address.
+// says so, in the wording the session state already uses; every other row
+// keeps the channel, the family, and the system version; a combo names its
+// members in playback order.
 func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) string {
 	if has {
 		switch t.State {
@@ -194,12 +204,10 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 			return locales.StatusReconnecting()
 		}
 	}
-	if d.IsStereoGroup() {
-		if v, ok := a.receiverViewFor(d.ID); ok && v.Entry.IsCombo() {
-			return comboMemberSubtitle(d.Name, d.Members, deviceSubtitle(d))
-		}
+	if v, ok := a.receiverViewFor(d.ID); ok {
+		return flyoutDetail(v)
 	}
-	return deviceSubtitle(d)
+	return flyoutDetail(receivers.View{Device: d, Stereo: d.IsStereoGroup()})
 }
 
 // deviceMixer is a member row's two-line content: the channel button and name,
@@ -208,7 +216,9 @@ func (a *App) rowSubtitle(d device.Device, t engine.TargetControl, has bool) str
 func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.TargetControl) {
 	ui.Column(c).Grow(1).Gap(2).Children(func() {
 		ui.Row(c).Height(26).Gap(8).AlignItems(ui.Center).Children(func() {
-			if !t.Stereo {
+			if t.Stereo {
+				stereoLead(c, p)
+			} else {
 				a.channelButton(c, p, d, t)
 			}
 			name := ui.ButtonBase(c.Key("device:" + d.ID)).Grow(1).Justify(ui.Start).
@@ -217,7 +227,6 @@ func (a *App) deviceMixer(c *ui.Context, p palette, d device.Device, t engine.Ta
 			name.Children(func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
-					a.comboTag(c, p, d)
 				})
 			})
 		})
@@ -287,6 +296,16 @@ func (a *App) targetVolume(t engine.TargetControl) *float64 {
 	return &v
 }
 
+// stereoLead is a stereo member's non-interactive mark, aligned with the
+// single receiver's channel button. A stereo target has no side to choose, so
+// the mark never takes focus or a click; the combo chip yields to it while the
+// row is a member.
+func stereoLead(c *ui.Context, p palette) {
+	ui.Box(c).Size(26, 26).Center().Shrink(0).Label(locales.ChannelStereo()).Children(func() {
+		ui.Image(c, channelIcon(receivers.ChannelStereo)).Size(16, 16).TextColor(p.fg)
+	})
+}
+
 // channelButton is the icon-only channel control on a single receiver: the
 // solid side is the current side and a click cycles stereo → left → right. A
 // stereo target has no side to choose, so deviceMixer leaves it out.
@@ -299,7 +318,7 @@ func (a *App) channelButton(c *ui.Context, p palette, d device.Device, t engine.
 	b.Children(func() {
 		// Image, not Icon: the icon mask drops fill-opacity, and the faded
 		// side is the state. Image renders the SVG in the palette color.
-		ui.Image(c, channelIcon(t.Channel)).Size(16, 16).TextColor(p.fg2)
+		ui.Image(c, channelIcon(t.Channel)).Size(16, 16).TextColor(p.fg)
 	})
 }
 
@@ -353,7 +372,7 @@ func (a *App) cycleChannel(t engine.TargetControl) {
 func deviceGlyph(c *ui.Context, p palette, d device.Device) {
 	g := ui.Box(c).Size(30, 30).Radius(15).Center().Shrink(0).Background(p.pill)
 	g.Children(func() {
-		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(p.fg2)
+		ui.Icon(c, stereoIcon(d, d.IsStereoGroup())).Size(16, 16).TextColor(p.fg)
 		if d.Online {
 			ui.Box(c).Size(9, 9).Radius(4.5).Background(p.green).
 				Shadow(0, 0, 0, 2, p.card).

@@ -239,6 +239,54 @@ func inlineChip(c *ui.Context, p palette, label string, tone chipTone, dimmed bo
 	})
 }
 
+// iconChip is the 20-DIP status chip with a leading glyph: the settings and
+// flyout rows use it for a password or auth gate. dimmed greys it in the
+// hidden group.
+func iconChip(c *ui.Context, p palette, ic *ui.SVG, label string, tone chipTone, dimmed bool) {
+	e := ui.Row(c).Height(20).Radius(10).Padding(0, 7).Gap(4).AlignItems(ui.Center).Shrink(0).
+		Label(label)
+	color := p.fg2
+	switch {
+	case dimmed:
+		e.Background(p.pill)
+		color = p.muted
+	case tone == chipAccent:
+		e.Background(p.accentSoft)
+		color = p.accent
+	case tone == chipDanger:
+		e.Background(p.redSoft)
+		color = p.red
+	case tone == chipOK:
+		e.Background(p.greenSoft)
+		color = p.green
+	default:
+		e.Background(p.pill)
+		color = p.muted
+	}
+	e.Children(func() {
+		ui.Icon(c, ic).Size(12, 12).TextColor(color)
+		ui.Text(c, label).FontSize(10.5).TextColor(color).SingleLine()
+	})
+}
+
+// countChip is the stereo group's online count: a dot and the member count,
+// green when every member is online and red when one is down.
+func countChip(c *ui.Context, p palette, text, label string, full bool, dimmed bool) {
+	bg, color := p.greenSoft, p.green
+	switch {
+	case dimmed:
+		bg, color = p.pill, p.muted
+	case !full:
+		bg, color = p.redSoft, p.red
+	}
+	e := ui.Row(c).Height(20).Radius(10).Padding(0, 8).Gap(5).AlignItems(ui.Center).Shrink(0).
+		Background(bg).Label(label).Tooltip(label)
+	e.Children(func() {
+		ui.Box(c).Size(6, 6).Radius(3).Background(color)
+		ui.Text(c, text).FontSize(10.5).TextColor(color).FontFeatures("tnum").SingleLine()
+	})
+}
+
 // countBadge is the small count beside a group's label.
 func countBadge(c *ui.Context, p palette, n int) {
 	ui.Box(c).Height(18).MinWidth(18).Radius(9).Padding(0, 6).Center().Shrink(0).

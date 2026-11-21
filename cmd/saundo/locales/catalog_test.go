@@ -141,6 +141,8 @@ func TestCatalogUniqueValues(t *testing.T) {
 		"settingsUptimeMinutes": true, "settingsLampStandbyMinutes": true,
 		// Both choices mean "none": no receiver authentication, no cover.
 		"receiverAuthNone": true, "settingsCoverNone": true,
+		// The row chip and the launch toggle name the same setting.
+		"receiverChipAuto": true, "receiverAutoToggle": true,
 	}
 	for _, loc := range []string{"zh-CN", "en"} {
 		byValue := map[string][]string{}

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-17 -->
+<!-- reviewed-through: 2026-11-21 -->
 
 # Receiver profiles
 
@@ -7,6 +7,7 @@ One section per receiver family: how it advertises, which pairing path it takes,
 ## HomePod / HomePod mini (software 27.x)
 
 - Advertises `AudioAccessory5,1` (and siblings) with the HAP feature bits; feature bit 41 set.
+- Model identifiers: `AudioAccessory1,1` is HomePod, `AudioAccessory5,1` HomePod mini, `AudioAccessory6,1` HomePod (2nd gen), and `AudioAccessory11,1` HomePod mini 2. `device.HomePodModelName` maps the four; an unknown identifier falls back to the HomePod family, and the mini glyph reads the 5 and 11 prefixes as mini. Source: EveryMac's Apple HomePod Models table, reviewed 2026-11-21.
 - Pairs with HAP transient pairing by default: `Flags=0x10`, fixed PIN `3939`, stop at M4 (protocol.md §2.1). A HomePod can gate AirPlay with a password; it then uses HAP password pairing (protocol.md §2.3) but keeps the HomePod `shk` and latency profile. The family comes from `AudioAccessory`, not from the pairing method.
 - `shk` and the audio ChaCha20 key: first 32 bytes of the 64-byte SRP K, no HKDF (protocol.md §2.5).
 - **PTP required.** It accepts an NTP session SETUP and RECORD, then silently ignores the stream SETUP. The sender runs the PTP follower against the HomePod's grandmaster; for this family it also fails closed to PTP when the features value did not parse. Two or more standalone HomePods share one `ptp.Followers` socket pair, and each maps the shared RTP timeline onto its own clock, so the rooms align only as well as the two grandmasters.
@@ -76,6 +77,7 @@ Tested on a MacBook Air, `Mac14,2`, 2026-11-01.
 - `POST /pair-pin-start` with `X-Apple-HKP: 3` makes the TV display a 4-digit code; the app opens its 配对码 dialog.
 - M1–M6 with the PIN, then pair-verify; a reconnect skips the dialog and runs pair-verify from stored credentials.
 - NTP timing; no PTP requirement known.
+- Model identifiers: `AppleTV1,1` → Apple TV (1st gen), `AppleTV2,1` → 2nd gen, `AppleTV3,1` and `AppleTV3,2` → 3rd gen, `AppleTV5,3` → Apple TV HD, `AppleTV6,2` → Apple TV 4K (1st gen), `AppleTV11,1` → 4K (2nd gen), `AppleTV14,1` → 4K (3rd gen), and `AppleTV18,1` → 4K (4th gen). `device.AppleTVModelName` maps the nine; an unknown identifier falls back to the Apple TV family. Source: EveryMac's All Apple TV Models table, reviewed 2026-11-21. A set that advertises an Apple TV identifier is named by the advertised identifier, not by its physical product.
 - **Live verification pending** — the remaining definition-of-done gap. The pairing and control-channel path is covered by the fake receiver and by the C++ blueprint's shipped product.
 
 ## FairPlay TVs (`AppleTV3,x`) — unsupported

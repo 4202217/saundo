@@ -361,7 +361,9 @@ func (a *App) receiverGlyph(c *ui.Context, p palette, v receivers.View, open, hi
 			color = p.faint
 		}
 		ui.Icon(c, stereoIcon(v.Device, v.Stereo || v.Device.IsStereoGroup())).Size(16, 16).TextColor(color)
-		if v.Online && !hiddenGroup {
+		// A stereo group carries its online count as a chip beside the name;
+		// the glyph dot would repeat it.
+		if v.Online && !hiddenGroup && !v.Stereo {
 			ring := p.card
 			if open {
 				ring = p.sel
@@ -387,14 +389,17 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			}
 			ui.Text(c, v.Name).FontSize(13).FontWeight(500).TextColor(nameColor).
 				SingleLine().Ellipsis("…").Shrink(1)
+			if v.Stereo {
+				a.receiverOnlineChip(c, p, v)
+			}
+			if pill := a.receiverAuthPill(v); pill.ok {
+				iconChip(c, p, pill.icon, pill.text, pill.tone, v.Hidden)
+			}
 			if v.Local {
 				inlineChip(c, p, locales.ReceiverChipLocal(), chipNeutral, v.Hidden)
 			}
 			if v.IsManual() {
 				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
-			}
-			if v.Entry.IsCombo() {
-				inlineChip(c, p, locales.ComboTag(), chipNeutral, v.Hidden)
 			}
 			if v.AutoConnect {
 				inlineChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
@@ -403,37 +408,9 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 				inlineChip(c, p, locales.ReceiverChipHidden(), chipNeutral, true)
 			}
 		})
-		sub := receiverSubtitle(v)
+		sub := receiverDetail(v)
 		ui.Text(c, sub).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
 	})
-}
-
-// receiverSubtitle is the row's second line: the one fact its title and
-// chips do not already carry. A combo names its sides or their online count;
-// every other row is offline, an auth gate, a stereo pair's shape, a manual
-// row's address, or nothing at all.
-func receiverSubtitle(v receivers.View) string {
-	if v.Entry.IsCombo() {
-		return comboSubtitle(v.Name, v.Device.Members)
-	}
-	if !v.Device.Online {
-		return locales.ActionOffline()
-	}
-	if line := authSubtitle(v.Device.Auth, v.PasswordSet); line != "" {
-		return line
-	}
-	if v.Stereo {
-		return locales.DeviceStereoGroup(len(v.Device.Members))
-	}
-	if v.IsManual() {
-		if v.Address != "" {
-			return v.Address
-		}
-		if v.Device.Host != "" {
-			return v.Device.Host + ":" + receivers.PortText(v.Device.Port)
-		}
-	}
-	return ""
 }
 
 // receiverEditButton is the side button on an expanded manual row. It is

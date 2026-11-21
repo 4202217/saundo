@@ -603,7 +603,7 @@ func TestStereoGroupRowRenders(t *testing.T) {
 	a := previewApp()
 	a.snap.Devices = []device.Device{{
 		ID: device.StereoGroupID("tsid"), Name: "HomePods", Model: "AudioAccessory5,1",
-		StereoID: "tsid", Online: true,
+		StereoID: "tsid", Family: device.FamilyHomePod, OSVersion: "27.2", Online: true,
 		Members: []device.Device{
 			{ID: "AA:BB:CC:DD:EE:01", Name: "HomePod L", Online: true},
 			{ID: "AA:BB:CC:DD:EE:02", Name: "HomePod R", Online: true},
@@ -614,7 +614,7 @@ func TestStereoGroupRowRenders(t *testing.T) {
 	a.snap.ConnectedName = ""
 	a.selID = device.StereoGroupID("tsid")
 	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
-	for _, want := range []string{"HomePods", "立体声组 2/2"} {
+	for _, want := range []string{"HomePods", "HomePod mini · 27.2"} {
 		if !tt.HasText(want) {
 			t.Fatalf("group view is missing %q; texts: %q", want, tt.Texts())
 		}
@@ -1359,6 +1359,8 @@ func TestDeviceIconFollowsModel(t *testing.T) {
 		{"AudioAccessory5,1", true, sfIcons["homepod-mini-pair"]},
 		{"AudioAccessory6,1", false, sfIcons["homepod"]},
 		{"AudioAccessory6,1", true, sfIcons["homepod-pair"]},
+		{"AudioAccessory11,1", false, sfIcons["homepod-mini"]},
+		{"AudioAccessory11,1", true, sfIcons["homepod-mini-pair"]},
 		{"", false, sfIcons["hifispeaker"]},
 		{"SomeSpeaker", false, sfIcons["hifispeaker"]},
 	}
