@@ -417,7 +417,10 @@ html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 
 @keyframes faFaceBar{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
 @keyframes faFaceDot{0%,100%{opacity:.35}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.fbar,.fdot{animation:none}.fbar{transform:none}.fdot{opacity:1}}
-.bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-300)}
+/* 列数按 bento 自身宽度定，不按视口：功能区左侧常驻一列引言，同一视口下 bento 会比页面窄一截。
+   两列各剩不到 300px 时，配对卡的一行放不下名称、配对方式和钥匙，
+   会把整张卡的内容列撑出右内边距；auto-fit 让这个宽度带自动落成一列。 */
+.bento{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--sp-300)}
 .bnum{font-family:"Geist Mono",monospace;font-size:11px;font-weight:500;color:var(--green-text)}
 /* 灯卡：文字上、灯球下，.art 底锚定（margin-top:auto）——底边与媒体卡同一条内容底线，不随文字行数漂移。
    注意 .card 同特异性且在后，display:flex 必须用 .card.blamp 才压得住它的 grid */
@@ -445,8 +448,10 @@ html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 
 #bmMedia .ftransport button svg{width:10px;height:10px}
 /* 设备配对卡：每台接收器一条自己的配对路径、一把自己的密钥（protocol.md §2） */
 .bpair{display:grid;gap:8px;width:100%;max-width:300px;animation:bpairShow 6s var(--ease) infinite}
-.bpair-row{display:flex;align-items:center;gap:8px;background:var(--soft-fill);border-radius:10px;padding:7px 11px}
-.bpair-name{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+.bpair-row{display:flex;align-items:center;gap:8px;min-width:0;background:var(--soft-fill);border-radius:10px;padding:7px 11px}
+.bpair-name{display:inline-flex;align-items:center;gap:7px;min-width:0;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+/* 名字让位而不是撑破卡片：窄卡与英文长名用省略号收尾，右内边距始终在 */
+.bpair-name>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .bpair-name svg{width:14px;height:14px;flex:none;fill:currentColor}
 .bpair-how{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--text2);border:1px solid var(--line);border-radius:999px;padding:3px 9px;background:var(--surface);white-space:nowrap;opacity:0}
 .bpair-how b{font-family:"Geist Mono",monospace;font-weight:600;color:var(--text)}
