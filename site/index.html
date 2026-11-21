@@ -6,10 +6,10 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#fafafa">
 <title>声渡 saundo：电脑里一放，HomePod 就响</title>
-<meta name="description" content="声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。">
+<meta name="description" content="声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。可同时连多台，任意两台还能组成跨型号的立体声组合。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。">
 <link rel="canonical" href="https://4202217.github.io/saundo/">
 <meta property="og:title" content="声渡 saundo：电脑里一放，HomePod 就响">
-<meta property="og:description" content="开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，PTP 或 NTP 对时，托盘常驻。">
+<meta property="og:description" content="开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，多台一起响，跨型号立体声组合，PTP 或 NTP 对时，托盘常驻。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://4202217.github.io/saundo/">
 <meta property="og:site_name" content="saundo">
@@ -47,6 +47,9 @@
   --nav-bg:rgba(250,250,250,.72); --chip-bg:rgba(255,255,255,.82); --chip-shadow:rgba(0,0,0,.1);
   --hover-soft:rgba(0,0,0,.05); --soft-fill:rgba(0,0,0,.08); --row-hover:#fafafa;
   --green-text:#14713f; --dot-idle:#c7c7cc;
+  /* the stereo stage's icons sit straight on the page, not on a chip, so the
+     pairing card's gray is softened toward the background */
+  --ss-device:color-mix(in srgb, var(--text2) 55%, var(--bg));
     --panel:#ffffff;
   --amb-card:#ffffff; --amb-row:#fafafa; --eq-bar:#1d1d1f; --prog-well:rgba(0,0,0,.12); --prog-fill:#1d1d1f; --seg-well:#f0f0f3; --seg-on:#ffffff; --seg-shadow:rgba(0,0,0,.12); --switch-on:#000000; --switch-knob:#ffffff; --swatch-ring:rgba(0,0,0,.08);
   --d-bg:#0a0a0a; --d-card:#181818; --d-card2:#1f1f1f; --d-text:#f5f5f7; --d-text2:#9b9b9b; --d-line:rgba(255,255,255,.1);
@@ -474,6 +477,169 @@ html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 
   .bpair .bpair-type{animation:none;clip-path:none}
   .bpair .bpair-key{animation:none;color:var(--green-text);border-color:var(--green);background:var(--green-soft)}
 }
+
+/* card art: multi-device — the app sits at the centre, two HomePods and two
+   minis at the corners; one pulse leaves the centre and all four links carry
+   it on the same beat */
+.card.bmulti{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr) clamp(240px,42%,340px);align-items:center;gap:var(--sp-600);min-height:0}
+.bmulti .bm-body{display:grid;gap:var(--sp-200);min-width:0}
+.bmulti .art{margin-top:0;min-height:0;justify-content:center}
+.amhub{position:relative;width:100%;max-width:320px;height:150px}
+.amhub-lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.amhub-lines .base path{fill:none;stroke:color-mix(in srgb,var(--text) 24%,transparent);stroke-width:1.2;stroke-dasharray:3 4;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.amhub-lines .pulse path{fill:none;stroke:var(--green);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:4 96;opacity:0;
+  vector-effect:non-scaling-stroke;animation:amHubPulse 2.4s linear infinite}
+@keyframes amHubPulse{0%,10%{stroke-dashoffset:0;opacity:0}14%{opacity:.85}52%{stroke-dashoffset:-100;opacity:.85}58%,100%{stroke-dashoffset:-100;opacity:0}}
+.amhub-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34px;height:34px;
+  display:grid;place-items:center;z-index:2}
+.amhub-face{width:34px;height:34px;border-radius:10px;background:var(--text);display:grid;place-items:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.16),0 0 0 1px rgba(0,0,0,.06)}
+html[data-theme="dark"] .amhub-face{box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)}
+.amhub-face svg{width:22px;height:22px;display:block}
+.amhub-face .eye{fill:var(--surface)}
+.amhub-face .mouth{fill:none;stroke:var(--surface);stroke-width:3;stroke-linecap:round}
+.amhub-core::after{content:"";position:absolute;inset:-5px;border-radius:12px;border:1.5px solid var(--green);opacity:0;
+  animation:amHubRing 2.4s var(--ease) infinite}
+@keyframes amHubRing{0%,8%{transform:scale(.8);opacity:0}14%{opacity:.55}44%,100%{transform:scale(1.9);opacity:0}}
+.amhub-node{position:absolute;width:44px;height:44px;z-index:1}
+.amhub-node.nw{left:0;top:0}
+.amhub-node.ne{right:0;top:0}
+.amhub-node.sw{left:0;bottom:0}
+.amhub-node.se{right:0;bottom:0}
+/* opaque, so the dashed link ends under the device, never past it */
+.amhub-glyph{position:relative;width:44px;height:44px;border-radius:50%;background:color-mix(in srgb, var(--text) 8%, var(--surface));
+  display:grid;place-items:center;color:var(--text2)}
+.amhub-glyph svg{width:18px;height:24px;fill:currentColor}
+.amhub-glyph.mini svg{width:20px;height:17px}
+.amhub-glyph.pair svg{width:22px;height:22px}
+.amhub-glyph.mix svg{width:22px;height:22px}
+.amhub-dot{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 0 2px var(--surface);animation:amHubDot 2.4s var(--ease) infinite}
+/* the sonar leaves a device only after the centre pulse reaches it */
+.amhub-node::after{content:"";position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--green);
+  opacity:0;pointer-events:none;animation:amHubSonar 2.4s var(--ease) infinite}
+@keyframes amHubDot{0%,44%{transform:scale(1)}48%{transform:scale(1.3)}55%,100%{transform:scale(1)}}
+@keyframes amHubSonar{0%,44%{transform:scale(1);opacity:0}48%{opacity:.6}84%,100%{transform:scale(1.8);opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .amhub-lines .pulse path{animation:none;opacity:0}
+  .amhub-core::after{animation:none;opacity:0}
+  .amhub-dot{animation:none}
+  .amhub-node::after{animation:none;opacity:0}
+}
+@media (max-width:700px){.card.bmulti{grid-template-columns:1fr;gap:var(--sp-400)}}
+
+/* ---------- stereo combo section ---------- */
+.stereo-sec{padding:var(--sp-900) 0;background:var(--bg)}
+.stereo-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,500px);gap:var(--sp-800);align-items:center}
+.stereo-copy{display:grid;gap:var(--sp-300);max-width:560px;justify-items:start}
+.stereo-copy .body-3{max-width:52ch}
+.stereo-specs span{font-size:10px}
+.stereo-stage{justify-self:end;width:100%;max-width:500px;min-width:0}
+/* stereo combo: a stage, not a card. A HomePod and a mini stand apart, L and R,
+   with no drawn link between them: the combo is two independent AP2 sessions.
+   The pair is static; the icon-only control trades the sides. */
+.sstage{position:relative;width:100%;height:320px}
+.ss-mark{position:absolute;top:38px;width:120px;text-align:center;font-size:68px;line-height:1;font-weight:600;letter-spacing:-.04em;
+  color:color-mix(in srgb,var(--text) 10%,transparent);pointer-events:none;user-select:none}
+.ss-mark-l{left:calc(30% - 60px)}
+.ss-mark-r{left:calc(70% - 60px)}
+.ss-field{position:absolute;top:92px;width:250px;height:250px;border-radius:50%;pointer-events:none;filter:blur(34px);
+  background:radial-gradient(circle,color-mix(in srgb,var(--text) 9%,transparent),transparent 68%);
+  opacity:.45;animation:ssField 4.6s var(--ease) infinite}
+.ss-field-l{left:calc(30% - 125px)}
+.ss-field-r{left:calc(70% - 125px);animation-delay:-2.3s}
+@keyframes ssField{0%,100%{opacity:.35;transform:scale(.96)}50%{opacity:.7;transform:scale(1.04)}}
+.ss-ground{position:absolute;left:6%;right:6%;top:236px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--line) 10%,var(--line) 90%,transparent)}
+/* the shared signal: one green beat leaves the channel control for both
+   receivers at once, the grey line turning green behind it; on arrival both
+   bodies pulse on the same level */
+.ss-flow{position:absolute;top:236px;height:2px;margin-top:-1px;pointer-events:none;z-index:1}
+.ss-flow-l{left:30%;right:50%}
+.ss-flow-r{left:50%;right:30%}
+.ss-flow .fill{position:absolute;inset:0;border-radius:2px;background:var(--green);transform:scaleX(0);
+  animation:ssFlowFill 3.4s linear infinite}
+.ss-flow-l .fill{transform-origin:100% 50%}
+.ss-flow-r .fill{transform-origin:0 50%}
+.ss-flow .dot{position:absolute;inset:0;opacity:0}
+.ss-flow .dot::before{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 8px color-mix(in srgb,var(--green) 55%,transparent)}
+.ss-flow-l .dot{animation:ssFlowDotL 3.4s linear infinite}
+.ss-flow-r .dot{animation:ssFlowDotR 3.4s linear infinite}
+.ss-flow-l .dot::before{right:0}
+.ss-flow-r .dot::before{left:0}
+@keyframes ssFlowFill{
+  0%,8%{transform:scaleX(0);opacity:0}
+  12%{opacity:1}
+  48%,60%{transform:scaleX(1);opacity:1}
+  66%,100%{transform:scaleX(1);opacity:0}
+}
+@keyframes ssFlowDotL{
+  0%,8%{transform:translateX(0);opacity:0}
+  12%{opacity:1}
+  48%,60%{transform:translateX(-100%);opacity:1}
+  66%,100%{transform:translateX(-100%);opacity:0}
+}
+@keyframes ssFlowDotR{
+  0%,8%{transform:translateX(0);opacity:0}
+  12%{opacity:1}
+  48%,60%{transform:translateX(100%);opacity:1}
+  66%,100%{transform:translateX(100%);opacity:0}
+}
+.ss-dev{position:absolute;top:118px;width:220px;display:grid;justify-items:center;pointer-events:none}
+.ss-dev-l{left:calc(30% - 110px)}
+.ss-dev-r{left:calc(70% - 110px)}
+.ss-glyph{position:relative;height:118px;display:flex;align-items:flex-end;justify-content:center;
+  transform-origin:50% 100%;animation:ssPlay 3.4s linear infinite}
+@keyframes ssPlay{
+  0%,48%{transform:scale(1)}
+  51%{transform:scale(1.035)}
+  54%{transform:scale(1)}
+  57%{transform:scale(1.03)}
+  60%,100%{transform:scale(1)}
+}
+.ss-figure{position:relative;display:block;width:max-content;line-height:0}
+/* an inline svg without a viewBox defaults to 300×150, so each model carries
+   its own width; the symbol's viewBox does the scaling after a swap */
+.ss-figure svg{height:118px;width:calc(118px * 1065.362637 / 1361.756996);display:block;fill:currentColor;color:var(--ss-device)}
+.ss-figure.mini svg{height:80px;width:calc(80px * 1264.451493 / 1157.657815)}
+.ss-label{margin-top:14px;display:grid;justify-items:center;text-align:center;white-space:nowrap}
+.ss-label b{font-size:13px;font-weight:500;color:var(--text)}
+.ss-swap{position:absolute;left:50%;top:236px;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;
+  background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;color:var(--text2);z-index:2;
+  transition:color .3s var(--ease),border-color .3s var(--ease)}
+.ss-swap::after{content:"";position:absolute;inset:-6px;border-radius:999px}
+.ss-swap:hover{color:var(--green-text);border-color:var(--green)}
+.ss-swap:active{transform:translate(-50%,-50%) scale(.94)}
+.ss-swap svg{width:15px;height:15px}
+@media (prefers-reduced-motion:reduce){.ss-field{animation:none;opacity:.5}.ss-flow .fill,.ss-flow .dot,.ss-glyph{animation:none}}
+@media (max-width:1020px){
+  .stereo-layout{grid-template-columns:1fr;gap:var(--sp-600)}
+  .stereo-copy{justify-self:center;justify-items:center;text-align:center;max-width:620px}
+  .stereo-stage{justify-self:center}
+}
+@media (max-width:560px){
+  .sstage{height:272px}
+  .ss-mark{top:30px;width:90px;font-size:54px}
+  .ss-mark-l{left:calc(28% - 45px)}
+  .ss-mark-r{left:calc(72% - 45px)}
+  .ss-field{top:76px;width:200px;height:200px}
+  .ss-field-l{left:calc(28% - 100px)}
+  .ss-field-r{left:calc(72% - 100px)}
+  .ss-ground,.ss-flow{top:192px}
+  .ss-flow-l{left:28%;right:50%}
+  .ss-flow-r{left:50%;right:28%}
+  .ss-dev{top:96px;width:160px}
+  .ss-dev-l{left:calc(28% - 80px)}
+  .ss-dev-r{left:calc(72% - 80px)}
+  .ss-glyph{height:96px}
+  .ss-figure svg{height:96px;width:calc(96px * 1065.362637 / 1361.756996)}
+  .ss-figure.mini svg{height:66px;width:calc(66px * 1264.451493 / 1157.657815)}
+  .ss-label{margin-top:18px}
+  .ss-label b{font-size:12px}
+  .ss-swap{top:192px;width:30px;height:30px}
+}
+
 .card{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);
   padding:var(--sp-400);display:grid;gap:var(--sp-200);align-content:start;min-height:230px;
   transition:transform .5s var(--ease),box-shadow .5s var(--ease);will-change:transform}
@@ -683,19 +849,63 @@ html[data-theme="dark"] .art-ambient .orb-glass{background:linear-gradient(155de
 .fly-snote{margin-left:auto;font-size:11.5px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .fly-card{border:1px solid var(--fl-line);border-radius:10px;background:var(--fl-card);overflow:hidden}
 .fly-card.flamp{margin-top:2px}
-/* device rows */
-.fdev{height:56px;display:flex;align-items:center;gap:10px;padding:9px 12px;transition:background .14s var(--ease)}
+/* device rows (0.6.5): a session member is a compact mixer — name over its own
+   volume; every row is a peer, and the action column tells membership */
+.fdev{height:60px;display:flex;align-items:center;gap:10px;padding:7px 12px;transition:background .14s var(--ease)}
 .fdev + .fdev{border-top:1px solid var(--fl-line2)}
-.fdev.sel{background:var(--fl-sel)}
-.fdev:hover:not(.sel){background:var(--fl-cardHover)}
+.fdev:hover{background:var(--fl-cardHover)}
 .fglyph{position:relative;width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:15px;background:var(--fl-pill);color:var(--fl-fg2)}
-.fdev.sel .fglyph{background:var(--fl-card);color:var(--fl-accent)}
 .fglyph svg{width:16px;height:16px}
 .fdot{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:var(--fl-green);box-shadow:0 0 0 2px var(--fl-card)}
-.fdev.sel .fdot{box-shadow:0 0 0 2px var(--fl-sel)}
-.fnamecol{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
-.fnamecol b{font-size:13px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fnamecol span{font-size:11.5px;line-height:1.35;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmix{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.fnameline{display:flex;align-items:center;gap:5px;height:22px;min-width:0}
+.fnameline b{font-size:13px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* channel control: the solid side is the current side; a stereo target shows
+   the same mark as a static lead and has no side to choose */
+.fchan,.flead{width:22px;height:16px;margin:0 -3px;border-radius:8px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-fg)}
+.fchan:hover{background:var(--fl-pill)}
+.fchan svg,.flead svg{width:16px;height:11px;display:block}
+.fchan .ch-l,.fchan .ch-r{opacity:.25;transition:opacity .18s var(--ease)}
+.fchan[data-side="stereo"] .ch-l,.fchan[data-side="stereo"] .ch-r{opacity:.85}
+.fchan[data-side="left"] .ch-l{opacity:.85}
+.fchan[data-side="right"] .ch-r{opacity:.85}
+.fvolrow{display:flex;align-items:center;gap:6px;height:20px;min-width:0}
+.fmute{width:22px;height:20px;margin:0 -3px;border-radius:6px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-fg2)}
+.fmute:hover{background:var(--fl-pill)}
+.fmute svg{width:16px;height:16px;margin-top:2px}
+.fmute .fmute-slash{display:none}
+.fmute.muted .fmute-wave,.fmute.muted .fmute-wave2{display:none}
+.fmute.muted .fmute-slash{display:block}
+.frowvol{flex:1;min-width:0;appearance:none;-webkit-appearance:none;height:16px;background:transparent;cursor:pointer}
+.frowvol::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:linear-gradient(to right,var(--fl-fg) 0 var(--vol,30%),var(--fl-line) var(--vol,30%) 100%)}
+.frowvol::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);margin-top:-4.5px;border:0}
+.frowvol::-moz-range-track{height:3px;border-radius:2px;background:var(--fl-line)}
+.frowvol::-moz-range-progress{height:3px;border-radius:2px;background:var(--fl-fg)}
+.frowvol::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22)}
+.frowpct{flex:none;width:34px;text-align:right;font-size:11px;color:var(--fl-muted);font-variant-numeric:tabular-nums}
+.fsecond{display:none;font-size:11.5px;line-height:20px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fdev:not(.member) .fvolrow{display:none}
+.fdev:not(.member) .fsecond{display:block}
+.fdev:not(.member) .fchan,.fdev:not(.member) .flead{display:none}
+.fdev:not(.member) .fnameline{height:26px}
+.fdev .faction{width:80px;flex:none;justify-content:center;padding:0}
+/* the device head's one-click disconnect, only while two or more targets play */
+.fshead-act{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 6px;margin-right:-4px;border-radius:11px;
+  font-size:11.5px;font-weight:500;color:var(--fl-fg2);flex:none;transition:background .3s var(--ease),color .3s var(--ease)}
+.fshead-act:hover{background:var(--fl-pill);color:var(--fl-fg)}
+.fshead-act svg{width:12px;height:12px}
+/* transient session notice: a lost member, or a device joining the cohort */
+.fnotice{display:flex;align-items:center;gap:7px;min-height:38px;padding:6px 7px 6px 10px;border-radius:9px;border:1px solid var(--fl-line);
+  background:var(--fl-sel);font-size:11px;line-height:1.3;color:var(--fl-fg2)}
+.fnotice .fn-ic{width:14px;height:14px;flex:none;color:var(--fl-accent)}
+.fnotice .fn-text{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fnotice .fn-retry{flex:none;padding:3px 7px;border-radius:7px;font-size:11.5px;font-weight:500;color:var(--fl-accent)}
+.fnotice .fn-retry:hover{background:var(--fl-pill)}
+.fnotice .fn-close{flex:none;width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-muted)}
+.fnotice .fn-close:hover{background:var(--fl-pill)}
+.fnotice .fn-close svg{width:12px;height:12px}
+.fnotice.join{background:var(--fl-pill)}
+.fnotice.join .fn-ic{color:var(--fl-muted)}
 .faction{height:26px;flex:none;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border-radius:13px;
   font-size:11.5px;font-weight:500;white-space:nowrap;transition:background .3s var(--ease),color .3s var(--ease)}
 .faction svg{width:12px;height:12px}
@@ -705,15 +915,6 @@ html[data-theme="dark"] .art-ambient .orb-glass{background:linear-gradient(155de
 .faction.dimmed{color:var(--fl-faint)}
 .faction:not(:disabled):hover{background:var(--fl-pill)}
 .faction:disabled{cursor:default}
-/* volume */
-.fvol{padding:10px 12px 10px 22px;display:flex;align-items:center;gap:8px}
-.fvolic{width:16px;height:16px;flex:none;color:var(--fl-fg2);margin-left:-2px}
-.fvolval{flex:none;width:34px;text-align:right;font-size:11.5px;color:var(--fl-muted);font-variant-numeric:tabular-nums}
-.frange{flex:1;appearance:none;-webkit-appearance:none;height:20px;background:transparent;cursor:pointer}
-.frange::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--fl-fg) 0 var(--fly-vol,50%),var(--fl-line) var(--fly-vol,50%) 100%)}
-.frange::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);margin-top:-6px;border:0}
-.frange::-moz-range-track{height:4px;border-radius:2px;background:var(--fl-line)}
-.frange::-moz-range-progress{height:4px;border-radius:2px;background:var(--fl-fg)}
 .fline{height:1px;background:var(--fl-line2)}
 /* latency segmented */
 .flat{padding:6px 12px 10px 12px}
@@ -775,7 +976,6 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 #fLampArrow svg{width:12px;height:12px;transition:transform .16s var(--ease)}
 #fLampArrow.open svg{transform:rotate(180deg)}
 /* state machine (mirrors internal/app phases, scanning and lamp-off states) */
-.fdev{cursor:pointer}
 .faction{cursor:pointer}
 .flyout .fdot{transition:opacity .25s var(--ease)}
 .flyout.scanning .fdot{opacity:0}
@@ -1041,7 +1241,28 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 </head>
 <body>
-<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs><symbol id="g-homepod" viewBox="0 0 1065.362637 1361.756996"><g transform="translate(-1.499998,1363.769128) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M4960 13629 c-1011 -30 -1877 -190 -2330 -430 -246 -131 -372 -285 -357 -435 8 -78 39 -137 108 -210 388 -404 1697 -650 3262 -613 1443 34 2541 325 2738 726 36 71 34 168 -5 246 -146 299 -819 544 -1807 657 -264 30 -557 49 -902 60 -337 10 -343 10 -707 -1z M1017 12139 c-115 -27 -206 -107 -333 -294 -144 -212 -253 -416 -344 -645 -40 -101 -133 -381 -145 -440 -4 -19 -11 -37 -15 -40 -20 -13 -97 -421 -124 -660 -41 -361 -41 -379 -41 -3270 0 -2941 0 -2926 46 -3305 29 -243 99 -612 118 -625 4 -3 16 -36 26 -75 117 -445 354 -922 622 -1255 219 -272 533 -545 848 -735 148 -89 429 -229 595 -294 74 -30 137 -57 140 -61 9 -13 338 -117 504 -160 519 -133 1091 -214 1775 -250 251 -13 1040 -13 1297 0 826 43 1524 158 2107 347 92 29 167 58 167 63 0 6 5 10 10 10 22 0 269 103 406 169 252 122 490 270 699 435 120 95 385 358 479 476 190 239 402 616 511 910 47 126 135 418 135 446 0 8 4 13 8 10 9 -6 72 301 97 469 64 442 67 626 62 3650 -4 2692 -4 2700 -43 3035 -26 227 -96 608 -113 620 -5 3 -14 30 -21 60 -19 82 -107 352 -150 460 -103 257 -235 499 -388 710 -102 141 -178 204 -281 234 -134 39 -255 2 -410 -125 -362 -295 -980 -556 -1771 -748 -1312 -318 -2676 -340 -4014 -65 -904 186 -1648 481 -2062 817 -145 119 -266 157 -397 126z"/> </g></symbol><symbol id="g-homepod-mini" viewBox="0 0 1264.451493 1157.657815"><g transform="translate(-1.967742,1159.607871) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M5935 11590 c-819 -26 -1600 -143 -2041 -305 -227 -83 -433 -205 -510 -302 -76 -94 -101 -197 -70 -289 67 -202 404 -392 928 -524 369 -93 767 -150 1338 -192 239 -18 1281 -18 1525 0 1134 82 1892 283 2174 576 78 82 105 139 105 226 -1 343 -668 624 -1779 750 -512 57 -1084 78 -1670 60z M1863 10245 c-129 -35 -211 -98 -371 -285 -431 -503 -774 -1070 -1029 -1700 -68 -169 -171 -476 -214 -640 -18 -69 -36 -127 -40 -130 -11 -8 -85 -358 -113 -535 -57 -357 -76 -619 -76 -1009 0 -403 25 -721 86 -1081 31 -186 93 -478 103 -485 4 -3 22 -63 40 -134 95 -372 271 -837 462 -1218 330 -660 759 -1242 1290 -1750 240 -229 415 -377 584 -491 33 -23 66 -47 73 -54 8 -7 63 -42 123 -78 662 -393 1434 -570 2734 -625 315 -14 1343 -14 1655 0 899 39 1492 128 2025 304 324 107 663 273 857 417 25 19 94 70 154 114 313 229 702 610 1021 1000 303 372 605 856 814 1305 154 334 309 760 394 1085 20 77 40 149 45 160 15 30 55 219 89 415 104 598 123 1228 55 1840 -28 252 -117 740 -144 788 -5 10 -21 62 -36 117 -192 733 -557 1480 -1022 2094 -140 185 -344 423 -404 471 -111 89 -241 131 -352 112 -91 -15 -156 -46 -280 -135 -581 -418 -1114 -668 -1771 -831 -615 -152 -1195 -214 -2106 -223 -796 -8 -1353 24 -1867 107 -927 150 -1598 415 -2282 900 -184 131 -224 153 -307 175 -70 18 -121 18 -190 0z"/> </g></symbol><symbol id="g-homepod-pair" viewBox="0 0 1313.723871 1276.284188"><g transform="translate(-1.153390,1279.795612) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3550 12793 c-431 -20 -931 -94 -1232 -183 -333 -97 -530 -212 -604 -351 -29 -54 -25 -144 8 -201 85 -143 352 -280 731 -372 250 -61 556 -108 912 -138 241 -21 1081 -17 1325 5 724 67 1239 205 1475 395 187 150 166 330 -57 478 -281 187 -868 319 -1618 364 -148 9 -773 11 -940 3z M748 11665 c-60 -22 -120 -68 -169 -131 -72 -91 -172 -249 -228 -358 -28 -55 -51 -95 -51 -90 -1 5 -14 -22 -31 -61 -106 -244 -186 -569 -224 -905 -32 -279 -36 -687 -32 -2676 3 -1382 8 -1993 16 -2074 34 -342 75 -563 147 -790 47 -149 108 -310 121 -319 5 -3 34 -58 65 -121 390 -786 1182 -1273 2368 -1454 256 -39 413 -54 849 -81 l84 -5 -6 28 c-8 38 -34 274 -49 432 -7 87 -12 803 -15 2355 -5 2262 -1 2615 32 2935 75 733 271 1330 603 1840 125 193 427 555 544 654 43 36 43 36 13 31 -204 -36 -872 -56 -1175 -36 -1028 68 -2026 357 -2530 732 -138 102 -235 130 -332 94z M8410 11270 c-1140 -45 -2003 -283 -2156 -595 -22 -47 -26 -65 -22 -119 3 -55 10 -73 42 -120 357 -519 2619 -741 4110 -405 625 141 965 363 906 591 -83 319 -877 574 -1985 637 -263 15 -658 20 -895 11z M5158 10025 c-62 -23 -120 -69 -173 -136 -28 -35 -57 -71 -66 -80 -20 -20 -109 -157 -109 -167 0 -5 -27 -60 -60 -124 -213 -411 -331 -881 -370 -1473 -14 -209 -13 -4649 0 -4860 26 -402 84 -725 186 -1037 58 -179 114 -310 215 -506 80 -156 105 -198 145 -242 13 -14 60 -72 106 -129 521 -660 1400 -1055 2647 -1191 375 -41 483 -45 1091 -45 625 0 749 6 1160 56 891 107 1582 350 2100 738 140 104 344 301 453 436 395 490 609 1122 657 1940 16 267 8 4848 -8 4990 -48 415 -111 698 -219 992 -91 250 -287 598 -413 737 -68 74 -136 108 -224 114 -96 6 -162 -20 -268 -105 -185 -148 -424 -279 -712 -392 -550 -215 -1172 -350 -1916 -418 -245 -22 -974 -25 -1200 -5 -496 44 -916 114 -1317 217 -576 149 -1059 362 -1338 588 -104 85 -164 111 -255 114 -46 2 -89 -3 -112 -12z"/> </g></symbol><symbol id="g-appletv" viewBox="0 0 1271.745557 1270.498369"><g transform="translate(-0.132012,1270.623417) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3050 12700 c-789 -21 -1308 -125 -1753 -352 -596 -304 -985 -820 -1162 -1542 -54 -222 -85 -432 -117 -791 -16 -183 -24 -6699 -8 -7078 30 -753 128 -1220 341 -1638 246 -482 648 -843 1163 -1044 381 -149 785 -219 1413 -245 366 -16 6916 -8 7098 8 476 42 765 95 1055 192 433 145 783 386 1050 721 315 394 488 896 554 1608 34 360 37 734 33 4036 -4 3327 -4 3333 -42 3690 -83 761 -300 1282 -704 1686 -171 170 -332 287 -549 397 -387 198 -793 292 -1472 343 -177 14 -6425 21 -6900 9z m6745 -1030 c781 -42 1260 -227 1535 -592 126 -167 232 -430 289 -715 45 -221 60 -384 72 -738 15 -461 6 -6677 -9 -6840 -41 -419 -117 -734 -233 -966 -46 -92 -143 -230 -213 -302 -248 -254 -617 -398 -1188 -464 -144 -17 -368 -18 -3673 -18 -3780 0 -3619 -2 -3935 51 -691 116 -1067 396 -1255 934 -91 264 -135 523 -155 930 -13 265 -13 6526 0 6800 44 908 263 1399 740 1658 273 148 658 236 1139 261 222 12 6673 12 6886 1z M4549 8825 c-320 -65 -617 -341 -718 -668 -26 -85 -46 -234 -37 -281 l7 -36 63 0 c266 0 566 217 712 515 63 129 86 225 88 365 l1 115 -25 2 c-14 1 -55 -4 -91 -12z M6320 7995 l0 -365 -222 -2 -223 -3 -3 -267 -2 -268 224 0 225 0 4 -992 c3 -910 5 -999 21 -1068 70 -297 236 -455 541 -517 74 -15 135 -18 335 -17 135 0 263 5 285 10 l40 10 3 268 2 268 -56 -7 c-105 -13 -261 -8 -320 11 -71 22 -135 79 -165 146 l-24 53 -3 918 -3 917 291 0 290 0 0 270 0 270 -290 0 -290 0 -2 363 -3 362 -327 3 -328 2 0 -365z M4453 7769 c-76 -11 -243 -60 -423 -125 -193 -69 -224 -68 -479 20 -236 80 -310 96 -443 96 -444 -1 -837 -297 -997 -753 -63 -181 -75 -266 -76 -537 0 -277 10 -360 75 -615 62 -245 152 -468 272 -678 72 -127 276 -395 376 -495 148 -149 259 -204 407 -205 103 -1 160 14 298 75 200 88 318 115 470 105 107 -7 190 -31 340 -98 380 -171 589 -95 911 330 101 132 159 227 239 387 61 122 129 282 142 335 5 21 1 27 -32 43 -68 32 -176 109 -245 175 -128 120 -213 257 -265 428 -24 80 -26 104 -27 258 -1 146 2 181 21 250 57 209 181 390 366 534 37 29 67 57 67 61 0 31 -143 174 -240 240 -206 140 -501 205 -757 169z M7827 7623 c-2 -5 116 -345 263 -758 147 -412 389 -1096 539 -1520 151 -423 279 -785 287 -802 l13 -33 334 0 c256 0 337 3 345 13 5 6 82 217 169 467 713 2033 920 2626 916 2633 -2 4 -155 7 -338 7 l-334 0 -37 -117 c-20 -65 -49 -156 -64 -203 -15 -47 -164 -535 -330 -1085 -167 -550 -306 -1004 -310 -1008 -8 -9 -31 66 -441 1398 -164 534 -303 980 -309 993 l-10 22 -344 0 c-190 0 -347 -3 -349 -7z"/> </g></symbol><symbol id="g-desktop" viewBox="0 0 1313.570329 1114.788615"><g transform="translate(-0.490802,1115.930942) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M1070 11149 c-505 -57 -874 -353 -1005 -805 -65 -224 -60 95 -60 -3779 0 -3323 1 -3515 18 -3605 51 -272 154 -483 314 -644 125 -126 263 -210 446 -271 221 -74 59 -69 2160 -72 l1887 -3 0 -534 0 -533 -75 -5 c-244 -16 -438 -266 -397 -511 15 -94 52 -168 117 -236 61 -64 122 -101 206 -125 50 -15 234 -16 1915 -14 l1859 3 67 32 c91 43 133 77 185 147 128 174 106 428 -52 581 -75 74 -168 117 -262 123 l-73 5 0 533 0 534 1829 0 c1988 0 1939 -1 2151 55 129 35 315 127 417 209 226 180 372 460 412 791 15 127 15 6953 0 7080 -41 333 -186 611 -413 792 -101 80 -288 174 -416 208 -221 59 170 55 -5738 54 -2979 -1 -5451 -5 -5492 -10z m10863 -889 c132 -21 232 -93 284 -205 l28 -60 3 -2720 2 -2720 -22 -45 c-18 -35 -35 -51 -73 -70 l-50 -25 -5530 0 c-4536 0 -5537 2 -5567 13 -46 16 -94 69 -107 119 -15 51 -15 5370 -1 5431 34 148 133 244 283 277 52 11 940 14 5377 14 3289 1 5337 -3 5373 -9z"/> </g></symbol><symbol id="face-idle" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="face-stream" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></symbol><symbol id="face-connect" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></symbol><symbol id="face-error" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="face-smile" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></symbol></defs></svg>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs><symbol id="g-homepod" viewBox="0 0 1065.362637 1361.756996"><g transform="translate(-1.499998,1363.769128) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M4960 13629 c-1011 -30 -1877 -190 -2330 -430 -246 -131 -372 -285 -357 -435 8 -78 39 -137 108 -210 388 -404 1697 -650 3262 -613 1443 34 2541 325 2738 726 36 71 34 168 -5 246 -146 299 -819 544 -1807 657 -264 30 -557 49 -902 60 -337 10 -343 10 -707 -1z M1017 12139 c-115 -27 -206 -107 -333 -294 -144 -212 -253 -416 -344 -645 -40 -101 -133 -381 -145 -440 -4 -19 -11 -37 -15 -40 -20 -13 -97 -421 -124 -660 -41 -361 -41 -379 -41 -3270 0 -2941 0 -2926 46 -3305 29 -243 99 -612 118 -625 4 -3 16 -36 26 -75 117 -445 354 -922 622 -1255 219 -272 533 -545 848 -735 148 -89 429 -229 595 -294 74 -30 137 -57 140 -61 9 -13 338 -117 504 -160 519 -133 1091 -214 1775 -250 251 -13 1040 -13 1297 0 826 43 1524 158 2107 347 92 29 167 58 167 63 0 6 5 10 10 10 22 0 269 103 406 169 252 122 490 270 699 435 120 95 385 358 479 476 190 239 402 616 511 910 47 126 135 418 135 446 0 8 4 13 8 10 9 -6 72 301 97 469 64 442 67 626 62 3650 -4 2692 -4 2700 -43 3035 -26 227 -96 608 -113 620 -5 3 -14 30 -21 60 -19 82 -107 352 -150 460 -103 257 -235 499 -388 710 -102 141 -178 204 -281 234 -134 39 -255 2 -410 -125 -362 -295 -980 -556 -1771 -748 -1312 -318 -2676 -340 -4014 -65 -904 186 -1648 481 -2062 817 -145 119 -266 157 -397 126z"/> </g></symbol><symbol id="g-homepod-mini" viewBox="0 0 1264.451493 1157.657815"><g transform="translate(-1.967742,1159.607871) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M5935 11590 c-819 -26 -1600 -143 -2041 -305 -227 -83 -433 -205 -510 -302 -76 -94 -101 -197 -70 -289 67 -202 404 -392 928 -524 369 -93 767 -150 1338 -192 239 -18 1281 -18 1525 0 1134 82 1892 283 2174 576 78 82 105 139 105 226 -1 343 -668 624 -1779 750 -512 57 -1084 78 -1670 60z M1863 10245 c-129 -35 -211 -98 -371 -285 -431 -503 -774 -1070 -1029 -1700 -68 -169 -171 -476 -214 -640 -18 -69 -36 -127 -40 -130 -11 -8 -85 -358 -113 -535 -57 -357 -76 -619 -76 -1009 0 -403 25 -721 86 -1081 31 -186 93 -478 103 -485 4 -3 22 -63 40 -134 95 -372 271 -837 462 -1218 330 -660 759 -1242 1290 -1750 240 -229 415 -377 584 -491 33 -23 66 -47 73 -54 8 -7 63 -42 123 -78 662 -393 1434 -570 2734 -625 315 -14 1343 -14 1655 0 899 39 1492 128 2025 304 324 107 663 273 857 417 25 19 94 70 154 114 313 229 702 610 1021 1000 303 372 605 856 814 1305 154 334 309 760 394 1085 20 77 40 149 45 160 15 30 55 219 89 415 104 598 123 1228 55 1840 -28 252 -117 740 -144 788 -5 10 -21 62 -36 117 -192 733 -557 1480 -1022 2094 -140 185 -344 423 -404 471 -111 89 -241 131 -352 112 -91 -15 -156 -46 -280 -135 -581 -418 -1114 -668 -1771 -831 -615 -152 -1195 -214 -2106 -223 -796 -8 -1353 24 -1867 107 -927 150 -1598 415 -2282 900 -184 131 -224 153 -307 175 -70 18 -121 18 -190 0z"/> </g></symbol><symbol id="g-homepod-pair" viewBox="0 0 1313.723871 1276.284188"><g transform="translate(-1.153390,1279.795612) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3550 12793 c-431 -20 -931 -94 -1232 -183 -333 -97 -530 -212 -604 -351 -29 -54 -25 -144 8 -201 85 -143 352 -280 731 -372 250 -61 556 -108 912 -138 241 -21 1081 -17 1325 5 724 67 1239 205 1475 395 187 150 166 330 -57 478 -281 187 -868 319 -1618 364 -148 9 -773 11 -940 3z M748 11665 c-60 -22 -120 -68 -169 -131 -72 -91 -172 -249 -228 -358 -28 -55 -51 -95 -51 -90 -1 5 -14 -22 -31 -61 -106 -244 -186 -569 -224 -905 -32 -279 -36 -687 -32 -2676 3 -1382 8 -1993 16 -2074 34 -342 75 -563 147 -790 47 -149 108 -310 121 -319 5 -3 34 -58 65 -121 390 -786 1182 -1273 2368 -1454 256 -39 413 -54 849 -81 l84 -5 -6 28 c-8 38 -34 274 -49 432 -7 87 -12 803 -15 2355 -5 2262 -1 2615 32 2935 75 733 271 1330 603 1840 125 193 427 555 544 654 43 36 43 36 13 31 -204 -36 -872 -56 -1175 -36 -1028 68 -2026 357 -2530 732 -138 102 -235 130 -332 94z M8410 11270 c-1140 -45 -2003 -283 -2156 -595 -22 -47 -26 -65 -22 -119 3 -55 10 -73 42 -120 357 -519 2619 -741 4110 -405 625 141 965 363 906 591 -83 319 -877 574 -1985 637 -263 15 -658 20 -895 11z M5158 10025 c-62 -23 -120 -69 -173 -136 -28 -35 -57 -71 -66 -80 -20 -20 -109 -157 -109 -167 0 -5 -27 -60 -60 -124 -213 -411 -331 -881 -370 -1473 -14 -209 -13 -4649 0 -4860 26 -402 84 -725 186 -1037 58 -179 114 -310 215 -506 80 -156 105 -198 145 -242 13 -14 60 -72 106 -129 521 -660 1400 -1055 2647 -1191 375 -41 483 -45 1091 -45 625 0 749 6 1160 56 891 107 1582 350 2100 738 140 104 344 301 453 436 395 490 609 1122 657 1940 16 267 8 4848 -8 4990 -48 415 -111 698 -219 992 -91 250 -287 598 -413 737 -68 74 -136 108 -224 114 -96 6 -162 -20 -268 -105 -185 -148 -424 -279 -712 -392 -550 -215 -1172 -350 -1916 -418 -245 -22 -974 -25 -1200 -5 -496 44 -916 114 -1317 217 -576 149 -1059 362 -1338 588 -104 85 -164 111 -255 114 -46 2 -89 -3 -112 -12z"/> </g></symbol><symbol id="g-appletv" viewBox="0 0 1271.745557 1270.498369"><g transform="translate(-0.132012,1270.623417) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3050 12700 c-789 -21 -1308 -125 -1753 -352 -596 -304 -985 -820 -1162 -1542 -54 -222 -85 -432 -117 -791 -16 -183 -24 -6699 -8 -7078 30 -753 128 -1220 341 -1638 246 -482 648 -843 1163 -1044 381 -149 785 -219 1413 -245 366 -16 6916 -8 7098 8 476 42 765 95 1055 192 433 145 783 386 1050 721 315 394 488 896 554 1608 34 360 37 734 33 4036 -4 3327 -4 3333 -42 3690 -83 761 -300 1282 -704 1686 -171 170 -332 287 -549 397 -387 198 -793 292 -1472 343 -177 14 -6425 21 -6900 9z m6745 -1030 c781 -42 1260 -227 1535 -592 126 -167 232 -430 289 -715 45 -221 60 -384 72 -738 15 -461 6 -6677 -9 -6840 -41 -419 -117 -734 -233 -966 -46 -92 -143 -230 -213 -302 -248 -254 -617 -398 -1188 -464 -144 -17 -368 -18 -3673 -18 -3780 0 -3619 -2 -3935 51 -691 116 -1067 396 -1255 934 -91 264 -135 523 -155 930 -13 265 -13 6526 0 6800 44 908 263 1399 740 1658 273 148 658 236 1139 261 222 12 6673 12 6886 1z M4549 8825 c-320 -65 -617 -341 -718 -668 -26 -85 -46 -234 -37 -281 l7 -36 63 0 c266 0 566 217 712 515 63 129 86 225 88 365 l1 115 -25 2 c-14 1 -55 -4 -91 -12z M6320 7995 l0 -365 -222 -2 -223 -3 -3 -267 -2 -268 224 0 225 0 4 -992 c3 -910 5 -999 21 -1068 70 -297 236 -455 541 -517 74 -15 135 -18 335 -17 135 0 263 5 285 10 l40 10 3 268 2 268 -56 -7 c-105 -13 -261 -8 -320 11 -71 22 -135 79 -165 146 l-24 53 -3 918 -3 917 291 0 290 0 0 270 0 270 -290 0 -290 0 -2 363 -3 362 -327 3 -328 2 0 -365z M4453 7769 c-76 -11 -243 -60 -423 -125 -193 -69 -224 -68 -479 20 -236 80 -310 96 -443 96 -444 -1 -837 -297 -997 -753 -63 -181 -75 -266 -76 -537 0 -277 10 -360 75 -615 62 -245 152 -468 272 -678 72 -127 276 -395 376 -495 148 -149 259 -204 407 -205 103 -1 160 14 298 75 200 88 318 115 470 105 107 -7 190 -31 340 -98 380 -171 589 -95 911 330 101 132 159 227 239 387 61 122 129 282 142 335 5 21 1 27 -32 43 -68 32 -176 109 -245 175 -128 120 -213 257 -265 428 -24 80 -26 104 -27 258 -1 146 2 181 21 250 57 209 181 390 366 534 37 29 67 57 67 61 0 31 -143 174 -240 240 -206 140 -501 205 -757 169z M7827 7623 c-2 -5 116 -345 263 -758 147 -412 389 -1096 539 -1520 151 -423 279 -785 287 -802 l13 -33 334 0 c256 0 337 3 345 13 5 6 82 217 169 467 713 2033 920 2626 916 2633 -2 4 -155 7 -338 7 l-334 0 -37 -117 c-20 -65 -49 -156 -64 -203 -15 -47 -164 -535 -330 -1085 -167 -550 -306 -1004 -310 -1008 -8 -9 -31 66 -441 1398 -164 534 -303 980 -309 993 l-10 22 -344 0 c-190 0 -347 -3 -349 -7z"/> </g></symbol><symbol id="g-desktop" viewBox="0 0 1313.570329 1114.788615"><g transform="translate(-0.490802,1115.930942) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M1070 11149 c-505 -57 -874 -353 -1005 -805 -65 -224 -60 95 -60 -3779 0 -3323 1 -3515 18 -3605 51 -272 154 -483 314 -644 125 -126 263 -210 446 -271 221 -74 59 -69 2160 -72 l1887 -3 0 -534 0 -533 -75 -5 c-244 -16 -438 -266 -397 -511 15 -94 52 -168 117 -236 61 -64 122 -101 206 -125 50 -15 234 -16 1915 -14 l1859 3 67 32 c91 43 133 77 185 147 128 174 106 428 -52 581 -75 74 -168 117 -262 123 l-73 5 0 533 0 534 1829 0 c1988 0 1939 -1 2151 55 129 35 315 127 417 209 226 180 372 460 412 791 15 127 15 6953 0 7080 -41 333 -186 611 -413 792 -101 80 -288 174 -416 208 -221 59 170 55 -5738 54 -2979 -1 -5451 -5 -5492 -10z m10863 -889 c132 -21 232 -93 284 -205 l28 -60 3 -2720 2 -2720 -22 -45 c-18 -35 -35 -51 -73 -70 l-50 -25 -5530 0 c-4536 0 -5537 2 -5567 13 -46 16 -94 69 -107 119 -15 51 -15 5370 -1 5431 34 148 133 244 283 277 52 11 940 14 5377 14 3289 1 5337 -3 5373 -9z"/> </g></symbol><symbol id="face-idle" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="face-stream" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></symbol><symbol id="face-connect" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></symbol><symbol id="face-error" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="face-smile" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></symbol><symbol id="ch-stereo" viewBox="0 0 25.4328 17.5208"><g fill="currentColor" fill-opacity=".85"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.0628 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z"/></g></symbol><symbol id="g-homepod-mini-combo" viewBox="0 0 1333.486898 1202.141468"><g transform="translate(-1.376867,1204.815493) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"><path d="M3695 12043 c-705 -43 -1178 -127 -1537 -273 -730 -296 -456 -709
+607 -914 1061 -205 2569 -128 3307 168 267 108 408 237 408 374 0 67 -18 109
+-72 168 -224 243 -896 418 -1815 474 -153 9 -768 11 -898 3z M765 10897 c-71
+-24 -125 -68 -199 -166 -308 -410 -475 -909 -538 -1611 -19 -212 -19 -4479 0
+-4690 69 -769 268 -1318 638 -1760 401 -480 1012 -805 1824 -969 422 -85 827
+-127 1353 -138 l308 -6 -41 74 c-784 1419 -905 3155 -323 4633 242 613 607
+1173 1062 1626 599 597 1488 980 2634 1134 195 27 442 51 624 62 l113 7 -6 56
+c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
+-2440 -745 -214 -20 -960 -17 -1185 5 -1068 105 -1963 384 -2416 753 -36 30
+-88 63 -114 75 -59 26 -156 33 -210 16z M8350 8384 c-474 -31 -766 -69 -1045
+-136 -515 -123 -784 -324 -701 -523 77 -183 415 -334 966 -430 356 -62 723
+-88 1220 -88 864 1 1537 107 1920 304 355 182 334 428 -52 603 -264 120 -649
+202 -1188 252 -155 14 -973 28 -1120 18z M5472 7395 c-28 -13 -70 -39 -93 -57
+-84 -67 -445 -534 -476 -615 -4 -9 -35 -65 -70 -123 -93 -153 -241 -452 -311
+-625 -452 -1126 -425 -2406 75 -3555 61 -141 187 -387 257 -501 25 -42 46 -81
+46 -86 0 -14 129 -209 212 -320 220 -295 505 -594 768 -806 296 -239 648 -412
+1044 -512 284 -72 493 -102 1076 -157 165 -15 1368 -15 1540 0 354 31 542 53
+725 83 599 99 1011 274 1417 600 133 107 457 431 580 579 865 1045 1242 2418
+1028 3738 -124 766 -435 1455 -939 2084 -141 176 -200 234 -278 270 -56 27
+-72 30 -136 26 -92 -5 -149 -31 -291 -135 -582 -428 -1182 -628 -2141 -714
+-188 -17 -1052 -23 -1282 -10 -559 33 -965 101 -1343 223 -382 124 -657 269
+-1060 558 -116 83 -244 104 -348 55z"/></g></symbol></defs></svg>
 <a class="skip" href="#main">跳到正文</a>
 
 <nav class="nav" aria-label="主导航">
@@ -1049,6 +1270,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
   <div class="links">
     <a href="#how" data-i18n="navHow">上手</a>
     <a href="#features" data-i18n="navFeatures">功能</a>
+    <a href="#stereo" data-i18n="navStereo">立体声</a>
     <a href="#ambient" data-i18n="navAmbient">氛围灯</a>
     <a href="#faq" data-i18n="navFaq">常见问题</a>
   </div>
@@ -1070,6 +1292,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
   <div class="mmenu-inner">
     <a href="#how" data-i18n="navHow">上手</a>
     <a href="#features" data-i18n="navFeatures">功能</a>
+    <a href="#stereo" data-i18n="navStereo">立体声</a>
     <a href="#ambient" data-i18n="navAmbient">氛围灯</a>
     <a href="#faq" data-i18n="navFaq">常见问题</a>
     <a class="btn btn-dark btn-lg" href="https://github.com/4202217/saundo/releases/latest" rel="noopener" data-download="auto" data-i18n="navDownload">免费下载</a>
@@ -1083,7 +1306,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
     <div class="hero-copy">
       <span class="hero-badge reveal"><span class="dot"></span>开源 AirPlay 2 发送器</span>
       <h1 class="heading-1 reveal">电脑里一放，<br>HomePod 就响。</h1>
-      <p class="body-3 sub reveal" data-en="Everything your computer plays, straight to the HomePod on your network. No output to switch. No app to set up.">整台电脑的声音，都送到同一网络里的 HomePod。不用切系统输出，也不用管是哪个 app。</p>
+      <p class="body-3 sub reveal" data-en="Everything your computer plays, straight to the HomePod on your network — one, or several. No output to switch. No app to set up.">整台电脑的声音，都送到同一网络里的 HomePod——一台，或者几台。不用切系统输出，也不用管是哪个 app。</p>
       <div class="hero-cta reveal">
         <!-- Direct asset links: the download starts here instead of on the release
              page, where the archive sorts above the installer. The script at the
@@ -1117,18 +1340,50 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
           </header>
 
           <div class="fly-body">
-            <div class="fly-shead"><span class="fly-slabel" data-i18n="flyDevices">接收器</span><span class="fly-snote" id="fCount">2 台</span></div>
+            <div class="fly-shead">
+              <span class="fly-slabel" data-i18n="flyDevices">接收器</span>
+              <span class="fly-snote" id="fCount">2 台</span>
+              <button class="fshead-act" id="fDiscAll" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>全部断开</span></button>
+            </div>
             <div class="fly-card">
-              <div class="fdev sel" id="fDev0">
+              <div class="fdev member" id="fDev0">
                 <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg><i class="fdot"></i></span>
-                <span class="fnamecol"><b>客厅 HomePod</b><span>AudioAccessory5,1 · AirPlay 2</span></span>
-                <button class="faction accent" id="fRowAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
+                <span class="fmix">
+                  <span class="fnameline">
+                    <button class="fchan" id="fChan" type="button" data-side="stereo" aria-label="声道：立体声 · 点击切换到 左"><svg viewBox="0 0 25.4328 17.5208" aria-hidden="true"><g class="ch-l" fill="currentColor"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/></g><g class="ch-r" fill="currentColor"><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.0628 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/></g><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z" fill="currentColor" opacity=".85"/></svg></button>
+                    <b>客厅 HomePod</b>
+                  </span>
+                  <span class="fvolrow">
+                    <button class="fmute" id="fMute0" type="button" aria-label="静音 客厅 HomePod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path class="fmute-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="fmute-wave2" d="M18.8 6a9 9 0 0 1 0 12"/><path class="fmute-slash" d="M4 4l16 16"/></svg></button>
+                    <input class="frowvol" id="fVol0" type="range" min="0" max="100" value="30" aria-label="音量 · 客厅 HomePod">
+                    <span class="frowpct" id="fVolPct0">30%</span>
+                  </span>
+                  <span class="fsecond" id="fSecond0">立体声 · AudioAccessory5,1 · 15.2</span>
+                </span>
+                <button class="faction strong" id="fRowAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>断开连接</span></button>
               </div>
-              <div class="fdev" id="fDev1">
+              <div class="fdev member" id="fDev1">
                 <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-pair"/></svg><i class="fdot"></i></span>
-                <span class="fnamecol"><b>书房 HomePods</b><span>AudioAccessory5,1 · 立体声组 2/2</span></span>
-                <button class="faction accent" type="button" id="fAtvAction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg><span>连接</span></button>
+                <span class="fmix">
+                  <span class="fnameline">
+                    <span class="flead" role="img" aria-label="立体声"><svg aria-hidden="true"><use href="#ch-stereo"/></svg></span>
+                    <b>书房 HomePods</b>
+                  </span>
+                  <span class="fvolrow">
+                    <button class="fmute" id="fMute1" type="button" aria-label="静音 书房 HomePods"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path class="fmute-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="fmute-wave2" d="M18.8 6a9 9 0 0 1 0 12"/><path class="fmute-slash" d="M4 4l16 16"/></svg></button>
+                    <input class="frowvol" id="fVol1" type="range" min="0" max="100" value="44" aria-label="音量 · 书房 HomePods">
+                    <span class="frowpct" id="fVolPct1">44%</span>
+                  </span>
+                  <span class="fsecond" id="fSecond1">AudioAccessory5,1 · 15.2</span>
+                </span>
+                <button class="faction strong" id="fAtvAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>断开连接</span></button>
               </div>
+            </div>
+            <div class="fnotice" id="fNotice" role="status" hidden>
+              <svg class="fn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/></svg>
+              <span class="fn-text" id="fNoticeText"></span>
+              <button class="fn-retry" id="fNoticeRetry" type="button">重试</button>
+              <button class="fn-close" id="fNoticeClose" type="button" aria-label="忽略"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
             </div>
 
             <div class="fly-shead" id="flyPlayHead"><span class="fly-slabel" data-i18n="flyPlayback">播放</span><span class="fly-spin" id="fLatSpin" hidden aria-hidden="true"></span><span class="fly-snote" id="fNote">ALAC · 44.1 kHz · 延迟 200 ms</span></div>
@@ -1162,12 +1417,6 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
                   <button data-lat="2000" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5V20M8.5 10.5h7"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M4.5 14l-2 2M4.5 14l2 2M19.5 14l-2 2M19.5 14l2 2"/></svg><span data-i18n="latStable">稳定</span></button>
                   <button data-lat="custom" type="button" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/><g fill="currentColor" stroke="none"><circle cx="7" cy="6" r="2.1"/><circle cx="13" cy="10" r="2.1"/><circle cx="8" cy="14" r="2.1"/></g></svg><span data-i18n="latCustom">自定义</span></button>
                 </div>
-              </div>
-              <div class="fline"></div>
-              <div class="fvol">
-                <svg class="fvolic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.8 6a9 9 0 0 1 0 12"/></svg>
-                <input class="frange" id="fVol" type="range" min="0" max="100" value="30" aria-label="接收器音量">
-                <span class="fvolval" id="fVolPct">30%</span>
               </div>
             </div>
 
@@ -1237,7 +1486,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
         <span class="num">02</span>
         <div class="step-art" aria-hidden="true"><div class="art-pick"><span class="row"><span class="rg"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg></span><span class="rname"></span><span class="rdot"></span></span><span class="row main"><span class="rg"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg></span><span class="rname"></span><span class="rdot"></span></span><span class="row"><span class="rg"><svg class="sfg" aria-hidden="true"><use href="#g-appletv"/></svg></span><span class="rname"></span><span class="rdot"></span></span><span class="cursor"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 8-6.5 1.5L9 19 5 3Z"/></svg></span></div></div>
         <h3>点一下，连上。</h3>
-        <p>HomePod 会自己出现在列表里。要密码的，输一次就记住。想换一台，点一下就行。</p>
+        <p>HomePod 会自己出现在列表里。要密码的，输一次就记住。想多连一台，再点一下就行。</p>
       </article>
       <article class="step reveal" data-d="3">
         <span class="num">03</span>
@@ -1344,6 +1593,62 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
             </div>
           </div>
         </article>
+        <article class="card bmulti reveal" data-d="4">
+          <div class="bm-body">
+            <span class="bnum">05</span>
+            <h3 data-en="Connect as many as you like.">想连几台，就连几台。</h3>
+            <p data-en="One computer connects to several receivers at once and plays to all of them. Add or drop one mid-song; the rest keep going.">一台电脑同时连接多台接收器，一起播放。中途加一台、撤一台，其余的继续。</p>
+          </div>
+          <div class="art" aria-hidden="true">
+            <div class="amhub">
+              <svg class="amhub-lines" viewBox="0 0 320 150" preserveAspectRatio="none" aria-hidden="true">
+                <g class="base"><path d="M160 75 Q88 32 22 22"/><path d="M160 75 Q232 62 298 22"/><path d="M160 75 Q88 88 22 128"/><path d="M160 75 Q232 118 298 128"/></g>
+                <g class="pulse"><path pathLength="100" d="M160 75 Q88 32 22 22"/><path pathLength="100" d="M160 75 Q232 62 298 22"/><path pathLength="100" d="M160 75 Q88 88 22 128"/><path pathLength="100" d="M160 75 Q232 118 298 128"/></g>
+              </svg>
+              <span class="amhub-core"><span class="amhub-face"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="eye" cx="15" cy="17" r="2.2"/><circle class="eye" cx="25" cy="17" r="2.2"/><path class="mouth" d="M14 26 Q20 31 26 26"/></svg></span></span>
+              <span class="amhub-node nw"><span class="amhub-glyph pair"><svg class="sfg"><use href="#g-homepod-pair"/></svg></span><i class="amhub-dot"></i></span>
+              <span class="amhub-node ne"><span class="amhub-glyph mix"><svg class="sfg"><use href="#g-homepod-mini-combo"/></svg></span><i class="amhub-dot"></i></span>
+              <span class="amhub-node sw"><span class="amhub-glyph mini"><svg class="sfg"><use href="#g-homepod-mini"/></svg></span><i class="amhub-dot"></i></span>
+              <span class="amhub-node se"><span class="amhub-glyph"><svg class="sfg"><use href="#g-homepod"/></svg></span><i class="amhub-dot"></i></span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEREO COMBO ================= -->
+<section class="stereo-sec" id="stereo">
+  <div class="wrap">
+    <div class="stereo-layout">
+      <div class="stereo-copy reveal">
+        <h2 class="heading-2" data-en="Any two models.<br>One stereo pair." data-zh="不挑型号，<br>两台就是一对。">不挑型号，<br>两台就是一对。</h2>
+        <p class="body-3" data-en="Apple's stereo pair wants two of the same model. saundo's stereo combo doesn't: a full-size HomePod beside a mini, two generations apart — any two AirPlay 2 receivers become one pair. One plays left, one plays right.">Apple 的立体声组只认两只同型号。声渡的立体声组合不挑：全尺寸配 mini、两代之间随便配，任意两台 AirPlay 2 接收器都能连成一对。一台播左，一台播右。</p>
+        <div class="feat-specs stereo-specs">
+          <span data-en="One receiver per channel">一台一个声道</span>
+          <span data-en="Swap sides live">左右随时换</span>
+        </div>
+      </div>
+      <div class="stereo-stage reveal" data-d="1">
+        <div class="sstage" id="comboCard">
+          <span class="ss-mark ss-mark-l" aria-hidden="true">L</span>
+          <span class="ss-mark ss-mark-r" aria-hidden="true">R</span>
+          <span class="ss-field ss-field-l" aria-hidden="true"></span>
+          <span class="ss-field ss-field-r" aria-hidden="true"></span>
+          <span class="ss-ground" aria-hidden="true"></span>
+          <span class="ss-flow ss-flow-l" aria-hidden="true"><i class="fill"></i><span class="dot"></span></span>
+          <span class="ss-flow ss-flow-r" aria-hidden="true"><i class="fill"></i><span class="dot"></span></span>
+          <div class="ss-dev ss-dev-l" id="comboLeft">
+            <span class="ss-glyph"><span class="ss-figure"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg></span></span>
+            <span class="ss-label"><b>HomePod</b></span>
+          </div>
+          <button class="ss-swap" id="comboSwap" type="button" aria-label="交换左右声道"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
+          <div class="ss-dev ss-dev-r" id="comboRight">
+            <span class="ss-glyph"><span class="ss-figure mini"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-mini"/></svg></span></span>
+            <span class="ss-label"><b>HomePod mini</b></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1438,13 +1743,13 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
       <details class="faq reveal"><summary>声渡和系统自带的 AirPlay 有什么不同？<span class="plus"></span></summary>
         <p class="ans">Windows 没有系统级的 AirPlay 发送。macOS 只能把整机输出切到 AirPlay，没有延迟档位，也看不到接收器细节。声渡按每台接收器的方式配对、对时；连接时本机扬声器静音，断开就恢复，不会两边一起响。全在一个托盘图标里。</p></details>
       <details class="faq reveal" data-d="1"><summary>哪些设备能连？<span class="plus"></span></summary>
-        <p class="ans">真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组合、Mac 的 AirPlay 接收器（包括设了密码的）。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。</p></details>
+        <p class="ans">真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组、Mac 的 AirPlay 接收器（包括设了密码的）。可以同时连多台；任意两台 AirPlay 2 接收器也能连成软件立体声组合，不同型号、不同代都行。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。</p></details>
       <details class="faq reveal" data-d="2"><summary>为什么接收器列表是空的？<span class="plus"></span></summary>
         <p class="ans">多半是权限没放行。Windows 第一次启动会弹防火墙提示，选「允许」，发现和 PTP 都要入站 UDP；macOS 15 起要在「系统设置 → 隐私与安全性」里允许本地网络。放行后重开应用，列表就回来了。</p></details>
       <details class="faq reveal" data-d="2"><summary>延迟最低能到多少？<span class="plus"></span></summary>
         <p class="ans">预设最低 200 ms，自定义能到 20 ms。低于 200 ms 稳不稳，要看接收器。看视频用低延迟 200 ms，听音乐用标准 1.5 s，网络不稳就切稳定 2 s。</p></details>
-      <details class="faq reveal" data-d="3"><summary>切换接收器会断音吗？<span class="plus"></span></summary>
-        <p class="ans">会短暂中断。换接收器时，声渡会重建 AirPlay 会话，声音停一下再继续。连接后本机静音的设置不受影响。</p></details>
+      <details class="faq reveal" data-d="3"><summary>中途加一台、撤一台，会断音吗？<span class="plus"></span></summary>
+        <p class="ans">正在播放时加一台，其余设备会短暂停顿，然后继续；撤掉一台，其他的接着放。全部断开后，声音停止，本机静音设置照旧。</p></details>
       <details class="faq reveal" id="install" data-d="4"><summary>第一次打开被系统拦下来，怎么办？<span class="plus"></span></summary>
         <p class="ans">Windows 在 SmartScreen 里点「更多信息 → 仍要运行」。macOS 到「系统设置 → 隐私与安全性」底部，点「仍要打开」。安装包还没有代码签名，所以会被拦，不是它有问题。源码整份在 GitHub 上，可以自己编译比对。</p></details>
       <details class="faq reveal" data-d="4"><summary>有数据会出局域网吗？<span class="plus"></span></summary>
@@ -1503,16 +1808,16 @@ var RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 var TITLE_ZH = document.title;
 var TITLE_EN = "saundo: computer sound, on HomePod";
 var META_ZH = {
-  "desc": "声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。",
+  "desc": "声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。可同时连多台，任意两台还能组成跨型号的立体声组合。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。",
   "ogTitle": "声渡 saundo：电脑里一放，HomePod 就响",
-  "ogDesc": "开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，PTP 或 NTP 对时，托盘常驻。",
+  "ogDesc": "开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，多台一起响，跨型号立体声组合，PTP 或 NTP 对时，托盘常驻。",
   "alt": "声渡 saundo：电脑里一放，HomePod 就响。",
   "locale": "zh_CN"
 };
 var META_EN = {
-  "desc": "saundo is an open-source AirPlay 2 sender. Your whole computer's sound, in uncompressed ALAC at 44.1 kHz, to HomePod, Apple TV, and Mac. PTP or NTP timing, latency from 20 to 2000 ms, one tray icon, one binary, no WebView.",
+  "desc": "saundo is an open-source AirPlay 2 sender. Your whole computer's sound, in uncompressed ALAC at 44.1 kHz, to HomePod, Apple TV, and Mac. Several receivers at once, and any two can form a stereo combo across models. PTP or NTP timing, latency from 20 to 2000 ms, one tray icon, one binary, no WebView.",
   "ogTitle": "saundo: computer sound, on HomePod",
-  "ogDesc": "Open-source AirPlay 2 sender. Your computer's sound, uncompressed ALAC, PTP or NTP timing, one tray icon.",
+  "ogDesc": "Open-source AirPlay 2 sender. Your computer's sound, uncompressed ALAC, several rooms at once, stereo combos across models, PTP or NTP timing, one tray icon.",
   "alt": "saundo: computer sound, on HomePod.",
   "locale": "en_US"
 };
@@ -1528,6 +1833,7 @@ var EN = {
   "声渡图标": "saundo icon",
   "上手": "Start",
   "功能": "Features",
+  "立体声": "Stereo",
   "氛围灯": "Ambient",
   "常见问题": "FAQ",
   "切换语言": "Switch language",
@@ -1544,10 +1850,12 @@ var EN = {
   "刷新接收器": "Refresh receivers",
   "设置": "Settings",
   "接收器": "Receivers",
+  "全部断开": "Disconnect all",
   "2 台": "2 receivers",
   "客厅 HomePod": "Living Room HomePod",
   "连接": "Connect",
   "书房 HomePods": "Study HomePods",
+  "书房 mini": "Study mini",
   "AudioAccessory5,1 · 立体声组 2/2": "AudioAccessory5,1 · Stereo pair 2/2",
   "播放": "Playback",
   "ALAC · 44.1 kHz · 延迟 200 ms": "ALAC · 44.1 kHz · 200 ms latency",
@@ -1572,7 +1880,7 @@ var EN = {
   "装好，就不用管了。": "Set it up. Then forget it.",
   "图标就在系统托盘里，点开就用。不用另装任何东西。": "The icon lives in your system tray. Open it and play. Nothing else to install.",
   "点一下，连上。": "One click. Connected.",
-  "HomePod 会自己出现在列表里。要密码的，输一次就记住。想换一台，点一下就行。": "HomePods show up on their own. Enter a password once, and it's remembered. To switch, click another receiver.",
+  "HomePod 会自己出现在列表里。要密码的，输一次就记住。想多连一台，再点一下就行。": "HomePods show up on their own. Enter a password once, and it's remembered. Want another one playing too? Click it as well.",
   "浏览器": "Browsers",
   "游戏": "Games",
   "播放器": "Players",
@@ -1591,13 +1899,13 @@ var EN = {
   "声渡和系统自带的 AirPlay 有什么不同？": "How is saundo different from the built-in AirPlay?",
   "Windows 没有系统级的 AirPlay 发送。macOS 只能把整机输出切到 AirPlay，没有延迟档位，也看不到接收器细节。声渡按每台接收器的方式配对、对时；连接时本机扬声器静音，断开就恢复，不会两边一起响。全在一个托盘图标里。": "Windows has no system AirPlay sender. macOS can only switch the whole system output to AirPlay, with no latency modes and no receiver detail. saundo pairs and times each receiver its own way. Your speakers go quiet while it streams, and come back on disconnect. It all lives in one tray icon.",
   "哪些设备能连？": "What can it connect to?",
-  "真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组合、Mac 的 AirPlay 接收器（包括设了密码的）。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。": "Verified on hardware: HomePod and HomePod mini (software 27), HomePod stereo pairs, and Mac AirPlay receivers, including password-protected ones. Apple TV screen PIN pairing is implemented but not yet verified on hardware. FairPlay-only TVs are out of scope. saundo flags them at discovery instead of connecting quietly. The macOS build is Apple silicon only. The Windows build is x64.",
+  "真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组、Mac 的 AirPlay 接收器（包括设了密码的）。可以同时连多台；任意两台 AirPlay 2 接收器也能连成软件立体声组合，不同型号、不同代都行。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。": "Verified on hardware: HomePod and HomePod mini (software 27), HomePod stereo pairs, and Mac AirPlay receivers, including password-protected ones. Several receivers can play at once, and any two AirPlay 2 receivers can form a software stereo combo, across models and generations. Apple TV screen PIN pairing is implemented but not yet verified on hardware. FairPlay-only TVs are out of scope. saundo flags them at discovery instead of connecting quietly. The macOS build is Apple silicon only. The Windows build is x64.",
   "为什么接收器列表是空的？": "Why is the receiver list empty?",
   "多半是权限没放行。Windows 第一次启动会弹防火墙提示，选「允许」，发现和 PTP 都要入站 UDP；macOS 15 起要在「系统设置 → 隐私与安全性」里允许本地网络。放行后重开应用，列表就回来了。": "Permissions, most likely. On Windows, choose Allow when the firewall prompt appears on first launch. Discovery and PTP both need inbound UDP. On macOS 15 and later, allow Local Network in System Settings → Privacy & Security. Reopen the app and the list fills.",
   "延迟最低能到多少？": "What's the lowest latency?",
   "预设最低 200 ms，自定义能到 20 ms。低于 200 ms 稳不稳，要看接收器。看视频用低延迟 200 ms，听音乐用标准 1.5 s，网络不稳就切稳定 2 s。": "The lowest preset is 200 ms. Custom goes down to 20 ms, though below 200 ms stability depends on the receiver. For video, Low latency at 200 ms. For music, Standard at 1.5 s. On a shaky network, Stable at 2 s.",
-  "切换接收器会断音吗？": "Does switching receivers cut the sound?",
-  "会短暂中断。换接收器时，声渡会重建 AirPlay 会话，声音停一下再继续。连接后本机静音的设置不受影响。": "Yes, briefly. Switching receivers rebuilds the AirPlay session, so the sound stops for a moment and resumes. The local mute setting stays in effect.",
+  "中途加一台、撤一台，会断音吗？": "Does adding or dropping a receiver cut the sound?",
+  "正在播放时加一台，其余设备会短暂停顿，然后继续；撤掉一台，其他的接着放。全部断开后，声音停止，本机静音设置照旧。": "Adding one while playing pauses the others briefly, then they carry on. Dropping one leaves the rest playing. Disconnect all and the sound stops; the local mute setting stays as it was.",
   "第一次打开被系统拦下来，怎么办？": "What if the system blocks the first launch?",
   "Windows 在 SmartScreen 里点「更多信息 → 仍要运行」。macOS 到「系统设置 → 隐私与安全性」底部，点「仍要打开」。安装包还没有代码签名，所以会被拦，不是它有问题。源码整份在 GitHub 上，可以自己编译比对。": "On Windows, click More info → Run anyway in SmartScreen. On macOS, open System Settings → Privacy & Security and click Open Anyway at the bottom. The installer isn't code-signed yet, so the system stops it. That's the reason, not a problem with the app. The full source is on GitHub if you want to build and compare.",
   "有数据会出局域网吗？": "Does anything leave the LAN?",
@@ -1632,6 +1940,8 @@ var EN = {
   "发送端缓冲": "Sender buffer",
   "接收器处理": "Receiver processing",
   "重试": "Retry",
+  "忽略": "Dismiss",
+  "交换左右声道": "Swap left and right",
   "正在播放": "Streaming",
   "已连接 · 音频正在播放": "Connected · audio is playing",
   "已断开": "Disconnected",
@@ -1714,6 +2024,7 @@ function applyLang(lang){
 
   if(typeof flyRender === "function") flyRender();   /* tray demo + ambient section re-render their dynamic labels */
   if(typeof renderLatency === "function") renderLatency();
+  if(typeof comboRender === "function") comboRender();   /* the stereo combo stage's device names */
   if(typeof menuBtn !== "undefined" && menuBtn){
     menuBtn.setAttribute("aria-label", t(menuBtn.getAttribute("aria-expanded") === "true" ? "关闭菜单" : "菜单"));
   }
@@ -2142,7 +2453,7 @@ function lampRender(){
   /* --- ambient section --- */
   /* The light lives on the receiver: lamp on but no active session → the pod
      stays dark and the hero halo stays hidden until streaming begins. */
-  var lit = !lamp.off && fly.phase === "streaming";
+  var lit = !lamp.off && fly.phase === "streaming" && fly.members.length > 0;
   ambStage.classList.toggle('off', !lit);
   ambPower.setAttribute('aria-checked', String(!lamp.off));
   if(ambCoverBtn) ambCoverBtn.setAttribute('aria-pressed', String(!lamp.off && lamp.cover));
@@ -2351,9 +2662,14 @@ addEventListener("keydown", function(e){
 /* ---------- flyout state machine (mirrors internal/app: ui_kit.go phaseOf/faceOf,
    flyout.go actionFor/statusText, latency.go apply-hold, lamp.go lampSection) ---------- */
 var FLY_DEVS = [
-  { id:"living", row:"fDev0", btn:"fRowAction", zh:"客厅 HomePod", en:"Living Room HomePod" },
-  { id:"study",  row:"fDev1", btn:"fAtvAction", zh:"书房 HomePods", en:"Study HomePods" }
+  { id:"living", row:"fDev0", btn:"fRowAction", vol:"fVol0", pct:"fVolPct0", mute:"fMute0", second:"fSecond0",
+    zh:"客厅 HomePod", en:"Living Room HomePod", detailZh:"AudioAccessory5,1 · 15.2", detailEn:"AudioAccessory5,1 · 15.2" },
+  { id:"study",  row:"fDev1", btn:"fAtvAction", vol:"fVol1", pct:"fVolPct1", mute:"fMute1", second:"fSecond1",
+    zh:"书房 HomePods", en:"Study HomePods", detailZh:"AudioAccessory5,1 · 15.2", detailEn:"AudioAccessory5,1 · 15.2" }
 ];
+var CH_NAMES = { zh:{stereo:"立体声", left:"左", right:"右"}, en:{stereo:"Stereo", left:"Left", right:"Right"} };
+var CH_DETAIL = { zh:{stereo:"立体声", left:"左声道", right:"右声道"}, en:{stereo:"Stereo", left:"Left channel", right:"Right channel"} };
+var CH_NEXT = { stereo:"left", left:"right", right:"stereo" };
 var FLY_MODES = { low:200, standard:1500, stable:2000 };       /* settings.go: LatencyLowMS… */
 var FLY_ICONS = {
   link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg>',
@@ -2373,14 +2689,18 @@ var MEDIA = [
 ];
 var media = { i:0, playing:false, pos:0 };    /* 夜航 — 白鲸电台, paused at 0:00 until the session starts */
 var fly = {
-  phase:"streaming", /* the page opens on a live session: the glow is up on entry */
-  sel:"living",      /* a.selID: the row last chosen */
-  active:"living",   /* snap.SelectedID while a session exists */
+  phase:"streaming", /* the page opens on a live two-member session: the glow is up on entry */
+  members:["living", "study"],  /* snap.ActiveTargets, primary first: every row is a peer */
+  joining:null,      /* the target a connect is opening or adding */
+  notice:null,       /* {kind:"lost"|"join", id}: the session bar under the device card */
   pairing:false,     /* sender.StatePairing on a first-time connect */
-  paired:{living:true},
+  paired:{living:true, study:true},
   ptp:true,          /* the PTP follower settled before the page loaded */
   standby:false,     /* snap.Standby */
-  applying:false     /* latencyApplying: the stream restarts under the held face */
+  applying:false,    /* latencyApplying: the stream restarts under the held face */
+  volume:{living:30, study:44},
+  muted:{},          /* id -> the level a mute can restore */
+  channel:{living:"stereo"}    /* the channel button's state on a single receiver */
 };
 var flyTimers = {};
 var flyPanel = document.getElementById("flyPanel");
@@ -2391,8 +2711,6 @@ var fFootState = document.getElementById("fFootState");
 var fPlayIcon = document.getElementById("fPlayIcon");
 var fPlayPath = fPlayIcon.querySelector("path");
 var fPlayBtn = document.getElementById("fPlayBtn");
-var fVolEl = document.getElementById("fVol");
-var fVolPct = document.getElementById("fVolPct");
 var fMediaEl = document.querySelector("#flyPlayback .fmedia");
 var fFill = fMediaEl.querySelector(".ffill");
 var fThumb = fMediaEl.querySelector(".fthumb");
@@ -2411,14 +2729,16 @@ function flySetTimer(k, fn, ms){
 function flyClearTimer(k){ if(flyTimers[k]){ clearTimeout(flyTimers[k]); flyTimers[k] = null; } }
 function flyClock(s){ var n = Math.max(0, Math.floor(s)); return Math.floor(n/60) + ":" + ("0" + n%60).slice(-2); }
 
-/* statusText(): the footer line, worded like the app's own phases */
+function flyMembers(){ return fly.members.map(function(id){ return flyDev(id); }); }
+/* statusText(): the footer line, worded like the app's own phases. A joined
+   session names its members in order, the way ConnectedName does. */
 function flyStatusText(){
-  if(fly.phase === "streaming"){
+  if(fly.phase === "streaming" && fly.members.length){
     if(fly.standby) return t("已待机 · 播放声音即唤醒");
-    var name = flyDevName(flyDev(fly.active));       /* composed per LANG, not via the dict */
-    return LANG === "en" ? "Streaming to " + name : "正在通过 " + name + " 播放";
+    var names = flyMembers().map(flyDevName).join(" + ");   /* composed per LANG, not via the dict */
+    return LANG === "en" ? "Streaming to " + names : "正在通过 " + names + " 播放";
   }
-  if(fly.phase === "connecting") return t(fly.pairing ? "正在配对…" : "正在连接…");
+  if(fly.phase === "connecting" || (fly.phase === "streaming" && fly.joining)) return t(fly.pairing ? "正在配对…" : "正在连接…");
   return t("未连接");
 }
 /* playbackSection(): ALAC line, the sync suffix only while streaming */
@@ -2432,32 +2752,97 @@ function flyNoteText(){
   s += LANG === "en" ? " · " + lt + " latency" : " · 延迟 " + lt;
   return s;
 }
-/* actionFor(): the control each row offers, a pure function of the phase */
+/* actionFor(): the control each row offers, from the target's own state —
+   a member disconnects, a joining target cancels, everything else connects */
 function flyActionFor(d){
-  var active = fly.active === d.id && fly.phase !== "idle";
-  if(active && fly.phase === "connecting") return "cancel";
-  if(active) return "disconnect";
-  if(fly.phase === "connecting") return "disabled";   /* one session at a time */
-  return "connect";                                    /* while streaming it switches the session */
+  if(fly.joining === d.id) return "cancel";
+  if(fly.members.indexOf(d.id) >= 0) return "disconnect";
+  if(fly.phase === "connecting") return "disabled";   /* one connect at a time */
+  return "connect";
 }
-
+function flyDetail(d){
+  var s = LANG === "en" ? d.detailEn : d.detailZh;
+  if(d.id === "living") s = CH_DETAIL[LANG === "en" ? "en" : "zh"][fly.channel.living] + " · " + s;
+  return s;
+}
 function flyRenderRows(){
   FLY_DEVS.forEach(function(d){
     var row = document.getElementById(d.row);
-    row.classList.toggle("sel", fly.sel === d.id);
+    row.classList.toggle("member", fly.members.indexOf(d.id) >= 0);
     var b = document.getElementById(d.btn);
     var a = flyActionFor(d);
     b.disabled = a === "disabled";
     b.className = "faction " + (a === "cancel" ? "ctl" : a === "disconnect" ? "strong" : a === "disabled" ? "dimmed" : "accent");
     b.innerHTML = FLY_ICONS[a === "cancel" ? "close" : a === "disconnect" ? "unlink" : "link"] +
       "<span>" + t(a === "cancel" ? "取消" : a === "disconnect" ? "断开连接" : "连接") + "</span>";
+    document.getElementById(d.second).textContent = flyDetail(d);
+    var name = flyDevName(d);
+    document.getElementById(d.vol).setAttribute("aria-label", LANG === "en" ? "Volume · " + name : "音量 · " + name);
   });
+  document.getElementById("fDiscAll").hidden = fly.members.length < 2;
+}
+/* the channel button cycles stereo → left → right; its label names the current
+   side and what the click does, like the app's tooltip */
+function flyChannelLabel(side){
+  var c = CH_NAMES[LANG === "en" ? "en" : "zh"];
+  return LANG === "en"
+    ? "Channel: " + c[side] + " · Click for " + c[CH_NEXT[side]]
+    : "声道：" + c[side] + " · 点击切换到 " + c[CH_NEXT[side]];
+}
+function flyRenderChannel(){
+  var btn = document.getElementById("fChan");
+  if(!btn) return;
+  btn.dataset.side = fly.channel.living;
+  btn.setAttribute("aria-label", flyChannelLabel(fly.channel.living));
+  var lead = document.querySelector(".flead");
+  if(lead) lead.setAttribute("aria-label", CH_NAMES[LANG === "en" ? "en" : "zh"].stereo);
+}
+function flySetVol(id, v){
+  v = Math.max(0, Math.min(100, Math.round(v)));
+  fly.volume[id] = v;
+  var d = flyDev(id);
+  var input = document.getElementById(d.vol);
+  input.value = String(v);
+  input.style.setProperty("--vol", v + "%");
+  document.getElementById(d.pct).textContent = v + "%";
+  var muted = v === 0;
+  var mute = document.getElementById(d.mute);
+  var name = flyDevName(d);
+  mute.classList.toggle("muted", muted);
+  mute.setAttribute("aria-label", LANG === "en"
+    ? (muted ? "Unmute " : "Mute ") + name
+    : (muted ? "取消静音 " : "静音 ") + name);
+}
+function flyRenderVolumes(){
+  FLY_DEVS.forEach(function(d){ flySetVol(d.id, fly.volume[d.id]); });
+}
+/* the session notice: a member lost, or a second target joining. The loss
+   offers a retry; the join is informational. */
+function flyNoticeText(){
+  if(!fly.notice) return "";
+  var name = flyDevName(flyDev(fly.notice.id));
+  if(fly.notice.kind === "join") return LANG === "en"
+    ? "Adding " + name + "; the other devices pause briefly"
+    : "正在加入 " + name + "，其他设备会短暂暂停";
+  return LANG === "en"
+    ? name + " disconnected; the other devices keep playing"
+    : name + " 已断开，其他设备继续播放";
+}
+function flyRenderNotice(){
+  var el = document.getElementById("fNotice");
+  var n = fly.notice;
+  el.hidden = !n;
+  if(!n) return;
+  el.classList.toggle("join", n.kind === "join");
+  document.getElementById("fNoticeText").textContent = flyNoticeText();
+  document.getElementById("fNoticeRetry").hidden = n.kind !== "lost";
 }
 function flyRenderFooter(){
-  flyPanel.classList.toggle("streaming", fly.phase === "streaming");
-  flyPanel.classList.toggle("connecting", fly.phase === "connecting");
+  var live = fly.phase === "streaming";
+  flyPanel.classList.toggle("streaming", live && !fly.joining);
+  flyPanel.classList.toggle("connecting", fly.phase === "connecting" || !!fly.joining);
   var face = "face-idle";
-  if(fly.phase === "streaming") face = media.playing ? "face-stream" : "face-smile";   /* faceOf: AudioIdle → the plain smile */
+  if(live) face = fly.joining ? "face-connect" : media.playing ? "face-stream" : "face-smile";   /* faceOf: AudioIdle → the plain smile */
   else if(fly.phase === "connecting") face = "face-connect";
   fFaceUse.setAttribute("href", "#" + face);
   fFootState.textContent = flyStatusText();
@@ -2566,53 +2951,100 @@ function flyBuildGrid(grid){
     grid.appendChild(sw);
   });
 }
-function flyRender(){ flyRenderRows(); flyRenderFooter(); flyRenderNote(); mediaRenderAll(); lampRender(); }
+function flyRender(){ flyRenderRows(); flyRenderFooter(); flyRenderNote(); flyRenderNotice(); flyRenderChannel(); flyRenderVolumes(); mediaRenderAll(); lampRender(); }
 
-/* connectDevice(): connect, or switch the session to another receiver in place */
-function flyConnect(id){
-  flyClearTimer("apply");
-  fly.applying = false;
-  fly.sel = id;
-  fly.active = id;
-  fly.phase = "connecting";
-  fly.standby = false;
-  fly.ptp = false;
-  fly.pairing = !fly.paired[id];
-  flyClearTimer("connect");
-  flyClearTimer("standby");
-  flyClearTimer("ptp");
-  flySetTimer("connect", function(){
-    if(fly.pairing){
-      fly.pairing = false;                     /* HAP pairing happens once */
-      flyRender();
-      flySetTimer("connect", function(){ flyEnterStream(id); }, 700);
-    } else {
-      flyEnterStream(id);
-    }
-  }, fly.pairing ? 650 : 950);
-  flyRender();
-}
-function flyEnterStream(id){
-  fly.phase = "streaming";
-  fly.paired[id] = true;
-  flyRender();
-  flySetTimer("ptp", function(){ if(fly.phase === "streaming" && fly.active === id){ fly.ptp = true; flyRenderNote(); } }, 1400);
-  flyRearmStandby();
-}
-function flyDisconnect(){
-  flyClearTimer("connect"); flyClearTimer("ptp"); flyClearTimer("standby"); flyClearTimer("apply");
+/* the session is a member set (0.6.5): connecting adds a target, disconnecting
+   removes one, and only the last removal ends the session. A join keeps the
+   existing members playing; the app pauses them briefly and says so. */
+function flyEndSession(){
+  ["connect","ptp","standby","apply","join","notice"].forEach(flyClearTimer);
   fly.phase = "idle";
-  fly.active = null;
+  fly.members = [];
+  fly.joining = null;
+  fly.notice = null;
   fly.pairing = false;
   fly.standby = false;
   fly.ptp = false;
   fly.applying = false;
   flyRender();
 }
+function flyEnterStream(id){
+  fly.phase = "streaming";
+  if(fly.members.indexOf(id) < 0) fly.members.push(id);
+  fly.paired[id] = true;
+  fly.joining = null;
+  fly.notice = null;
+  flyRender();
+  flySetTimer("ptp", function(){ if(fly.phase === "streaming"){ fly.ptp = true; flyRenderNote(); } }, 1400);
+  flyRearmStandby();
+}
+function flyAdd(id){
+  if(fly.phase === "connecting" && fly.joining !== id) return;   /* one connect at a time */
+  flyClearTimer("apply");
+  fly.applying = false;
+  flyClearTimer("notice");
+  fly.notice = null;
+  if(fly.phase === "idle"){
+    fly.phase = "connecting";
+    fly.joining = id;
+    fly.standby = false;
+    fly.ptp = false;
+    fly.pairing = !fly.paired[id];
+    flyClearTimer("connect");
+    flySetTimer("connect", function(){
+      if(fly.pairing){
+        fly.pairing = false;                     /* HAP pairing happens once */
+        flyRender();
+        flySetTimer("connect", function(){ flyEnterStream(id); }, 700);
+      } else {
+        flyEnterStream(id);
+      }
+    }, fly.pairing ? 650 : 950);
+    flyRender();
+    return;
+  }
+  fly.joining = id;
+  fly.notice = {kind:"join", id:id};
+  flyRender();
+  flySetTimer("join", function(){
+    if(!fly.members.length){ flyEnterStream(id); return; }
+    if(fly.members.indexOf(id) < 0) fly.members.push(id);
+    fly.paired[id] = true;
+    fly.joining = null;
+    fly.notice = null;
+    flyRender();
+    flyRearmStandby();
+  }, 1200);
+}
+function flyRemove(id){
+  if(fly.joining === id){ flyCancelJoin(); return; }
+  var i = fly.members.indexOf(id);
+  if(i < 0) return;
+  fly.members.splice(i, 1);
+  flyClearTimer("apply");
+  fly.applying = false;
+  if(!fly.members.length){
+    if(fly.joining){ fly.notice = null; flyRender(); return; }   /* a join is still opening */
+    flyEndSession();
+    return;
+  }
+  fly.notice = {kind:"lost", id:id};
+  flyRender();
+  flySetTimer("notice", function(){ fly.notice = null; flyRender(); }, 8000);
+}
+function flyCancelJoin(){
+  flyClearTimer("connect");
+  flyClearTimer("join");
+  fly.joining = null;
+  fly.notice = null;
+  fly.pairing = false;
+  if(!fly.members.length) fly.phase = "idle";
+  flyRender();
+}
 /* standby: streaming but silent for a while — "wakes when sound plays" */
 function flyRearmStandby(){
   flyClearTimer("standby");
-  if(fly.phase === "streaming" && !media.playing){
+  if(fly.phase === "streaming" && fly.members.length && !media.playing){
     flySetTimer("standby", function(){
       fly.standby = true;
       flyRender();
@@ -2640,35 +3072,37 @@ function flyToggleLampPower(){
 }
 
 FLY_DEVS.forEach(function(d){
-  var row = document.getElementById(d.row);
-  row.addEventListener("click", function(e){
-    if(e.target.closest(".faction")) return;
-    fly.sel = d.id;                            /* the row body only selects */
-    flyRenderRows();
-  });
-  row.addEventListener("keydown", function(e){
-    if(e.target.closest(".faction")) return;
-    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fly.sel = d.id; flyRenderRows(); }
-  });
   document.getElementById(d.btn).addEventListener("click", function(){
     var a = flyActionFor(d);
-    if(a === "cancel") flyDisconnect();
-    else if(a === "connect") flyConnect(d.id);
-    else if(a === "disconnect") flyDisconnect();
+    if(a === "cancel") flyCancelJoin();
+    else if(a === "connect") flyAdd(d.id);
+    else if(a === "disconnect") flyRemove(d.id);
   });
+  var input = document.getElementById(d.vol);
+  input.addEventListener("input", function(){ flySetVol(d.id, Number(input.value)); });
+  document.getElementById(d.mute).addEventListener("click", function(){
+    if(fly.volume[d.id] > 0){ fly.muted[d.id] = fly.volume[d.id]; flySetVol(d.id, 0); }
+    else flySetVol(d.id, fly.muted[d.id] || 50);
+    flyRenderRows();
+  });
+});
+document.getElementById("fChan").addEventListener("click", function(){
+  fly.channel.living = CH_NEXT[fly.channel.living];
+  flyRenderChannel();
+  flyRenderRows();
+});
+document.getElementById("fDiscAll").addEventListener("click", flyEndSession);
+document.getElementById("fNoticeRetry").addEventListener("click", function(){
+  if(fly.notice && fly.notice.kind === "lost") flyAdd(fly.notice.id);
+});
+document.getElementById("fNoticeClose").addEventListener("click", function(){
+  flyClearTimer("notice");
+  fly.notice = null;
+  flyRenderNotice();
 });
 document.querySelectorAll("#flyPlayback .fseg button").forEach(function(b){
   b.addEventListener("click", function(){ setLatency(b.dataset.lat); });
 });
-/* the filled rail follows --fly-vol, mirroring the real slider's ink fill;
-   one setter for the drag listener and the demo ramp alike */
-function setVolume(v){
-  fVolEl.value = String(v);
-  fVolEl.style.setProperty("--fly-vol", v + "%");
-  fVolPct.textContent = v + "%";
-}
-setVolume(fVolEl.value);
-fVolEl.addEventListener("input", function(){ setVolume(fVolEl.value); });
 fPlayBtn.addEventListener("click", toggleMediaPlay);
 (function(){
   var tbtns = document.querySelectorAll("#flyPlayback .ftransport button");
@@ -2702,6 +3136,65 @@ setInterval(function(){
 
 flyRender();
 
+/* ---------- stereo combo stage: one HomePod and one mini, two sides ----------
+   The stage is static: the pair does not rotate on its own. The icon-only
+   control trades the two sides; the sessions do not rebuild. */
+var COMBO_MODELS = {
+  homepod:{ name:"HomePod", glyph:"g-homepod", mini:false },
+  mini:{ name:"HomePod mini", glyph:"g-homepod-mini", mini:true }
+};
+var combo = { left:"homepod", right:"mini" };
+function comboRender(){
+  [["left","comboLeft"],["right","comboRight"]].forEach(function(pair){
+    var model = COMBO_MODELS[combo[pair[0]]];
+    var dev = document.getElementById(pair[1]);
+    var fig = dev.querySelector(".ss-figure");
+    fig.classList.toggle("mini", model.mini);
+    fig.querySelector("use").setAttribute("href", "#" + model.glyph);
+    dev.querySelector(".ss-label b").textContent = model.name;
+  });
+  document.getElementById("comboSwap").setAttribute("aria-label", t("交换左右声道"));
+}
+var comboBusy = false;
+/* the manual control only trades sides; the models on stage stay the same */
+function comboSwap(){
+  if(comboBusy) return;
+  var left = document.getElementById("comboLeft");
+  var right = document.getElementById("comboRight");
+  function apply(){
+    var tmp = combo.left; combo.left = combo.right; combo.right = tmp;
+    comboRender();
+  }
+  if(RM || typeof left.animate !== "function"){ apply(); return; }
+  comboBusy = true;
+  var d = 20, ease = "cubic-bezier(.22,1,.36,1)";
+  var out = [
+    left.animate([{opacity:1, transform:"none"}, {opacity:0, transform:"translateX(-" + d + "px)"}],
+      {duration:180, easing:ease, fill:"forwards"}),
+    right.animate([{opacity:1, transform:"none"}, {opacity:0, transform:"translateX(" + d + "px)"}],
+      {duration:180, easing:ease, fill:"forwards"})
+  ];
+  /* the models trade rooms: the outgoing one leaves outward, the incoming one
+     slides in from the far side, so the L/R sides themselves never move */
+  Promise.all(out.map(function(a){ return a.finished; })).then(function(){
+    apply();
+    return Promise.all([
+      left.animate([{opacity:0, transform:"translateX(" + d + "px)"}, {opacity:1, transform:"none"}],
+        {duration:300, easing:ease, fill:"forwards"}),
+      right.animate([{opacity:0, transform:"translateX(-" + d + "px)"}, {opacity:1, transform:"none"}],
+        {duration:300, easing:ease, fill:"forwards"})
+    ].map(function(a){ return a.finished; }));
+  }).then(function(){
+    [left, right].forEach(function(el){ el.getAnimations().forEach(function(a){ a.cancel(); }); });
+    comboBusy = false;
+  }).catch(function(){
+    [left, right].forEach(function(el){ el.getAnimations().forEach(function(a){ a.cancel(); }); });
+    comboBusy = false;
+  });
+}
+document.getElementById("comboSwap").addEventListener("click", comboSwap);
+comboRender();
+
 /* ---------- hero demo: one scripted pass through the real flow ----------
    The page opens on a live session — glow up, media paused, volume low. When
    the panel sits comfortably in view the demo walks the same handlers a user
@@ -2715,13 +3208,13 @@ function demoCancel(){
   demo.timers = [];
   demo.cancelled = true;
 }
-function demoVolume(from, to, ms){
+function demoVolume(id, from, to, ms){
   var t0 = performance.now();
   (function step(now){
     if(demo.cancelled) return;
     var k = Math.min(1, (now - t0) / ms);
     k = 1 - (1 - k) * (1 - k) * (1 - k);          /* easeOutCubic */
-    setVolume(Math.round(from + (to - from) * k));
+    flySetVol(id, from + (to - from) * k);
     if(k < 1) requestAnimationFrame(step);
   })(t0);
 }
@@ -2731,7 +3224,10 @@ function demoRun(){
   var steps = [                                                  /* each gap waits out the previous action */
     [function(){ if(!media.playing) toggleMediaPlay(); }, RM ? 500 : 900],   /* 播放：电平条起 */
     [function(){ setLatency("1500"); },    RM ? 500 : 1700],     /* the apply spinner runs under it */
-    [function(){ demoVolume(30, 68, RM ? 1 : 1100); }, RM ? 500 : 1600],
+    [function(){                                                  /* 两台各自调音量：成员是独立混音 */
+      demoVolume("living", fly.volume.living, 68, RM ? 1 : 1100);
+      demoVolume("study", fly.volume.study, 56, RM ? 1 : 1100);
+    }, RM ? 500 : 1600],
     [function(){ mediaNext(); },           RM ? 500 : 1600]      /* 下一首 → 封面换色收尾 */
   ];
   var t = 0;
