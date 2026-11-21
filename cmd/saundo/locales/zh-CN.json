@@ -666,6 +666,14 @@
   "versionLocalTag": "本地构建",
   "settingsShowInPanel": "托盘面板中显示",
   "errorComboInvalid": "这两台接收器无法组成立体声组合。",
+  "errorComboStale": "「{name}」不可用：成员已加入立体声组。",
+  "@errorComboStale": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "receiverGroupCombo": "立体声组合",
   "receiverPairAddTitle": "创建立体声组合",
   "receiverPairAddSub": "两台接收器各播一个声道",
@@ -699,6 +707,8 @@
   "comboFieldLeft": "左声道",
   "comboFieldRight": "右声道",
   "comboTag": "立体声组合",
+  "comboInvalid": "不可用",
+  "comboInvalidReason": "成员已加入立体声组",
   "receiverAddAction": "添加",
   "comboCreateAction": "创建组合",
   "errorDeviceOffline": "{name} 未连接，无法加入会话。",

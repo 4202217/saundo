@@ -35,6 +35,12 @@
 - Stereo-group collapse (`tsid`): one row named `HomePods` with the subtitle
   `<model> · 立体声组 2/2`, leader first, member rows hidden, group offline
   unless both members are online.
+- A manual combo with a member inside a native pair is marked invalid
+  (`receivers.Target.Invalid`): settings reads 不可用 with 成员已加入立体声组 and
+  keeps only the layout plus 解除组合, the flyout and tray omit it, auto-connect
+  skips it, and `validateTarget` refuses it with `ErrComboStale`. `DropLinked`
+  exempts an invalid combo, so an online standalone member returns as its own
+  row.
 - Local receiver: an advertisement whose address belongs to this host is
   marked Local (`discovery.go:291,328-330`, `unicast.go:82`), forced into the
   hidden

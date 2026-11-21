@@ -98,7 +98,16 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   online count chip after the name, and the name with no 立体声组合 chip
   (the section head labels it); the second line joins the member names with
   「 · 」 in playback order, or stays empty when the name already carries
-  both. The expanded
+  both. If any member ID belongs to an official stereo pair, the pair wins:
+  the row carries 不可用 with 成员已加入立体声组, its expanded body keeps only
+  the layout map with the swap disabled, the enable switch is disabled, the
+  flyout and tray omit it (they list connectable targets only), a member that
+  is online on its own returns as a standalone row, and auto-connect skips it.
+  Pinned by
+  `TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair` and
+  `TestValidateTargetRefusesAStaleCombo`; `TestInvalidComboRowIsMarked` pins
+  the settings row, and its flyout half is owed a rewrite to assert absence.
+  The expanded
   body is 启动时自动连接, the 声道布局 map (左/右 side labels over each
   member, the offline side dimmed, a swap button between them that flips the
   sides in place without a rebuild), a warning bar naming an offline member,

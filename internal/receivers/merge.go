@@ -8,10 +8,13 @@ import (
 )
 
 // Target is one row the engine manages: the wire description the sender
-// needs plus the registry configuration attached to it.
+// needs plus the registry configuration attached to it. Invalid marks a combo
+// whose member now belongs to an official stereo pair: the official pair wins,
+// so the combo cannot be connected or auto-connected.
 type Target struct {
-	Device device.Device
-	Entry  Entry
+	Device  device.Device
+	Entry   Entry
+	Invalid bool
 }
 
 // Merge joins the registry with discovery's current view. It returns every
@@ -38,6 +41,26 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 	live := make(map[string]device.Device, len(discovered))
 	for _, d := range discovered {
 		live[d.ID] = d
+	}
+	// A speaker inside an official stereo pair advertises as the pair, not as
+	// a standalone receiver. The official pair wins: a combo that lists any
+	// of these member IDs is invalid, whether the pair is live or remembered.
+	official := make(map[string]bool)
+	for _, e := range reg.Entries {
+		if e.IsCombo() || len(e.Members) == 0 {
+			continue
+		}
+		for _, m := range e.Members {
+			official[m.ID] = true
+		}
+	}
+	for _, d := range discovered {
+		if !d.IsStereoGroup() {
+			continue
+		}
+		for _, m := range d.Members {
+			official[m.ID] = true
+		}
 	}
 	out := make([]Target, 0, len(reg.Entries)+len(live))
 	rows := make(map[string]Target, len(reg.Entries))
@@ -73,7 +96,7 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 		if !e.IsCombo() {
 			continue
 		}
-		out = append(out, ComboTarget(e, rows))
+		out = append(out, ComboTarget(e, rows, official))
 	}
 	for id, d := range live {
 		// A first sighting. The engine persists it as a remembered entry;
@@ -97,18 +120,24 @@ func Merge(reg Registry, discovered []device.Device, hasPassword func(key string
 
 // ComboTarget synthesizes a combo's merged row: one stereo-group device over
 // the two members' own rows, in the entry's member order (left, then right).
-// A member whose entry is gone renders from its cached name as an offline
-// row, so the combo stays visible and unlinkable instead of vanishing.
-func ComboTarget(e Entry, rows map[string]Target) Target {
+// A member that belongs to an official stereo pair invalidates the combo: the
+// official pair wins, so the row is marked instead of being used. A member
+// whose entry is gone renders from its cached name as an offline row, so the
+// combo stays visible and unlinkable instead of vanishing.
+func ComboTarget(e Entry, rows map[string]Target, official map[string]bool) Target {
+	invalid := false
 	members := make([]device.Device, 0, len(e.Members))
 	for _, m := range e.Members {
+		if official[m.ID] {
+			invalid = true
+		}
 		if t, ok := rows[m.ID]; ok {
 			members = append(members, t.Device)
 			continue
 		}
 		members = append(members, device.Device{ID: m.ID, Name: m.Name})
 	}
-	return Target{Device: ComboDevice(e, members), Entry: e}
+	return Target{Device: ComboDevice(e, members), Entry: e, Invalid: invalid}
 }
 
 // ComboDevice builds the wire description of a stereo combo: one synthesized
@@ -260,12 +289,15 @@ func Manageable(targets []Target, active map[string]bool) []Target {
 
 // DropLinked removes the member rows a combo replaces. While the combo
 // exists its members play through the combo row; their own rows return when
-// the combo is unlinked. The engine keeps the unfiltered merge for lookups
-// by member key, so this runs at the projection point, not inside Merge.
+// the combo is unlinked. An invalid combo plays nothing, so it releases its
+// members: a member that is online on its own becomes a row again, while the
+// one the official pair took stays behind the pair's row. The engine keeps
+// the unfiltered merge for lookups by member key, so this runs at the
+// projection point, not inside Merge.
 func DropLinked(targets []Target) []Target {
 	linked := make(map[string]bool)
 	for _, t := range targets {
-		if t.Entry.IsCombo() {
+		if t.Entry.IsCombo() && !t.Invalid {
 			for _, m := range t.Entry.Members {
 				linked[m.ID] = true
 			}
@@ -283,13 +315,15 @@ func DropLinked(targets []Target) []Target {
 	return out
 }
 
-// Visible is the flyout list: every target whose entry is shown, minus the
-// hidden and the disabled. Every active target stays even when hidden, so its
-// row, volume, and controls remain reachable.
+// Visible is the flyout list: every target the user can connect to, minus
+// the hidden and the unavailable. An invalid combo stays out; the official
+// pair that took its members is the row to play through. An active target
+// always stays, even hidden or invalid, so a session that started before the
+// pair appeared keeps its row, volume, and disconnect.
 func Visible(targets []Target, active map[string]bool) []device.Device {
 	out := make([]device.Device, 0, len(targets))
 	for _, t := range targets {
-		if !active[t.Entry.Key] && t.Entry.Hidden {
+		if !active[t.Entry.Key] && (t.Entry.Hidden || t.Invalid) {
 			continue
 		}
 		out = append(out, t.Device)

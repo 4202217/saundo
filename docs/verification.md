@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-20 -->
+<!-- reviewed-through: 2026-11-21 -->
 
 # Verification
 
@@ -1769,3 +1769,25 @@ following remain owed: left and right judged by ear through a combo, swap and
 unlink while streaming, a member lost mid-stream from a combo, and a launch
 from auto-connect with a combo. The 1.37 s rebuild gap measured for a lost
 member applies to these paths unchanged.
+
+## 2026-11-21 — an official pair invalidates a manual combo
+
+The test home had a manual combo 书桌 over HomePod L and HomePod R, and an
+Apple Home stereo pair 卧室 over the same two speakers. Once the pair
+appeared, the standalone member rows went offline: the settings combo row
+read `● 0/2` in red while the flyout's 书桌 row stayed live in the session it
+had auto-connected. The rule is official-pair priority: Merge marks a combo
+invalid when any member ID belongs to a native pair, live or remembered. The
+settings row reads 不可用 with 成员已加入立体声组 and keeps only the layout and
+解除组合; its members are released, so a member online on its own returns as a
+standalone row; the flyout and tray list only connectable targets and omit the
+combo; auto-connect skips it; `validateTarget` refuses it with
+`ErrComboStale`. Pinned by
+`TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair` and
+`TestValidateTargetRefusesAStaleCombo`; `TestInvalidComboRowIsMarked` still
+pins the settings row, while its flyout half is owed a rewrite that asserts
+the combo is absent (test updates are deferred until this iteration is
+final).
+Evidence: the registry entries HomePod L/R, 书桌 (combo members), and 卧室
+(`stereo:D175…`, members the same two IDs), plus the flyout and receivers-page
+screenshots from the report.

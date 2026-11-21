@@ -400,11 +400,15 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			}
 			ui.Text(c, v.Name).FontSize(13).FontWeight(500).TextColor(nameColor).
 				SingleLine().Ellipsis("…").Shrink(1)
-			if v.Stereo {
-				a.receiverOnlineChip(c, p, v)
-			}
-			if pill := a.receiverAuthPill(v); pill.ok {
-				iconChip(c, p, pill.icon, pill.text, pill.tone, v.Hidden)
+			if v.Invalid {
+				iconChip(c, p, iconAlert, locales.ComboInvalid(), chipDanger, v.Hidden)
+			} else {
+				if v.Stereo {
+					a.receiverOnlineChip(c, p, v)
+				}
+				if pill := a.receiverAuthPill(v); pill.ok {
+					iconChip(c, p, pill.icon, pill.text, pill.tone, v.Hidden)
+				}
 			}
 			if v.Local {
 				inlineChip(c, p, locales.ReceiverChipLocal(), chipNeutral, v.Hidden)
@@ -412,7 +416,7 @@ func (a *App) receiverNameCol(c *ui.Context, p palette, v receivers.View, open b
 			if v.IsManual() {
 				inlineChip(c, p, locales.ReceiverChipManual(), chipNeutral, v.Hidden)
 			}
-			if v.AutoConnect {
+			if v.AutoConnect && !v.Invalid {
 				inlineChip(c, p, locales.ReceiverChipAuto(), chipOK, v.Hidden)
 			}
 			if v.Hidden {

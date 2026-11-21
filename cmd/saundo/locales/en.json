@@ -771,6 +771,14 @@
   "versionLocalTag": "Local build",
   "settingsShowInPanel": "Show in tray panel",
   "errorComboInvalid": "These receivers cannot form a stereo combo.",
+  "errorComboStale": "{name} is unavailable: a member now belongs to a stereo pair.",
+  "@errorComboStale": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "receiverGroupCombo": "Stereo combos",
   "receiverPairAddTitle": "Create stereo combo",
   "receiverPairAddSub": "One receiver per channel",
@@ -804,6 +812,8 @@
   "comboFieldLeft": "Left channel",
   "comboFieldRight": "Right channel",
   "comboTag": "Stereo combo",
+  "comboInvalid": "Unavailable",
+  "comboInvalidReason": "A member now belongs to a stereo pair",
   "receiverAddAction": "Add",
   "comboCreateAction": "New combo",
   "errorDeviceOffline": "{name} is offline, so it cannot join the session.",

@@ -57,6 +57,10 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 			e.logf("auto-connect: dropping %s; it is no longer remembered", key)
 			continue
 		}
+		if t.Invalid {
+			e.logf("auto-connect: %s is invalid; a member belongs to an official stereo pair", t.Entry.DisplayName())
+			continue
+		}
 		if t.Device.StereoID != "" && len(t.Device.Members) == 0 {
 			// A receiver advertised as one half of a pair is not a standalone
 			// target; flagged beside its pair it would fail the shared plan.

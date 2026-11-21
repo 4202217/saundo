@@ -525,6 +525,9 @@ func (e *Engine) validateWanted(keys []string) (string, error) {
 // *planError for failPlan; it never runs for an already-running target.
 func (e *Engine) validateTarget(t receivers.Target) error {
 	d := t.Device
+	if t.Invalid {
+		return &planError{key: ErrComboStale, args: []string{t.Entry.DisplayName()}}
+	}
 	// A receiver on this host cannot be a target: the sender and receiver
 	// would share one audio path, and the receiver refuses the session anyway.
 	if d.Local {

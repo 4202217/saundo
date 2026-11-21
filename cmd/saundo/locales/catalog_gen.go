@@ -3926,6 +3926,16 @@ func (msgs Messages) ErrorComboInvalid() string {
 	return Catalog.Format(msgs.locale, "errorComboInvalid", nil)
 }
 
+// ErrorComboStale says "{name} is unavailable: a member now belongs to a stereo pair."
+// in the language the app shows.
+func ErrorComboStale(name string) string { return In(i18n.Locale()).ErrorComboStale(name) }
+
+// ErrorComboStale says "{name} is unavailable: a member now belongs to a stereo pair."
+// in the language of msgs.
+func (msgs Messages) ErrorComboStale(name string) string {
+	return Catalog.Format(msgs.locale, "errorComboStale", map[string]any{"name": name})
+}
+
 // ReceiverGroupCombo says "Stereo combos"
 // in the language the app shows.
 func ReceiverGroupCombo() string { return In(i18n.Locale()).ReceiverGroupCombo() }
@@ -4114,6 +4124,26 @@ func ComboTag() string { return In(i18n.Locale()).ComboTag() }
 // in the language of msgs.
 func (msgs Messages) ComboTag() string {
 	return Catalog.Format(msgs.locale, "comboTag", nil)
+}
+
+// ComboInvalid says "Unavailable"
+// in the language the app shows.
+func ComboInvalid() string { return In(i18n.Locale()).ComboInvalid() }
+
+// ComboInvalid says "Unavailable"
+// in the language of msgs.
+func (msgs Messages) ComboInvalid() string {
+	return Catalog.Format(msgs.locale, "comboInvalid", nil)
+}
+
+// ComboInvalidReason says "A member now belongs to a stereo pair"
+// in the language the app shows.
+func ComboInvalidReason() string { return In(i18n.Locale()).ComboInvalidReason() }
+
+// ComboInvalidReason says "A member now belongs to a stereo pair"
+// in the language of msgs.
+func (msgs Messages) ComboInvalidReason() string {
+	return Catalog.Format(msgs.locale, "comboInvalidReason", nil)
 }
 
 // ReceiverAddAction says "Add"

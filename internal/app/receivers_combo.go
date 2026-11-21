@@ -96,12 +96,15 @@ func (a *App) receiverComboHead(c *ui.Context, p palette, v receivers.View, open
 				})
 			}
 			shown := !v.Hidden
-			toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
+			sw := toggle(c, p, &shown, locales.ReceiverEnableSwitch(), func(next bool) {
 				a.eng.SetReceiverHidden(v.Key, !next)
 				if !next {
 					a.receiverHiddenOpen = true
 				}
 			})
+			if v.Invalid {
+				sw.Disabled(true).Opacity(0.4)
+			}
 			chev := ui.Icon(c, iconChevron).Size(12, 12).TextColor(p.muted)
 			if open {
 				chev.TextColor(p.fg2)
@@ -121,6 +124,17 @@ func (a *App) receiverComboBody(c *ui.Context, p palette, v receivers.View, hidd
 	}
 	body := ui.Column(c).Padding(0, 14, 4, 14).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0)
 	body.Children(func() {
+		if v.Invalid {
+			// An unavailable combo has nothing left to configure: the head
+			// names the reason, the layout says which devices it held, and
+			// 解除组合 sits in the head's tail. Auto-connect, volume, and the
+			// offline warning would all describe playback this combo cannot do.
+			ui.Column(c).Padding(8, 14).Gap(6).Children(func() {
+				ui.Text(c, locales.ComboMapLabel()).FontSize(13).FontWeight(500).TextColor(titleColor)
+				a.comboChannelMap(c, p, v, hiddenGroup || v.Invalid)
+			})
+			return
+		}
 		auto := v.AutoConnect
 		settingRowColors(c, p, locales.ReceiverAutoToggle(), locales.ReceiverAutoToggleDesc(),
 			titleColor, subColor, func() {

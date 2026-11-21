@@ -82,6 +82,9 @@ func (a *App) receiverOnlineChip(c *ui.Context, p palette, v receivers.View) {
 // lists both members' addresses; a combo lists its members in playback order.
 func receiverDetail(v receivers.View, showModel bool) string {
 	if v.Entry.IsCombo() {
+		if v.Invalid {
+			return locales.ComboInvalidReason()
+		}
 		return comboDetail(v.Name, v.Device.Members)
 	}
 	if v.Stereo {

@@ -23,7 +23,11 @@ const (
 	// ErrComboInvalid rejects a link whose two receivers cannot form a combo:
 	// one side is missing, already linked, a native pair, the local host, or
 	// not an AirPlay 2 receiver.
-	ErrComboInvalid  UserErrorKey = "comboInvalid"
+	ErrComboInvalid UserErrorKey = "comboInvalid"
+	// ErrComboStale refuses a combo whose member now belongs to an official
+	// stereo pair; the official pair wins, so the manual combo cannot be used.
+	// Args are the combo's display name.
+	ErrComboStale    UserErrorKey = "comboStale"
 	ErrFairPlay      UserErrorKey = "fairPlay"
 	ErrEndpointMoved UserErrorKey = "endpointMoved"
 	ErrSessionOpen   UserErrorKey = "sessionOpen"
@@ -52,6 +56,7 @@ var UserErrorKeys = []UserErrorKey{
 	ErrStereoMembersOffline,
 	ErrComboMemberOffline,
 	ErrComboInvalid,
+	ErrComboStale,
 	ErrFairPlay,
 	ErrEndpointMoved,
 	ErrSessionOpen,

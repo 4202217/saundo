@@ -864,6 +864,47 @@ func TestMergeComboWithOfflineMember(t *testing.T) {
 	}
 }
 
+func TestMergeInvalidatesAComboWhoseMemberJoinedAnOfficialPair(t *testing.T) {
+	reg := Registry{Entries: []Entry{
+		{Key: "AA:00", Kind: KindDiscovered, Name: "HomePod L"},
+		{Key: "AA:01", Kind: KindDiscovered, Name: "HomePod R"},
+		{Key: "combo:01", Kind: KindCombo, Name: "书桌", Members: []Member{
+			{ID: "AA:00", Name: "HomePod L"}, {ID: "AA:01", Name: "HomePod R"},
+		}},
+		{Key: "stereo:S1", Kind: KindDiscovered, Name: "卧室", Members: []Member{
+			{ID: "AA:00", Name: "HomePod L"}, {ID: "AA:01", Name: "HomePod R"},
+		}},
+	}}
+	// The two speakers now advertise only as the official pair; their
+	// standalone rows go offline. The official pair wins, so the manual combo
+	// is marked invalid instead of being used.
+	pair := device.Device{
+		ID: "stereo:S1", Name: "卧室", StereoID: "S1", Online: true,
+		Members: []device.Device{
+			discovered("AA:00", "HomePod L", "192.0.2.46", 7000),
+			discovered("AA:01", "HomePod R", "192.0.2.164", 7000),
+		},
+	}
+	targets := Merge(reg, []device.Device{pair}, nil)
+	byKey := map[string]Target{}
+	for _, tg := range targets {
+		byKey[tg.Entry.Key] = tg
+	}
+	combo, ok := byKey["combo:01"]
+	if !ok {
+		t.Fatal("the combo row vanished")
+	}
+	if !combo.Invalid {
+		t.Fatal("the combo whose members joined the official pair is not invalid")
+	}
+	if combo.Device.Online {
+		t.Fatal("an invalid combo still reads online")
+	}
+	if pair := byKey["stereo:S1"]; !pair.Device.Online {
+		t.Fatal("the official pair is not online")
+	}
+}
+
 func TestManageableKeepsAComboWithAnOfflineMember(t *testing.T) {
 	combo := Target{Device: device.Device{ID: "combo:01", Online: false}, Entry: Entry{Key: "combo:01", Kind: KindCombo}}
 	got := Manageable([]Target{combo}, nil)
