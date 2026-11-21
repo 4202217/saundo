@@ -12,7 +12,10 @@ import (
 // TestGroupHeadsShareOneBaseline pins the settings pages' section labels to
 // one baseline: 已连接设备 heads a card with no action while 单独接收器 heads
 // one with the 添加 action, and an action that stretched the head row would
-// push that label further from the page divider above it.
+// push that label further from the page divider above it. The two labels
+// render in two tester apps, and a runner's font metrics round sub-DIP
+// differently from the developer's, so the pin allows half a DIP; a real
+// baseline break moves the label by whole DIPs.
 func TestGroupHeadsShareOneBaseline(t *testing.T) {
 	conn := multiSessionApp()
 	conn.page = pageConnection
@@ -30,7 +33,7 @@ func TestGroupHeadsShareOneBaseline(t *testing.T) {
 		t.Fatalf("the 单独接收器 head is missing; texts: %q", tt.Texts())
 	}
 
-	if connHead.Y != recvHead.Y {
+	if d := connHead.Y - recvHead.Y; d > 0.5 || d < -0.5 {
 		t.Fatalf("section labels sit on different baselines: 已连接设备 at %.1f, 单独接收器 at %.1f",
 			connHead.Y, recvHead.Y)
 	}

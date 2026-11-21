@@ -1232,6 +1232,19 @@ docs/ui.md and docs/ui-copy.md; no P0 and no terminology finding. One
 coverage gap: no preview showed the model-detail card, fixed by the scrolled
 receivers state (0f3ce44).
 
+## 2026-11-22 — 0.6.5 re-cut
+
+The first `v0.6.5` tag (`f5a9f6b`) failed the workflow's `check` job and
+was deleted locally and remotely before any release existed (draft and
+build skipped). The failure was `TestGroupHeadsShareOneBaseline` on the
+runner: the two section labels measured 123.7 and 123.6 — a 0.1 DIP
+sub-DIP rounding difference that never appears on the developer's machine,
+where the full gate ran green on the same commit. The test compared the
+rendered label's Y with exact float equality; it now allows half a DIP,
+which still pins the pin's intent (a stretched head row pushes the label
+by whole DIPs). The release commit is re-cut on top of the fix; the
+manifest and the changelog are unchanged.
+
 ## 2026-11-21 — a re-created pair member stalled stream SETUP until a power cycle
 
 The maintainer reported connects slower than before. The log disagrees
