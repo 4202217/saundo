@@ -2,7 +2,7 @@
 
 saundo 的显著变更记录在这里。格式遵循 Keep a Changelog，版本使用语义化版本。`mygo build` 读取 `CHANGELOG.md` 的 `## <version>` 段作为发布说明。本文件是中文翻译，版本标题与 `CHANGELOG.md` 保持一致。
 
-## 0.6.5 - 2026-11-21
+## 0.6.5 - 2026-11-22
 
 ### 新增
 

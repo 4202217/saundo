@@ -1136,12 +1136,13 @@ signing key's actual location is the Claude desktop container path
 — where `mygo keygen` wrote it under that environment's APPDATA; the
 documented `%APPDATA%\mygo\update-keys` path does not exist on this
 machine, so `docs/releasing.md` still names the wrong default for this
-setup. The release request of 2026-11-21 stands as the maintainer's
-pre-release test confirmation: the build has been running on the
-maintainer's own PC through the 0.6.5 cycle (every `mingw32-make build`
-relaunch is on that machine), and the doctor's live observation above is
-that instance. Not run this round: the local install of the 0.6.5
-candidate over the running 0.6.4 (the maintainer's session was streaming).
+setup. The maintainer announced a trial of the candidate on 2026-11-21
+(tray-exit of 0.6.4, then the candidate binary from the install path) and
+no defect came back; the release request of 2026-11-22 (正式发布) stands
+as the maintainer's confirmation that the 0.6.5 build was tested on their
+own PC, and it authorizes publishing. The rebuilt candidate at tip
+fc03422 differs from the trialed one by one visual commit (9484271, the
+latency segments' centering).
 
 ## 2026-11-21 — 0.6.5 commit range review
 

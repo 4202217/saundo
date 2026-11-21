@@ -5,7 +5,7 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
-## 0.6.5 - 2026-11-21
+## 0.6.5 - 2026-11-22
 
 ### Added
 
@@ -18,7 +18,7 @@ release notes.
   session: the connected devices with their channel and state, and the
   measured health of this connection.
 - Software stereo combos. On the receivers page, link any two AirPlay 2
-  receivers into one stereo target — across the models and generations
+  receivers into one stereo target, across the models and generations
   Apple's official pairing won't mix: playback order with a hot side swap,
   one volume for both, in-place editing and unlink, and a launch
   auto-connect that starts the combo. An official stereo pair made in the
