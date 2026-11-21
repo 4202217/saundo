@@ -101,8 +101,8 @@ The page mixes card sections (steps) with a bento feature grid, a flat trust
 section, and the FAQ, so it does not read as a pile of rounded boxes. The
 trust section sits right after the device strip — identity first, then how-to
 steps. The
-feature block is five cards: ambient light, the media card, latency,
-receivers/pairing, and a full-width band for multi-device playback. Each card
+feature block is five cards: a full-width band for multi-device
+playback, latency, the media card, receivers/pairing, and ambient light. Each card
 carries one small motion; the latency rail is the only interactive one. The
 multi-device band is a diagram, not another row list: the app sits at the
 centre, two HomePods and two minis at the corners, and one pulse leaves the
@@ -113,11 +113,12 @@ as a small `PTP 时钟同步` chip under the rail — there is no separate sync
 section.
 
 The stereo-combo section sits between the feature block and the ambient demo,
-and its copy owns the claim the rest of the page does not repeat: Apple's
-stereo group needs two of the same model, while a saundo stereo combo links
-any two AirPlay 2 receivers across models and generations. The left column is
-the heading, the lead, and two chips (one receiver per channel, swap sides
-live), with no eyebrow and no fine print. The right side is a stage, not a
+and its copy owns the claim the rest of the page does not repeat: a stereo
+combo links two standalone AirPlay 2 receivers, one on the left and one on the
+right, across models and generations. It describes the function without
+comparing it to Apple or naming the product. The left column is the heading,
+the lead, and two chips (one receiver per channel, swap sides live), with no
+eyebrow and no fine print. The right side is a stage, not a
 card, and it shows the real topology: a HomePod and a HomePod mini stand apart
 on one axis with no receiver-to-receiver link, because the combo is two
 independent AP2 sessions, not a native pair. The stage is static; it does not
@@ -130,8 +131,7 @@ bodies once per bar; a manual swap flashes both lit lines once without breaking
 or redrawing them. Reduced motion stops the signal. It carries no channel
 words, no text on the swap control, no volume, and no launch switch.
 `立体声组` / stereo group is the official pair; `立体声组合` / stereo combo is
-the software one. Keep the two words apart in both languages; the FAQ uses the
-same pair.
+the software one. Keep the two words apart in both languages.
 
 Each claim has one owner, and the sections that follow do not restate it. The
 feature cards carry the claims; the ambient section is the demo, so it is a

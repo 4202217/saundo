@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#fafafa">
 <title>声渡 saundo：电脑里一放，HomePod 就响</title>
-<meta name="description" content="声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。可同时连多台，任意两台还能组成跨型号的立体声组合。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。">
+<meta name="description" content="声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。可同时连多台，两台独立的 AirPlay 2 接收器还能组成跨型号的立体声组合。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。">
 <link rel="canonical" href="https://4202217.github.io/saundo/">
 <meta property="og:title" content="声渡 saundo：电脑里一放，HomePod 就响">
 <meta property="og:description" content="开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，多台一起响，跨型号立体声组合，PTP 或 NTP 对时，托盘常驻。">
@@ -377,7 +377,7 @@ html[data-theme="dark"][data-lamp-glow="off"] .hero-visual .flyout{box-shadow:0 
 /* ---------- bento features ---------- */
 .feat-sec{padding:var(--sp-900) 0;background:var(--bg)}
 /* flat features: five rows, no cards */
-.feat-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:64px;align-items:start}
+.feat-layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:64px;align-items:start}
 .feat-intro{position:sticky;top:120px;display:grid;gap:18px}
 .feat-lead{font-size:16px;line-height:26px;color:var(--text2);max-width:30ch;text-wrap:pretty}
 .feat-specs{display:flex;gap:8px;flex-wrap:wrap}
@@ -1397,7 +1397,7 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
     <div class="hero-copy">
       <span class="hero-badge reveal"><span class="dot"></span>开源 AirPlay 2 发送器</span>
       <h1 class="heading-1 reveal">电脑里一放，<br>HomePod 就响。</h1>
-      <p class="body-3 sub reveal" data-en="Everything your computer plays, straight to the HomePod on your network — one, or several. No output to switch. No app to set up.">整台电脑的声音，都送到同一网络里的 HomePod——一台，或者几台。不用切系统输出，也不用管是哪个 app。</p>
+      <p class="body-3 sub reveal" data-en="Everything your computer plays, straight to the HomePod on your network, one or several. No output to switch. No app to set up.">整台电脑的声音，都送到同一网络里的 HomePod，一台或者几台。不用切系统输出，也不用管是哪个 app。</p>
       <div class="hero-cta reveal">
         <!-- Direct asset links: the download starts here instead of on the release
              page, where the archive sorts above the installer. The script at the
@@ -1594,7 +1594,7 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
   <div class="wrap">
     <div class="feat-layout">
       <div class="feat-intro reveal">
-        <h2 class="heading-2" data-en="From sound to cover art.">从声音，到封面。</h2>
+        <h2 class="heading-2" data-en="One source.<br>All at once.">声音的每一面，<br>都在这。</h2>
         <p class="feat-lead" data-en="Sound, on the receiver's clock. Sent as it is. Nothing early, nothing late. The light on top follows the artwork.">声音跟着接收器的时钟走。原样送出，不早不晚。顶部的光，跟着封面换色。</p>
         <div class="feat-specs" aria-hidden="true">
           <span data-en="ALAC · 44.1 kHz">ALAC · 44.1 kHz</span>
@@ -1607,7 +1607,7 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
           <div class="bm-body">
             <span class="bnum">01</span>
             <h3 data-en="Connect as many as you like.">想连几台，就连几台。</h3>
-            <p data-en="One computer connects to several receivers at once and plays to all of them. Add or drop one mid-song; the rest keep going.">一台电脑同时连接多台接收器，一起播放。中途加一台、撤一台，其余的继续。</p>
+            <p data-en="One computer connects to several receivers at once and plays to all of them. Adding one pauses the rest briefly; dropping one leaves them playing.">一台电脑同时连接多台接收器，一起播放。加一台会短暂停一下；撤一台，其他的接着放。</p>
           </div>
           <div class="art" aria-hidden="true">
             <div class="amhub">
@@ -1714,8 +1714,8 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
   <div class="wrap">
     <div class="stereo-layout">
       <div class="stereo-copy reveal">
-        <h2 class="heading-2" data-en="Any two models.<br>One stereo pair." data-zh="不挑型号，<br>两台就是一对。">不挑型号，<br>两台就是一对。</h2>
-        <p class="body-3" data-en="Apple's stereo pair wants two of the same model. saundo's stereo combo doesn't: a full-size HomePod beside a mini, two generations apart — any two AirPlay 2 receivers become one pair. One plays left, one plays right.">Apple 的立体声组只认两只同型号。声渡的立体声组合不挑：全尺寸配 mini、两代之间随便配，任意两台 AirPlay 2 接收器都能连成一对。一台播左，一台播右。</p>
+        <h2 class="heading-2" data-en="Any two.<br>One pair." data-zh="不挑型号，<br>两台就是一对。">不挑型号，<br>两台就是一对。</h2>
+        <p class="body-3" data-en="Different models and generations can pair. Two standalone AirPlay 2 receivers, paired however you like.">不同型号、不同代，都能配。两台独立的 AirPlay 2 接收器，想怎么搭就怎么搭。</p>
       </div>
       <div class="stereo-stage reveal" data-d="1">
         <div class="sstage" id="comboCard">
@@ -1832,13 +1832,13 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
       <details class="faq reveal"><summary>声渡和系统自带的 AirPlay 有什么不同？<span class="plus"></span></summary>
         <p class="ans">Windows 没有系统级的 AirPlay 发送。macOS 只能把整机输出切到 AirPlay，没有延迟档位，也看不到接收器细节。声渡按每台接收器的方式配对、对时；连接时本机扬声器静音，断开就恢复，不会两边一起响。全在一个托盘图标里。</p></details>
       <details class="faq reveal" data-d="1"><summary>哪些设备能连？<span class="plus"></span></summary>
-        <p class="ans">真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组、Mac 的 AirPlay 接收器（包括设了密码的）。可以同时连多台；任意两台 AirPlay 2 接收器也能连成软件立体声组合，不同型号、不同代都行。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。</p></details>
+        <p class="ans">真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组、Mac 的 AirPlay 接收器（包括设了密码的）。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。</p></details>
       <details class="faq reveal" data-d="2"><summary>为什么接收器列表是空的？<span class="plus"></span></summary>
         <p class="ans">多半是权限没放行。Windows 第一次启动会弹防火墙提示，选「允许」，发现和 PTP 都要入站 UDP；macOS 15 起要在「系统设置 → 隐私与安全性」里允许本地网络。放行后重开应用，列表就回来了。</p></details>
       <details class="faq reveal" data-d="2"><summary>延迟最低能到多少？<span class="plus"></span></summary>
         <p class="ans">预设最低 200 ms，自定义能到 20 ms。低于 200 ms 稳不稳，要看接收器。看视频用低延迟 200 ms，听音乐用标准 1.5 s，网络不稳就切稳定 2 s。</p></details>
       <details class="faq reveal" data-d="3"><summary>中途加一台、撤一台，会断音吗？<span class="plus"></span></summary>
-        <p class="ans">正在播放时加一台，其余设备会短暂停顿，然后继续；撤掉一台，其他的接着放。全部断开后，声音停止，本机静音设置照旧。</p></details>
+        <p class="ans">正在播放时加一台，其余设备会短暂停顿，然后继续；撤掉一台，其他的接着放。</p></details>
       <details class="faq reveal" id="install" data-d="4"><summary>第一次打开被系统拦下来，怎么办？<span class="plus"></span></summary>
         <p class="ans">Windows 在 SmartScreen 里点「更多信息 → 仍要运行」。macOS 到「系统设置 → 隐私与安全性」底部，点「仍要打开」。安装包还没有代码签名，所以会被拦，不是它有问题。源码整份在 GitHub 上，可以自己编译比对。</p></details>
       <details class="faq reveal" data-d="4"><summary>有数据会出局域网吗？<span class="plus"></span></summary>
@@ -1876,7 +1876,7 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
 <footer>
   <div class="wrap">
     <div class="foot-grid">
-      <div class="foot-brand"><img src="assets/icon.png" alt="" width="256" height="256" loading="lazy" decoding="async"><span data-en="Saundo">声渡 saundo</span></div>
+      <div class="foot-brand"><img src="assets/icon.png" alt="" width="256" height="256" loading="lazy" decoding="async"><span data-en="saundo">声渡 saundo</span></div>
       <div class="foot-links">
         <a href="https://github.com/4202217/saundo" target="_blank" rel="noopener">源码</a>
         <a href="https://github.com/4202217/saundo/issues" target="_blank" rel="noopener">问题反馈</a>
@@ -1897,16 +1897,16 @@ var RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 var TITLE_ZH = document.title;
 var TITLE_EN = "saundo: computer sound, on HomePod";
 var META_ZH = {
-  "desc": "声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。可同时连多台，任意两台还能组成跨型号的立体声组合。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。",
+  "desc": "声渡（saundo）是开源的 AirPlay 2 音频发送器。整台电脑的声音，以未压缩 ALAC 44.1 kHz 送到 HomePod、Apple TV 和 Mac。可同时连多台，两台独立的 AirPlay 2 接收器还能组成跨型号的立体声组合。PTP 或 NTP 对时，延迟 20 到 2000 ms 可调，常驻托盘，单文件运行，没有 WebView。",
   "ogTitle": "声渡 saundo：电脑里一放，HomePod 就响",
   "ogDesc": "开源 AirPlay 2 音频发送器。电脑的声音，未压缩 ALAC，多台一起响，跨型号立体声组合，PTP 或 NTP 对时，托盘常驻。",
   "alt": "声渡 saundo：电脑里一放，HomePod 就响。",
   "locale": "zh_CN"
 };
 var META_EN = {
-  "desc": "saundo is an open-source AirPlay 2 sender. Your whole computer's sound, in uncompressed ALAC at 44.1 kHz, to HomePod, Apple TV, and Mac. Several receivers at once, and any two can form a stereo combo across models. PTP or NTP timing, latency from 20 to 2000 ms, one tray icon, one binary, no WebView.",
+  "desc": "saundo is an open-source AirPlay 2 sender. Your whole computer's sound, in uncompressed ALAC at 44.1 kHz, to HomePod, Apple TV, and Mac. Several receivers at once, and two standalone AirPlay 2 receivers can form a stereo combo across models. PTP or NTP timing, latency from 20 to 2000 ms, one tray icon, one binary, no WebView.",
   "ogTitle": "saundo: computer sound, on HomePod",
-  "ogDesc": "Open-source AirPlay 2 sender. Your computer's sound, uncompressed ALAC, several rooms at once, stereo combos across models, PTP or NTP timing, one tray icon.",
+  "ogDesc": "Open-source AirPlay 2 sender. Your computer's sound, uncompressed ALAC, several receivers at once, stereo combos across models, PTP or NTP timing, one tray icon.",
   "alt": "saundo: computer sound, on HomePod.",
   "locale": "en_US"
 };
@@ -1918,7 +1918,7 @@ var EN = {
   "声渡 saundo：电脑里一放，HomePod 就响": "saundo: computer sound, on HomePod",
   "跳到正文": "Skip to content",
   "主导航": "Main navigation",
-  "声渡": "Saundo",
+  "声渡": "saundo",
   "声渡图标": "saundo icon",
   "上手": "Start",
   "功能": "Features",
@@ -1969,7 +1969,7 @@ var EN = {
   "装好，就不用管了。": "Set it up. Then forget it.",
   "图标就在系统托盘里，点开就用。不用另装任何东西。": "The icon lives in your system tray. Open it and play. Nothing else to install.",
   "点一下，连上。": "One click. Connected.",
-  "HomePod 会自己出现在列表里。要密码的，输一次就记住。想多连一台，再点一下就行。": "HomePods show up on their own. Enter a password once, and it's remembered. Want another one playing too? Click it as well.",
+  "HomePod 会自己出现在列表里。要密码的，输一次就记住。想多连一台，再点一下就行。": "HomePods show up on their own. Enter a password once, and it's remembered. Click another receiver to add it to the session.",
   "浏览器": "Browsers",
   "游戏": "Games",
   "播放器": "Players",
@@ -1988,13 +1988,13 @@ var EN = {
   "声渡和系统自带的 AirPlay 有什么不同？": "How is saundo different from the built-in AirPlay?",
   "Windows 没有系统级的 AirPlay 发送。macOS 只能把整机输出切到 AirPlay，没有延迟档位，也看不到接收器细节。声渡按每台接收器的方式配对、对时；连接时本机扬声器静音，断开就恢复，不会两边一起响。全在一个托盘图标里。": "Windows has no system AirPlay sender. macOS can only switch the whole system output to AirPlay, with no latency modes and no receiver detail. saundo pairs and times each receiver its own way. Your speakers go quiet while it streams, and come back on disconnect. It all lives in one tray icon.",
   "哪些设备能连？": "What can it connect to?",
-  "真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组、Mac 的 AirPlay 接收器（包括设了密码的）。可以同时连多台；任意两台 AirPlay 2 接收器也能连成软件立体声组合，不同型号、不同代都行。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。": "Verified on hardware: HomePod and HomePod mini (software 27), HomePod stereo pairs, and Mac AirPlay receivers, including password-protected ones. Several receivers can play at once, and any two AirPlay 2 receivers can form a software stereo combo, across models and generations. Apple TV screen PIN pairing is implemented but not yet verified on hardware. FairPlay-only TVs are out of scope. saundo flags them at discovery instead of connecting quietly. The macOS build is Apple silicon only. The Windows build is x64.",
+  "真机验证过：HomePod 和 HomePod mini（软件 27）、HomePod 立体声组、Mac 的 AirPlay 接收器（包括设了密码的）。Apple TV 的屏幕 PIN 配对已经实现，但还没在实机验证。只支持 FairPlay 的电视不在支持范围；声渡在发现阶段就会标出来，不会静默连上。macOS 版仅支持 Apple 芯片；Windows 版为 x64。": "Verified on hardware: HomePod and HomePod mini (software 27), HomePod stereo pairs, and Mac AirPlay receivers, including password-protected ones. Apple TV screen PIN pairing is implemented but not yet verified on hardware. FairPlay-only TVs are out of scope. saundo flags them at discovery instead of connecting quietly. The macOS build is Apple silicon only. The Windows build is x64.",
   "为什么接收器列表是空的？": "Why is the receiver list empty?",
   "多半是权限没放行。Windows 第一次启动会弹防火墙提示，选「允许」，发现和 PTP 都要入站 UDP；macOS 15 起要在「系统设置 → 隐私与安全性」里允许本地网络。放行后重开应用，列表就回来了。": "Permissions, most likely. On Windows, choose Allow when the firewall prompt appears on first launch. Discovery and PTP both need inbound UDP. On macOS 15 and later, allow Local Network in System Settings → Privacy & Security. Reopen the app and the list fills.",
   "延迟最低能到多少？": "What's the lowest latency?",
   "预设最低 200 ms，自定义能到 20 ms。低于 200 ms 稳不稳，要看接收器。看视频用低延迟 200 ms，听音乐用标准 1.5 s，网络不稳就切稳定 2 s。": "The lowest preset is 200 ms. Custom goes down to 20 ms, though below 200 ms stability depends on the receiver. For video, Low latency at 200 ms. For music, Standard at 1.5 s. On a shaky network, Stable at 2 s.",
   "中途加一台、撤一台，会断音吗？": "Does adding or dropping a receiver cut the sound?",
-  "正在播放时加一台，其余设备会短暂停顿，然后继续；撤掉一台，其他的接着放。全部断开后，声音停止，本机静音设置照旧。": "Adding one while playing pauses the others briefly, then they carry on. Dropping one leaves the rest playing. Disconnect all and the sound stops; the local mute setting stays as it was.",
+  "正在播放时加一台，其余设备会短暂停顿，然后继续；撤掉一台，其他的接着放。": "Adding one while playing pauses the others briefly, then they carry on. Dropping one leaves the rest playing.",
   "第一次打开被系统拦下来，怎么办？": "What if the system blocks the first launch?",
   "Windows 在 SmartScreen 里点「更多信息 → 仍要运行」。macOS 到「系统设置 → 隐私与安全性」底部，点「仍要打开」。安装包还没有代码签名，所以会被拦，不是它有问题。源码整份在 GitHub 上，可以自己编译比对。": "On Windows, click More info → Run anyway in SmartScreen. On macOS, open System Settings → Privacy & Security and click Open Anyway at the bottom. The installer isn't code-signed yet, so the system stops it. That's the reason, not a problem with the app. The full source is on GitHub if you want to build and compare.",
   "有数据会出局域网吗？": "Does anything leave the LAN?",
