@@ -936,67 +936,55 @@ html[data-theme="dark"] .art-ambient .orb-glass{background:linear-gradient(155de
 /* body */
 .fly-body{flex:none;display:flex;flex-direction:column;padding:2px 12px 8px 12px;gap:8px}
 .fly-shead{padding:6px 2px 2px 2px;display:flex;align-items:center;gap:4px}
+/* the head keeps the 26px action slot whether or not 全部断开 shows, so
+   starting or ending a session never moves the panel (flyout_devices.go).
+   Empty slot is 0 wide like the app's Width(0); shown, it takes the button. */
+.fhead-slot{height:26px;flex:none;display:flex;align-items:center;justify-content:flex-end}
 .fly-slabel{font-size:11.5px;font-weight:600;letter-spacing:.55px;color:var(--fl-muted)}
 .fly-snote{margin-left:auto;font-size:11.5px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .fly-card{border:1px solid var(--fl-line);border-radius:10px;background:var(--fl-card);overflow:hidden}
 .fly-card.flamp{margin-top:2px}
-/* device rows (0.6.5): a session member is a compact mixer — name over its own
-   volume; every row is a peer, and the action column tells membership */
-.fdev{height:60px;display:flex;align-items:center;gap:10px;padding:7px 12px;transition:background .14s var(--ease)}
+/* device rows: 66 DIP, peers, no selection tint (flyout_devices.go deviceRow) */
+.fdev{height:66px;display:flex;align-items:center;gap:10px;padding:9px 12px;transition:background .14s var(--ease)}
 .fdev + .fdev{border-top:1px solid var(--fl-line2)}
 .fdev:hover{background:var(--fl-cardHover)}
 .fglyph{position:relative;width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:15px;background:var(--fl-pill);color:var(--fl-fg2)}
 .fglyph svg{width:16px;height:16px}
 .fdot{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:var(--fl-green);box-shadow:0 0 0 2px var(--fl-card)}
-.fmix{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
-.fnameline{display:flex;align-items:center;gap:5px;height:22px;min-width:0}
-.fnameline b{font-size:13px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* channel control: the solid side is the current side; a stereo target shows
-   the same mark as a static lead and has no side to choose */
-.fchan,.flead{width:22px;height:16px;margin:0 -3px;border-radius:8px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-fg)}
-.fchan:hover{background:var(--fl-pill)}
-.fchan svg,.flead svg{width:16px;height:11px;display:block}
-.fchan .ch-l,.fchan .ch-r{opacity:.25;transition:opacity .18s var(--ease)}
-.fchan[data-side="stereo"] .ch-l,.fchan[data-side="stereo"] .ch-r{opacity:.85}
-.fchan[data-side="left"] .ch-l{opacity:.85}
-.fchan[data-side="right"] .ch-r{opacity:.85}
-.fvolrow{display:flex;align-items:center;gap:6px;height:20px;min-width:0}
-.fmute{width:22px;height:20px;margin:0 -3px;border-radius:6px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-fg2)}
-.fmute:hover{background:var(--fl-pill)}
-.fmute svg{width:16px;height:16px;margin-top:2px}
-.fmute .fmute-slash{display:none}
-.fmute.muted .fmute-wave,.fmute.muted .fmute-wave2{display:none}
-.fmute.muted .fmute-slash{display:block}
-.frowvol{flex:1;min-width:0;appearance:none;-webkit-appearance:none;height:16px;background:transparent;cursor:pointer}
-.frowvol::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:linear-gradient(to right,var(--fl-fg) 0 var(--vol,30%),var(--fl-line) var(--vol,30%) 100%)}
-.frowvol::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);margin-top:-4.5px;border:0}
-.frowvol::-moz-range-track{height:3px;border-radius:2px;background:var(--fl-line)}
-.frowvol::-moz-range-progress{height:3px;border-radius:2px;background:var(--fl-fg)}
-.frowvol::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22)}
-.frowpct{flex:none;width:34px;text-align:right;font-size:11px;color:var(--fl-muted);font-variant-numeric:tabular-nums}
-.fsecond{display:none;font-size:11.5px;line-height:20px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fdev:not(.member) .fvolrow{display:none}
-.fdev:not(.member) .fsecond{display:block}
-.fdev:not(.member) .fchan,.fdev:not(.member) .flead{display:none}
-.fdev:not(.member) .fnameline{height:26px}
-.fdev .faction{width:80px;flex:none;justify-content:center;padding:0}
-/* the device head's one-click disconnect, only while two or more targets play */
-.fshead-act{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 6px;margin-right:-4px;border-radius:11px;
-  font-size:11.5px;font-weight:500;color:var(--fl-fg2);flex:none;transition:background .3s var(--ease),color .3s var(--ease)}
-.fshead-act:hover{background:var(--fl-pill);color:var(--fl-fg)}
-.fshead-act svg{width:12px;height:12px}
-/* transient session notice: a lost member, or a device joining the cohort */
-.fnotice{display:flex;align-items:center;gap:7px;min-height:38px;padding:6px 7px 6px 10px;border-radius:9px;border:1px solid var(--fl-line);
-  background:var(--fl-sel);font-size:11px;line-height:1.3;color:var(--fl-fg2)}
-.fnotice .fn-ic{width:14px;height:14px;flex:none;color:var(--fl-accent)}
-.fnotice .fn-text{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fnotice .fn-retry{flex:none;padding:3px 7px;border-radius:7px;font-size:11.5px;font-weight:500;color:var(--fl-accent)}
-.fnotice .fn-retry:hover{background:var(--fl-pill)}
-.fnotice .fn-close{flex:none;width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-muted)}
-.fnotice .fn-close:hover{background:var(--fl-pill)}
-.fnotice .fn-close svg{width:12px;height:12px}
-.fnotice.join{background:var(--fl-pill)}
-.fnotice.join .fn-ic{color:var(--fl-muted)}
+.fnamecol{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.fnamecol b{font-size:13px;font-weight:500;line-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fnamecol span{font-size:11.5px;line-height:20px;color:var(--fl-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* a member's row is a compact mixer: volume and channel belong to the target */
+.faction-col{width:92px;flex:none;display:flex;align-items:center;justify-content:flex-end}
+.fnameline{height:26px;display:flex;align-items:center;gap:6px;min-width:0}
+.fnameline b{font-size:13px;font-weight:500;line-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fchbtn{width:22px;height:16px;flex:none;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-fg);margin:0 -3px;padding:0;transition:background .3s var(--ease)}
+.fchbtn:hover{background:var(--fl-pill)}
+.fchbtn svg{width:16px;height:16px}
+.fstmark{width:16px;height:16px;flex:none;color:var(--fl-fg);margin:2px 0 0 0}
+.fstmark svg{display:block;width:16px;height:16px}
+.fmix{height:20px;display:flex;align-items:center;gap:6px}
+.fmutbtn{width:22px;height:20px;flex:none;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--fl-fg2);margin:0 -3px;padding:0;transition:background .3s var(--ease)}
+.fmutbtn:hover{background:var(--fl-pill)}
+.fmutbtn svg{width:16px;height:16px}
+.fmixval{width:34px;flex:none;text-align:right;font-size:11.5px;color:var(--fl-muted);font-variant-numeric:tabular-nums}
+/* session notice (session_notice.go): join in progress, or a member lost while the rest keep playing */
+.fnotice{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;background:var(--fl-sel);color:var(--fl-accent);font-size:11.5px}
+.fnotice .fnoteic{width:13px;height:13px;flex:none}
+.fnotice .fnotetxt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fnotice .faction{flex:none}
+/* variable surfaces glide instead of snapping the panel edge: the notice bar
+   and the palette grid fold under a max-height clip (the app snaps its window;
+   the landing animates). The clip lives on the wrapper so inner padding and
+   content always hide completely. */
+.fcollapse{overflow:hidden;max-height:0;transition:max-height .32s var(--ease),margin-top .32s var(--ease)}
+.fcollapse.open{max-height:48px}
+#fLampGridWrap.open{max-height:48px}
+.fcollapse > .fclip{min-height:0;visibility:hidden;transition:visibility .32s var(--ease)}
+.fcollapse.open > .fclip{visibility:visible}
+#fNoticeWrap.open{margin-top:8px}
+@media (prefers-reduced-motion:reduce){.fcollapse{transition:none}}
+.fly-shead .faction{flex:none}
 .faction{height:26px;flex:none;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border-radius:13px;
   font-size:11.5px;font-weight:500;white-space:nowrap;transition:background .3s var(--ease),color .3s var(--ease)}
 .faction svg{width:12px;height:12px}
@@ -1006,6 +994,12 @@ html[data-theme="dark"] .art-ambient .orb-glass{background:linear-gradient(155de
 .faction.dimmed{color:var(--fl-faint)}
 .faction:not(:disabled):hover{background:var(--fl-pill)}
 .faction:disabled{cursor:default}
+/* the member mixer's slider reuses the ink-fill rail (--fly-vol per element) */
+.frange{flex:1;appearance:none;-webkit-appearance:none;height:20px;background:transparent;cursor:pointer;min-width:0}
+.frange::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--fl-fg) 0 var(--fly-vol,50%),var(--fl-line) var(--fly-vol,50%) 100%)}
+.frange::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);margin-top:-6px;border:0}
+.frange::-moz-range-track{height:4px;border-radius:2px;background:var(--fl-line)}
+.frange::-moz-range-progress{height:4px;border-radius:2px;background:var(--fl-fg)}
 .fline{height:1px;background:var(--fl-line2)}
 /* latency segmented */
 .flat{padding:6px 12px 10px 12px}
@@ -1021,6 +1015,11 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 .fmediahead{height:28px;display:flex;align-items:center;gap:7px}
 .fappic{width:16px;height:16px;flex:none;color:var(--fl-fg2)}
 .fapp{flex:1;min-width:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the session switch: the head's top-right control moves the card to the next
+   app's session; it shows when more than one media session exists (switchNowMedia) */
+.fswitch{width:20px;height:20px;flex:none;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--fl-card);color:var(--fl-muted);transition:background .3s var(--ease),color .3s var(--ease)}
+.fswitch:hover{background:var(--fl-cardHover);color:var(--fl-fg)}
+.fswitch svg{width:14px;height:14px}
 .fmediamain{height:62px;display:flex;align-items:center;gap:10px;padding:6px 0 4px 0}
 .fposter{width:52px;height:52px;flex:none;border-radius:9px;background:linear-gradient(135deg,#5b5be0,#8f6fd8 55%,#3d9be0);position:relative;overflow:hidden}
 .fposter::after{content:"";position:absolute;inset:0;background:radial-gradient(20px 20px at 70% 30%,rgba(255,255,255,.4),transparent)}
@@ -1059,17 +1058,17 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 #fLampPower.lamp-off{color:var(--fl-accent)}
 .flampseg{width:128px;flex:none}
 .flampseg button{padding:0 10px}
+/* the priority segment goes dead while the light is off (lamp.go segmented) */
+.flampseg.off{opacity:.45;pointer-events:none}
 /* the expanded palette: six swatches in a row under the lamp row */
-.flampgrid{display:flex;gap:8px;align-items:center;padding:0 12px 12px}
-.flampswatch{width:24px;height:24px;flex:none;border-radius:50%;border:1px solid var(--fl-line);cursor:pointer;transition:transform .16s var(--ease)}
-.flampswatch:hover{transform:scale(1.1)}
-.flampswatch.sel{box-shadow:0 0 0 2px var(--fl-panel),0 0 0 3.5px var(--text)}
+.flampgrid{display:flex;gap:8px;align-items:center;border-top:1px solid var(--fl-line2);padding:10px 12px 12px 16px}   /* left 12+4: the 24px circle centers under the 32px preview */
+.flampswatch{width:24px;height:24px;flex:none;border-radius:50%;cursor:pointer}
+/* the selected ring is the app's inset accent stroke (lamp.go lampSwatch DrawOver) */
+.flampswatch.sel{box-shadow:inset 0 0 0 2px var(--fl-accent)}
 #fLampArrow svg{width:12px;height:12px;transition:transform .16s var(--ease)}
 #fLampArrow.open svg{transform:rotate(180deg)}
-/* state machine (mirrors internal/app phases, scanning and lamp-off states) */
+/* state machine (mirrors internal/app phases and the lamp-off states) */
 .faction{cursor:pointer}
-.flyout .fdot{transition:opacity .25s var(--ease)}
-.flyout.scanning .fdot{opacity:0}
 .fly-spin{width:10px;height:10px;flex:none;border-radius:50%;border:1.5px solid var(--fl-line);border-top-color:var(--fl-accent);animation:flyspin .8s linear infinite}
 @keyframes flyspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.fly-spin{animation:none}}
@@ -1079,11 +1078,6 @@ html[data-theme="dark"] .fseg button.on{background:var(--fl-pillHover);box-shado
 html[data-theme="dark"] .fmeter.off i{opacity:.58}
 /* footer */
 .fly-foot{height:34px;flex:none;display:flex;align-items:center;gap:6px;padding:4px 12px 6px 14px}
-.fly-wrap{position:relative}
-.fly-toast{position:absolute;left:50%;bottom:40px;transform:translate(-50%,8px);background:var(--fl-fg);color:var(--fl-panel);
-  font-size:11.5px;font-weight:600;border-radius:999px;padding:6px 14px;opacity:0;pointer-events:none;white-space:nowrap;
-  transition:opacity .4s var(--ease),transform .4s var(--ease);z-index:3;box-shadow:0 8px 24px rgba(0,0,0,.18)}
-.fly-toast.on{opacity:1;transform:translate(-50%,0)}
 .fface{width:16px;height:16px;flex:none;color:var(--fl-muted)}
 .fface svg{display:block;width:100%;height:100%}
 .flyout.streaming .fface{color:var(--fl-green)}
@@ -1332,7 +1326,7 @@ body > footer{background:var(--bg);color:var(--text2);border-top:1px solid var(-
 <noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
 </head>
 <body>
-<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs><symbol id="g-homepod" viewBox="0 0 1065.362637 1361.756996"><g transform="translate(-1.499998,1363.769128) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M4960 13629 c-1011 -30 -1877 -190 -2330 -430 -246 -131 -372 -285 -357 -435 8 -78 39 -137 108 -210 388 -404 1697 -650 3262 -613 1443 34 2541 325 2738 726 36 71 34 168 -5 246 -146 299 -819 544 -1807 657 -264 30 -557 49 -902 60 -337 10 -343 10 -707 -1z M1017 12139 c-115 -27 -206 -107 -333 -294 -144 -212 -253 -416 -344 -645 -40 -101 -133 -381 -145 -440 -4 -19 -11 -37 -15 -40 -20 -13 -97 -421 -124 -660 -41 -361 -41 -379 -41 -3270 0 -2941 0 -2926 46 -3305 29 -243 99 -612 118 -625 4 -3 16 -36 26 -75 117 -445 354 -922 622 -1255 219 -272 533 -545 848 -735 148 -89 429 -229 595 -294 74 -30 137 -57 140 -61 9 -13 338 -117 504 -160 519 -133 1091 -214 1775 -250 251 -13 1040 -13 1297 0 826 43 1524 158 2107 347 92 29 167 58 167 63 0 6 5 10 10 10 22 0 269 103 406 169 252 122 490 270 699 435 120 95 385 358 479 476 190 239 402 616 511 910 47 126 135 418 135 446 0 8 4 13 8 10 9 -6 72 301 97 469 64 442 67 626 62 3650 -4 2692 -4 2700 -43 3035 -26 227 -96 608 -113 620 -5 3 -14 30 -21 60 -19 82 -107 352 -150 460 -103 257 -235 499 -388 710 -102 141 -178 204 -281 234 -134 39 -255 2 -410 -125 -362 -295 -980 -556 -1771 -748 -1312 -318 -2676 -340 -4014 -65 -904 186 -1648 481 -2062 817 -145 119 -266 157 -397 126z"/> </g></symbol><symbol id="g-homepod-mini" viewBox="0 0 1264.451493 1157.657815"><g transform="translate(-1.967742,1159.607871) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M5935 11590 c-819 -26 -1600 -143 -2041 -305 -227 -83 -433 -205 -510 -302 -76 -94 -101 -197 -70 -289 67 -202 404 -392 928 -524 369 -93 767 -150 1338 -192 239 -18 1281 -18 1525 0 1134 82 1892 283 2174 576 78 82 105 139 105 226 -1 343 -668 624 -1779 750 -512 57 -1084 78 -1670 60z M1863 10245 c-129 -35 -211 -98 -371 -285 -431 -503 -774 -1070 -1029 -1700 -68 -169 -171 -476 -214 -640 -18 -69 -36 -127 -40 -130 -11 -8 -85 -358 -113 -535 -57 -357 -76 -619 -76 -1009 0 -403 25 -721 86 -1081 31 -186 93 -478 103 -485 4 -3 22 -63 40 -134 95 -372 271 -837 462 -1218 330 -660 759 -1242 1290 -1750 240 -229 415 -377 584 -491 33 -23 66 -47 73 -54 8 -7 63 -42 123 -78 662 -393 1434 -570 2734 -625 315 -14 1343 -14 1655 0 899 39 1492 128 2025 304 324 107 663 273 857 417 25 19 94 70 154 114 313 229 702 610 1021 1000 303 372 605 856 814 1305 154 334 309 760 394 1085 20 77 40 149 45 160 15 30 55 219 89 415 104 598 123 1228 55 1840 -28 252 -117 740 -144 788 -5 10 -21 62 -36 117 -192 733 -557 1480 -1022 2094 -140 185 -344 423 -404 471 -111 89 -241 131 -352 112 -91 -15 -156 -46 -280 -135 -581 -418 -1114 -668 -1771 -831 -615 -152 -1195 -214 -2106 -223 -796 -8 -1353 24 -1867 107 -927 150 -1598 415 -2282 900 -184 131 -224 153 -307 175 -70 18 -121 18 -190 0z"/> </g></symbol><symbol id="g-homepod-pair" viewBox="0 0 1313.723871 1276.284188"><g transform="translate(-1.153390,1279.795612) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3550 12793 c-431 -20 -931 -94 -1232 -183 -333 -97 -530 -212 -604 -351 -29 -54 -25 -144 8 -201 85 -143 352 -280 731 -372 250 -61 556 -108 912 -138 241 -21 1081 -17 1325 5 724 67 1239 205 1475 395 187 150 166 330 -57 478 -281 187 -868 319 -1618 364 -148 9 -773 11 -940 3z M748 11665 c-60 -22 -120 -68 -169 -131 -72 -91 -172 -249 -228 -358 -28 -55 -51 -95 -51 -90 -1 5 -14 -22 -31 -61 -106 -244 -186 -569 -224 -905 -32 -279 -36 -687 -32 -2676 3 -1382 8 -1993 16 -2074 34 -342 75 -563 147 -790 47 -149 108 -310 121 -319 5 -3 34 -58 65 -121 390 -786 1182 -1273 2368 -1454 256 -39 413 -54 849 -81 l84 -5 -6 28 c-8 38 -34 274 -49 432 -7 87 -12 803 -15 2355 -5 2262 -1 2615 32 2935 75 733 271 1330 603 1840 125 193 427 555 544 654 43 36 43 36 13 31 -204 -36 -872 -56 -1175 -36 -1028 68 -2026 357 -2530 732 -138 102 -235 130 -332 94z M8410 11270 c-1140 -45 -2003 -283 -2156 -595 -22 -47 -26 -65 -22 -119 3 -55 10 -73 42 -120 357 -519 2619 -741 4110 -405 625 141 965 363 906 591 -83 319 -877 574 -1985 637 -263 15 -658 20 -895 11z M5158 10025 c-62 -23 -120 -69 -173 -136 -28 -35 -57 -71 -66 -80 -20 -20 -109 -157 -109 -167 0 -5 -27 -60 -60 -124 -213 -411 -331 -881 -370 -1473 -14 -209 -13 -4649 0 -4860 26 -402 84 -725 186 -1037 58 -179 114 -310 215 -506 80 -156 105 -198 145 -242 13 -14 60 -72 106 -129 521 -660 1400 -1055 2647 -1191 375 -41 483 -45 1091 -45 625 0 749 6 1160 56 891 107 1582 350 2100 738 140 104 344 301 453 436 395 490 609 1122 657 1940 16 267 8 4848 -8 4990 -48 415 -111 698 -219 992 -91 250 -287 598 -413 737 -68 74 -136 108 -224 114 -96 6 -162 -20 -268 -105 -185 -148 -424 -279 -712 -392 -550 -215 -1172 -350 -1916 -418 -245 -22 -974 -25 -1200 -5 -496 44 -916 114 -1317 217 -576 149 -1059 362 -1338 588 -104 85 -164 111 -255 114 -46 2 -89 -3 -112 -12z"/> </g></symbol><symbol id="g-appletv" viewBox="0 0 1271.745557 1270.498369"><g transform="translate(-0.132012,1270.623417) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3050 12700 c-789 -21 -1308 -125 -1753 -352 -596 -304 -985 -820 -1162 -1542 -54 -222 -85 -432 -117 -791 -16 -183 -24 -6699 -8 -7078 30 -753 128 -1220 341 -1638 246 -482 648 -843 1163 -1044 381 -149 785 -219 1413 -245 366 -16 6916 -8 7098 8 476 42 765 95 1055 192 433 145 783 386 1050 721 315 394 488 896 554 1608 34 360 37 734 33 4036 -4 3327 -4 3333 -42 3690 -83 761 -300 1282 -704 1686 -171 170 -332 287 -549 397 -387 198 -793 292 -1472 343 -177 14 -6425 21 -6900 9z m6745 -1030 c781 -42 1260 -227 1535 -592 126 -167 232 -430 289 -715 45 -221 60 -384 72 -738 15 -461 6 -6677 -9 -6840 -41 -419 -117 -734 -233 -966 -46 -92 -143 -230 -213 -302 -248 -254 -617 -398 -1188 -464 -144 -17 -368 -18 -3673 -18 -3780 0 -3619 -2 -3935 51 -691 116 -1067 396 -1255 934 -91 264 -135 523 -155 930 -13 265 -13 6526 0 6800 44 908 263 1399 740 1658 273 148 658 236 1139 261 222 12 6673 12 6886 1z M4549 8825 c-320 -65 -617 -341 -718 -668 -26 -85 -46 -234 -37 -281 l7 -36 63 0 c266 0 566 217 712 515 63 129 86 225 88 365 l1 115 -25 2 c-14 1 -55 -4 -91 -12z M6320 7995 l0 -365 -222 -2 -223 -3 -3 -267 -2 -268 224 0 225 0 4 -992 c3 -910 5 -999 21 -1068 70 -297 236 -455 541 -517 74 -15 135 -18 335 -17 135 0 263 5 285 10 l40 10 3 268 2 268 -56 -7 c-105 -13 -261 -8 -320 11 -71 22 -135 79 -165 146 l-24 53 -3 918 -3 917 291 0 290 0 0 270 0 270 -290 0 -290 0 -2 363 -3 362 -327 3 -328 2 0 -365z M4453 7769 c-76 -11 -243 -60 -423 -125 -193 -69 -224 -68 -479 20 -236 80 -310 96 -443 96 -444 -1 -837 -297 -997 -753 -63 -181 -75 -266 -76 -537 0 -277 10 -360 75 -615 62 -245 152 -468 272 -678 72 -127 276 -395 376 -495 148 -149 259 -204 407 -205 103 -1 160 14 298 75 200 88 318 115 470 105 107 -7 190 -31 340 -98 380 -171 589 -95 911 330 101 132 159 227 239 387 61 122 129 282 142 335 5 21 1 27 -32 43 -68 32 -176 109 -245 175 -128 120 -213 257 -265 428 -24 80 -26 104 -27 258 -1 146 2 181 21 250 57 209 181 390 366 534 37 29 67 57 67 61 0 31 -143 174 -240 240 -206 140 -501 205 -757 169z M7827 7623 c-2 -5 116 -345 263 -758 147 -412 389 -1096 539 -1520 151 -423 279 -785 287 -802 l13 -33 334 0 c256 0 337 3 345 13 5 6 82 217 169 467 713 2033 920 2626 916 2633 -2 4 -155 7 -338 7 l-334 0 -37 -117 c-20 -65 -49 -156 -64 -203 -15 -47 -164 -535 -330 -1085 -167 -550 -306 -1004 -310 -1008 -8 -9 -31 66 -441 1398 -164 534 -303 980 -309 993 l-10 22 -344 0 c-190 0 -347 -3 -349 -7z"/> </g></symbol><symbol id="g-desktop" viewBox="0 0 1313.570329 1114.788615"><g transform="translate(-0.490802,1115.930942) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M1070 11149 c-505 -57 -874 -353 -1005 -805 -65 -224 -60 95 -60 -3779 0 -3323 1 -3515 18 -3605 51 -272 154 -483 314 -644 125 -126 263 -210 446 -271 221 -74 59 -69 2160 -72 l1887 -3 0 -534 0 -533 -75 -5 c-244 -16 -438 -266 -397 -511 15 -94 52 -168 117 -236 61 -64 122 -101 206 -125 50 -15 234 -16 1915 -14 l1859 3 67 32 c91 43 133 77 185 147 128 174 106 428 -52 581 -75 74 -168 117 -262 123 l-73 5 0 533 0 534 1829 0 c1988 0 1939 -1 2151 55 129 35 315 127 417 209 226 180 372 460 412 791 15 127 15 6953 0 7080 -41 333 -186 611 -413 792 -101 80 -288 174 -416 208 -221 59 170 55 -5738 54 -2979 -1 -5451 -5 -5492 -10z m10863 -889 c132 -21 232 -93 284 -205 l28 -60 3 -2720 2 -2720 -22 -45 c-18 -35 -35 -51 -73 -70 l-50 -25 -5530 0 c-4536 0 -5537 2 -5567 13 -46 16 -94 69 -107 119 -15 51 -15 5370 -1 5431 34 148 133 244 283 277 52 11 940 14 5377 14 3289 1 5337 -3 5373 -9z"/> </g></symbol><symbol id="face-idle" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="face-stream" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></symbol><symbol id="face-connect" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></symbol><symbol id="face-error" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="face-smile" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></symbol><symbol id="ch-stereo" viewBox="0 0 25.4328 17.5208"><g fill="currentColor" fill-opacity=".85"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.0628 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z"/></g></symbol><symbol id="g-homepod-mini-combo" viewBox="0 0 1333.486898 1202.141468"><g transform="translate(-1.376867,1204.815493) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"><path d="M3695 12043 c-705 -43 -1178 -127 -1537 -273 -730 -296 -456 -709
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs><symbol id="g-homepod" viewBox="0 0 1065.362637 1361.756996"><g transform="translate(-1.499998,1363.769128) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M4960 13629 c-1011 -30 -1877 -190 -2330 -430 -246 -131 -372 -285 -357 -435 8 -78 39 -137 108 -210 388 -404 1697 -650 3262 -613 1443 34 2541 325 2738 726 36 71 34 168 -5 246 -146 299 -819 544 -1807 657 -264 30 -557 49 -902 60 -337 10 -343 10 -707 -1z M1017 12139 c-115 -27 -206 -107 -333 -294 -144 -212 -253 -416 -344 -645 -40 -101 -133 -381 -145 -440 -4 -19 -11 -37 -15 -40 -20 -13 -97 -421 -124 -660 -41 -361 -41 -379 -41 -3270 0 -2941 0 -2926 46 -3305 29 -243 99 -612 118 -625 4 -3 16 -36 26 -75 117 -445 354 -922 622 -1255 219 -272 533 -545 848 -735 148 -89 429 -229 595 -294 74 -30 137 -57 140 -61 9 -13 338 -117 504 -160 519 -133 1091 -214 1775 -250 251 -13 1040 -13 1297 0 826 43 1524 158 2107 347 92 29 167 58 167 63 0 6 5 10 10 10 22 0 269 103 406 169 252 122 490 270 699 435 120 95 385 358 479 476 190 239 402 616 511 910 47 126 135 418 135 446 0 8 4 13 8 10 9 -6 72 301 97 469 64 442 67 626 62 3650 -4 2692 -4 2700 -43 3035 -26 227 -96 608 -113 620 -5 3 -14 30 -21 60 -19 82 -107 352 -150 460 -103 257 -235 499 -388 710 -102 141 -178 204 -281 234 -134 39 -255 2 -410 -125 -362 -295 -980 -556 -1771 -748 -1312 -318 -2676 -340 -4014 -65 -904 186 -1648 481 -2062 817 -145 119 -266 157 -397 126z"/> </g></symbol><symbol id="g-homepod-mini" viewBox="0 0 1264.451493 1157.657815"><g transform="translate(-1.967742,1159.607871) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M5935 11590 c-819 -26 -1600 -143 -2041 -305 -227 -83 -433 -205 -510 -302 -76 -94 -101 -197 -70 -289 67 -202 404 -392 928 -524 369 -93 767 -150 1338 -192 239 -18 1281 -18 1525 0 1134 82 1892 283 2174 576 78 82 105 139 105 226 -1 343 -668 624 -1779 750 -512 57 -1084 78 -1670 60z M1863 10245 c-129 -35 -211 -98 -371 -285 -431 -503 -774 -1070 -1029 -1700 -68 -169 -171 -476 -214 -640 -18 -69 -36 -127 -40 -130 -11 -8 -85 -358 -113 -535 -57 -357 -76 -619 -76 -1009 0 -403 25 -721 86 -1081 31 -186 93 -478 103 -485 4 -3 22 -63 40 -134 95 -372 271 -837 462 -1218 330 -660 759 -1242 1290 -1750 240 -229 415 -377 584 -491 33 -23 66 -47 73 -54 8 -7 63 -42 123 -78 662 -393 1434 -570 2734 -625 315 -14 1343 -14 1655 0 899 39 1492 128 2025 304 324 107 663 273 857 417 25 19 94 70 154 114 313 229 702 610 1021 1000 303 372 605 856 814 1305 154 334 309 760 394 1085 20 77 40 149 45 160 15 30 55 219 89 415 104 598 123 1228 55 1840 -28 252 -117 740 -144 788 -5 10 -21 62 -36 117 -192 733 -557 1480 -1022 2094 -140 185 -344 423 -404 471 -111 89 -241 131 -352 112 -91 -15 -156 -46 -280 -135 -581 -418 -1114 -668 -1771 -831 -615 -152 -1195 -214 -2106 -223 -796 -8 -1353 24 -1867 107 -927 150 -1598 415 -2282 900 -184 131 -224 153 -307 175 -70 18 -121 18 -190 0z"/> </g></symbol><symbol id="g-homepod-pair" viewBox="0 0 1313.723871 1276.284188"><g transform="translate(-1.153390,1279.795612) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3550 12793 c-431 -20 -931 -94 -1232 -183 -333 -97 -530 -212 -604 -351 -29 -54 -25 -144 8 -201 85 -143 352 -280 731 -372 250 -61 556 -108 912 -138 241 -21 1081 -17 1325 5 724 67 1239 205 1475 395 187 150 166 330 -57 478 -281 187 -868 319 -1618 364 -148 9 -773 11 -940 3z M748 11665 c-60 -22 -120 -68 -169 -131 -72 -91 -172 -249 -228 -358 -28 -55 -51 -95 -51 -90 -1 5 -14 -22 -31 -61 -106 -244 -186 -569 -224 -905 -32 -279 -36 -687 -32 -2676 3 -1382 8 -1993 16 -2074 34 -342 75 -563 147 -790 47 -149 108 -310 121 -319 5 -3 34 -58 65 -121 390 -786 1182 -1273 2368 -1454 256 -39 413 -54 849 -81 l84 -5 -6 28 c-8 38 -34 274 -49 432 -7 87 -12 803 -15 2355 -5 2262 -1 2615 32 2935 75 733 271 1330 603 1840 125 193 427 555 544 654 43 36 43 36 13 31 -204 -36 -872 -56 -1175 -36 -1028 68 -2026 357 -2530 732 -138 102 -235 130 -332 94z M8410 11270 c-1140 -45 -2003 -283 -2156 -595 -22 -47 -26 -65 -22 -119 3 -55 10 -73 42 -120 357 -519 2619 -741 4110 -405 625 141 965 363 906 591 -83 319 -877 574 -1985 637 -263 15 -658 20 -895 11z M5158 10025 c-62 -23 -120 -69 -173 -136 -28 -35 -57 -71 -66 -80 -20 -20 -109 -157 -109 -167 0 -5 -27 -60 -60 -124 -213 -411 -331 -881 -370 -1473 -14 -209 -13 -4649 0 -4860 26 -402 84 -725 186 -1037 58 -179 114 -310 215 -506 80 -156 105 -198 145 -242 13 -14 60 -72 106 -129 521 -660 1400 -1055 2647 -1191 375 -41 483 -45 1091 -45 625 0 749 6 1160 56 891 107 1582 350 2100 738 140 104 344 301 453 436 395 490 609 1122 657 1940 16 267 8 4848 -8 4990 -48 415 -111 698 -219 992 -91 250 -287 598 -413 737 -68 74 -136 108 -224 114 -96 6 -162 -20 -268 -105 -185 -148 -424 -279 -712 -392 -550 -215 -1172 -350 -1916 -418 -245 -22 -974 -25 -1200 -5 -496 44 -916 114 -1317 217 -576 149 -1059 362 -1338 588 -104 85 -164 111 -255 114 -46 2 -89 -3 -112 -12z"/> </g></symbol><symbol id="g-appletv" viewBox="0 0 1271.745557 1270.498369"><g transform="translate(-0.132012,1270.623417) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M3050 12700 c-789 -21 -1308 -125 -1753 -352 -596 -304 -985 -820 -1162 -1542 -54 -222 -85 -432 -117 -791 -16 -183 -24 -6699 -8 -7078 30 -753 128 -1220 341 -1638 246 -482 648 -843 1163 -1044 381 -149 785 -219 1413 -245 366 -16 6916 -8 7098 8 476 42 765 95 1055 192 433 145 783 386 1050 721 315 394 488 896 554 1608 34 360 37 734 33 4036 -4 3327 -4 3333 -42 3690 -83 761 -300 1282 -704 1686 -171 170 -332 287 -549 397 -387 198 -793 292 -1472 343 -177 14 -6425 21 -6900 9z m6745 -1030 c781 -42 1260 -227 1535 -592 126 -167 232 -430 289 -715 45 -221 60 -384 72 -738 15 -461 6 -6677 -9 -6840 -41 -419 -117 -734 -233 -966 -46 -92 -143 -230 -213 -302 -248 -254 -617 -398 -1188 -464 -144 -17 -368 -18 -3673 -18 -3780 0 -3619 -2 -3935 51 -691 116 -1067 396 -1255 934 -91 264 -135 523 -155 930 -13 265 -13 6526 0 6800 44 908 263 1399 740 1658 273 148 658 236 1139 261 222 12 6673 12 6886 1z M4549 8825 c-320 -65 -617 -341 -718 -668 -26 -85 -46 -234 -37 -281 l7 -36 63 0 c266 0 566 217 712 515 63 129 86 225 88 365 l1 115 -25 2 c-14 1 -55 -4 -91 -12z M6320 7995 l0 -365 -222 -2 -223 -3 -3 -267 -2 -268 224 0 225 0 4 -992 c3 -910 5 -999 21 -1068 70 -297 236 -455 541 -517 74 -15 135 -18 335 -17 135 0 263 5 285 10 l40 10 3 268 2 268 -56 -7 c-105 -13 -261 -8 -320 11 -71 22 -135 79 -165 146 l-24 53 -3 918 -3 917 291 0 290 0 0 270 0 270 -290 0 -290 0 -2 363 -3 362 -327 3 -328 2 0 -365z M4453 7769 c-76 -11 -243 -60 -423 -125 -193 -69 -224 -68 -479 20 -236 80 -310 96 -443 96 -444 -1 -837 -297 -997 -753 -63 -181 -75 -266 -76 -537 0 -277 10 -360 75 -615 62 -245 152 -468 272 -678 72 -127 276 -395 376 -495 148 -149 259 -204 407 -205 103 -1 160 14 298 75 200 88 318 115 470 105 107 -7 190 -31 340 -98 380 -171 589 -95 911 330 101 132 159 227 239 387 61 122 129 282 142 335 5 21 1 27 -32 43 -68 32 -176 109 -245 175 -128 120 -213 257 -265 428 -24 80 -26 104 -27 258 -1 146 2 181 21 250 57 209 181 390 366 534 37 29 67 57 67 61 0 31 -143 174 -240 240 -206 140 -501 205 -757 169z M7827 7623 c-2 -5 116 -345 263 -758 147 -412 389 -1096 539 -1520 151 -423 279 -785 287 -802 l13 -33 334 0 c256 0 337 3 345 13 5 6 82 217 169 467 713 2033 920 2626 916 2633 -2 4 -155 7 -338 7 l-334 0 -37 -117 c-20 -65 -49 -156 -64 -203 -15 -47 -164 -535 -330 -1085 -167 -550 -306 -1004 -310 -1008 -8 -9 -31 66 -441 1398 -164 534 -303 980 -309 993 l-10 22 -344 0 c-190 0 -347 -3 -349 -7z"/> </g></symbol><symbol id="g-desktop" viewBox="0 0 1313.570329 1114.788615"><g transform="translate(-0.490802,1115.930942) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"> <path d="M1070 11149 c-505 -57 -874 -353 -1005 -805 -65 -224 -60 95 -60 -3779 0 -3323 1 -3515 18 -3605 51 -272 154 -483 314 -644 125 -126 263 -210 446 -271 221 -74 59 -69 2160 -72 l1887 -3 0 -534 0 -533 -75 -5 c-244 -16 -438 -266 -397 -511 15 -94 52 -168 117 -236 61 -64 122 -101 206 -125 50 -15 234 -16 1915 -14 l1859 3 67 32 c91 43 133 77 185 147 128 174 106 428 -52 581 -75 74 -168 117 -262 123 l-73 5 0 533 0 534 1829 0 c1988 0 1939 -1 2151 55 129 35 315 127 417 209 226 180 372 460 412 791 15 127 15 6953 0 7080 -41 333 -186 611 -413 792 -101 80 -288 174 -416 208 -221 59 170 55 -5738 54 -2979 -1 -5451 -5 -5492 -10z m10863 -889 c132 -21 232 -93 284 -205 l28 -60 3 -2720 2 -2720 -22 -45 c-18 -35 -35 -51 -73 -70 l-50 -25 -5530 0 c-4536 0 -5537 2 -5567 13 -46 16 -94 69 -107 119 -15 51 -15 5370 -1 5431 34 148 133 244 283 277 52 11 940 14 5377 14 3289 1 5337 -3 5373 -9z"/> </g></symbol><symbol id="face-idle" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><path d="M8.2 15.4h7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol><symbol id="face-stream" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><rect x="8.1" y="14.5" width="1.3" height="2.6" rx=".65"/><rect x="9.9" y="13.7" width="1.3" height="4.2" rx=".65"/><rect x="11.7" y="14.2" width="1.3" height="3.2" rx=".65"/><rect x="13.5" y="13.4" width="1.3" height="4.8" rx=".65"/><rect x="15.3" y="14.6" width="1.3" height="2.4" rx=".65"/></g></symbol><symbol id="face-connect" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/></g><g fill="currentColor"><circle cx="9.6" cy="15.4" r="1.1"/><circle cx="12.15" cy="15.4" r="1.1"/><circle cx="14.7" cy="15.4" r="1.1"/></g></symbol><symbol id="face-error" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.9 7.3l3.0 3.0M8.9 7.3l-3.0 3.0M15.4 7.3l3.0 3.0M18.4 7.3l-3.0 3.0"/></g><path d="M8.4 16.1l1.7-1.3 1.7 1.3 1.7-1.3 1.7 1.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol><symbol id="face-smile" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7.4" cy="8.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="16.9" cy="8.8" r="2.3"/><path d="M7.4 14.2c1.5 2.5 3.2 3.8 4.8 3.8s3.3-1.3 4.7-3.8"/></g></symbol><g id="g-arc-l"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/></g><g id="g-arc-r"><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.1872 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/></g><g id="g-arc-dot"><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z"/></g><symbol id="g-ch-stereo" viewBox="0 0 25.4328 17.5208"><use href="#g-arc-l" fill="currentColor" fill-opacity=".85"/><use href="#g-arc-r" fill="currentColor" fill-opacity=".85"/><use href="#g-arc-dot" fill="currentColor" fill-opacity=".85"/></symbol><symbol id="g-ch-left" viewBox="0 0 25.4328 17.5208"><use href="#g-arc-l" fill="currentColor" fill-opacity=".85"/><use href="#g-arc-r" fill="currentColor" fill-opacity=".25"/><use href="#g-arc-dot" fill="currentColor" fill-opacity=".85"/></symbol><symbol id="g-ch-right" viewBox="0 0 25.4328 17.5208"><use href="#g-arc-l" fill="currentColor" fill-opacity=".25"/><use href="#g-arc-r" fill="currentColor" fill-opacity=".85"/><use href="#g-arc-dot" fill="currentColor" fill-opacity=".85"/></symbol><symbol id="g-vol" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.8 6a9 9 0 0 1 0 12"/></g></symbol><symbol id="g-vol-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path d="M16 9.5l4.5 5M20.5 9.5l-4.5 5"/></g></symbol><symbol id="g-app-music" viewBox="59.2 43 216.4 268.9"><path fill="currentColor" d="M254.5,55c-0.87,0.08-8.6,1.45-9.53,1.64l-107,21.59l-0.04,0.01c-2.79,0.59-4.98,1.58-6.67,3c-2.04,1.71-3.17,4.13-3.6,6.95c-0.09,0.6-0.24,1.82-0.24,3.62c0,0,0,109.32,0,133.92c0,3.13-0.25,6.17-2.37,8.76c-2.12,2.59-4.74,3.37-7.81,3.99c-2.33,0.47-4.66,0.94-6.99,1.41c-8.84,1.78-14.59,2.99-19.8,5.01c-4.98,1.93-8.71,4.39-11.68,7.51c-5.89,6.17-8.28,14.54-7.46,22.38c0.7,6.69,3.71,13.09,8.88,17.82c3.49,3.2,7.85,5.63,12.99,6.66c5.33,1.07,11.01,0.7,19.31-0.98c4.42-0.89,8.56-2.28,12.5-4.61c3.9-2.3,7.24-5.37,9.85-9.11c2.62-3.75,4.31-7.92,5.24-12.35c0.96-4.57,1.19-8.7,1.19-13.26l0-116.15c0-6.22,1.76-7.86,6.78-9.08c0,0,88.94-17.94,93.09-18.75c5.79-1.11,8.52,0.54,8.52,6.61l0,79.29c0,3.14-0.03,6.32-2.17,8.92c-2.12,2.59-4.74,3.37-7.81,3.99c-2.33,0.47-4.66,0.94-6.99,1.41c-8.84,1.78-14.59,2.99-19.8,5.01c-4.98,1.93-8.71,4.39-11.68,7.51c-5.89,6.17-8.49,14.54-7.67,22.38c0.7,6.69,3.92,13.09,9.09,17.82c3.49,3.2,7.85,5.56,12.99,6.6c5.33,1.07,11.01,0.69,19.31-0.98c4.42-0.89,8.56-2.22,12.5-4.55c3.9-2.3,7.24-5.37,9.85-9.11c2.62-3.75,4.31-7.92,5.24-12.35c0.96-4.57,1-8.7,1-13.26V64.46C263.54,58.3,260.29,54.5,254.5,55z"/></symbol><symbol id="g-app-spotify" viewBox="64.6 125.4 377.2 259.5"><path fill="currentColor" d="M406.6 231.1c-5.2 0-8.4-1.3-12.9-3.9-71.2-42.5-198.5-52.7-280.9-29.7-3.6 1-8.1 2.6-12.9 2.6-13.2 0-23.3-10.3-23.3-23.6 0-13.6 8.4-21.3 17.4-23.9 35.2-10.3 74.6-15.2 117.5-15.2 73 0 149.5 15.2 205.4 47.8 7.8 4.5 12.9 10.7 12.9 22.6 0 13.6-11 23.3-23.2 23.3zm-31 76.2c-5.2 0-8.7-2.3-12.3-4.2-62.5-37-155.7-51.9-238.6-29.4-4.8 1.3-7.4 2.6-11.9 2.6-10.7 0-19.4-8.7-19.4-19.4s5.2-17.8 15.5-20.7c27.8-7.8 56.2-13.6 97.8-13.6 64.9 0 127.6 16.1 177 45.5 8.1 4.8 11.3 11 11.3 19.7-.1 10.8-8.5 19.5-19.4 19.5zm-26.9 65.6c-4.2 0-6.8-1.3-10.7-3.6-62.4-37.6-135-39.2-206.7-24.5-3.9 1-9 2.6-11.9 2.6-9.7 0-15.8-7.7-15.8-15.8 0-10.3 6.1-15.2 13.6-16.8 81.9-18.1 165.6-16.5 237 26.2 6.1 3.9 9.7 7.4 9.7 16.5s-7.1 15.4-15.2 15.4z"/></symbol><symbol id="ch-stereo" viewBox="0 0 25.4328 17.5208"><g fill="currentColor" fill-opacity=".85"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.0628 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z"/></g></symbol><symbol id="g-homepod-mini-combo" viewBox="0 0 1333.486898 1202.141468"><g transform="translate(-1.376867,1204.815493) scale(0.100000,-0.100000)" fill="currentColor" stroke="none"><path d="M3695 12043 c-705 -43 -1178 -127 -1537 -273 -730 -296 -456 -709
 607 -914 1061 -205 2569 -128 3307 168 267 108 408 237 408 374 0 67 -18 109
 -72 168 -224 243 -896 418 -1815 474 -153 9 -768 11 -898 3z M765 10897 c-71
 -24 -125 -68 -199 -166 -308 -410 -475 -909 -538 -1611 -19 -212 -19 -4479 0
@@ -1418,7 +1412,7 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
       </p>
     </div>
 
-    <div class="hero-visual reveal" role="group" aria-label="声渡托盘面板：接收器、音量、延迟、播放与氛围灯">
+    <div class="hero-visual reveal" role="group" aria-label="声渡托盘面板：接收器、播放、延迟与氛围灯">
       <span class="hero-glow" aria-hidden="true"></span>
       <div class="fly-wrap">
         <div class="flyout" id="flyPanel">
@@ -1431,58 +1425,27 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
           </header>
 
           <div class="fly-body">
-            <div class="fly-shead">
-              <span class="fly-slabel" data-i18n="flyDevices">接收器</span>
-              <span class="fly-snote" id="fCount">2 台</span>
-              <button class="fshead-act" id="fDiscAll" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>全部断开</span></button>
-            </div>
+            <div class="fly-shead"><span class="fly-slabel" data-i18n="flyDevices">接收器</span><span class="fly-snote" id="fCount">2 台</span><span class="fhead-slot"><button class="faction strong" id="fAll" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>全部断开</span></button></span></div>
             <div class="fly-card">
-              <div class="fdev member" id="fDev0">
-                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod"/></svg><i class="fdot"></i></span>
-                <span class="fmix">
-                  <span class="fnameline">
-                    <button class="fchan" id="fChan" type="button" data-side="stereo" aria-label="声道：立体声 · 点击切换到 左"><svg viewBox="0 0 25.4328 17.5208" aria-hidden="true"><g class="ch-l" fill="currentColor"><path d="M2.22045e-15 8.7645C2.22045e-15 12.0415 1.22981 15.0318 3.36274 17.2536C3.70261 17.6266 4.18758 17.5852 4.46323 17.2764C4.74501 16.9718 4.6808 16.5304 4.35128 16.1823C2.48536 14.2274 1.46106 11.6163 1.46106 8.7645C1.46106 5.91266 2.48536 3.30159 4.35128 1.34673C4.6808 0.998626 4.74501 0.546813 4.46323 0.252572C4.18758-0.0562404 3.70261-0.0976434 3.36274 0.265033C1.22981 2.49725 2.22045e-15 5.48747 2.22045e-15 8.7645Z"/><path d="M3.49188 8.7645C3.49188 11.0863 4.32083 13.2355 5.81002 14.855C6.16023 15.228 6.65345 15.2301 6.94769 14.9027C7.23369 14.5753 7.16123 14.1524 6.82961 13.7836C5.61799 12.4375 4.95294 10.6799 4.95294 8.7645C4.95294 6.84914 5.61799 5.09154 6.82961 3.73501C7.16123 3.37655 7.23369 2.95368 6.94769 2.62628C6.65345 2.29888 6.16023 2.30099 5.81002 2.67401C4.32083 4.29354 3.49188 6.44275 3.49188 8.7645Z"/><path d="M6.98376 8.7645C6.98376 10.079 7.42834 11.3021 8.20744 12.2758C8.52661 12.6777 9.06123 12.6777 9.35969 12.3482C9.64971 12.0208 9.53585 11.6229 9.24563 11.2334C8.71534 10.5561 8.44482 9.69565 8.44482 8.7645C8.44482 7.83124 8.71534 6.97294 9.24563 6.29563C9.53585 5.90612 9.64971 5.50818 9.35969 5.18077C9.06123 4.85126 8.52661 4.85126 8.20744 5.25323C7.42834 6.21654 6.98376 7.44997 6.98376 8.7645Z"/></g><g class="ch-r" fill="currentColor"><path d="M25.4328 8.7645C25.4328 5.48747 24.203 2.49725 22.0701 0.265033C21.7199-0.0976434 21.2452-0.0562404 20.9696 0.252572C20.6878 0.546813 20.7499 0.998626 21.0815 1.34673C22.9475 3.30159 23.9718 5.91266 23.9718 8.7645C23.9718 11.6163 22.9475 14.2274 21.0815 16.1823C20.7499 16.5304 20.6878 16.9718 20.9696 17.2764C21.2452 17.5852 21.7199 17.6266 22.0701 17.2536C24.203 15.0318 25.4328 12.0415 25.4328 8.7645Z"/><path d="M21.9409 8.7645C21.9409 6.44275 21.1016 4.29354 19.6124 2.67401C19.2726 2.30099 18.769 2.29888 18.4748 2.62628C18.1888 2.95368 18.2716 3.37655 18.6032 3.73501C19.8127 5.09154 20.4799 6.84914 20.4799 8.7645C20.4799 10.6799 19.8127 12.4375 18.6032 13.7836C18.2716 14.1524 18.1888 14.5753 18.4748 14.9027C18.769 15.2301 19.2726 15.228 19.6124 14.855C21.1016 13.2355 21.9409 11.0863 21.9409 8.7645Z"/><path d="M18.4491 8.7645C18.4491 7.44997 18.0045 6.21654 17.215 5.25323C16.9062 4.85126 16.3612 4.85126 16.0628 5.18077C15.781 5.50818 15.897 5.90612 16.1872 6.29563C16.7071 6.97294 16.988 7.83124 16.988 8.7645C16.988 9.69565 16.7071 10.5561 16.1872 11.2334C15.897 11.6229 15.781 12.0208 16.0628 12.3482C16.3612 12.6777 16.9062 12.6777 17.215 12.2758C18.0045 11.3021 18.4491 10.079 18.4491 8.7645Z"/></g><path d="M10.9372 8.78942C10.9372 9.72781 11.7552 10.5312 12.7289 10.5312C13.6922 10.5312 14.4956 9.72781 14.4956 8.7645C14.4956 7.78873 13.7046 6.9853 12.7289 6.9853C11.7427 6.9853 10.9372 7.81365 10.9372 8.78942Z" fill="currentColor" opacity=".85"/></svg></button>
-                    <b>客厅 HomePod</b>
-                  </span>
-                  <span class="fvolrow">
-                    <button class="fmute" id="fMute0" type="button" aria-label="静音 客厅 HomePod"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path class="fmute-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="fmute-wave2" d="M18.8 6a9 9 0 0 1 0 12"/><path class="fmute-slash" d="M4 4l16 16"/></svg></button>
-                    <input class="frowvol" id="fVol0" type="range" min="0" max="100" value="30" aria-label="音量 · 客厅 HomePod">
-                    <span class="frowpct" id="fVolPct0">30%</span>
-                  </span>
-                  <span class="fsecond" id="fSecond0">立体声 · AudioAccessory5,1 · 15.2</span>
-                </span>
-                <button class="faction strong" id="fRowAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>断开连接</span></button>
-              </div>
-              <div class="fdev member" id="fDev1">
-                <span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#g-homepod-pair"/></svg><i class="fdot"></i></span>
-                <span class="fmix">
-                  <span class="fnameline">
-                    <span class="flead" role="img" aria-label="立体声"><svg aria-hidden="true"><use href="#ch-stereo"/></svg></span>
-                    <b>书房 HomePods</b>
-                  </span>
-                  <span class="fvolrow">
-                    <button class="fmute" id="fMute1" type="button" aria-label="静音 书房 HomePods"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6.5 8.5H3.5v7h3L11 19z"/><path class="fmute-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="fmute-wave2" d="M18.8 6a9 9 0 0 1 0 12"/><path class="fmute-slash" d="M4 4l16 16"/></svg></button>
-                    <input class="frowvol" id="fVol1" type="range" min="0" max="100" value="44" aria-label="音量 · 书房 HomePods">
-                    <span class="frowpct" id="fVolPct1">44%</span>
-                  </span>
-                  <span class="fsecond" id="fSecond1">AudioAccessory5,1 · 15.2</span>
-                </span>
-                <button class="faction strong" id="fAtvAction" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/><path d="M5 5l14 14"/></svg><span>断开连接</span></button>
-              </div>
+              <div class="fdev" id="fDev0"></div>
+              <div class="fdev" id="fDev1"></div>
             </div>
-            <div class="fnotice" id="fNotice" role="status" hidden>
-              <svg class="fn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/></svg>
-              <span class="fn-text" id="fNoticeText"></span>
-              <button class="fn-retry" id="fNoticeRetry" type="button">重试</button>
-              <button class="fn-close" id="fNoticeClose" type="button" aria-label="忽略"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+            <div class="fcollapse" id="fNoticeWrap">
+              <div class="fclip"><div class="fnotice" id="fNotice">
+                <svg class="fnoteic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.4v5.6"/><circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/></svg>
+                <span class="fnotetxt" id="fNoticeTxt"></span>
+                <button class="faction accent" id="fNoticeRetry" type="button" hidden><span>重试</span></button>
+                <button class="faction ctl" id="fNoticeClose" type="button" aria-label="忽略"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+              </div></div>
             </div>
 
-            <div class="fly-shead" id="flyPlayHead"><span class="fly-slabel" data-i18n="flyPlayback">播放</span><span class="fly-spin" id="fLatSpin" hidden aria-hidden="true"></span><span class="fly-snote" id="fNote">ALAC · 44.1 kHz · 延迟 200 ms</span></div>
+            <div class="fly-shead" id="flyPlayHead"><span class="fly-slabel" data-i18n="flyPlayback">播放</span><span class="fly-spin" id="fLatSpin" hidden aria-hidden="true"></span><span class="fly-snote" id="fNote">200 ms</span></div>
             <div class="fly-card" id="flyPlayback">
               <div class="fmedia">
                 <div class="fmediahead">
-                  <svg class="fappic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></svg>
+                  <svg class="fappic" aria-hidden="true"><use href="#g-app-music"/></svg>
                   <span class="fapp">Music</span>
+                  <button type="button" class="fswitch" aria-label="切换媒体" title="切换媒体"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
                 </div>
                 <div class="fmediamain">
                   <span class="fposter" aria-hidden="true"></span>
@@ -1524,11 +1487,10 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
                 </div>
                 <button class="fly-ibtn" id="fLampArrow" type="button" aria-label="展开配色" aria-controls="fLampGrid" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
               </div>
-              <div class="flampgrid" id="fLampGrid" role="group" aria-label="配色模板" hidden></div>
+              <div class="fcollapse" id="fLampGridWrap"><div class="fclip"><div class="flampgrid" id="fLampGrid" role="group" aria-label="配色模板"></div></div></div>
             </div>
           </div>
 
-          <span class="fly-toast" id="fToast" role="status"></span>
           <footer class="fly-foot">
             <span class="fface" id="fFootFace" aria-hidden="true"><svg viewBox="0 0 24 24"><use id="fFaceUse" href="#face-idle"/></svg></span>
             <span class="fstatus" id="fFootState" role="status">未连接</span>
@@ -1649,8 +1611,9 @@ c-70 694 -237 1182 -541 1583 -164 216 -327 234 -543 61 -452 -364 -1374 -645
           <div class="art">
             <div class="fmedia" id="bmMedia">
               <div class="fmediahead">
-                <svg class="fappic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 18V6l8-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="14.5" cy="16" r="2.5"/></svg>
+                <svg class="fappic" aria-hidden="true"><use href="#g-app-music"/></svg>
                 <span class="fapp">Music</span>
+                <button type="button" class="fswitch" aria-label="切换媒体" title="切换媒体"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
               </div>
               <div class="fmediamain">
                 <span class="fposter"></span>
@@ -1935,7 +1898,7 @@ var EN = {
   "开源 AirPlay 2 发送器": "Open-source AirPlay 2 sender",
   "看看源码": "Read the source",
   "免费 · GPL-3.0": "Free · GPL-3.0",
-  "声渡托盘面板：接收器、音量、延迟、播放与氛围灯": "saundo tray panel: receivers, volume, latency, playback and ambient light",
+  "声渡托盘面板：接收器、播放、延迟与氛围灯": "saundo tray panel: receivers, playback, latency and ambient light",
   "刷新接收器": "Refresh receivers",
   "设置": "Settings",
   "接收器": "Receivers",
@@ -1944,10 +1907,13 @@ var EN = {
   "客厅 HomePod": "Living Room HomePod",
   "连接": "Connect",
   "书房 HomePods": "Study HomePods",
+  "全部断开": "Disconnect all",
+  "忽略": "Dismiss",
+  "立体声": "Stereo",
+  "切换媒体": "Switch media",
   "书房 mini": "Study mini",
   "AudioAccessory5,1 · 立体声组 2/2": "AudioAccessory5,1 · Stereo pair 2/2",
   "播放": "Playback",
-  "ALAC · 44.1 kHz · 延迟 200 ms": "ALAC · 44.1 kHz · 200 ms latency",
   "上一首": "Previous track",
   "播放或暂停": "Play or pause",
   "下一首": "Next track",
@@ -2014,7 +1980,6 @@ var EN = {
   "开启氛围灯": "Turn on ambient light",
   "收起配色": "Collapse colors",
   "已关闭": "Off",
-  "待机": "Standby",
   "灯光已关": "Light off",
   "三色模板": "Three-color template",
   "配色模板": "Color templates",
@@ -2022,7 +1987,6 @@ var EN = {
   "取消": "Cancel",
   "断开连接": "Disconnect",
   "正在连接…": "Connecting…",
-  "已待机 · 播放声音即唤醒": "Standby · wakes when sound plays",
   "开灯": "Turn the light on",
   "已隐藏": "Hidden",
   "启动时": "At launch",
@@ -2565,25 +2529,31 @@ function lampRender(){
   name.classList.toggle("lamp-off", lamp.off);
   document.getElementById("fLampPrev").classList.toggle("off", lamp.off);
   var chip = document.getElementById("fLampChip");
-  var chipKey = lamp.off ? "已关灯" : fly.standby ? "待机" : "";
+  var chipKey = lamp.off ? "已关灯" : "";
   chip.hidden = !chipKey;
   if(chipKey) chip.textContent = t(chipKey);
   var power = document.getElementById("fLampPower");
-  power.classList.toggle("lamp-off", lamp.off);
-  power.setAttribute("aria-label", t(lamp.off ? "开启氛围灯" : "关闭氛围灯"));
+  var dark = lamp.off;
+  power.classList.toggle("lamp-off", dark);
+  power.setAttribute("aria-label", t(dark ? "开启氛围灯" : "关闭氛围灯"));
   var coverBtn = document.getElementById("fLampCover");
   var tplBtn = document.getElementById("fLampTpl");
   coverBtn.classList.toggle("on", lamp.cover);
   tplBtn.classList.toggle("on", !lamp.cover);
   coverBtn.setAttribute("aria-pressed", String(lamp.cover));
   tplBtn.setAttribute("aria-pressed", String(!lamp.cover));
+  var segOff = !!lamp.off;                      /* the priority segment is dead while off (lamp.go segmented) */
+  coverBtn.disabled = segOff;
+  tplBtn.disabled = segOff;
+  document.querySelector("#flyPanel .flampseg").classList.toggle("off", segOff);
   var arrow = document.getElementById("fLampArrow");
   arrow.classList.toggle("open", lampUI.expanded);
   arrow.setAttribute("aria-label", t(lampUI.expanded ? "收起配色" : "展开配色"));
   var grid = document.getElementById("fLampGrid");
-  grid.hidden = !(lamp.cover === false && lampUI.expanded);   /* the grid is template-priority only */
-  arrow.setAttribute("aria-expanded", String(!grid.hidden));
-  if(!grid.hidden && !grid.childNodes.length) flyBuildGrid(grid);
+  var gridOpen = lamp.cover === false && lampUI.expanded;      /* the grid is template-priority only */
+  document.getElementById("fLampGridWrap").classList.toggle("open", gridOpen);
+  arrow.setAttribute("aria-expanded", String(gridOpen));
+  if(gridOpen && !grid.childNodes.length) flyBuildGrid(grid);
   if(grid.childNodes.length){
     grid.querySelectorAll(".flampswatch").forEach(function(sw){
       sw.classList.toggle("sel", sw.dataset.tpl === lamp.preset);
@@ -2655,7 +2625,7 @@ function renderLatency(){
 function setLatency(raw){
   lat.mode = LAT_RAW2MODE[raw] || raw;
   renderLatency();
-  flyRenderNote();                             /* the ALAC line follows at once, streaming or idle */
+  flyRenderNote();                             /* the head value follows at once, streaming or idle */
   if(fly.phase === "streaming"){               /* beginLatencyApply: the stream restarts under the held face */
     fly.applying = true;
     flyRenderNote();
@@ -2751,14 +2721,11 @@ addEventListener("keydown", function(e){
 /* ---------- flyout state machine (mirrors internal/app: ui_kit.go phaseOf/faceOf,
    flyout.go actionFor/statusText, latency.go apply-hold, lamp.go lampSection) ---------- */
 var FLY_DEVS = [
-  { id:"living", row:"fDev0", btn:"fRowAction", vol:"fVol0", pct:"fVolPct0", mute:"fMute0", second:"fSecond0",
-    zh:"客厅 HomePod", en:"Living Room HomePod", detailZh:"AudioAccessory5,1 · 15.2", detailEn:"AudioAccessory5,1 · 15.2" },
-  { id:"study",  row:"fDev1", btn:"fAtvAction", vol:"fVol1", pct:"fVolPct1", mute:"fMute1", second:"fSecond1",
-    zh:"书房 HomePods", en:"Study HomePods", detailZh:"AudioAccessory5,1 · 15.2", detailEn:"AudioAccessory5,1 · 15.2" }
+  { id:"living", row:"fDev0", zh:"客厅 HomePod", en:"Living Room HomePod", stereo:false,
+    sub:{ zh:"立体声 · HomePod · 27.2", en:"Stereo · HomePod · 27.2" } },
+  { id:"study",  row:"fDev1", zh:"书房 HomePods", en:"Study HomePods", stereo:true,
+    sub:{ zh:"HomePod mini · 27.2", en:"HomePod mini · 27.2" } }
 ];
-var CH_NAMES = { zh:{stereo:"立体声", left:"左", right:"右"}, en:{stereo:"Stereo", left:"Left", right:"Right"} };
-var CH_DETAIL = { zh:{stereo:"立体声", left:"左声道", right:"右声道"}, en:{stereo:"Stereo", left:"Left channel", right:"Right channel"} };
-var CH_NEXT = { stereo:"left", left:"right", right:"stereo" };
 var FLY_MODES = { low:200, standard:1500, stable:2000 };       /* settings.go: LatencyLowMS… */
 var FLY_ICONS = {
   link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l4-4M8 11.5 6.2 13.3a3.8 3.8 0 0 0 5.4 5.4l1.8-1.8M16 12.5l1.8-1.8a3.8 3.8 0 0 0-5.4-5.4L10.6 7"/></svg>',
@@ -2770,27 +2737,25 @@ var FLY_ICONS = {
    shipped poster palette — the @property --amb-* initial values match it, so the
    default page looks exactly as before. cols also feed the lamp in cover mode. */
 var MEDIA = [
-  { t:"夜航",     et:"Night Flight", ar:"白鲸电台", ear:"White Whale Radio", app:"Music",   dur:244, cols:['#5b5be0','#8f6fd8','#3d9be0'] },
-  { t:"落日公路", et:"Sunset Drive", ar:"霓虹车队", ear:"Neon Convoy",       app:"Music",   dur:207, cols:['#ff9a3d','#ef5d7a','#9a4fa8'] },
-  { t:"玻璃海",   et:"Glass Sea",    ar:"潮汐信号", ear:"Tidal Signal",      app:"浏览器",  eapp:"Browser", dur:312, cols:['#35d0c5','#3aa6d0','#1b3d8f'] },
-  { t:"绯红",     et:"Crimson",      ar:"玫瑰刺",   ear:"Rose Thorn",        app:"Spotify", dur:238, cols:['#e34b6f','#c22a55','#7a1f3d'] },
-  { t:"雪松与雾", et:"Cedar & Mist", ar:"苔原电台", ear:"Tundra Radio",      app:"Music",   dur:281, cols:['#2f6b4f','#7fae5a','#b08954'] }
+  { t:"夜航",     et:"Night Flight",      ar:"白鲸电台",   ear:"White Whale Radio", app:"Music",   dur:244, cols:['#5b5be0','#8f6fd8','#3d9be0'] },
+  { t:"落日公路", et:"Sunset Drive",      ar:"霓虹车队",   ear:"Neon Convoy",       app:"Music",   dur:207, cols:['#ff9a3d','#ef5d7a','#9a4fa8'] },
+  { t:"雪松与雾", et:"Cedar & Mist",      ar:"苔原电台",   ear:"Tundra Radio",      app:"Music",   dur:281, cols:['#2f6b4f','#7fae5a','#b08954'] },
+  { t:"绯红",     et:"Crimson",           ar:"玫瑰刺",     ear:"Rose Thorn",        app:"Spotify", dur:238, cols:['#e34b6f','#c22a55','#7a1f3d'] },
+  { t:"午夜放电", et:"Midnight Discharge",ar:"静电俱乐部", ear:"Static Club",       app:"Spotify", dur:222, cols:['#a44be0','#e05a7a','#2f2a8f'] },
+  { t:"巡夜灯",   et:"Nightwatch",        ar:"灯塔八号",   ear:"Lighthouse No.8",   app:"Spotify", dur:258, cols:['#e0c04b','#e05a3d','#8f2a5a'] }
 ];
 var media = { i:0, playing:false, pos:0 };    /* 夜航 — 白鲸电台, paused at 0:00 until the session starts */
 var fly = {
-  phase:"streaming", /* the page opens on a live two-member session: the glow is up on entry */
-  members:["living", "study"],  /* snap.ActiveTargets, primary first: every row is a peer */
-  joining:null,      /* the target a connect is opening or adding */
-  notice:null,       /* {kind:"lost"|"join", id}: the session bar under the device card */
-  pairing:false,     /* sender.StatePairing on a first-time connect */
-  paired:{living:true, study:true},
-  ptp:true,          /* the PTP follower settled before the page loaded */
-  standby:false,     /* snap.Standby */
-  applying:false,    /* latencyApplying: the stream restarts under the held face */
-  volume:{living:30, study:44},
-  muted:{},          /* id -> the level a mute can restore */
-  channel:{living:"stereo"}    /* the channel button's state on a single receiver */
+  phase:"streaming",   /* the page opens on a live session: the glow is up on entry */
+  members:{living:{vol:30, channel:"stereo"}},   /* live targets; volume and channel belong to each */
+  connecting:null,     /* the session-establishing connect, phase connecting */
+  joining:null,        /* a target being added while the stream stays live */
+  pairing:false,       /* sender.StatePairing on a first-time connect */
+  paired:{living:true},
+  applying:false       /* latencyApplying: the stream restarts under the held face */
 };
+var flyMuted = {};     /* remembered per-target volume behind a mute, like mutedVolume */
+var flyNotice = null;  /* sessionNotice: a join in progress, or a member lost while the rest keep playing */
 var flyTimers = {};
 var flyPanel = document.getElementById("flyPanel");
 var fNoteEl = document.getElementById("fNote");
@@ -2818,113 +2783,107 @@ function flySetTimer(k, fn, ms){
 function flyClearTimer(k){ if(flyTimers[k]){ clearTimeout(flyTimers[k]); flyTimers[k] = null; } }
 function flyClock(s){ var n = Math.max(0, Math.floor(s)); return Math.floor(n/60) + ":" + ("0" + n%60).slice(-2); }
 
-function flyMembers(){ return fly.members.map(function(id){ return flyDev(id); }); }
-/* statusText(): the footer line, worded like the app's own phases. A joined
-   session names its members in order, the way ConnectedName does. */
+/* statusText(): the footer line, worded like the app's own phases. A
+   multi-target session names itself {name} + {name}, the joined ConnectedName. */
+function flySessionName(){
+  var parts = [];
+  FLY_DEVS.forEach(function(d){ if(fly.members[d.id]) parts.push(flyDevName(d)); });
+  return parts.join(" + ");
+}
 function flyStatusText(){
-  if(fly.phase === "streaming" && fly.members.length){
-    if(fly.standby) return t("已待机 · 播放声音即唤醒");
-    var names = flyMembers().map(flyDevName).join(" + ");   /* composed per LANG, not via the dict */
-    return LANG === "en" ? "Streaming to " + names : "正在通过 " + names + " 播放";
+  if(fly.phase === "streaming"){
+    var name = flySessionName();
+    return LANG === "en" ? "Streaming to " + name : "正在通过 " + name + " 播放";
   }
   if(fly.phase === "connecting" || (fly.phase === "streaming" && fly.joining)) return t(fly.pairing ? "正在配对…" : "正在连接…");
   return t("未连接");
 }
-/* playbackSection(): ALAC line, the sync suffix only while streaming */
+/* the playback head carries the latency value alone (latencyDisplay) */
 /* settings.LatencyText: below 1 s in ms; whole seconds bare; otherwise one decimal */
 function latText(ms){ return ms < 1000 ? ms + " ms" : (ms % 1000 === 0 ? (ms / 1000) + " s" : (ms / 1000).toFixed(1) + " s"); }
 function flyNoteText(){
-  var s = "ALAC · 44.1 kHz";
-  if(fly.phase === "streaming") s += " · " + (LANG === "en" ? (fly.ptp ? "PTP · Synced" : "PTP · Syncing") : (fly.ptp ? "PTP · 已同步" : "PTP · 同步中"));
   var ms = lat.mode === "custom" ? lat.custom : FLY_MODES[lat.mode];
-  var lt = latText(ms);
-  s += LANG === "en" ? " · " + lt + " latency" : " · 延迟 " + lt;
-  return s;
+  return latText(ms);
 }
-/* actionFor(): the control each row offers, from the target's own state —
-   a member disconnects, a joining target cancels, everything else connects */
+/* rowActionFor(): the control each row offers, a pure function of the target's
+   state. While streaming another row's connect adds that receiver; the engine
+   rebuilds the cohort once so every member shares the new start epoch. */
 function flyActionFor(d){
-  if(fly.joining === d.id) return "cancel";
-  if(fly.members.indexOf(d.id) >= 0) return "disconnect";
-  if(fly.phase === "connecting") return "disabled";   /* one connect at a time */
+  var joining = fly.phase === "connecting" ? fly.connecting : fly.joining;
+  if(joining === d.id) return "cancel";
+  if(fly.members[d.id]) return "disconnect";
+  if(fly.phase === "connecting") return "disabled";   /* one session at a time */
   return "connect";
 }
-function flyDetail(d){
-  var s = LANG === "en" ? d.detailEn : d.detailZh;
-  if(d.id === "living") s = CH_DETAIL[LANG === "en" ? "en" : "zh"][fly.channel.living] + " · " + s;
-  return s;
-}
+
+/* channel words: channelDisplay's 立体声/左/右, and the cycle nextChannel walks */
+var CH_ZH = { stereo:"立体声", left:"左", right:"右" };
+var CH_EN = { stereo:"Stereo", left:"Left", right:"Right" };
+function chWord(c){ return (LANG === "en" ? CH_EN : CH_ZH)[c]; }
+function nextCh(c){ return c === "stereo" ? "left" : c === "left" ? "right" : "stereo"; }
+/* flyRenderRows draws each row from its state: a member is a compact mixer
+   (channel button or stereo mark, mute, the target's own volume), every other
+   row keeps its second line. Rows are peers and carry no selection tint; the
+   trailing 92-DIP action column holds one width whatever its label says. */
 function flyRenderRows(){
   FLY_DEVS.forEach(function(d){
     var row = document.getElementById(d.row);
-    row.classList.toggle("member", fly.members.indexOf(d.id) >= 0);
-    var b = document.getElementById(d.btn);
+    var m = fly.members[d.id];
     var a = flyActionFor(d);
-    b.disabled = a === "disabled";
-    b.className = "faction " + (a === "cancel" ? "ctl" : a === "disconnect" ? "strong" : a === "disabled" ? "dimmed" : "accent");
-    b.innerHTML = FLY_ICONS[a === "cancel" ? "close" : a === "disconnect" ? "unlink" : "link"] +
-      "<span>" + t(a === "cancel" ? "取消" : a === "disconnect" ? "断开连接" : "连接") + "</span>";
-    document.getElementById(d.second).textContent = flyDetail(d);
-    var name = flyDevName(d);
-    document.getElementById(d.vol).setAttribute("aria-label", LANG === "en" ? "Volume · " + name : "音量 · " + name);
+    var cls = a === "cancel" ? "ctl" : a === "disconnect" ? "strong" : a === "disabled" ? "dimmed" : "accent";
+    var act = '<span class="faction-col"><button type="button" class="faction ' + cls + '" data-act="' + d.id + '"' +
+      (a === "disabled" ? " disabled" : "") + ">" +
+      FLY_ICONS[a === "cancel" ? "close" : a === "disconnect" ? "unlink" : "link"] +
+      "<span>" + t(a === "cancel" ? "取消" : a === "disconnect" ? "断开连接" : "连接") + "</span></button></span>";
+    var glyph = '<span class="fglyph"><svg class="sfg" aria-hidden="true"><use href="#' + (d.stereo ? "g-homepod-pair" : "g-homepod") + '"/></svg><i class="fdot"></i></span>';
+    var body;
+    if(m){
+      var lead;
+      if(d.stereo){
+        lead = '<span class="fstmark" role="img" aria-label="' + t("立体声") + '"><svg aria-hidden="true"><use href="#g-ch-stereo"/></svg></span>';
+      } else {
+        var cur = m.channel || "stereo";
+        var tip = (LANG === "en" ? "Channel: " : "声道：") + chWord(cur) +
+          (LANG === "en" ? " · Click for " : " · 点击切换到 ") + chWord(nextCh(cur));
+        lead = '<button type="button" class="fchbtn" data-ch="' + d.id + '" aria-label="' + tip + '" title="' + tip + '">' +
+          '<svg aria-hidden="true"><use href="#g-ch-' + cur + '"/></svg></button>';
+      }
+      var muted = m.vol <= 0;
+      body = glyph +
+        '<span class="fnamecol"><span class="fnameline">' + lead + "<b>" + flyDevName(d) + "</b></span>" +
+        '<span class="fmix">' +
+          '<button type="button" class="fmutbtn" data-mute="' + d.id + '" aria-label="' +
+            (LANG === "en" ? (muted ? "Unmute " : "Mute ") : (muted ? "取消静音 " : "静音 ")) + flyDevName(d) + '">' +
+            '<svg aria-hidden="true"><use href="#' + (muted ? "g-vol-off" : "g-vol") + '"/></svg></button>' +
+          '<input class="frange" data-vol="' + d.id + '" type="range" min="0" max="100" value="' + m.vol +
+            '" style="--fly-vol:' + m.vol + '%" aria-label="' + (LANG === "en" ? "Volume · " : "音量 · ") + flyDevName(d) + '">' +
+          '<span class="fmixval">' + Math.round(m.vol) + "%</span>" +
+        "</span></span>";
+    } else {
+      body = glyph + '<span class="fnamecol"><b>' + flyDevName(d) + "</b><span>" + d.sub[LANG] + "</span></span>";
+    }
+    row.innerHTML = body + act;
   });
-  document.getElementById("fDiscAll").hidden = fly.members.length < 2;
-}
-/* the channel button cycles stereo → left → right; its label names the current
-   side and what the click does, like the app's tooltip */
-function flyChannelLabel(side){
-  var c = CH_NAMES[LANG === "en" ? "en" : "zh"];
-  return LANG === "en"
-    ? "Channel: " + c[side] + " · Click for " + c[CH_NEXT[side]]
-    : "声道：" + c[side] + " · 点击切换到 " + c[CH_NEXT[side]];
-}
-function flyRenderChannel(){
-  var btn = document.getElementById("fChan");
-  if(!btn) return;
-  btn.dataset.side = fly.channel.living;
-  btn.setAttribute("aria-label", flyChannelLabel(fly.channel.living));
-  var lead = document.querySelector(".flead");
-  if(lead) lead.setAttribute("aria-label", CH_NAMES[LANG === "en" ? "en" : "zh"].stereo);
-}
-function flySetVol(id, v){
-  v = Math.max(0, Math.min(100, Math.round(v)));
-  fly.volume[id] = v;
-  var d = flyDev(id);
-  var input = document.getElementById(d.vol);
-  input.value = String(v);
-  input.style.setProperty("--vol", v + "%");
-  document.getElementById(d.pct).textContent = v + "%";
-  var muted = v === 0;
-  var mute = document.getElementById(d.mute);
-  var name = flyDevName(d);
-  mute.classList.toggle("muted", muted);
-  mute.setAttribute("aria-label", LANG === "en"
-    ? (muted ? "Unmute " : "Mute ") + name
-    : (muted ? "取消静音 " : "静音 ") + name);
-}
-function flyRenderVolumes(){
-  FLY_DEVS.forEach(function(d){ flySetVol(d.id, fly.volume[d.id]); });
-}
-/* the session notice: a member lost, or a second target joining. The loss
-   offers a retry; the join is informational. */
-function flyNoticeText(){
-  if(!fly.notice) return "";
-  var name = flyDevName(flyDev(fly.notice.id));
-  if(fly.notice.kind === "join") return LANG === "en"
-    ? "Adding " + name + "; the other devices pause briefly"
-    : "正在加入 " + name + "，其他设备会短暂暂停";
-  return LANG === "en"
-    ? name + " disconnected; the other devices keep playing"
-    : name + " 已断开，其他设备继续播放";
-}
-function flyRenderNotice(){
-  var el = document.getElementById("fNotice");
-  var n = fly.notice;
-  el.hidden = !n;
-  if(!n) return;
-  el.classList.toggle("join", n.kind === "join");
-  document.getElementById("fNoticeText").textContent = flyNoticeText();
-  document.getElementById("fNoticeRetry").hidden = n.kind !== "lost";
+  /* the head's 全部断开 applies once two or more targets are live */
+  document.getElementById("fAll").hidden = Object.keys(fly.members).length + (fly.joining ? 1 : 0) < 2;
+  document.querySelectorAll("#flyPanel [data-act]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var d = flyDev(b.dataset.act);
+      var a = flyActionFor(d);
+      if(a === "cancel") flyCancelTarget(d.id);
+      else if(a === "connect") flyConnect(d.id);
+      else if(a === "disconnect") flyDisconnectTarget(d.id);
+    });
+  });
+  document.querySelectorAll("#flyPanel [data-vol]").forEach(function(s){
+    s.addEventListener("input", function(){ setMemberVol(s.dataset.vol, Number(s.value)); });
+  });
+  document.querySelectorAll("#flyPanel [data-mute]").forEach(function(b){
+    b.addEventListener("click", function(){ toggleMemberMute(b.dataset.mute); });
+  });
+  document.querySelectorAll("#flyPanel [data-ch]").forEach(function(b){
+    b.addEventListener("click", function(){ cycleMemberChannel(b.dataset.ch); });
+  });
 }
 function flyRenderFooter(){
   var live = fly.phase === "streaming";
@@ -2949,6 +2908,8 @@ var bmCard = document.getElementById("bmMedia");
 var bmPoster = bmCard.querySelector(".fposter");
 var bmTitle = bmCard.querySelector(".fmedcopy b"), bmArtist = bmCard.querySelector(".fmedcopy span");
 var bmApp = bmCard.querySelector(".fapp");
+var fAppIc = fMediaEl.querySelector(".fappic use");
+var bmAppIc = bmCard.querySelector(".fappic use");
 var bmFill = bmCard.querySelector(".ffill"), bmThumb = bmCard.querySelector(".fthumb");
 var bmClocks = bmCard.querySelectorAll(".fclock");
 var bmMeter = bmCard.querySelector(".fmeter");
@@ -2997,34 +2958,56 @@ function mediaRenderAll(){
   bmTitle.textContent = LANG === "en" ? tr.et : tr.t;
   bmArtist.textContent = LANG === "en" ? tr.ear : tr.ar;
   bmApp.textContent = LANG === "en" ? (tr.eapp || tr.app) : tr.app;
+  /* the head carries the session app's glyph; unknown apps keep the note */
+  var glyph = tr.app === "Spotify" ? "#g-app-spotify" : "#g-app-music";
+  fAppIc.setAttribute("href", glyph);
+  bmAppIc.setAttribute("href", glyph);
+  document.querySelectorAll(".fswitch").forEach(function(b){ b.title = t("切换媒体"); });
   renderMeterTint(fMeter, tr.cols);
   renderMeterTint(bmMeter, tr.cols);
   renderMediaProgress();
 }
 function toggleMediaPlay(){
   media.playing = !media.playing;
-  if(media.playing) fly.standby = false;         /* sound wakes it */
   mediaRenderAll();
   flyRenderFooter();
-  lampRender();                                   /* the standby chip lives on the lamp card */
-  flyRearmStandby();
 }
 function mediaSwitch(i){
   if(i === media.i){ media.pos = 0; renderMediaProgress(); return; }   /* same track: restart */
   media.i = i;
   media.pos = 0;
   if(!media.playing) media.playing = true;        /* skipping wakes playback */
-  fly.standby = false;
   mediaRenderAll();
   flyRenderFooter();
   lampRender();                                   /* cover mode: the light follows the new artwork */
-  flyRearmStandby();
+}
+/* the card renders one media session: next and prev stay inside it, and the
+   head's switch control moves the card to the next app's session
+   (flyout.go showSwitch = len(sessions) > 1) */
+function mediaSibling(i, dir, cross){
+  var app = MEDIA[i].app, n = MEDIA.length, k = i;
+  do { k = (k + dir + n) % n; } while(k !== i && (cross ? MEDIA[k].app === app : MEDIA[k].app !== app));
+  return k;
 }
 function mediaPrev(){
   if(media.pos > 3){ media.pos = 0; renderMediaProgress(); return; }   /* past 3 s: restart first, like the players do */
-  mediaSwitch((media.i + MEDIA.length - 1) % MEDIA.length);
+  var k = mediaSibling(media.i, -1, false);
+  if(k === media.i){ media.pos = 0; renderMediaProgress(); return; }   /* the session's only track */
+  mediaSwitch(k);
 }
-function mediaNext(){ mediaSwitch((media.i + 1) % MEDIA.length); }
+function mediaNext(){
+  var k = mediaSibling(media.i, 1, false);
+  if(k === media.i){ media.pos = 0; renderMediaProgress(); return; }   /* the session's only track: next restarts it */
+  mediaSwitch(k);
+}
+function mediaSwitchSession(){
+  var k = mediaSibling(media.i, 1, true);
+  if(k === media.i) return;
+  media.i = k;
+  media.pos = 0;
+  mediaRenderAll();
+  lampRender();                                   /* cover mode: the light follows the new artwork */
+}
 function flyBuildGrid(grid){
   grid.innerHTML = "";
   Object.keys(AMB_TPLS).forEach(function(id){
@@ -3040,105 +3023,137 @@ function flyBuildGrid(grid){
     grid.appendChild(sw);
   });
 }
-function flyRender(){ flyRenderRows(); flyRenderFooter(); flyRenderNote(); flyRenderNotice(); flyRenderChannel(); flyRenderVolumes(); mediaRenderAll(); lampRender(); }
+function flyRender(){ flyRenderRows(); flyRenderFooter(); flyRenderNote(); flyRenderNotice(); mediaRenderAll(); lampRender(); }
 
-/* the session is a member set (0.6.5): connecting adds a target, disconnecting
-   removes one, and only the last removal ends the session. A join keeps the
-   existing members playing; the app pauses them briefly and says so. */
-function flyEndSession(){
-  ["connect","ptp","standby","apply","join","notice"].forEach(flyClearTimer);
-  fly.phase = "idle";
-  fly.members = [];
-  fly.joining = null;
-  fly.notice = null;
-  fly.pairing = false;
-  fly.standby = false;
-  fly.ptp = false;
+/* connectDevice(): connect, or add a receiver to the live session (rowActionFor:
+   while streaming another row's connect adds that receiver) */
+function flyConnect(id){
+  flyClearTimer("apply");
   fly.applying = false;
+  hideNotice();
+  if(fly.phase === "streaming"){
+    fly.joining = id;
+    setNotice("join", id);
+    flyRender();
+    flySetTimer("connect", function(){ flyEnterMember(id); }, 700);
+    return;
+  }
+  fly.phase = "connecting";
+  fly.connecting = id;
+  fly.pairing = !fly.paired[id];
+  flyClearTimer("connect");
+  flySetTimer("connect", function(){
+    if(fly.pairing){
+      fly.pairing = false;                     /* HAP pairing happens once */
+      flyRender();
+      flySetTimer("connect", function(){ flyEnterStream(id); }, 700);
+    } else {
+      flyEnterStream(id);
+    }
+  }, fly.pairing ? 650 : 950);
   flyRender();
 }
 function flyEnterStream(id){
   fly.phase = "streaming";
-  if(fly.members.indexOf(id) < 0) fly.members.push(id);
+  fly.connecting = null;
+  fly.paired[id] = true;
+  fly.members[id] = { vol: 30, channel: "stereo" };
+  flyRender();
+}
+function flyEnterMember(id){
   fly.paired[id] = true;
   fly.joining = null;
-  fly.notice = null;
+  fly.members[id] = { vol: 50, channel: null };   /* the stereo pair draws no channel control */
+  hideNotice();
   flyRender();
-  flySetTimer("ptp", function(){ if(fly.phase === "streaming"){ fly.ptp = true; flyRenderNote(); } }, 1400);
-  flyRearmStandby();
 }
-function flyAdd(id){
-  if(fly.phase === "connecting" && fly.joining !== id) return;   /* one connect at a time */
-  flyClearTimer("apply");
-  fly.applying = false;
-  flyClearTimer("notice");
-  fly.notice = null;
-  if(fly.phase === "idle"){
-    fly.phase = "connecting";
-    fly.joining = id;
-    fly.standby = false;
-    fly.ptp = false;
-    fly.pairing = !fly.paired[id];
-    flyClearTimer("connect");
-    flySetTimer("connect", function(){
-      if(fly.pairing){
-        fly.pairing = false;                     /* HAP pairing happens once */
-        flyRender();
-        flySetTimer("connect", function(){ flyEnterStream(id); }, 700);
-      } else {
-        flyEnterStream(id);
-      }
-    }, fly.pairing ? 650 : 950);
-    flyRender();
-    return;
-  }
-  fly.joining = id;
-  fly.notice = {kind:"join", id:id};
-  flyRender();
-  flySetTimer("join", function(){
-    if(!fly.members.length){ flyEnterStream(id); return; }
-    if(fly.members.indexOf(id) < 0) fly.members.push(id);
-    fly.paired[id] = true;
-    fly.joining = null;
-    fly.notice = null;
-    flyRender();
-    flyRearmStandby();
-  }, 1200);
-}
-function flyRemove(id){
-  if(fly.joining === id){ flyCancelJoin(); return; }
-  var i = fly.members.indexOf(id);
-  if(i < 0) return;
-  fly.members.splice(i, 1);
-  flyClearTimer("apply");
-  fly.applying = false;
-  if(!fly.members.length){
-    if(fly.joining){ fly.notice = null; flyRender(); return; }   /* a join is still opening */
-    flyEndSession();
-    return;
-  }
-  fly.notice = {kind:"lost", id:id};
-  flyRender();
-  flySetTimer("notice", function(){ fly.notice = null; flyRender(); }, 8000);
-}
-function flyCancelJoin(){
+/* 取消 removes just the target the connect is opening (disconnectTarget) */
+function flyCancelTarget(id){
   flyClearTimer("connect");
-  flyClearTimer("join");
-  fly.joining = null;
-  fly.notice = null;
-  fly.pairing = false;
-  if(!fly.members.length) fly.phase = "idle";
+  if(fly.phase === "connecting"){ fly.phase = "idle"; fly.connecting = null; fly.pairing = false; }
+  if(fly.joining === id) fly.joining = null;
+  hideNotice();
   flyRender();
 }
-/* standby: streaming but silent for a while — "wakes when sound plays" */
-function flyRearmStandby(){
-  flyClearTimer("standby");
-  if(fly.phase === "streaming" && fly.members.length && !media.playing){
-    flySetTimer("standby", function(){
-      fly.standby = true;
-      flyRender();
-    }, 6000);
+/* a member's 断开连接 removes only that target; the session ends with the last one */
+function flyDisconnectTarget(id){
+  flyClearTimer("connect");
+  delete fly.members[id];
+  if(Object.keys(fly.members).length === 0){
+    fly.phase = "idle";
+    fly.pairing = false;
+    fly.applying = false;
+    flyClearTimer("apply");
+    hideNotice();
+  } else {
+    setNotice("lost", id);
   }
+  flyRender();
+}
+/* the head's 全部断开 ends the whole session */
+function flyDisconnectAll(){
+  flyClearTimer("connect"); flyClearTimer("apply");
+  fly.members = {};
+  fly.phase = "idle";
+  fly.joining = null;
+  fly.connecting = null;
+  fly.pairing = false;
+  fly.applying = false;
+  hideNotice();
+  flyRender();
+}
+/* session_notice.go: a join in progress takes precedence, then a member lost
+   while the rest keep playing; the lost notice fades after 8 s on its own */
+function setNotice(kind, id){
+  flyNotice = { kind: kind, id: id };
+  if(kind === "lost"){
+    flySetTimer("notice", function(){
+      if(flyNotice && flyNotice.kind === "lost" && flyNotice.id === id){ flyNotice = null; flyRenderNotice(); }
+    }, 8000);
+  }
+  flyRenderNotice();
+}
+function hideNotice(){
+  flyClearTimer("notice");
+  flyNotice = null;
+  flyRenderNotice();
+}
+function flyRenderNotice(){
+  var wrap = document.getElementById("fNoticeWrap");
+  var join = fly.joining && Object.keys(fly.members).length >= 1;
+  var n = join ? { kind: "join", id: fly.joining } : flyNotice;
+  if(!wrap) return;
+  if(!n){ wrap.classList.remove("open"); return; }
+  var d = flyDev(n.id);
+  document.getElementById("fNoticeTxt").textContent = n.kind === "join"
+    ? (LANG === "en" ? "Adding " + flyDevName(d) + "; the other devices pause briefly" : "正在加入 " + flyDevName(d) + "，其他设备会短暂暂停")
+    : (LANG === "en" ? flyDevName(d) + " disconnected; the other devices keep playing" : flyDevName(d) + " 已断开，其他设备继续播放");
+  document.getElementById("fNoticeRetry").hidden = n.kind !== "lost";
+  wrap.classList.add("open");
+}
+/* the member mixer: one setter for the drag listener and the demo ramp alike */
+function setMemberVol(id, v){
+  var m = fly.members[id];
+  if(!m) return;
+  m.vol = Math.max(0, Math.min(100, Math.round(v)));
+  var row = document.getElementById(flyDev(id).row);
+  var s = row.querySelector("[data-vol]");
+  if(s){ s.value = String(m.vol); s.style.setProperty("--fly-vol", m.vol + "%"); }
+  var p = row.querySelector(".fmixval");
+  if(p) p.textContent = m.vol + "%";
+}
+function toggleMemberMute(id){
+  var m = fly.members[id];
+  if(!m) return;
+  if(m.vol > 0){ flyMuted[id] = m.vol; setMemberVol(id, 0); }
+  else { setMemberVol(id, flyMuted[id] || 50); delete flyMuted[id]; }
+  flyRenderRows();
+}
+function cycleMemberChannel(id){
+  var m = fly.members[id];
+  if(!m || flyDev(id).stereo) return;   /* a stereo target has no side to choose */
+  m.channel = nextCh(m.channel || "stereo");
+  flyRenderRows();
 }
 /* lamp handlers mirror lamp.go: off ignores the segment, picking is deliberate */
 function flyPickPreset(id){
@@ -3156,42 +3171,20 @@ function flyToggleLampExpand(){
   lampRender();
 }
 function flyToggleLampPower(){
-  if(fly.standby && !lamp.off){ lampRender(); return; }   /* standby is automatic; the press just holds it on */
   setLamp({off: !lamp.off});
 }
 
-FLY_DEVS.forEach(function(d){
-  document.getElementById(d.btn).addEventListener("click", function(){
-    var a = flyActionFor(d);
-    if(a === "cancel") flyCancelJoin();
-    else if(a === "connect") flyAdd(d.id);
-    else if(a === "disconnect") flyRemove(d.id);
-  });
-  var input = document.getElementById(d.vol);
-  input.addEventListener("input", function(){ flySetVol(d.id, Number(input.value)); });
-  document.getElementById(d.mute).addEventListener("click", function(){
-    if(fly.volume[d.id] > 0){ fly.muted[d.id] = fly.volume[d.id]; flySetVol(d.id, 0); }
-    else flySetVol(d.id, fly.muted[d.id] || 50);
-    flyRenderRows();
-  });
-});
-document.getElementById("fChan").addEventListener("click", function(){
-  fly.channel.living = CH_NEXT[fly.channel.living];
-  flyRenderChannel();
-  flyRenderRows();
-});
-document.getElementById("fDiscAll").addEventListener("click", flyEndSession);
-document.getElementById("fNoticeRetry").addEventListener("click", function(){
-  if(fly.notice && fly.notice.kind === "lost") flyAdd(fly.notice.id);
-});
-document.getElementById("fNoticeClose").addEventListener("click", function(){
-  flyClearTimer("notice");
-  fly.notice = null;
-  flyRenderNotice();
-});
 document.querySelectorAll("#flyPlayback .fseg button").forEach(function(b){
   b.addEventListener("click", function(){ setLatency(b.dataset.lat); });
 });
+/* the session notice: 重试 reconnects the lost member, 忽略 dismisses */
+document.getElementById("fNoticeRetry").addEventListener("click", function(){
+  var id = flyNotice && flyNotice.id;
+  hideNotice();
+  if(id) flyConnect(id);
+});
+document.getElementById("fNoticeClose").addEventListener("click", hideNotice);
+document.getElementById("fAll").addEventListener("click", flyDisconnectAll);
 fPlayBtn.addEventListener("click", toggleMediaPlay);
 (function(){
   var tbtns = document.querySelectorAll("#flyPlayback .ftransport button");
@@ -3204,10 +3197,10 @@ fPlayBtn.addEventListener("click", toggleMediaPlay);
   bbtns[1].addEventListener("click", toggleMediaPlay);
   bbtns[2].addEventListener("click", mediaNext);
 })();
-document.getElementById("fRefresh").addEventListener("click", function(){
-  flyPanel.classList.add("scanning");          /* the browse drops the rows, then they return */
-  flySetTimer("scan", function(){ flyPanel.classList.remove("scanning"); }, 1100);
+document.querySelectorAll(".fswitch").forEach(function(b){
+  b.addEventListener("click", mediaSwitchSession);
 });
+document.getElementById("fRefresh").addEventListener("click", function(){ flyRenderRows(); });   /* eng.Refresh(): the rows stay; discovery updates them */
 document.getElementById("fLampPower").addEventListener("click", flyToggleLampPower);
 document.getElementById("fLampCover").addEventListener("click", function(){ flySetLampCover(true); });
 document.getElementById("fLampTpl").addEventListener("click", function(){ flySetLampCover(false); });
@@ -3317,13 +3310,14 @@ function demoCancel(){
   demo.timers = [];
   demo.cancelled = true;
 }
-function demoVolume(id, from, to, ms){
+function demoVolume(from, to, ms){
+  if(!fly.members.living) return;               /* the visitor may have disconnected the row */
   var t0 = performance.now();
   (function step(now){
     if(demo.cancelled) return;
     var k = Math.min(1, (now - t0) / ms);
     k = 1 - (1 - k) * (1 - k) * (1 - k);          /* easeOutCubic */
-    flySetVol(id, from + (to - from) * k);
+    setMemberVol("living", Math.round(from + (to - from) * k));
     if(k < 1) requestAnimationFrame(step);
   })(t0);
 }
@@ -3333,10 +3327,7 @@ function demoRun(){
   var steps = [                                                  /* each gap waits out the previous action */
     [function(){ if(!media.playing) toggleMediaPlay(); }, RM ? 500 : 900],   /* 播放：电平条起 */
     [function(){ setLatency("1500"); },    RM ? 500 : 1700],     /* the apply spinner runs under it */
-    [function(){                                                  /* 两台各自调音量：成员是独立混音 */
-      demoVolume("living", fly.volume.living, 68, RM ? 1 : 1100);
-      demoVolume("study", fly.volume.study, 56, RM ? 1 : 1100);
-    }, RM ? 500 : 1600],
+    [function(){ demoVolume(30, 68, RM ? 1 : 1100); }, RM ? 500 : 1600],
     [function(){ mediaNext(); },           RM ? 500 : 1600]      /* 下一首 → 封面换色收尾 */
   ];
   var t = 0;
