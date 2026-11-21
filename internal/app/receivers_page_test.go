@@ -721,8 +721,9 @@ func TestReceiverPageModelDetailSwitch(t *testing.T) {
 	if err := tt.Click(locales.ReceiverModelDetail()); err != nil {
 		t.Fatalf("model-detail switch click: %v", err)
 	}
-	if a.cfg.ModelDetail {
-		t.Fatal("the model-detail switch did not turn off")
+	// The default is off, so the click turns the switch on.
+	if !a.cfg.ModelDetail {
+		t.Fatal("the model-detail switch did not turn on")
 	}
 	for i := range a.snap.Receivers {
 		if a.snap.Receivers[i].Key == "AA:00" {

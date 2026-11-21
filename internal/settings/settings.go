@@ -163,7 +163,7 @@ func Default() Settings {
 		LatencyCustomMS:     DefaultLatencyCustomMS,
 		ShowLatencySwitch:   true,
 		ShowNowPlayingPanel: true,
-		ModelDetail:         true,
+		ModelDetail:         false,
 		PlaybackControls:    true,
 		CoverColors:         true,
 		CoverMode:           CoverMedia,
