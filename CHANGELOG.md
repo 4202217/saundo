@@ -48,6 +48,8 @@ release notes.
   sync notes leave the line. Flyout rows drop their selection tint: rows
   are peers, and the device section head carries Disconnect all for two or
   more live targets.
+- The flyout's latency segments center their icon-and-label pairs,
+  matching the lamp, channel, and cover controls.
 
 ### Fixed
 

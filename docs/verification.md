@@ -1825,11 +1825,11 @@ candidate over the running 0.6.4 (the maintainer's session was streaming).
 
 ## 2026-11-21 — 0.6.5 commit range review
 
-The release range v0.6.4..HEAD holds 43 commits, oldest 01729d5 (docs:
-record the 0.6.4 draft and publish), tip 465fdc2 (engine: cohort events
-route by the socket they arrived on). The two merge commits f17912b and
-bca6bd4 (PR #53) carry commits listed below. Ten are internal; thirty-one
-are user-visible and map to the changelog lines of the 0.6.5 section.
+The release range v0.6.4..HEAD holds 49 commits, oldest 01729d5 (docs:
+record the 0.6.4 draft and publish), tip fc03422 (site: the stereo stage
+plays as a live pair). The two merge commits f17912b and bca6bd4 (PR #53)
+carry commits listed below. Fifteen are internal; thirty-two are
+user-visible and map to the changelog lines of the 0.6.5 section.
 
 Internal, no changelog line: 01729d5 (the 0.6.4 release record), 1401d30
 (multi-device docs), a8a2888 (settings schema 2 — an older build treats a
@@ -1838,20 +1838,18 @@ v2 file as read-only instead of dropping the persisted lastTargets field),
 gate counts only code lines), 78b711f and 8423af0 (site-only, not app
 behavior), 7a53163 (test pins for the combo edit path), 0f3ce44 (the
 preview matrix gains a scrolled receivers state), 6eb59d4 (the ui-mockup
-templates refreshed to the 0.6.5 interface).
+templates refreshed to the 0.6.5 interface), 5827621 (the verify feature
+map refreshed to the 0.6.5 interface), e37400f (the release materials
+staged), fa40ad0 (a device finding: a re-created pair member stalls stream
+SETUP until a power cycle, recorded in devices.md and its dated entry),
+42e5353 and fc03422 (site: the landing page's session model and stereo
+stage).
 
 Post-review fixes, user-visible: 3f88f23 (the launch deadline drops a
 flagged receiver that never resolves an address — Fixed, the auto-connect
 grace line) and 465fdc2 (cohort events route by the socket they arrived on
 — Fixed, the multi-homed replies line). Both are the release subset
 review's two Major findings, fixed before the release commit.
-
-Internal, no changelog line: 01729d5 (the 0.6.4 release record), 1401d30
-(multi-device docs), a8a2888 (settings schema 2 — an older build treats a
-v2 file as read-only instead of dropping the persisted lastTargets field),
-347cb3c (the underrun window's comment names its unit), 8039820 (the size
-gate counts only code lines), 78b711f and 8423af0 (site-only, not app
-behavior), 7a53163 (test pins for the combo edit path).
 
 User-visible, by 0.6.5 changelog line:
 
@@ -1889,6 +1887,8 @@ User-visible, by 0.6.5 changelog line:
   de1fd19 (create entry waits for two eligible receivers, refused saves
   report on the page, notice resize, offline combo reads 离线, tray combo
   glyph), 19b9add (chips and mixer marks sit level with the text).
+- Changed, the flyout's latency segments center their icon-and-label
+  pairs: 9484271.
 
 Code review: subset ran (15 commits) -> no P0. The two axes (Standards and
 Spec) each reported zero P0 and zero documented-standard breaches. The Spec
