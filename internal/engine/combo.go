@@ -318,7 +318,7 @@ func (e *Engine) saveReceivers() {
 // folded into a combo.
 func (e *Engine) dropFromSession(key string) {
 	wanted := false
-	for _, k := range e.wantedKeys {
+	for _, k := range e.life.wantedKeys {
 		if k == key {
 			wanted = true
 			break
@@ -330,10 +330,8 @@ func (e *Engine) dropFromSession(key string) {
 	if e.selectedID == key {
 		e.selectedID = ""
 	}
-	e.userDisconnect = true
-	e.takenOver = false
-	e.reconnectPendingOff()
-	e.wantedKeys = nil
+	e.life.userCancel()
+	e.life.clearWanted()
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearPasswordPrompt()
 	e.notice = SessionNotice{}

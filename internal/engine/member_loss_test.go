@@ -26,14 +26,14 @@ func TestMemberDeathKeepsOthersPlaying(t *testing.T) {
 	if h.sessions != before+1 {
 		t.Fatalf("sessions = %d, want one rebuild without %s", h.sessions, b.ID)
 	}
-	if len(h.e.wantedKeys) != 1 || h.e.wantedKeys[0] != testDeviceID {
-		t.Fatalf("wanted = %v, want only the surviving target", h.e.wantedKeys)
+	if len(h.e.life.wantedKeys) != 1 || h.e.life.wantedKeys[0] != testDeviceID {
+		t.Fatalf("wanted = %v, want only the surviving target", h.e.life.wantedKeys)
 	}
 	if !h.e.plan.live() || len(h.e.plan.targets) != 1 || h.e.plan.keys()[0] != testDeviceID {
 		t.Fatalf("plan = %v, want only the surviving target", h.e.plan.keys())
 	}
-	if !h.e.reconnectAt.IsZero() {
-		t.Fatalf("a reconnect is still scheduled for %v; the session continues", h.e.reconnectAt)
+	if !h.e.life.reconnectAt.IsZero() {
+		t.Fatalf("a reconnect is still scheduled for %v; the session continues", h.e.life.reconnectAt)
 	}
 	h.launch()
 	snap := h.e.Snapshot()
@@ -74,8 +74,8 @@ func TestMemberDeathOfTheOnlyTargetKeepsTheRetry(t *testing.T) {
 	if h.e.tr != nil || h.e.plan.live() {
 		t.Fatalf("session survived its only target: tr=%v plan=%v", h.e.tr, h.e.plan.live())
 	}
-	if len(h.e.wantedKeys) != 1 || h.e.wantedKeys[0] != testDeviceID {
-		t.Fatalf("wanted = %v, want the target kept for the retry", h.e.wantedKeys)
+	if len(h.e.life.wantedKeys) != 1 || h.e.life.wantedKeys[0] != testDeviceID {
+		t.Fatalf("wanted = %v, want the target kept for the retry", h.e.life.wantedKeys)
 	}
 }
 
@@ -120,10 +120,10 @@ func TestMemberLostWithUnbuildableSurvivorsDropsLostKey(t *testing.T) {
 	h.launch()
 
 	// Add a phantom key so buildPlan(remaining) fails on it.
-	h.e.wantedKeys = append(h.e.wantedKeys, "phantom-key")
+	h.e.life.wantedKeys = append(h.e.life.wantedKeys, "phantom-key")
 	h.e.sessionLost(b.ID, false)
 
-	if slices.Contains(h.e.wantedKeys, b.ID) {
-		t.Fatalf("lost key %s stayed in wanted = %v", b.ID, h.e.wantedKeys)
+	if slices.Contains(h.e.life.wantedKeys, b.ID) {
+		t.Fatalf("lost key %s stayed in wanted = %v", b.ID, h.e.life.wantedKeys)
 	}
 }

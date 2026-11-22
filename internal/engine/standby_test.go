@@ -98,7 +98,7 @@ func TestAutomaticReconnectStartsDarkWithoutStateOne(t *testing.T) {
 	h := newHarness(t)
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.connect()
-	h.e.connectAuto = true
+	h.e.life.connectAuto = true
 	h.e.lastPushAt = h.now.Add(-2 * time.Hour)
 	h.e.silence.lastLoud.Store(h.now.Add(-2 * time.Hour).UnixNano())
 	h.launch()

@@ -257,7 +257,7 @@ func TestDiagnosticsReconnectCountAndUptimeReset(t *testing.T) {
 	h.e.setsValue.Reconnect = true
 	h.fake.state = sender.StateIdle
 	h.e.onClosed()
-	h.e.reconnectAt = h.now
+	h.e.life.reconnectAt = h.now
 	h.e.attemptReconnect()
 	if got := h.e.Snapshot().Diagnostics.Reconnects; got != 1 {
 		t.Fatalf("reconnects = %d, want 1", got)

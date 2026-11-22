@@ -640,7 +640,7 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 	e.closeSession(hold)
 	e.receiverLatency = 0
 	e.plan = plan
-	e.wantedKeys = plan.keys()
+	e.life.wantedKeys = plan.keys()
 	e.selectedID = plan.targets[0].key // the primary target; stable across adds
 	primary := plan.targets[0]
 	e.activeHost = plan.members[primary.first].device.Host
@@ -694,12 +694,9 @@ func (e *Engine) connectResolved(key string) {
 	e.autoTried = true
 	// A user action supersedes the previous attempt's state: a stale PIN
 	// dialog, a takeover notice, and the old failure all end here.
-	e.userDisconnect = false
-	e.reconnectCount, e.reconnectNum = 0, 0
-	e.connectAuto = false
+	e.life.freshAttempt()
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
-	e.takenOver = false
 	e.notice = SessionNotice{}
 
 	action, keys := e.connectIntent(key)

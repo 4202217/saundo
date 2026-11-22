@@ -127,9 +127,6 @@ type captureStart struct {
 	err error
 }
 
-// maxReconnectAttempts bounds automatic retries before giving up.
-const maxReconnectAttempts = 5
-
 // settingsSaveDebounce coalesces settings writes on the run loop: a volume
 // drag or a burst of toggles costs one disk write, not one per change.
 const settingsSaveDebounce = 500 * time.Millisecond
@@ -189,11 +186,8 @@ type Engine struct {
 	// plan is the live or opening cohort; zero when idle. It carries the
 	// session's credentials and is cleared on close.
 	plan sessionPlan
-	// wantedKeys is the user's requested target set in order; the first is
-	// primary. It outlives the plan across a failed launch, so Retry on any
-	// active row retries the whole set, and only Disconnect, a takeover, and
-	// shutdown clear it. It holds registry keys, never credentials.
-	wantedKeys    []string
+	// life owns the session's retry-and-wanted-set decisions; see lifecycle.go.
+	life          lifecycle
 	capture       captureSource
 	captureInfo   chan captureInfo
 	captureResult chan captureStart
@@ -243,7 +237,6 @@ type Engine struct {
 	lastErrorKey     UserErrorKey
 	lastErrorArgs    []string
 	credentialReset  bool
-	takenOver        bool
 	pinRequired      bool
 	pinDevice        string
 	passwordRequired bool
@@ -265,11 +258,8 @@ type Engine struct {
 	sessionStartedAt time.Time
 	// stability keeps the trailing-window trouble the connection card reads,
 	// and statsAt is the next diagnostics publish while a session streams.
-	stability sessionStability
-	statsAt   time.Time
-	// reconnectCount is how many automatic retries the current target has
-	// needed. A user connect or disconnect starts a new count.
-	reconnectCount       int
+	stability            sessionStability
+	statsAt              time.Time
 	setsValue            settings.Settings
 	captureEndpoint      string
 	captureName          string
@@ -288,10 +278,6 @@ type Engine struct {
 	captureGen           int
 	captureRetryAt       time.Time
 	captureRetryNum      int
-	userDisconnect       bool
-	reconnectWanted      bool
-	reconnectAt          time.Time
-	reconnectNum         int
 	lastMissingLogAt     time.Time
 	settingsDirtyAt      time.Time
 	settingsErrorLogged  string
@@ -299,7 +285,6 @@ type Engine struct {
 	standbyHoldAt        time.Time
 	darkBaseline         time.Time
 	lastPushAt           time.Time
-	connectAuto          bool
 	pauseUnsupported     bool
 	autoTried            bool
 	autoPendingAt        time.Time
@@ -702,8 +687,8 @@ func (e *Engine) nextWake() time.Time {
 			wake = poll
 		}
 	}
-	if e.reconnectWanted && !e.reconnectAt.IsZero() && (wake.IsZero() || e.reconnectAt.Before(wake)) {
-		wake = e.reconnectAt
+	if e.life.reconnectWanted && !e.life.reconnectAt.IsZero() && (wake.IsZero() || e.life.reconnectAt.Before(wake)) {
+		wake = e.life.reconnectAt
 	}
 	if !e.captureRetryAt.IsZero() && (wake.IsZero() || e.captureRetryAt.Before(wake)) {
 		wake = e.captureRetryAt
@@ -728,7 +713,7 @@ func (e *Engine) onWake() {
 			return // the launch opened a session; its own deadlines take over
 		}
 	}
-	if e.reconnectWanted && !e.reconnectAt.IsZero() && !now.Before(e.reconnectAt) {
+	if e.life.reconnectWanted && !e.life.reconnectAt.IsZero() && !now.Before(e.life.reconnectAt) {
 		e.attemptReconnect()
 		return
 	}
@@ -866,7 +851,7 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 func (e *Engine) shutdown() {
 	e.stopping = true
 	e.closeSession(false)
-	e.wantedKeys = nil
+	e.life.clearWanted()
 	// Force the final unmute through the worker and wait for it, so quitting
 	// never leaves the endpoint muted. closeSession already asked when it
 	// believed a mute was active; this covers a dropped status.
@@ -1046,8 +1031,7 @@ func (e *Engine) handleCommand(cmd command) {
 					e.logf("latency apply: %s is offline; session left running", offline)
 				}
 			} else {
-				e.userDisconnect = false
-				e.connectAuto = false
+				e.life.userRebuild()
 				// A sender applies latency only at stream SETUP, so the whole
 				// cohort rebuilds with the new per-member values and epoch.
 				e.rebuildSession()
@@ -1151,45 +1135,44 @@ func (e *Engine) handleCommand(cmd command) {
 // planReconnect schedules the next retry with the backoff schedule. After
 // maxReconnectAttempts retries it gives up and surfaces an error.
 func (e *Engine) planReconnect() {
-	if e.reconnectNum >= maxReconnectAttempts {
-		e.reconnectWanted = false
-		e.fail(ErrReconnectStopped, fmt.Sprint(e.reconnectNum))
-		e.logf("giving up after %d reconnect attempts", e.reconnectNum)
+	if e.life.reconnectNum >= maxReconnectAttempts {
+		e.life.giveUpRetry()
+		e.fail(ErrReconnectStopped, fmt.Sprint(e.life.reconnectNum))
+		e.logf("giving up after %d reconnect attempts", e.life.reconnectNum)
 		e.publish()
 		return
 	}
-	delay := reconnectBackoff[min(e.reconnectNum, len(reconnectBackoff)-1)]
-	e.reconnectNum++
-	e.reconnectWanted = true
-	e.reconnectAt = e.now().Add(delay)
-	e.logf("reconnect scheduled in %s (attempt %d)", delay, e.reconnectNum)
+	delay := e.life.scheduleRetry(e.now())
+	e.logf("reconnect scheduled in %s (attempt %d)", delay, e.life.reconnectNum)
 	e.publish()
 }
 
 func (e *Engine) reconnectPendingOff() {
-	e.reconnectWanted = false
-	e.reconnectAt = time.Time{}
-	e.reconnectNum = 0
+	e.life.cancelRetry()
 	e.publish()
+}
+
+// armReconnect schedules the next automatic retry when the gate allows one
+// and none is pending. The zero retry time is the once guard: a retry that is
+// already armed is consumed by its own due tick.
+func (e *Engine) armReconnect() {
+	if e.reconnectShouldRetry() && e.life.reconnectAt.IsZero() {
+		e.planReconnect()
+	}
 }
 
 // attemptReconnect retries the wanted target set; keys that no longer resolve
 // are dropped with a log line, and when none resolve it waits for the primary
-// target. It consumes the pending retry time. A retry that comes due while a
-// live session exists is stale — the user connected again after it was
-// scheduled — so it is pushed out instead of tearing down that session's
-// handshake or PIN wait.
+// target. It consumes the pending retry time.
 func (e *Engine) attemptReconnect() {
-	if e.tr != nil && e.tr.Active() {
-		e.reconnectAt = e.now().Add(5 * time.Second)
+	if e.life.retryDue(e.tr != nil && e.tr.Active(), e.now()) == retryPushOut {
 		return
 	}
-	e.reconnectAt = time.Time{}
-	keys := e.pruneWanted(e.wantedKeys)
+	keys := e.pruneWanted(e.life.wantedKeys)
 	if len(keys) == 0 {
 		// The wait is indefinite by design; the log line is not. Throttle it
 		// so a device that never returns logs once a minute, not every 5 s.
-		e.reconnectAt = e.now().Add(5 * time.Second)
+		e.life.reconnectAt = e.now().Add(5 * time.Second)
 		if e.lastMissingLogAt.IsZero() || e.now().Sub(e.lastMissingLogAt) >= time.Minute {
 			e.lastMissingLogAt = e.now()
 			e.logf("reconnect: device %s not discovered yet", e.selectedID)
@@ -1210,16 +1193,13 @@ func (e *Engine) attemptReconnect() {
 		}
 		e.failPlan(err)
 		e.logf("reconnect: %s refused: %v", key, err)
-		if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
-			e.planReconnect()
-		}
+		e.armReconnect()
 		e.publish()
 		return
 	}
 	e.clearPasswordPrompt()
-	e.wantedKeys = keys
-	e.reconnectCount++
-	e.connectAuto = true
+	e.life.setWanted(keys)
+	e.life.attemptStarted()
 	plan, err := e.buildPlan(keys)
 	if err != nil {
 		// A guard or clock conflict is deterministic; rebuilding the same
@@ -1227,9 +1207,7 @@ func (e *Engine) attemptReconnect() {
 		// stopping the retry loop.
 		e.failPlan(err)
 		e.logf("reconnect: plan refused: %v", err)
-		if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
-			e.planReconnect()
-		}
+		e.armReconnect()
 		e.publish()
 		return
 	}
@@ -1237,13 +1215,13 @@ func (e *Engine) attemptReconnect() {
 	// startPlan can reject synchronously on a failed cohort open. That path
 	// sets lastError and never reaches the asynchronous callbacks that arm the
 	// backoff, so re-arm here or the loop stops for good.
-	if e.lastError != "" && e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
-		e.planReconnect()
+	if e.lastError != "" {
+		e.armReconnect()
 	}
 }
 
 func (e *Engine) reconnectShouldRetry() bool {
-	return !e.userDisconnect && !e.stopping && !e.takenOver && e.setsValue.Reconnect && e.selectedID != ""
+	return e.life.mayAutoRetry(e.stopping, e.setsValue.Reconnect, e.selectedID != "")
 }
 
 // prepareLampImage renders the selected template on the engine goroutine, so
@@ -2164,7 +2142,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		ErrorKey:            e.lastErrorKey,
 		ErrorArgs:           e.lastErrorArgs,
 		CredentialReset:     e.credentialReset,
-		TakenOver:           e.takenOver,
+		TakenOver:           e.life.takenOver,
 		PinRequired:         e.pinRequired,
 		PinDevice:           e.pinDevice,
 		PasswordRequired:    e.passwordRequired,
@@ -2173,7 +2151,7 @@ func (e *Engine) buildSnapshot() Snapshot {
 		PasswordTargetID:    e.passwordTargetID,
 		Name:                e.setsValue.Name,
 		Reconnect:           e.setsValue.Reconnect,
-		Reconnecting:        e.reconnectWanted && !e.reconnectAt.IsZero(),
+		Reconnecting:        e.life.reconnectWanted && !e.life.reconnectAt.IsZero(),
 		AudioIdle:           e.idle != idleActive,
 		Standby:             e.idle == idleDark,
 		StandbyEnabled:      e.setsValue.Standby.Enabled,

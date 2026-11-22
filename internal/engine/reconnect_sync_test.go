@@ -18,10 +18,10 @@ func TestSynchronousReconnectFailureKeepsTheBackoff(t *testing.T) {
 			return nil, errors.New("ptp port busy")
 		}
 		h.e.selectedID = testDeviceID
-		h.e.wantedKeys = []string{testDeviceID}
-		h.e.reconnectWanted = true
+		h.e.life.wantedKeys = []string{testDeviceID}
+		h.e.life.reconnectWanted = true
 		h.e.attemptReconnect()
-		if h.e.reconnectAt.IsZero() {
+		if h.e.life.reconnectAt.IsZero() {
 			t.Fatal("the reconnect loop died after a failed session open")
 		}
 	})
@@ -32,10 +32,10 @@ func TestSynchronousReconnectFailureKeepsTheBackoff(t *testing.T) {
 		h.e.discovered[0].Auth = device.AuthLegacyPin
 		h.e.rebuildTargets()
 		h.e.selectedID = testDeviceID
-		h.e.wantedKeys = []string{testDeviceID}
-		h.e.reconnectWanted = true
+		h.e.life.wantedKeys = []string{testDeviceID}
+		h.e.life.reconnectWanted = true
 		h.e.attemptReconnect()
-		if h.e.reconnectAt.IsZero() {
+		if h.e.life.reconnectAt.IsZero() {
 			t.Fatal("the reconnect loop died after a synchronous guard")
 		}
 	})
