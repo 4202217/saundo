@@ -213,10 +213,10 @@ func (a *App) connectionSessionCard(c *ui.Context, p palette) {
 func connectionStatCell(c *ui.Context, p palette, label, value, note string, tone ui.Color) {
 	ui.Column(c).Grow(1).Gap(2).Children(func() {
 		ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine()
+			ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine().Shrink(0)
 			if note != "" {
 				ui.Text(c, " · "+note).FontSize(10.5).TextColor(p.faint).
-					SingleLine().Ellipsis("…")
+					SingleLine().Ellipsis("…").Shrink(1)
 			}
 		})
 		ui.Text(c, value).FontSize(15).FontWeight(600).TextColor(tone).
