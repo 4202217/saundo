@@ -21,7 +21,7 @@ func TestSynchronousReconnectFailureKeepsTheBackoff(t *testing.T) {
 		h.e.life.wantedKeys = []string{testDeviceID}
 		h.e.life.reconnectWanted = true
 		h.e.attemptReconnect()
-		if h.e.life.reconnectAt.IsZero() {
+		if !h.e.Snapshot().Reconnecting {
 			t.Fatal("the reconnect loop died after a failed session open")
 		}
 	})
@@ -35,7 +35,7 @@ func TestSynchronousReconnectFailureKeepsTheBackoff(t *testing.T) {
 		h.e.life.wantedKeys = []string{testDeviceID}
 		h.e.life.reconnectWanted = true
 		h.e.attemptReconnect()
-		if h.e.life.reconnectAt.IsZero() {
+		if !h.e.Snapshot().Reconnecting {
 			t.Fatal("the reconnect loop died after a synchronous guard")
 		}
 	})

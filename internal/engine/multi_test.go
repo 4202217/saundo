@@ -516,8 +516,8 @@ func TestWantedSetSurvivesAFailedLaunch(t *testing.T) {
 		t.Fatalf("wanted keys after a failed launch = %v", got)
 	}
 	h.e.handleCommand(command{kind: cmdDisconnect})
-	if len(h.e.life.wantedKeys) != 0 {
-		t.Fatalf("disconnect kept the wanted set: %v", h.e.life.wantedKeys)
+	if len(h.e.Snapshot().ActiveTargets) != 0 {
+		t.Fatal("disconnect kept the active set")
 	}
 }
 
@@ -531,11 +531,11 @@ func TestPreemptedKeepsTheWantedSetWithoutRetry(t *testing.T) {
 	h.launch()
 	h.e.onPreempted("receiver closed the session")
 
-	if got := h.e.life.wantedKeys; len(got) != 1 || got[0] != testDeviceID {
-		t.Fatalf("wanted keys after a takeover = %v, want the requested target", got)
+	if got := h.e.Snapshot().ActiveTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("active rows after a takeover = %v, want the requested target", got)
 	}
-	if h.e.life.reconnectWanted || !h.e.life.reconnectAt.IsZero() {
-		t.Fatalf("a takeover armed a retry: wanted=%v at=%v", h.e.life.reconnectWanted, h.e.life.reconnectAt)
+	if h.e.Snapshot().Reconnecting {
+		t.Fatal("a takeover armed a retry")
 	}
 	// The run loop tears the dead transport down next; the row must stay active
 	// so the flyout still offers 重新连接, not 连接.

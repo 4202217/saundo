@@ -28,8 +28,8 @@ func TestRejectedPasswordPromptsInsteadOfRetrying(t *testing.T) {
 	if !snap.PasswordRequired || snap.PasswordDeviceID != b.ID || snap.PasswordTargetID != b.ID {
 		t.Fatalf("password prompt = %+v", snap)
 	}
-	if !h.e.life.reconnectAt.IsZero() {
-		t.Fatalf("a retry was scheduled for %v; a rejected password cannot fix itself", h.e.life.reconnectAt)
+	if h.e.Snapshot().Reconnecting {
+		t.Fatal("a rejected password armed a retry; it cannot fix itself")
 	}
 
 	// The dead arm drops the refused member and keeps the survivor.
@@ -37,8 +37,8 @@ func TestRejectedPasswordPromptsInsteadOfRetrying(t *testing.T) {
 	if h.sessions != before+1 {
 		t.Fatalf("sessions = %d, want one rebuild without %s", h.sessions, b.ID)
 	}
-	if len(h.e.life.wantedKeys) != 1 || h.e.life.wantedKeys[0] != testDeviceID {
-		t.Fatalf("wanted = %v, want only the survivor", h.e.life.wantedKeys)
+	if got := h.e.Snapshot().ActiveTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("active targets = %v, want only the survivor", got)
 	}
 	if got := h.e.Snapshot().Notice; got.Kind != NoticeNone {
 		t.Fatalf("an auth failure published a lost notice: %+v", got)
@@ -59,15 +59,15 @@ func TestRejectedPasswordOnTheOnlyTargetDoesNotRetry(t *testing.T) {
 	h.fake.failure = LaunchFailure{TargetKey: testDeviceID, DeviceID: testDeviceID, Name: "客厅 HomePod", Auth: true}
 	h.fake.launch(false, "The password was not accepted by the device")
 
-	if !h.e.life.reconnectAt.IsZero() {
-		t.Fatalf("a retry was scheduled for %v", h.e.life.reconnectAt)
+	if h.e.Snapshot().Reconnecting {
+		t.Fatal("a rejected password armed a retry")
 	}
 	if !h.e.Snapshot().PasswordRequired {
 		t.Fatal("the rejected password did not prompt")
 	}
 	h.e.sessionLost(testDeviceID, true)
-	if len(h.e.life.wantedKeys) != 1 || h.e.life.wantedKeys[0] != testDeviceID {
-		t.Fatalf("wanted = %v, want the target kept for a manual connect", h.e.life.wantedKeys)
+	if got := h.e.Snapshot().ActiveTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("active targets = %v, want the target kept for a manual connect", got)
 	}
 	if len(h.e.Snapshot().ActiveTargets) != 1 {
 		t.Fatalf("active targets = %v", h.e.Snapshot().ActiveTargets)

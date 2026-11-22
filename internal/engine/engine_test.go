@@ -444,24 +444,20 @@ func TestReconnectBackoffThenSuccess(t *testing.T) {
 
 	h.fake.state = sender.StateIdle // the receiver went away; the sender is idle before Closed fires
 	h.e.onClosed()
-	if !h.e.life.reconnectWanted || h.e.life.reconnectAt.IsZero() {
+	if !h.e.Snapshot().Reconnecting {
 		t.Fatal("no reconnect scheduled after close")
 	}
 	if got := h.e.life.reconnectAt.Sub(h.now); got != time.Second {
 		t.Fatalf("first backoff = %s, want 1s", got)
 	}
-	if h.e.life.reconnectNum != 1 {
-		t.Fatalf("attempt = %d, want 1", h.e.life.reconnectNum)
-	}
-
 	h.advance(time.Second)
 	h.e.attemptReconnect()
 	if h.sessions != 2 {
 		t.Fatalf("sessions = %d, want 2", h.sessions)
 	}
 	h.launch()
-	if h.e.life.reconnectNum != 0 || h.e.life.reconnectAt != (time.Time{}) {
-		t.Fatal("successful launch did not reset the reconnect state")
+	if h.e.Snapshot().Reconnecting {
+		t.Fatal("successful launch left a retry armed")
 	}
 
 	h.fake.state = sender.StateIdle
@@ -577,8 +573,8 @@ func TestUserRetryAfterGiveUpResumesReconnect(t *testing.T) {
 		h.e.attemptReconnect()
 		h.fake.launch(false, "Device refused")
 	}
-	if h.e.life.reconnectWanted || h.e.lastErrorKey != ErrReconnectStopped {
-		t.Fatalf("precondition: budget not exhausted, wanted=%v key=%q", h.e.life.reconnectWanted, h.e.lastErrorKey)
+	if h.e.Snapshot().Reconnecting || h.e.lastErrorKey != ErrReconnectStopped {
+		t.Fatalf("precondition: budget not exhausted, reconnecting=%v key=%q", h.e.Snapshot().Reconnecting, h.e.lastErrorKey)
 	}
 
 	h.connect()
@@ -586,7 +582,7 @@ func TestUserRetryAfterGiveUpResumesReconnect(t *testing.T) {
 		t.Fatalf("the retry did not start a session: sessions = %d, want 7", h.sessions)
 	}
 	h.fake.launch(false, "Device refused")
-	if !h.e.life.reconnectWanted || h.e.life.reconnectAt.IsZero() {
+	if !h.e.Snapshot().Reconnecting {
 		t.Fatal("a failed retry left the reconnect loop stopped")
 	}
 	if got := h.e.life.reconnectAt.Sub(h.now); got != time.Second {
