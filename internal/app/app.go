@@ -52,16 +52,10 @@ type App struct {
 	menuCoverKey        string
 	quitting            bool
 	power               powerHold
-	// flyoutH is the content height the design asks for; flyoutScale is the
-	// text scale the window was last sized at.
-	flyoutH     int
-	flyoutScale float32
-	// scale is the desktop's text scale, carried by each window's content
-	// zoom.
-	scale float32
-	// resizeWindow replaces the flyout window resize in tests; production
-	// uses win.SetSize.
-	resizeWindow func(width, height int)
+	flyoutH             int
+	flyoutScale         float32
+	scale               float32
+	resizeWindow        func(width, height int)
 
 	updates       updateEngine
 	upd           updateState
@@ -78,15 +72,13 @@ type App struct {
 	historyKey    string
 	historyLocale string
 	historyState  updateHistoryState
-	// async runs a job off the UI thread or directly in a test.
-	async func(func())
+	async         func(func())
 
 	snap   engine.Snapshot
 	selID  string
 	notice sessionNoticeState
 
-	// mutedVolume remembers the level a target's speaker button muted from.
-	mutedVolume map[string]float64
+	preMuteVolume map[string]float64
 
 	pinOpen bool
 	pinCode string
@@ -209,7 +201,6 @@ func Run() error {
 	}
 	migrateLegacyData()
 	if !mygo.App.RequestSingleInstanceLock() {
-		// Another saundo is running; it shows itself instead.
 		return nil
 	}
 	mygo.App.SetName("saundo")
@@ -332,8 +323,6 @@ func (a *App) ready() {
 	// The windows are created at the desktop's text scale, so the first
 	// frame already has the room its content needs.
 	a.scale = normalizeScale(mygo.Theme.Preferences().TextScale)
-	// Started at login stays quietly in the tray; the user opens the panel
-	// from there. --tray forces the same behavior for manual testing.
 	silent := mygo.App.WasOpenedAtLogin() || hasArg("--tray")
 
 	a.tray, _ = mygo.NewTray(mygo.TrayOptions{
@@ -360,14 +349,11 @@ func (a *App) ready() {
 				a.tray.PopUpMenu()
 			}
 		})
-		// Discovery has not reported yet, so the flyout opens at the empty
-		// state's height and grows as devices and a media session arrive.
 		a.createFlyout()
 		// A flyout names no title of its own; give it the app's, so window
 		// metadata and accessibility do not fall back to the executable name.
 		a.win.SetTitle(locales.AppName())
 	} else {
-		// Without a tray icon the app still needs a reachable window.
 		w, h := scaledSize(flyoutWidth, flyoutHeightFor(0, a.showLatencySwitch, false), a.textScale())
 		minW, minH := scaledSize(380, 460, a.textScale())
 		a.win = mygo.NewWindow(mygo.WindowOptions{
@@ -395,7 +381,6 @@ func (a *App) ready() {
 	a.syncTrayAnimator()
 
 	if a.cfg.LaunchAtStart {
-		// Keep the system registration in step with the saved setting.
 		_ = mygo.App.SetOpenAtLogin(true)
 	}
 
@@ -559,8 +544,6 @@ func nowPlayingTrack(snap nowplaying.Snapshot) (nowplaying.Track, bool) {
 	return nowplaying.Track{Title: s.Title, Artist: s.Artist, Album: s.Album}, true
 }
 
-// setNowSnapshot adopts a read on the UI thread, keeping the selected session
-// by AUMID and decoding the cover only when the selected track changes.
 func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
 	a.nowSnap = snap
 	a.nowErr = errText
@@ -570,8 +553,6 @@ func (a *App) setNowSnapshot(snap nowplaying.Snapshot, errText string) {
 		current = snap.Sessions[snapIndex(snap)].AUMID
 	}
 	if current != a.nowCurrent {
-		// A new session became the system's current one. The card follows
-		// it unless the user picks another one again from the switch arrow.
 		a.nowCurrent = current
 		a.nowPinned = false
 	}
@@ -626,7 +607,7 @@ func (a *App) refreshNowArtwork() {
 // must not change the preview.
 func (a *App) refreshNowLamp() {
 	if len(a.nowSnap.Sessions) == 0 {
-		return // nothing is pushed; the light keeps its last cover
+		return
 	}
 	s := a.nowSnap.Sessions[snapIndex(a.nowSnap)]
 	if s.Title == "" {
@@ -649,9 +630,6 @@ func (a *App) refreshNowLamp() {
 	a.nowLamp, a.nowLampOK = lamp.CoverPreset(img)
 }
 
-// refreshNowAppIcon decodes the session app's icon when the selected app
-// changes. The shell may have no icon for an app; the head then shows only
-// the name.
 func (a *App) refreshNowAppIcon() {
 	s, ok := a.nowSession()
 	key := ""
@@ -703,7 +681,6 @@ func fnv64(b []byte) uint64 {
 	return h.Sum64()
 }
 
-// switchNowMedia cycles the card between the available SMTC sessions.
 func (a *App) switchNowMedia() {
 	if len(a.nowSnap.Sessions) <= 1 {
 		return
@@ -863,7 +840,6 @@ func (a *App) syncAppChoice() {
 	}
 }
 
-// appSelectionLabel names the multi-select choice for the field.
 func (a *App) appSelectionLabel() string {
 	switch len(a.appSelection) {
 	case 0:
@@ -902,8 +878,6 @@ func (a *App) appBitmapForID(id string) *ui.Bitmap {
 	return nil
 }
 
-// selectionBitmap is the icon of the first selected app in list order, so the
-// field stays stable when several are selected.
 func (a *App) selectionBitmap() *ui.Bitmap {
 	for i, id := range a.appIDs {
 		if id != "" && a.appSelection[id] && i < len(a.appPIDs) {
@@ -917,8 +891,6 @@ func (a *App) perAppSelected() bool {
 	return a.snap.CaptureProcessPID != 0 || len(a.snap.CaptureAppIDs) > 0
 }
 
-// selectedAppIDs returns the chosen IDs in list order, then saved IDs whose
-// apps are no longer running.
 func (a *App) selectedAppIDs() (ids, names []string) {
 	seen := make(map[string]bool, len(a.appSelection))
 	for i, id := range a.appIDs {
@@ -944,8 +916,6 @@ func (a *App) selectedAppIDs() (ids, names []string) {
 	return ids, names
 }
 
-// scheduleAppSelection applies the live selection after a short pause, so a
-// burst of checks restarts capture once instead of per click.
 func (a *App) scheduleAppSelection() {
 	ids, names := a.selectedAppIDs()
 	label := ""
@@ -984,8 +954,6 @@ func (a *App) migrateLegacyAppSelection() {
 	}
 }
 
-// setLaunchAtStart persists the toggle and asks the system to start the app
-// at login. A failed registration reverts the switch.
 func (a *App) setLaunchAtStart(on bool) {
 	a.cfg.LaunchAtStart = on
 	a.saveSettings()
@@ -997,8 +965,6 @@ func (a *App) setLaunchAtStart(on bool) {
 	}
 }
 
-// setTrayAnimation persists the tray animation preference and starts or
-// stops the animator at once.
 func (a *App) setTrayAnimation(on bool) {
 	a.trayAnimation = on
 	a.cfg.TrayAnimation = on
@@ -1077,9 +1043,6 @@ func (a *App) statusText() string {
 	}
 }
 
-// onLocaleChanged relabels the sentinel capture options, retitles the
-// windows, and rebuilds the tray menu. Both windows redraw in the new
-// language on their own.
 func (a *App) onLocaleChanged() {
 	if len(a.captureNames) > 0 {
 		a.captureNames[0] = locales.CaptureFollowSystem()
@@ -1100,7 +1063,6 @@ func (a *App) onLocaleChanged() {
 	a.updateUI(func() {})
 }
 
-// setBeta chooses whether update checks offer prereleases too.
 func (a *App) setBeta(on bool) {
 	a.beta = on
 	a.cfg.Beta = on
@@ -1110,7 +1072,6 @@ func (a *App) setBeta(on bool) {
 	}
 }
 
-// languageLabel is the settings select's value for the saved language tag.
 func (a *App) languageLabel() string {
 	switch a.cfg.Language {
 	case "en":
@@ -1122,7 +1083,6 @@ func (a *App) languageLabel() string {
 	}
 }
 
-// setLanguage saves the chosen tag and switches the interface at once.
 func (a *App) setLanguage(label string) {
 	tag := ""
 	switch label {
@@ -1136,7 +1096,6 @@ func (a *App) setLanguage(label string) {
 	mygo.App.SetLocale(tag)
 }
 
-// themeLabel is the settings select's value for the saved appearance.
 func (a *App) themeLabel() string {
 	switch a.cfg.Theme {
 	case settings.ThemeLight:
@@ -1148,7 +1107,6 @@ func (a *App) themeLabel() string {
 	}
 }
 
-// setTheme saves the chosen appearance and applies it at once.
 func (a *App) setTheme(label string) {
 	mode := settings.ThemeSystem
 	switch label {

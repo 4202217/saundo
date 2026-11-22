@@ -35,8 +35,6 @@ type Stats struct {
 	WiFi WiFiMetrics
 }
 
-// resetSessionCounters clears the per-session diagnostic counters at stream
-// start.
 func (s *Sender) resetSessionCounters() {
 	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
 	s.ringFed, s.lastFedFrames = false, 0

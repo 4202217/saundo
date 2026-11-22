@@ -26,16 +26,12 @@ const maxPendingRequests = 32
 // counter are truly out of sync and will not self-heal.
 const eventDecryptFailLimit = 8
 
-// volumeQueryTimeout is how long an unanswered GET /info volume poll stays
-// in flight before the next poll tick recovers it.
 const volumeQueryTimeout = 3 * time.Second
 
 func (s *Sender) rtspURI() string {
 	return "rtsp://" + s.localIP + "/" + utoa(uint64(s.sessionID))
 }
 
-// sendRequest builds one RTSP request and queues the method so its reply can
-// be matched. Replies arrive in request order.
 func (s *Sender) sendRequest(method, uri, contentType, body string, extra []header) {
 	var b strings.Builder
 	b.WriteString(method)
@@ -256,7 +252,6 @@ func (s *Sender) digestUsername() string {
 	return "AirPlay"
 }
 
-// parseDigestChallenge reads realm and nonce from a WWW-Authenticate value.
 func parseDigestChallenge(wa string) (realm, nonce string) {
 	extract := func(key string) string {
 		k := strings.Index(lowerASCII(wa), key)
@@ -301,9 +296,6 @@ func (s *Sender) handleAP2DigestChallenge(p pendingReq, headers map[string]strin
 	p.replay()
 }
 
-// handleResponse applies a non-pairing reply. Only the URI the request went
-// to decides what the reply means: a POST /feedback arms or disarms the
-// keep-alive, a POST /command is just a command result.
 func (s *Sender) handleResponse(p pendingReq, code int, headers map[string]string, body string) {
 	switch p.method {
 	case "SET_PARAMETER":
@@ -591,8 +583,6 @@ func (s *Sender) onVolumePoll() {
 	s.sendAP2RTSP("GET", "/info", "", nil)
 }
 
-// handleVolumeReply parses a streaming-time /info reply for initialVolume and
-// reports the receiver's own volume when it moved.
 func (s *Sender) handleVolumeReply(body []byte) {
 	s.volQuery = false
 	if s.state != StateStreaming {
@@ -702,8 +692,6 @@ func (s *Sender) readyToStream() {
 	s.awaitingStart = true
 }
 
-// maybeBegin starts playback exactly once, at the shared epoch, and fails the
-// session if the cohort does not complete in time.
 func (s *Sender) maybeBegin() {
 	if !s.awaitingStart {
 		return
@@ -830,8 +818,6 @@ func (s *Sender) SetNowPlaying(title, artist, album string, cover []byte, coverM
 	}
 }
 
-// metadataHeaders is the Session and RTP-Info pair that track metadata,
-// volume, and artwork requests carry.
 func (s *Sender) metadataHeaders() []header {
 	rtpInfo := "seq=" + utoa(uint64(s.seq)) + ";rtptime=" + utoa(uint64(s.rtpTime32()))
 	var hdr []header

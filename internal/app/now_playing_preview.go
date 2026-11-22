@@ -1,8 +1,5 @@
 package app
 
-// The settings page's Now Playing preview: the live session, or a sample
-// card made once per language.
-
 import (
 	"image"
 	"image/color"

@@ -21,7 +21,6 @@ func (t *trackInfo) remember(title, artist, album string, cover []byte, coverMIM
 	t.coverMIME = coverMIME
 }
 
-// replay hands the cached payload to a fresh transport before it starts.
 func (t *trackInfo) replay(tr transport) {
 	if !t.set {
 		return

@@ -132,8 +132,6 @@ func appCaptureSupported() bool {
 	return rc == 0 && info.major >= 10 && info.build >= minAppCaptureBuild
 }
 
-// ---- activation callback object ----
-
 // activationVTbl is IActivateAudioInterfaceCompletionHandler's vtable:
 // QueryInterface, AddRef, Release, ActivateCompleted.
 type activationVTbl struct {

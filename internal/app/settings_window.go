@@ -122,7 +122,6 @@ func (a *App) sidebarItem(c *ui.Context, p palette, page settingsPage, icon *ui.
 		e.Background(p.card)
 		e.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.14))
 	case e.Hovered():
-		// The sidebar's selection fade shares the row's 140 ms transition.
 		e.Background(p.pill)
 	}
 	e.OnClick(func() { a.page = page })
@@ -532,7 +531,6 @@ func (a *App) setAutoUpdate(on bool) {
 	a.saveSettings()
 }
 
-// rather than the whole output device.
 func (a *App) processMuteMode() bool {
 	return a.perAppSelected() && capture.ProcessMuteSupported()
 }

@@ -2,9 +2,6 @@ package app
 
 import "saundo/internal/nowplaying"
 
-// The media card's session selection: which Now Playing session the flyout
-// shows, chosen by the pinned AUMID or the system's current one.
-
 func (a *App) hasNowSession(aumid string) bool {
 	if aumid == "" {
 		return false

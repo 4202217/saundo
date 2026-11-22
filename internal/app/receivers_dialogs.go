@@ -11,11 +11,6 @@ import (
 	"saundo/internal/receivers"
 )
 
-// The receiver dialogs over the settings window: add/edit share one shell,
-// the password and remove dialogs carry their own. All follow the unified
-// dialog shape — icon head, body fields, a reserved error row, and the
-// 34-DIP footer buttons.
-
 // beginEditReceiver fills the draft from a manual row and opens the edit
 // dialog.
 func (a *App) beginEditReceiver(v receivers.View) {
@@ -421,7 +416,7 @@ func (a *App) receiverRemoveDialog(c *ui.Context, p palette) {
 				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
 				primaryDangerButton(c, p, locales.ReceiverRemoveConfirm(), func() {
 					delete(a.receiverOpen, key)
-					delete(a.mutedVolume, key)
+					delete(a.preMuteVolume, key)
 					a.eng.RemoveReceiver(key)
 					a.closeReceiverDialog()
 				})
@@ -773,7 +768,7 @@ func (a *App) receiverComboUnlinkDialog(c *ui.Context, p palette) {
 				quietButton(c, p, locales.ActionCancel(), func() { a.closeReceiverDialog() })
 				primaryDangerButton(c, p, locales.ComboUnlink(), func() {
 					delete(a.receiverOpen, key)
-					delete(a.mutedVolume, key)
+					delete(a.preMuteVolume, key)
 					a.eng.UnlinkCombo(key)
 					a.closeReceiverDialog()
 				})

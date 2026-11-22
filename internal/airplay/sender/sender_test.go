@@ -506,9 +506,6 @@ func (readyClock) Timeline(ns uint64) (uint64, uint64, bool) {
 }
 func (readyClock) Activate() {}
 
-// TestPTPWaitToleratesSlowClock keeps the session alive through the extended
-// PTP window and fails with the firewall hint only after it expires.
-// TestRefusesASessionToThisHost pins the socket-level guard: when the
 // connected socket's local and peer addresses match, the target is this
 // host, so the sender stops before sending a pairing request.
 func TestRefusesASessionToThisHost(t *testing.T) {
@@ -530,6 +527,9 @@ func TestRefusesASessionToThisHost(t *testing.T) {
 	}
 }
 
+// TestPTPWaitToleratesSlowClock keeps the session alive through the extended
+// PTP window and fails with the firewall hint only after it expires.
+// TestRefusesASessionToThisHost pins the socket-level guard: when the
 func TestPTPWaitToleratesSlowClock(t *testing.T) {
 	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
 	r.sender.SetPTPClock(neverReadyClock{})

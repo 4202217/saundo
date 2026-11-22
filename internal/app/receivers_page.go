@@ -10,11 +10,6 @@ import (
 	"saundo/internal/receivers"
 )
 
-// The 接收器 settings page: the merged receiver list per mockup-final, with
-// per-receiver auto-connect, visibility, delay, and password, and the add,
-// edit, and password dialogs. The engine owns the registry; the page sends
-// commands and renders the snapshot's receiver views.
-
 type receiverDialogKind uint8
 
 const (
@@ -55,7 +50,6 @@ func (d *receiverDraft) syncAuthLabel() {
 	}
 }
 
-// typeLabelInit names the type select's initial value.
 func (d *receiverDraft) typeLabelInit() {
 	if d.typeLabel == "" {
 		labels := receiverTypeLabels()

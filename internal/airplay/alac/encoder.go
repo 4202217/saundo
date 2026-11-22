@@ -34,16 +34,16 @@ func EncodeUncompressed(samples []int16) ([]byte, error) {
 		return nil, fmt.Errorf("alac: need %d interleaved samples, got %d", SamplesPerPacket, len(samples))
 	}
 	w := bitWriter{buf: make([]byte, 0, FrameBytes)}
-	w.write(1, 3)  // stereo channel-pair element
-	w.write(0, 4)  // unused
-	w.write(0, 12) // unknown
-	w.write(0, 1)  // hasSize = 0
-	w.write(0, 2)  // wastedBytes = 0
-	w.write(1, 1)  // isNotCompressed = 1
+	w.write(1, 3)
+	w.write(0, 4)
+	w.write(0, 12)
+	w.write(0, 1)
+	w.write(0, 2)
+	w.write(1, 1)
 	for _, sample := range samples {
 		w.write(uint32(uint16(sample)), 16)
 	}
-	w.write(7, 3) // END element
+	w.write(7, 3)
 	w.flush()
 	return w.buf, nil
 }

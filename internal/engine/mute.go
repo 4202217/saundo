@@ -245,7 +245,6 @@ func (e *Engine) processMuteWanted() bool {
 		e.tr != nil && e.tr.State() == sender.StateStreaming
 }
 
-// perAppCapture reports whether a process or app selection owns the capture.
 func (e *Engine) perAppCapture() bool {
 	return e.captureProcess != 0 || len(e.captureApps) > 0
 }
@@ -333,7 +332,6 @@ func (e *Engine) setProcessMuteState(state MuteLocalState, errText string) {
 	}
 }
 
-// refreshLocalMute moves the mute when the capture endpoint changes.
 func (e *Engine) refreshLocalMute() {
 	e.restoreLocalMute()
 	e.applyLocalMute()

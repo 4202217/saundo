@@ -83,7 +83,6 @@ func (k *keychainAPI) query(service, account string) ID {
 	return q
 }
 
-// status converts an OSStatus into an error with the system's message.
 func (k *keychainAPI) status(op string, s int32) error {
 	switch s {
 	case 0:

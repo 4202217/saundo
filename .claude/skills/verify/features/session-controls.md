@@ -12,7 +12,7 @@ on the settings 关于 page.
   fixed 34-DIP right column — and each target keeps its mixer while the
   cohort re-establishes (`flyout_devices.go:109-174,218-303`; the mute
   button at `:255-268` takes the target volume to zero and restores
-  `mutedVolume`). It sends `SET_PARAMETER volume` for that member while
+  `preMuteVolume`). It sends `SET_PARAMETER volume` for that member while
   streaming (`target_controls.go:202-212` → `cohort.go:395-401`); 0 mutes
   (the `-144` dBFS sentinel); a remembered device reconnects at its stored
   volume; a first connection adopts the receiver's `initialVolume`. An

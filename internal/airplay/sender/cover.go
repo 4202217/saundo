@@ -90,8 +90,6 @@ func (s *Sender) sendPlaybackState() {
 	s.info("playback state: %d", s.playbackState)
 }
 
-// coverImage is the image that owns the Now Playing cover slot. The ambient
-// light wins while it is on; otherwise the receiver track-info cover wins.
 func (s *Sender) coverImage() ([]byte, string) {
 	if s.lampOn && len(s.lampCover) > 0 {
 		return s.lampCover, s.lampCoverMIME

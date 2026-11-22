@@ -4,9 +4,6 @@ import (
 	"slices"
 )
 
-// Per-target leave: one row's disconnect drops that target from the plan, and
-// the remaining targets rebuild as one cohort.
-
 // DisconnectTarget removes one target from the session. The remaining
 // targets rebuild as one cohort and keep playing; removing the last target
 // ends the session like a full disconnect.
@@ -107,9 +104,6 @@ func (e *Engine) sessionLost(key string, auth bool) {
 				e.notice = SessionNotice{Kind: NoticeMemberLost, DeviceID: key, Name: name, Remaining: len(remaining)}
 			}
 			e.logf("cohort: %s left the session; continuing with %d target(s)", name, len(remaining))
-			// The session continues, so the retry onClosed scheduled must not
-			// fire into the new cohort. The survivor rebuild is automatic: it
-			// must not count as a user connect and light a standby display.
 			e.life.memberLostRebuilt()
 			e.startPlan(plan, true)
 			return

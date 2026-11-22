@@ -415,7 +415,6 @@ func (f *Follower) handle(data []byte, localNs uint64, now time.Time, from *net.
 			f.handleDelayResponse(data, seq, now)
 		}
 	case 11:
-		// Announce only identifies the source above.
 	case 12:
 		f.handleGrants(data, now)
 	case 2:

@@ -432,7 +432,6 @@ func (s *tcpSlot) drain() {
 	}
 }
 
-// takeWriteErr returns the first write error the writer recorded, if any.
 func (s *tcpSlot) takeWriteErr() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

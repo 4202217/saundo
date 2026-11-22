@@ -59,8 +59,6 @@ func (b *Buffer) Push(samples []int16) int {
 	n := uint64(len(samples))
 
 	if n >= capacity {
-		// Keep the newest capacity samples. The read jumps to the first kept
-		// sample; every older sample and the head of this push is discarded.
 		keep := samples[len(samples)-int(capacity):]
 		first := w + n - capacity
 		var dropped int

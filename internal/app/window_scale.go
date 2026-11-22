@@ -1,8 +1,5 @@
 package app
 
-// Window sizing and visibility: the flyout follows its content, and both
-// windows carry the desktop's text scale as a content zoom.
-
 import (
 	"github.com/egoist/mygo"
 )
@@ -30,7 +27,6 @@ func (a *App) fitFlyout() {
 	a.win.SetSize(w, wh)
 }
 
-// textScale is the desktop's text scale the windows are sized for.
 func (a *App) textScale() float32 {
 	if a.scale <= 0 {
 		return 1
@@ -68,8 +64,6 @@ func (a *App) adoptTextScale(scale float32, w *mygo.Window) {
 	})
 }
 
-// resizeSettingsWindow keeps the settings content at its design size as the
-// text scale changes.
 func (a *App) resizeSettingsWindow() {
 	if a.settingsWin == nil {
 		return
@@ -93,8 +87,6 @@ func (a *App) showWindow() {
 	focusAppOnShow()
 }
 
-// toggleWindow is the tray icon's primary click: the panel opens next to the
-// icon, and a second click closes it.
 func (a *App) toggleWindow() {
 	if a.win == nil {
 		return

@@ -83,7 +83,7 @@ func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 			size = 1
 		}
 	default:
-		// Idle keeps showing the last target's shape from the merged rows.
+
 		if dev, ok := e.find(e.selectedID); ok {
 			if dev.IsStereoGroup() {
 				kind = GroupStereo
@@ -128,7 +128,6 @@ func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 	return d
 }
 
-// aggregateDiagnostics folds the members' sender stats into one model.
 // recent is the trailing-window evidence from sessionStability; lifetime
 // counters that it does not window stay in their own fields.
 func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int, groupName string,

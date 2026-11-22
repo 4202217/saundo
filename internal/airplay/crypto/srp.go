@@ -46,15 +46,17 @@ func mustSrpInt(hex string) *big.Int {
 // "Pair-Setup"; the password is the PIN ("3939" for transient HomePod and
 // macOS pairing, the on-screen code for Apple TV).
 type SRPClient struct {
-	password  string
-	a         *big.Int
+	password string
+	// a, x, and S are the SRP secrets, held as bytes so Wipe scrubs them in
+	// place; big.Int exposes no zeroing.
+	a         [32]byte
 	A         *big.Int
 	B         *big.Int
 	salt      []byte
 	k         *big.Int
 	u         *big.Int
-	x         *big.Int
-	S         *big.Int
+	x         [64]byte
+	S         []byte
 	K         []byte
 	M1        []byte
 	processed bool
@@ -69,8 +71,8 @@ func NewSRPClient() *SRPClient {
 // and the public A = g^a mod N.
 func (c *SRPClient) Start(password string) {
 	c.password = password
-	c.a = new(big.Int).SetBytes(RandomBytes(32))
-	c.A = new(big.Int).Exp(srpG, c.a, srpN)
+	copy(c.a[:], RandomBytes(32))
+	c.A = new(big.Int).Exp(srpG, new(big.Int).SetBytes(c.a[:]), srpN)
 }
 
 // PublicA returns A, big-endian and trimmed of leading zero bytes, the wire
@@ -87,7 +89,7 @@ func (c *SRPClient) PublicA() []byte {
 // when B is malformed or B ≡ 0 (mod N), the RFC 5054 safety check against a
 // malicious or garbled server value.
 func (c *SRPClient) Process(salt, serverB []byte) bool {
-	if c.a == nil || len(serverB) > srpNBytes {
+	if c.a == ([32]byte{}) || len(serverB) > srpNBytes {
 		return false
 	}
 	c.salt = append([]byte(nil), salt...)
@@ -105,18 +107,20 @@ func (c *SRPClient) Process(salt, serverB []byte) bool {
 	// x = H(salt | H("Pair-Setup:" password)).
 	inner := sha512.Sum512([]byte("Pair-Setup:" + c.password))
 	saltAndHash := append(append([]byte(nil), salt...), inner[:]...)
-	outer := sha512.Sum512(saltAndHash)
-	c.x = new(big.Int).SetBytes(outer[:])
+	c.x = sha512.Sum512(saltAndHash)
 
 	// S = (B - k*g^x) ^ (a + u*x) mod N, with the base kept positive mod N.
-	gx := new(big.Int).Exp(srpG, c.x, srpN)
+	aInt := new(big.Int).SetBytes(c.a[:])
+	xInt := new(big.Int).SetBytes(c.x[:])
+	gx := new(big.Int).Exp(srpG, xInt, srpN)
 	kgx := new(big.Int).Mod(new(big.Int).Mul(c.k, gx), srpN)
 	base := new(big.Int).Mod(new(big.Int).Sub(B, kgx), srpN)
-	exp := new(big.Int).Add(c.a, new(big.Int).Mul(c.u, c.x))
-	c.S = new(big.Int).Exp(base, exp, srpN)
+	exp := new(big.Int).Add(aInt, new(big.Int).Mul(c.u, xInt))
+	S := new(big.Int).Exp(base, exp, srpN)
 
 	// K = SHA-512(S) at natural byte length.
-	c.K = sum512(srpNaturalBytes(c.S))
+	c.S = srpNaturalBytes(S)
+	c.K = sum512(c.S)
 
 	// M1 = H( H(N) xor H(g) | H("Pair-Setup") | salt | A | B | K ).
 	hN := sum512(srpNaturalBytes(srpN))
@@ -149,9 +153,7 @@ func (c *SRPClient) SessionKey() []byte {
 	return append([]byte(nil), c.K...)
 }
 
-// Wipe clears the session key and the SRP secrets. The big integers cannot be
-// zeroed through their public API, so that part is best-effort; the byte-slice
-// key material is zeroed in place.
+// Wipe clears the session key and the SRP secrets in place.
 func (c *SRPClient) Wipe() {
 	if c == nil {
 		return
@@ -160,12 +162,10 @@ func (c *SRPClient) Wipe() {
 	clear(c.M1)
 	c.K, c.M1 = nil, nil
 	c.password = ""
-	for _, v := range []*big.Int{c.a, c.x, c.S} {
-		if v != nil {
-			v.SetInt64(0)
-		}
-	}
-	c.a, c.x, c.S = nil, nil, nil
+	clear(c.S)
+	c.S = nil
+	clear(c.a[:])
+	clear(c.x[:])
 }
 
 // VerifyServerProof checks the server's proof M2 = H(A | M1 | K).

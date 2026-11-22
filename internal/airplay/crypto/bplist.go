@@ -283,7 +283,6 @@ func (d *bpDecoder) object(ref uint64, depth int) (any, error) {
 	lo := marker & 0x0F
 
 	readCount := func() (uint64, uint64, error) {
-		// Returns (count, new pos).
 		if lo != 0x0F {
 			return uint64(lo), pos, nil
 		}
@@ -368,8 +367,6 @@ func (d *bpDecoder) object(ref uint64, depth int) (any, error) {
 			return nil, err
 		}
 		pos = newPos
-		// An array cannot reference more objects than exist, and its ref
-		// table must fit.
 		if cnt > d.numObjects || pos+cnt*uint64(d.refSize) > uint64(len(d.data)) {
 			return nil, errors.New("crypto: bplist array out of range")
 		}
@@ -389,8 +386,6 @@ func (d *bpDecoder) object(ref uint64, depth int) (any, error) {
 			return nil, err
 		}
 		pos = newPos
-		// Key table plus value table must both fit, and neither can
-		// reference more objects than exist.
 		if cnt > d.numObjects || pos+2*cnt*uint64(d.refSize) > uint64(len(d.data)) {
 			return nil, errors.New("crypto: bplist dict out of range")
 		}

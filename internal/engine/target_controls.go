@@ -73,7 +73,6 @@ func (e *Engine) receiverView(t receivers.Target) receivers.View {
 	return v
 }
 
-// volumeFor is the target's remembered volume, defaulting to the global value
 // the single-receiver build used.
 func (e *Engine) volumeFor(key string) float64 {
 	if v, ok := e.setsValue.VolumeByDevice[key]; ok {
@@ -197,7 +196,6 @@ func (e *Engine) storeTargetVolume(key string, pct float64) {
 	e.markSettingsDirty()
 }
 
-// applyTargetVolume stores a user's volume and sends it to that target's live
 // members.
 func (e *Engine) applyTargetVolume(key string, pct float64) {
 	if key == "" {
@@ -269,13 +267,11 @@ func (e *Engine) applyReceiverChannel(key string) {
 	e.tr.SetTargetChannel(key, e.channelFor(key))
 }
 
-// isGroupKey reports whether the registry key names a stereo pair.
 func (e *Engine) isGroupKey(key string) bool {
 	entry, ok := e.reg.Get(key)
 	return ok && entry.IsGroup()
 }
 
-// isComboKey reports whether the registry key names a stereo combo.
 func (e *Engine) isComboKey(key string) bool {
 	entry, ok := e.reg.Get(key)
 	return ok && entry.IsCombo()
