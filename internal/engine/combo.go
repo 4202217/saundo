@@ -16,8 +16,6 @@ import (
 // combo like a remembered pair, minus the pair's own protocol: no group UUID,
 // no SETPEERS, and a follower clock per member instead of a sender master.
 
-// dispatchCombo runs the combo commands; the lifecycle stays in this file so
-// the engine's event loop names each command without carrying its handlers.
 func (e *Engine) dispatchCombo(cmd command) {
 	switch cmd.kind {
 	case cmdLinkReceivers:
@@ -78,7 +76,6 @@ func (e *Engine) linkable(key string) (receivers.Target, bool) {
 	return t, true
 }
 
-// comboOfflineName names the member a combo cannot reach: the first offline
 // member, else the synthesized row's name for an incomplete combo.
 func comboOfflineName(d device.Device) string {
 	for _, m := range d.Members {
@@ -89,7 +86,6 @@ func comboOfflineName(d device.Device) string {
 	return d.Name
 }
 
-// comboInUse reports whether any combo entry already links key.
 func (e *Engine) comboInUse(key string) bool {
 	for _, entry := range e.reg.Entries {
 		if !entry.IsCombo() {
@@ -104,7 +100,6 @@ func (e *Engine) comboInUse(key string) bool {
 	return false
 }
 
-// comboLinkedElsewhere reports whether a combo other than keep holds key.
 func (e *Engine) comboLinkedElsewhere(key, keep string) bool {
 	for _, entry := range e.reg.Entries {
 		if !entry.IsCombo() || entry.Key == keep {
@@ -238,8 +233,6 @@ func (e *Engine) handleUpdateCombo(key string, ids []string, name string) {
 	e.rebuildTargets()
 }
 
-// handleUnlinkCombo deletes the combo. A live combo ends its session; the
-// members keep playing nothing until the user connects them again.
 func (e *Engine) handleUnlinkCombo(key string) {
 	defer e.publish()
 	entry, ok := e.reg.Get(key)
@@ -304,8 +297,6 @@ func (e *Engine) applyComboSides(key string, entry receivers.Entry) {
 	}
 }
 
-// saveReceivers persists the registry, surfacing a failed write as the save
-// error the receiver commands share.
 func (e *Engine) saveReceivers() {
 	if err := e.recvStore.Save(e.reg); err != nil {
 		e.logf("receivers save: %v", err)
@@ -342,7 +333,6 @@ func (e *Engine) dropFromSession(key string) {
 	e.connectedName = ""
 }
 
-// forgetVolume drops a key's remembered volume.
 func (e *Engine) forgetVolume(key string) {
 	if e.setsValue.VolumeByDevice == nil {
 		return
@@ -353,7 +343,6 @@ func (e *Engine) forgetVolume(key string) {
 	}
 }
 
-// forgetLastTarget drops key from the remembered combination.
 func (e *Engine) forgetLastTarget(key string) {
 	if len(e.setsValue.LastTargets) == 0 {
 		return

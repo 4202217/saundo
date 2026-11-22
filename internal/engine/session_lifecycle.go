@@ -25,8 +25,6 @@ func (e *Engine) onLaunched(ok bool, err string) {
 	if ok {
 		now := e.now()
 		e.sessionStartedAt = now
-		// The dark threshold counts from the last RTP push: a user connect
-		// starts it, an automatic reconnect does not.
 		if e.life.connectAuto {
 			e.darkBaseline = time.Time{}
 		} else {
@@ -84,8 +82,6 @@ func (e *Engine) onLaunched(ok bool, err string) {
 			failure = e.tr.Failure()
 		}
 		if failure.Auth {
-			// A rejected password cannot fix itself by retrying. Keep the rest
-			// of the session and ask for a new password on that receiver.
 			e.passwordRequired = true
 			e.passwordDevice = failure.Name
 			e.passwordDeviceID = failure.DeviceID
@@ -118,9 +114,6 @@ func (e *Engine) onClosed() {
 	e.publish()
 }
 
-// onPreempted records that another sender took over the receiver. A takeover
-// is terminal: it must not schedule the reconnect that would fight the new
-// sender for the device.
 func (e *Engine) onPreempted(reason string) {
 	e.rememberSessionStats()
 	if len(e.plan.targets) > 1 {

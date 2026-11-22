@@ -202,9 +202,7 @@ type ap2State struct {
 	hasInitial  bool
 }
 
-// wipe clears the session keys in place. The big integers inside the SRP
-// client cannot be zeroed through their public API, so that part is
-// best-effort; the byte-slice keys are zeroed.
+// wipe clears the session keys and the SRP client's secrets in place.
 func (a *ap2State) wipe() {
 	if a == nil {
 		return
@@ -235,35 +233,25 @@ type Sender struct {
 	log    Logger
 	clock  func() time.Time
 
-	identity   Identity
-	strictAuth bool
-	// latencyMS is applied to the PTP stream SETUP and the sync packets.
-	latencyMS int
-	// nextLatencySamples carries the SETUP latency to startStreaming.
+	identity           Identity
+	strictAuth         bool
+	latencyMS          int
 	nextLatencySamples int64
 	// receiverLatencyMS is the receiver's own arrival-to-render latency from
 	// its stream SETUP response. 0 means it did not report one.
 	receiverLatencyMS int
-	// Diagnostic counters for the current session. They reset on Start.
-	retransmits uint64
-	lateTicks   uint64
-	underruns   uint64
-	sentBlocks  uint64
-	sendErrors  uint64
-	// ringFed/lastFedFrames gate underrun counting; see sendAudioPacket.
-	ringFed       bool
-	lastFedFrames uint64
-	// encryptErrors counts audio packets dropped because the AP2 cipher
-	// refused the payload. A packet that cannot be encrypted is never sent.
-	encryptErrors uint64
-	// duplicates is the number of extra copies of each audio packet. Zero is
-	// the production default; the lossy-network probe drives it.
-	duplicates int
-	// prefill sends this many extra audio packets at the start epoch, filling
-	// the receiver's buffer before the first network jitter arrives.
-	prefill  int
-	lastSync time.Time
-	wifi     WiFiMetrics
+	retransmits       uint64
+	lateTicks         uint64
+	underruns         uint64
+	sentBlocks        uint64
+	sendErrors        uint64
+	ringFed           bool
+	lastFedFrames     uint64
+	encryptErrors     uint64
+	duplicates        int
+	prefill           int
+	lastSync          time.Time
+	wifi              WiFiMetrics
 
 	rtspConnected bool
 	udpBound      bool
@@ -301,14 +289,13 @@ type Sender struct {
 	controlPort uint16
 	timingPort  uint16
 
-	pacer      timer
-	sync       timer
-	timeout    timer
-	pinTimer   timer
-	feedback   timer
-	volumePoll timer
-	coverRetry timer
-	// coverRetryDone marks the one first-light retry a pair session gets.
+	pacer          timer
+	sync           timer
+	timeout        timer
+	pinTimer       timer
+	feedback       timer
+	volumePoll     timer
+	coverRetry     timer
 	coverRetryDone bool
 
 	// Pacer health: how far the last tick left the stream behind the
@@ -336,26 +323,22 @@ type Sender struct {
 
 	// startGate is the cohort this sender joins. Set before Start; nil means
 	// the sender builds a one-member gate from its own ring.
-	startGate *StartGate
-	// activeGate is the gate for the current session.
+	startGate  *StartGate
 	activeGate *StartGate
 	// streamAccepted makes readyToStream idempotent: a duplicate RECORD or
 	// SETUP reply must not count as a second arrival.
 	streamAccepted bool
-	// awaitingStart is true between arrival and the shared epoch.
-	awaitingStart bool
-	// startWaitUntil bounds how long a ready member waits for its peers.
+	awaitingStart  bool
 	startWaitUntil time.Time
 
-	clockStart  time.Time
-	startTs     uint64
-	framesSent  uint64
-	latency     uint32
-	seq         uint16
-	firstAudio  bool
-	paused      bool
-	pauseWanted bool
-	// channel maps the captured stereo pair onto both outputs.
+	clockStart    time.Time
+	startTs       uint64
+	framesSent    uint64
+	latency       uint32
+	seq           uint16
+	firstAudio    bool
+	paused        bool
+	pauseWanted   bool
 	channel       ChannelMode
 	pendingVolume float64
 
@@ -410,10 +393,9 @@ type Sender struct {
 	pairSetupSessionKey          []byte
 	ap2                          *ap2State
 
-	digestRealm   string
-	digestNonce   string
-	digestRetried bool
-	// passwordRejected marks a handshake the receiver refused for a bad password.
+	digestRealm      string
+	digestNonce      string
+	digestRetried    bool
 	passwordRejected bool
 }
 
@@ -1064,8 +1046,6 @@ func (s *Sender) NextDeadline() time.Time {
 		}
 	}
 	if s.awaitingStart {
-		// Poll while a peer is outstanding; wake exactly at the epoch once the
-		// gate is sealed. The bound in startWaitUntil is checked on each poll.
 		now := s.now()
 		poll := now.Add(50 * time.Millisecond)
 		if s.activeGate != nil && s.activeGate.Sealed() {
@@ -1089,8 +1069,6 @@ func (s *Sender) onHandshakeTimeout() {
 	if s.state == StateConnecting || s.state == StatePairing || s.state == StateHandshake {
 		s.warn("handshake timeout in state %s, stage %d", s.state, s.pairStage)
 		if s.pairStage == pairAP2WaitPTP && s.now().Before(s.ptpWaitUntil) {
-			// The receiver gets a longer window to re-establish PTP after a
-			// long session; keep waiting.
 			s.timeout.arm(s.now())
 			return
 		}

@@ -64,10 +64,8 @@ func (m *silenceMeter) Reset() { m.sink.Reset() }
 
 func (m *silenceMeter) KeepNewest(newest int) int { return m.sink.KeepNewest(newest) }
 
-// LastLoud reports when a block last carried audible samples.
 func (m *silenceMeter) LastLoud() time.Time { return time.Unix(0, m.lastLoud.Load()) }
 
-// SetPaused makes Push drop silent blocks while the audio stream is suspended.
 func (m *silenceMeter) SetPaused(paused bool) { m.paused.Store(paused) }
 
 // startLevelPump feeds the visual level meter off the audio thread. The

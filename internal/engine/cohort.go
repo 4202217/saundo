@@ -18,8 +18,6 @@ import (
 // so pressure reaches the host readers instead of vanishing.
 const cohortEventQueue = 1024
 
-// cohortPrefill is the extra audio packets sent as playback begins, for every
-// member. It matches the single-session and pair values.
 const cohortPrefill = 2
 
 // cohortTransport is the one production transport: one sender per planned
@@ -29,7 +27,7 @@ const cohortPrefill = 2
 type cohortTransport struct {
 	plan      sessionPlan
 	members   []*cohortMember
-	byPeer    map[string]int // member host -> index, for event routing
+	byPeer    map[string]int
 	gate      *sender.StartGate
 	followers *ptp.Followers
 	master    *ptp.Master
@@ -42,7 +40,6 @@ type cohortTransport struct {
 	// lostKey is the target whose member closed first, read on the dead arm so
 	// the rest of the session can continue without it.
 	lostKey string
-	// failure is the member whose handshake failed, when one did.
 	failure LaunchFailure
 
 	onLaunched        func(ok bool, err string)
@@ -161,9 +158,6 @@ func (e *Engine) openCohort(p sessionPlan) (transport, error) {
 	return c, nil
 }
 
-// newCohortGate is the one gate constructor: every planned member must arrive
-// before the epoch seals, and the one trim covers every ring on the capture
-// fanout.
 func newCohortGate(members int, trim ring.Trimmer) *sender.StartGate {
 	return sender.NewStartGate(sender.StartGateConfig{
 		Members: members,
@@ -220,7 +214,6 @@ func (c *cohortTransport) membersName(idx int) func() string {
 	}
 }
 
-// memberTargetKey is the late-bound counterpart for the per-target callbacks.
 func (c *cohortTransport) memberTargetKey(idx int) string {
 	if idx >= 0 && idx < len(c.members) {
 		return c.members[idx].targetKey
@@ -284,8 +277,6 @@ func (c *cohortTransport) Start() {
 	}
 }
 
-// Stop stops every sender, closes every host, then stops the clock role. It is
-// idempotent.
 func (c *cohortTransport) Stop() {
 	c.once.Do(func() {
 		c.stopping = true
@@ -360,7 +351,6 @@ func (c *cohortTransport) Tick() {
 	}
 }
 
-// NextDeadline is the earliest member deadline.
 func (c *cohortTransport) NextDeadline() time.Time {
 	var best time.Time
 	for _, m := range c.members {
@@ -390,8 +380,6 @@ func (c *cohortTransport) SetInputFormat(rate int) {
 	c.gate.SetInputRate(rate)
 }
 
-// SetTargetVolume applies one target's volume to every member, so a stereo
-// pair shares the value and a single receiver gets its own.
 func (c *cohortTransport) SetTargetVolume(key string, pct float64) {
 	for _, m := range c.members {
 		if m.targetKey == key {
@@ -439,7 +427,6 @@ func (c *cohortTransport) SetPaused(paused bool) bool {
 	return applied
 }
 
-// Pushing reports whether any member is still sending RTP.
 func (c *cohortTransport) Pushing() bool {
 	for _, m := range c.members {
 		if m.sender.Pushing() {
@@ -470,7 +457,6 @@ func (c *cohortTransport) WaitingForPin() bool {
 	return false
 }
 
-// InitialVolumePercentFor takes the first report among one target's members.
 func (c *cohortTransport) InitialVolumePercentFor(key string) (float64, bool) {
 	for _, m := range c.members {
 		if m.targetKey != key {
@@ -511,8 +497,6 @@ func (c *cohortTransport) SetPlaybackState(playing bool) {
 	}
 }
 
-// PTP reports the one role family's state: the follower set's aggregate
-// stats, or master readiness over every timed member.
 func (c *cohortTransport) PTP() (active, ready bool, offsetMS float64) {
 	if c.followers != nil {
 		st := c.followers.Stats()
@@ -533,7 +517,6 @@ func (c *cohortTransport) PTP() (active, ready bool, offsetMS float64) {
 	return true, ready, 0
 }
 
-// Stats returns one entry per member in plan order.
 func (c *cohortTransport) Stats() []sender.Stats {
 	stats := make([]sender.Stats, 0, len(c.members))
 	for _, m := range c.members {
@@ -542,7 +525,6 @@ func (c *cohortTransport) Stats() []sender.Stats {
 	return stats
 }
 
-// DroppedEvents is the sum of the members' host queue drops.
 func (c *cohortTransport) DroppedEvents() uint64 {
 	var dropped uint64
 	for _, m := range c.members {
@@ -682,7 +664,6 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 	e.publish()
 }
 
-// connectTargets is the one Connect entry point.
 func (e *Engine) connectTargets(key string) {
 	e.connectResolved(key)
 }
@@ -692,9 +673,6 @@ func (e *Engine) connectTargets(key string) {
 // until validation and the plan both succeed.
 func (e *Engine) connectResolved(key string) {
 	e.autoTried = true
-	// A user action supersedes the previous attempt's state: a stale PIN
-	// dialog, a takeover notice, and the old failure all end here. The key is
-	// the user's explicit choice, so a member loss on it is un-lost.
 	e.life.freshAttempt(key)
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
@@ -720,13 +698,13 @@ func (e *Engine) connectResolved(key string) {
 		return
 	}
 	if err := e.validateTarget(t); err != nil {
-		if errors.Is(err, errAwaitInput) { // password prompt is now set
+		if errors.Is(err, errAwaitInput) {
 			e.publish()
 			return
 		}
 		e.failPlan(err)
 		e.publish()
-		return // the live cohort keeps playing
+		return
 	}
 	if (action == connectAdd || action == connectReplace) && !t.Device.Online && !t.Entry.IsManual() {
 		// Adding a receiver whose row went offline would stop the healthy
@@ -746,21 +724,21 @@ func (e *Engine) connectResolved(key string) {
 			return
 		}
 		if key, err := e.validateWanted(keys); err != nil {
-			if errors.Is(err, errAwaitInput) { // password prompt is now set
+			if errors.Is(err, errAwaitInput) {
 				e.publish()
 				return
 			}
 			e.failPlan(err)
 			e.logf("retry: %s refused: %v", key, err)
 			e.publish()
-			return // the wanted set stays for the next attempt
+			return
 		}
 	}
 	e.clearPasswordPrompt()
 
 	plan, err := e.buildPlan(keys)
 	if err != nil {
-		e.failPlan(err) // clock mix, duplicate member, structural target error
+		e.failPlan(err)
 		e.publish()
 		return
 	}

@@ -48,7 +48,6 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 	}
 }
 
-// hasNowMedia reports whether the media card has a session to draw.
 func (a *App) hasNowMedia() bool {
 	if !a.cfg.ShowNowPlayingPanel {
 		return false
@@ -152,9 +151,6 @@ func (a *App) deviceRow(c *ui.Context, p palette, d device.Device, divider bool)
 			pick.OnClick(func() { a.selectDevice(d.ID) })
 			pick.Children(func() {
 				deviceGlyph(c, p, d, a.deviceSeen(d))
-				// The plain row keeps the live row's rhythm: a 26 name line, a
-				// 2 gap, and a 20 second line. Shrink keeps the combo tag beside
-				// the name, spare width on the right.
 				ui.Column(c).Grow(1).Gap(2).Children(func() {
 					ui.Row(c).Height(26).Gap(6).AlignItems(ui.Center).Children(func() {
 						ui.Text(c, d.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").Shrink(1)
@@ -278,21 +274,21 @@ func (a *App) toggleTargetMute(t engine.TargetControl) {
 		return
 	}
 	if t.Volume > 0 {
-		if a.mutedVolume == nil {
-			a.mutedVolume = map[string]float64{}
+		if a.preMuteVolume == nil {
+			a.preMuteVolume = map[string]float64{}
 		}
-		a.mutedVolume[t.ID] = t.Volume
+		a.preMuteVolume[t.ID] = t.Volume
 		a.eng.SetTargetVolume(t.ID, 0)
 		return
 	}
-	restore, ok := a.mutedVolume[t.ID]
+	restore, ok := a.preMuteVolume[t.ID]
 	if !ok || restore <= 0 {
 		restore = a.cfg.Volume
 		if restore <= 0 {
 			restore = 50
 		}
 	}
-	delete(a.mutedVolume, t.ID)
+	delete(a.preMuteVolume, t.ID)
 	a.eng.SetTargetVolume(t.ID, restore)
 }
 
@@ -368,7 +364,6 @@ func channelIcon(channel string) *ui.SVG {
 	return iconChannelStereo
 }
 
-// nextChannel is the cycle order the channel button walks.
 func nextChannel(channel string) string {
 	switch receivers.ParseChannel(channel) {
 	case receivers.ChannelLeft:

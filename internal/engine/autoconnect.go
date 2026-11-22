@@ -14,8 +14,6 @@ import (
 // comes back cannot hold the whole flagged set hostage.
 const autoPendingWait = 15 * time.Second
 
-// autoPendingWake is the launch wait's deadline for nextWake: past it,
-// maybeAutoConnect drops the silent flagged rows and launches the rest.
 func (e *Engine) autoPendingWake() time.Time {
 	if e.autoPendingAt.IsZero() {
 		return time.Time{}
@@ -23,7 +21,6 @@ func (e *Engine) autoPendingWake() time.Time {
 	return e.autoPendingAt.Add(autoPendingWait)
 }
 
-// autoPendingDue reports whether the launch wait has run out.
 func (e *Engine) autoPendingDue(now time.Time) bool {
 	return !e.autoTried && !e.autoPendingAt.IsZero() && !now.Before(e.autoPendingAt.Add(autoPendingWait))
 }
@@ -56,7 +53,7 @@ func (e *Engine) maybeAutoConnect() bool {
 	if len(pending) > 0 {
 		if e.autoPendingAt.IsZero() {
 			e.autoPendingAt = e.now()
-			return false // a flagged row has no endpoint yet; wait for discovery
+			return false
 		}
 		if e.now().Before(e.autoPendingAt.Add(autoPendingWait)) {
 			return false
@@ -67,8 +64,6 @@ func (e *Engine) maybeAutoConnect() bool {
 			e.logf("auto-connect: dropping %s; no address after %s", key, autoPendingWait)
 		}
 	}
-	// Every flagged row resolved into an attempt, a drop, or a skip; either
-	// way the launch phase ends here.
 	e.autoTried = true
 	e.autoPendingAt = time.Time{}
 	if len(keys) == 0 {
@@ -182,16 +177,13 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 // validates against its resolved view, one plan opens, and the first flagged
 // key is the joiner whose row offers the cancel.
 func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target, joiner string) {
-	// A launch supersedes the previous attempt's state: a stale PIN dialog,
-	// a takeover notice, and the old failure all end here. The flagged keys
-	// are the user's own choices, so a member loss on them is un-lost.
 	e.life.freshAttempt(keys...)
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
 	e.notice = SessionNotice{}
 	for _, key := range keys {
 		if err := e.validateTarget(views[key]); err != nil {
-			if errors.Is(err, errAwaitInput) { // password prompt is now set
+			if errors.Is(err, errAwaitInput) {
 				e.publish()
 				return
 			}
@@ -204,7 +196,7 @@ func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target,
 	e.clearPasswordPrompt()
 	plan, err := e.buildPlan(keys)
 	if err != nil {
-		e.failPlan(err) // clock mix, duplicate member, structural target error
+		e.failPlan(err)
 		e.publish()
 		return
 	}

@@ -25,7 +25,6 @@ type WiFiMetrics struct {
 	Band  WiFiBand
 }
 
-// streamSetup is the part of the stream SETUP response the sender uses.
 type streamSetup struct {
 	DataPort          uint16
 	ControlPort       uint16

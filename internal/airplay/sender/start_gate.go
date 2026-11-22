@@ -118,8 +118,6 @@ func (g *StartGate) Sealed() bool { return g.sealed }
 // Epoch reports the sealed start instant, or the zero time before sealing.
 func (g *StartGate) Epoch() time.Time { return g.epoch }
 
-// cushionSamples converts the time cushion into interleaved stereo samples at
-// the capture rate.
 func (g *StartGate) cushionSamples() int {
 	if g.cushion <= 0 || g.rate <= 0 {
 		return 0

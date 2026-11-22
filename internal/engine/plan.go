@@ -33,15 +33,15 @@ type sessionPlan struct {
 type plannedTarget struct {
 	key       string // registry key: deviceid, "stereo:<tsid>", "combo:<hex>", or "m:<uuid>"
 	name      string // display name; the pair's or combo's name for a stereo target
-	groupName string // AirPlay group name for diagnostics; "" when none
+	groupName string
 	stereo    bool
 	// combo marks a user-created stereo combo: two independent receivers, so
 	// no group UUID or SETPEERS travels to them, each member plays its own
 	// input side, and each member times against its own grandmaster instead
 	// of the sender.
 	combo bool
-	ptp   bool // this target's receivers need a sender-side PTP clock
-	first int  // window into sessionPlan.members
+	ptp   bool
+	first int
 	count int
 	// volume is the target's own volume in percent. volumeSet false means the
 	// user never set one, so the receiver's reported initial volume is adopted
@@ -64,9 +64,9 @@ type plannedMember struct {
 	targetKey  string
 	device     device.Device
 	auth       memberAuth
-	latencyMS  int    // Engine.latencyFor(key) at plan build
-	duplicates int    // receivers.DuplicatesFor(owning entry)
-	groupUUID  string // pair tsid sent as groupUUID; "" for a standalone receiver
+	latencyMS  int // Engine.latencyFor(key) at plan build
+	duplicates int
+	groupUUID  string
 	volume     float64
 	volumeSet  bool
 	channel    sender.ChannelMode
@@ -99,7 +99,7 @@ type memberAuth struct {
 // value is "every member uses NTP".
 type clockPlan struct {
 	role          ptpRole
-	followerHosts []string // ptpFollowers: one host per standalone PTP receiver
+	followerHosts []string
 	masterPeers   []string // ptpMaster: one host per timed pair member
 }
 
@@ -126,7 +126,6 @@ var errAwaitInput = errors.New("awaiting receiver input")
 
 func (p sessionPlan) live() bool { return len(p.targets) > 0 }
 
-// target returns the plan's target for a key.
 func (p sessionPlan) target(key string) (plannedTarget, bool) {
 	for _, t := range p.targets {
 		if t.key == key {
@@ -201,7 +200,6 @@ func (p sessionPlan) connectedName() string {
 	return strings.Join(names, " + ")
 }
 
-// targetMembers returns one target's window into the flat member list.
 func (p sessionPlan) targetMembers(i int) []plannedMember {
 	t := p.targets[i]
 	return p.members[t.first : t.first+t.count]
@@ -215,13 +213,13 @@ func (e *Engine) buildPlan(keys []string) (sessionPlan, error) {
 	p := sessionPlan{}
 	// seen rejects the same receiver entering twice under two keys (a single
 	// row plus a pair that contains it): one host cannot run two streams.
-	seen := map[string]string{} // member device ID or host:port -> target key
+	seen := map[string]string{}
 	for _, key := range keys {
 		t, ok := e.target(key)
 		if !ok {
 			return sessionPlan{}, &planError{key: ErrDeviceMissing}
 		}
-		t.Device = e.pinGroupMembers(t.Device) // paired endpoints win
+		t.Device = e.pinGroupMembers(t.Device)
 		target, members, err := e.planTarget(t, len(p.members), seen)
 		if err != nil {
 			return sessionPlan{}, err
@@ -401,7 +399,7 @@ func clockPlanFor(p sessionPlan) (clockPlan, error) {
 	)
 	for i, t := range p.targets {
 		if !t.ptp {
-			continue // NTP receiver: needs no role
+			continue
 		}
 		members := p.targetMembers(i)
 		if t.stereo && !t.combo {
@@ -593,7 +591,6 @@ func (e *Engine) validateTarget(t receivers.Target) error {
 	return errAwaitInput
 }
 
-// failPlan maps a plan error to its catalog key.
 func (e *Engine) failPlan(err error) {
 	var pe *planError
 	if errors.As(err, &pe) {

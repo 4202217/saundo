@@ -2,9 +2,6 @@ package app
 
 import "saundo/internal/lamp"
 
-// The flyout's content geometry: the window height for a device count, the
-// media and latency states, the error and credential bars, and the ambient
-// grid. The window's sizing multiplies these by the text scale in
 // window_scale.go.
 
 const (
@@ -47,7 +44,6 @@ const (
 	sessionNoticeHeight = 52
 )
 
-// deviceCardHeight is the height of the device card for n devices.
 func deviceCardHeight(n int) float32 {
 	if n <= 0 {
 		return deviceEmptyHeight

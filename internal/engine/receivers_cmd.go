@@ -169,21 +169,7 @@ func (e *Engine) handleRemoveReceiver(key string) {
 	delete(e.passwords, key)
 	e.forgetVolume(key)
 	e.forgetLastTarget(key)
-	// A combo that linked this receiver loses the member and is unlinked with
-	// it: a one-sided combo is meaningless. The keys collect first — deleting
-	// while ranging shifts the slice under the loop.
-	var unlinked []string
-	for _, other := range e.reg.Entries {
-		if !other.IsCombo() {
-			continue
-		}
-		for _, m := range other.Members {
-			if m.ID == key {
-				unlinked = append(unlinked, other.Key)
-				break
-			}
-		}
-	}
+	unlinked := e.combosContaining(key)
 	for _, comboKey := range unlinked {
 		combo, hadEntry := e.reg.Get(comboKey)
 		e.reg.Delete(comboKey)
@@ -245,4 +231,23 @@ func (e *Engine) isLive(key string) bool {
 		}
 	}
 	return false
+}
+
+// combosContaining names the combos whose members include key, in registry
+// order. Callers delete entries with the result, so the collection completes
+// before any registry mutation.
+func (e *Engine) combosContaining(key string) []string {
+	var out []string
+	for _, other := range e.reg.Entries {
+		if !other.IsCombo() {
+			continue
+		}
+		for _, m := range other.Members {
+			if m.ID == key {
+				out = append(out, other.Key)
+				break
+			}
+		}
+	}
+	return out
 }

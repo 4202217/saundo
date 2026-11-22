@@ -48,8 +48,6 @@ func (s *Sender) beginAuthChain() {
 	}
 }
 
-// resumeHAPCredentials loads stored HAP credentials and jumps straight to
-// pair-verify when they are usable. It reports whether the resume path ran.
 func (s *Sender) resumeHAPCredentials() bool {
 	if s.credsJSON == "" {
 		return false
@@ -71,7 +69,6 @@ func (s *Sender) resumeHAPCredentials() bool {
 	return false
 }
 
-// sendAuthSetup performs the one-shot MFiSAP exchange. Its reply is ignored.
 func (s *Sender) sendAuthSetup() {
 	s.pairStage = pairAuthSetup
 	pub := []byte{

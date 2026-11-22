@@ -59,9 +59,6 @@ func RunningApplications() ([]RunningApp, error) {
 	return out, listErr
 }
 
-// App name resolution for media sessions: LaunchServices maps a bundle
-// identifier to the app, whose bundle carries the localized display name.
-
 var (
 	appNameMu    sync.Mutex
 	appNameCache = map[string]string{}

@@ -13,7 +13,6 @@ import (
 	"saundo/internal/audio/ring"
 )
 
-// Timing and error shapes shared by the per-platform capture loops.
 const (
 	openCheckEvery  = 500 * time.Millisecond
 	retryDelayFirst = 200 * time.Millisecond

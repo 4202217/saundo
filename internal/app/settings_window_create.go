@@ -1,8 +1,5 @@
 package app
 
-// The settings window's creation and visibility. Its view is in
-// settings_window.go.
-
 import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"

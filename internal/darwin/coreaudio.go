@@ -575,8 +575,6 @@ func ensureImageIO() error {
 	return imageIOErr
 }
 
-// pngThumbnail re-encodes image bytes (any format ImageIO reads) as a PNG
-// thumbnail of at most maxPixel pixels on the larger side.
 func pngThumbnail(data []byte) []byte {
 	const maxPixelSize = 128
 	if err := ensureImageIO(); err != nil || len(data) == 0 {

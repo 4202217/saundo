@@ -11,10 +11,6 @@ import (
 	"saundo/internal/receivers"
 )
 
-// The stereo combo's surfaces on the receivers page: the created combo's card
-// row, its channel layout map, and the dashed create entry. The create and
-// unlink dialogs live in receivers_dialogs.go.
-
 // receiverPairAddRow is the dotted create-combo affordance: the empty
 // section's rows are absent, so this row stands in for them.
 func (a *App) receiverPairAddRow(c *ui.Context, p palette) {

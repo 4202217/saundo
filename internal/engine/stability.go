@@ -137,7 +137,6 @@ func (e *Engine) statsDue(now time.Time) bool {
 	return true
 }
 
-// statsWake is the diagnostics publish deadline, or zero while nothing
 // streams.
 func (e *Engine) statsWake() time.Time {
 	if e.tr == nil || e.tr.State() != sender.StateStreaming {

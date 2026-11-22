@@ -1,9 +1,5 @@
 package app
 
-// The tray flyout window: creation and lifecycle bindings. macOS needs the
-// rounded corners set explicitly; on Windows 11 the system rounds the flyout
-// itself.
-
 import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"

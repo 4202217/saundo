@@ -41,7 +41,6 @@ const (
 	airplayService = "_airplay._tcp"
 )
 
-// mdnsQuery is the query entry point, swappable in tests.
 var mdnsQuery = mdns.Query
 
 // Service continuously browses both AirPlay service types.
@@ -61,8 +60,6 @@ type Service struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 
-	// Unicast fallback. The neighbors lookup and the query are injected so
-	// tests can supply a loopback DNS server and a fixed address list.
 	neighbors      func() ([]string, error)
 	unicastLookup  unicastLookupFunc
 	unicastPort    int

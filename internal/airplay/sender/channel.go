@@ -43,8 +43,6 @@ func (s *Sender) SetChannel(mode ChannelMode) { s.channel = mode }
 // Channel reports the current mapping.
 func (s *Sender) Channel() ChannelMode { return s.channel }
 
-// applyChannel copies one input channel into both output slots. Stereo is a
-// passthrough; a left or right preference makes the packet mono on that side.
 func applyChannel(dst []int16, frames int, mode ChannelMode) {
 	if mode == ChannelStereo {
 		return

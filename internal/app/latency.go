@@ -129,8 +129,6 @@ func (a *App) latencyDisplay() string {
 	return settings.LatencyText(a.sessionLatencyMS())
 }
 
-// receiverDelay reads the row's stored DSP/DAC delay for the selected
-// receiver.
 func (a *App) receiverDelay(key string) (int, bool) {
 	for _, v := range a.snap.Receivers {
 		if v.Key == key {

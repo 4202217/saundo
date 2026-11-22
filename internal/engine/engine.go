@@ -116,7 +116,6 @@ type captureInfo struct {
 	err  error
 }
 
-// captureSource is the part of a running capture the engine touches.
 type captureSource interface {
 	Stop()
 	Stats() capture.Stats
@@ -139,7 +138,6 @@ const (
 	audioPausePoll  = 25 * time.Millisecond
 )
 
-// idlePhase is the session's state after sustained digital silence.
 type idlePhase uint8
 
 const (
@@ -153,7 +151,6 @@ const (
 // plenty and avoids a file write on every three-second discovery cycle.
 const lastSeenWriteEvery = time.Hour
 
-// reconnectBackoff is the delay before the nth retry.
 var reconnectBackoff = []time.Duration{
 	time.Second, 2 * time.Second, 5 * time.Second, 10 * time.Second,
 	15 * time.Second, 30 * time.Second,
@@ -185,8 +182,7 @@ type Engine struct {
 	tr             transport
 	// plan is the live or opening cohort; zero when idle. It carries the
 	// session's credentials and is cleared on close.
-	plan sessionPlan
-	// life owns the session's retry-and-wanted-set decisions; see lifecycle.go.
+	plan          sessionPlan
 	life          lifecycle
 	capture       captureSource
 	captureInfo   chan captureInfo
@@ -225,9 +221,8 @@ type Engine struct {
 	mu   sync.Mutex
 	snap Snapshot
 
-	devices    []device.Device
-	selectedID string
-	// activeHost/Port/Members describe the session being opened.
+	devices          []device.Device
+	selectedID       string
 	activeHost       string
 	activePort       uint16
 	activeMembers    []device.Device
@@ -670,7 +665,6 @@ func (e *Engine) run() {
 	}
 }
 
-// nextWake is the earliest timer: a sender deadline or a reconnect retry.
 func (e *Engine) nextWake() time.Time {
 	wake := time.Time{}
 	if e.tr != nil {
@@ -749,8 +743,6 @@ func (e *Engine) idlePhase(now time.Time) idlePhase {
 	return idleSuspended
 }
 
-// darkEligible reports whether the receiver and the settings allow the top
-// display to go dark.
 func (e *Engine) darkEligible() bool {
 	return !e.setsValue.Lamp.Off &&
 		e.setsValue.Standby.Enabled &&
@@ -774,16 +766,10 @@ func (e *Engine) darkBase() time.Time {
 	return base
 }
 
-// standbyAfter is the configured idle threshold.
 func (e *Engine) standbyAfter() time.Duration {
 	return time.Duration(settings.NormalizeStandbyMinutes(e.setsValue.Standby.IdleMinutes)) * time.Minute
 }
 
-// updateIdlePhase runs the silence policy and then the standby transition.
-// The policy stops the pacer after audioPauseAfter of digital silence and
-// resumes it on the first audible block. The standby clock counts from the
-// last RTP push, so it starts when the stream stops rather than when the
-// captured audio became quiet.
 func (e *Engine) updateIdlePhase(now time.Time) {
 	if !e.standbyHoldAt.IsZero() && e.silence.LastLoud().After(e.standbyHoldAt) {
 		e.standbyHoldAt = time.Time{}
@@ -894,7 +880,6 @@ func (e *Engine) closeSession(holdLocalMute bool) {
 	}
 }
 
-// resetIdle clears the per-session idle phase and its bookkeeping.
 func (e *Engine) resetIdle() {
 	e.idle = idleActive
 	e.standbyHoldAt = time.Time{}
@@ -1020,9 +1005,6 @@ func (e *Engine) handleCommand(cmd command) {
 			if e.tr.WaitingForPin() {
 				e.logf("latency apply: %s is waiting for a PIN; session left alone", e.connectedName)
 			} else if missing, offline, ok := e.sessionAddressable(); !ok {
-				// Every member must be addressable: the rebuild opens a new
-				// cohort for the whole set, so one missing or offline target
-				// would fail the launch and take the session down.
 				if missing != "" {
 					e.fail(ErrLatencyDeviceMissing)
 					e.logf("latency apply: device %s not found; session left running", missing)
@@ -1132,8 +1114,6 @@ func (e *Engine) handleCommand(cmd command) {
 	}
 }
 
-// planReconnect schedules the next retry with the backoff schedule. After
-// maxReconnectAttempts retries it gives up and surfaces an error.
 func (e *Engine) planReconnect() {
 	delay, scheduled := e.life.planRetry(e.now())
 	if scheduled {
@@ -1159,9 +1139,6 @@ func (e *Engine) armReconnect() {
 	}
 }
 
-// attemptReconnect retries the wanted target set; keys that no longer resolve
-// are dropped with a log line, and when none resolve it waits for the primary
-// target. It consumes the pending retry time.
 func (e *Engine) attemptReconnect() {
 	if e.life.retryDue(e.tr != nil && e.tr.Active(), e.now()) == retryPushOut {
 		return
@@ -1305,7 +1282,6 @@ func (e *Engine) lampTargetCapable() bool {
 	return device.TopDisplayCapable(d)
 }
 
-// clearPasswordPrompt drops the first-connect password prompt.
 func (e *Engine) clearPasswordPrompt() {
 	e.passwordRequired = false
 	e.passwordDevice = ""
@@ -1313,8 +1289,6 @@ func (e *Engine) clearPasswordPrompt() {
 	e.passwordTargetID = ""
 }
 
-// needsReceiverPassword reports whether the auth path needs the receiver's
-// AirPlay password. HAP PIN pairing asks for a code instead.
 func needsReceiverPassword(a device.Auth) bool {
 	return a == device.AuthHAPPassword || a == device.AuthPassword
 }
@@ -1434,8 +1408,6 @@ func (e *Engine) pinExistingCredentials() {
 	}
 }
 
-// pinGroupMembers applies each member's paired endpoint to a synthesized
-// stereo group before the session uses it.
 func (e *Engine) pinGroupMembers(d device.Device) device.Device {
 	if !d.IsStereoGroup() {
 		return d
@@ -1813,7 +1785,6 @@ func (e *Engine) find(id string) (device.Device, bool) {
 	return device.Device{}, false
 }
 
-// target is the merged row for a key: the wire device plus its entry.
 func (e *Engine) target(id string) (receivers.Target, bool) {
 	for _, t := range receivers.Merge(e.reg, e.discovered, func(k string) bool { return e.passwords[k] }) {
 		if t.Entry.Key == id {
@@ -1823,10 +1794,8 @@ func (e *Engine) target(id string) (receivers.Target, bool) {
 	return receivers.Target{}, false
 }
 
-// hasPassword reports whether a stored receiver password exists.
 func (e *Engine) hasPassword(key string) bool { return e.passwords[key] }
 
-// passwordFor is the stored password for a receiver, "" when absent.
 func (e *Engine) passwordFor(key string) string {
 	if pw := e.creds.LoadPassword(key); pw != "" {
 		return pw
@@ -1910,7 +1879,6 @@ func (e *Engine) scheduleCaptureRetry() {
 	e.logf("capture retry in %s (attempt %d)", delay, e.captureRetryNum)
 }
 
-// retryCapture starts a new open when the backoff elapses.
 func (e *Engine) retryCapture() {
 	e.captureRetryAt = time.Time{}
 	if e.stopping || e.capture != nil || e.captureRunning || e.captureStarting {
@@ -1965,7 +1933,6 @@ func (e *Engine) beginCaptureStart() {
 	}()
 }
 
-// applyCaptureStart adopts a finished capture start.
 func (e *Engine) applyCaptureStart(res captureStart) {
 	e.captureStarting = false
 	if e.captureQueued {
@@ -2069,9 +2036,6 @@ func (e *Engine) logCaptureError(err error) {
 	}
 }
 
-// markSettingsDirty schedules a settings write. The run loop coalesces
-// writes at settingsSaveDebounce so interaction bursts cost one disk write;
-// shutdown flushes whatever is pending.
 func (e *Engine) markSettingsDirty() {
 	if e.settingsDirtyAt.IsZero() {
 		e.settingsDirtyAt = e.now().Add(settingsSaveDebounce)

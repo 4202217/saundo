@@ -62,7 +62,6 @@ func (r *Linear) Resample(dst []int16, pull func([]int16) int) int {
 
 	step := float64(r.inputRate) / float64(RaopRate)
 
-	// Top up the staging buffer from the source, up to the working-set cap.
 	stagedFrames := len(r.in) / 2
 	room := maxStagingFrames - stagedFrames
 	if room > 0 {
