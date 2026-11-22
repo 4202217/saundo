@@ -2506,7 +2506,7 @@ function lampRender(){
   /* --- ambient section --- */
   /* The light lives on the receiver: lamp on but no active session → the pod
      stays dark and the hero halo stays hidden until streaming begins. */
-  var lit = !lamp.off && fly.phase === "streaming" && fly.members.length > 0;
+  var lit = !lamp.off && fly.phase === "streaming" && Object.keys(fly.members).length > 0;
   ambStage.classList.toggle('off', !lit);
   ambPower.setAttribute('aria-checked', String(!lamp.off));
   if(ambCoverBtn) ambCoverBtn.setAttribute('aria-pressed', String(!lamp.off && lamp.cover));
