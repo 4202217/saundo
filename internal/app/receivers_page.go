@@ -161,7 +161,9 @@ func (a *App) receiversPage(c *ui.Context, p palette) {
 	if len(hidden) > 0 {
 		ui.Column(c).Margin(12, 0, 0, 0).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(p.line2).Shrink(0).Children(func() {
 			parts := ui.CollapsibleBase(c.Key("receivers-hidden"), &a.receiverHiddenOpen)
-			trigger := parts.Trigger.Height(28).
+			// AlignSelf keeps the click target the size of the pill below,
+			// so the hover feedback and the touch area cover the same box.
+			trigger := parts.Trigger.Height(28).AlignSelf(ui.Start).
 				AlignItems(ui.Center).Justify(ui.Start).Cursor(ui.CursorPointer).
 				Label(locales.ReceiverGroupHidden())
 			trigger.Children(func() {
