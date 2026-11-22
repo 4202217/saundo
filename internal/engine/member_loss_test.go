@@ -26,14 +26,14 @@ func TestMemberDeathKeepsOthersPlaying(t *testing.T) {
 	if h.sessions != before+1 {
 		t.Fatalf("sessions = %d, want one rebuild without %s", h.sessions, b.ID)
 	}
-	if len(h.e.life.wantedKeys) != 1 || h.e.life.wantedKeys[0] != testDeviceID {
-		t.Fatalf("wanted = %v, want only the surviving target", h.e.life.wantedKeys)
+	if got := h.e.Snapshot().ActiveTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("active targets = %v, want only the surviving target", got)
 	}
 	if !h.e.plan.live() || len(h.e.plan.targets) != 1 || h.e.plan.keys()[0] != testDeviceID {
 		t.Fatalf("plan = %v, want only the surviving target", h.e.plan.keys())
 	}
-	if !h.e.life.reconnectAt.IsZero() {
-		t.Fatalf("a reconnect is still scheduled for %v; the session continues", h.e.life.reconnectAt)
+	if h.e.Snapshot().Reconnecting {
+		t.Fatal("the survivor rebuild armed a retry; the session continues")
 	}
 	h.launch()
 	snap := h.e.Snapshot()
@@ -74,8 +74,8 @@ func TestMemberDeathOfTheOnlyTargetKeepsTheRetry(t *testing.T) {
 	if h.e.tr != nil || h.e.plan.live() {
 		t.Fatalf("session survived its only target: tr=%v plan=%v", h.e.tr, h.e.plan.live())
 	}
-	if len(h.e.life.wantedKeys) != 1 || h.e.life.wantedKeys[0] != testDeviceID {
-		t.Fatalf("wanted = %v, want the target kept for the retry", h.e.life.wantedKeys)
+	if got := h.e.Snapshot().ActiveTargets; len(got) != 1 || got[0] != testDeviceID {
+		t.Fatalf("active targets = %v, want the target kept for the retry", got)
 	}
 }
 
