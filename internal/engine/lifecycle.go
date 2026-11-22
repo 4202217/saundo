@@ -72,11 +72,19 @@ type lifecycle struct {
 
 // freshAttempt starts a user-driven connect: a stale PIN dialog, a takeover
 // notice, the old failure, and the previous attempt's ladder all end here.
-func (l *lifecycle) freshAttempt() {
+// The named keys are the user's explicit choice, so a key a member loss
+// dropped is un-lost the moment the user names it again.
+func (l *lifecycle) freshAttempt(keys ...string) {
 	l.userDisconnect = false
 	l.reconnectCount, l.reconnectNum = 0, 0
 	l.connectAuto = false
 	l.takenOver = false
+	for _, k := range keys {
+		if l.lost == nil {
+			l.lost = make(map[string]bool)
+		}
+		delete(l.lost, k)
+	}
 }
 
 // userRebuild clears the user-cancel state for a user-driven rebuild that
@@ -101,13 +109,12 @@ func (l *lifecycle) clearWanted() {
 	l.wantedKeys = nil
 }
 
-// setWanted replaces the requested set. Keys it names are user intent: a key
-// a member loss dropped is un-lost the moment it is wanted again.
+// setWanted replaces the requested set. It never un-loses: the automatic
+// rebuild paths feed it subsets of the wanted set, and a plan that named a
+// lost key again would be exactly the retry that must not happen. Only
+// freshAttempt un-loses, because only the user's own connect may.
 func (l *lifecycle) setWanted(keys []string) {
 	l.wantedKeys = keys
-	for _, k := range keys {
-		delete(l.lost, k)
-	}
 }
 
 // dropLost removes one key from the wanted set and records it lost, so no
@@ -192,6 +199,17 @@ func (l *lifecycle) scheduleRetry(now time.Time) time.Duration {
 	l.reconnectWanted = true
 	l.reconnectAt = now.Add(delay)
 	return delay
+}
+
+// planRetry is the ladder step: the next automatic retry when the budget
+// holds, or give-up once it has run out. It returns the armed delay and
+// whether a retry was scheduled.
+func (l *lifecycle) planRetry(now time.Time) (time.Duration, bool) {
+	if l.reconnectNum >= maxReconnectAttempts {
+		l.giveUpRetry()
+		return 0, false
+	}
+	return l.scheduleRetry(now), true
 }
 
 // giveUpRetry stops the ladder after the budget ran out.
