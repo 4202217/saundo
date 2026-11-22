@@ -159,6 +159,9 @@ func TestWriteFailureIsReportedAsSendFailed(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+	if err := s.send([]byte("y")); err == nil {
+		t.Fatal("send after a recorded write failure returned nil")
+	}
 
 	go s.readLoop()
 	ev := waitEvent(t, h, EventTCPClosed)
@@ -274,5 +277,37 @@ func TestUDPBindSendReceive(t *testing.T) {
 	ev := waitEvent(t, h, EventUDPDatagram)
 	if string(ev.Data) != "pong" || ev.UDP != UDPTiming {
 		t.Fatalf("event %+v", ev)
+	}
+}
+
+// TestTCPDataIsNotDroppedWhenFull pins the byte-stream rule: a TCP data
+// chunk backs pressure into the socket instead of being dropped, because a
+// dropped chunk shifts every later encrypted frame boundary.
+func TestTCPDataIsNotDroppedWhenFull(t *testing.T) {
+	h := NewHost()
+	defer h.Close()
+	for i := 0; i < 256; i++ {
+		h.emit(Event{Kind: EventUDPDatagram})
+	}
+	done := make(chan struct{})
+	go func() {
+		h.emit(Event{Kind: EventTCPData, TCP: TCPControl, Data: []byte("x")})
+		close(done)
+	}()
+	select {
+	case <-done:
+		t.Fatal("a TCP data chunk was dropped on a full channel; want backpressure")
+	case <-time.After(80 * time.Millisecond):
+	}
+	if got := h.Dropped(); got != 0 {
+		t.Fatalf("dropped = %d, want 0", got)
+	}
+	for i := 0; i < 256; i++ {
+		<-h.events
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("the TCP data chunk never arrived after the queue drained")
 	}
 }
