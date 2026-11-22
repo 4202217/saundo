@@ -266,3 +266,42 @@ func TestMissingGoModFailsClosed(t *testing.T) {
 		t.Fatal("a missing go.mod passed; the dependency gate must fail closed")
 	}
 }
+
+func TestDiscardedAssertionOkBanned(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/airplay/crypto/bplist.go": "package crypto\nfunc decode(v any) string {\n\tkey, _ := v.(string)\n\treturn key\n}\n",
+	})
+	err := run(root)
+	if err == nil || !strings.Contains(err.Error(), "discards the ok from a type assertion") {
+		t.Fatalf("discarded ok = %v, want an unknown-not-empty violation", err)
+	}
+}
+
+func TestDiscardedAssertionOkInBothBlanksBanned(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/airplay/crypto/bplist.go": "package crypto\nfunc decode(v any) {\n\t_, _ = v.(string)\n}\n",
+	})
+	err := run(root)
+	if err == nil || !strings.Contains(err.Error(), "discards the ok from a type assertion") {
+		t.Fatalf("both blanks = %v, want an unknown-not-empty violation", err)
+	}
+}
+
+func TestHandledAssertionOkAllowed(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/airplay/crypto/bplist.go": "package crypto\nimport \"fmt\"\nfunc decode(v any) (string, error) {\n\tkey, ok := v.(string)\n\tif !ok {\n\t\treturn \"\", fmt.Errorf(\"key is not a string\")\n\t}\n\treturn key, nil\n}\n",
+		"internal/engine/engine.go":         "package engine\nfunc decode(v any) string {\n\treturn v.(string)\n}\n",
+	})
+	if err := run(root); err != nil {
+		t.Fatalf("handled ok = %v, want no violation", err)
+	}
+}
+
+func TestTypeSwitchAssertionAllowed(t *testing.T) {
+	root := seed(t, map[string]string{
+		"internal/airplay/crypto/bplist.go": "package crypto\nfunc decode(v any) string {\n\tswitch x := v.(type) {\n\tcase string:\n\t\treturn x\n\tdefault:\n\t\treturn \"\"\n\t}\n}\n",
+	})
+	if err := run(root); err != nil {
+		t.Fatalf("type switch = %v, want no violation", err)
+	}
+}
