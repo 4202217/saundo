@@ -402,7 +402,13 @@ func (d *bpDecoder) object(ref uint64, depth int) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			key, _ := keyObj.(string)
+			key, ok := keyObj.(string)
+			if !ok {
+				// A non-string key is malformed input, not an empty key:
+				// collapsing it to "" would let two entries overwrite each
+				// other silently.
+				return nil, fmt.Errorf("crypto: bplist dict key is %T, want string", keyObj)
+			}
 			val, err := d.object(vr, depth+1)
 			if err != nil {
 				return nil, err

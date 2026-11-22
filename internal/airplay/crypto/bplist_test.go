@@ -291,3 +291,26 @@ func mustEncode(t *testing.T, v any) []byte {
 	}
 	return encoded
 }
+
+// TestBPListNonStringKeyIsAnError pins the unknown-not-empty rule for dict
+// keys: a non-string key is malformed input and must fail the decode, not
+// collapse to "" where two entries could overwrite each other.
+func TestBPListNonStringKeyIsAnError(t *testing.T) {
+	// Hand-built dict {42: "Pair"} whose key object is an int.
+	data := []byte{
+		'b', 'p', 'l', 'i', 's', 't', '0', '0',
+		0xD1, 0, 0, 0, 1, 0, 0, 0, 2, // object 0: dict, key ref 1, val ref 2
+		0x10, 0x2A, // object 1: int 42 as the key
+		0x51, 'P', 'a', 'i', 'r', // object 2: "Pair"
+		0, 0, 0, 8, 0, 0, 0, 13, 0, 0, 0, 15, // offset table
+	}
+	trailer := make([]byte, 32)
+	trailer[6], trailer[7] = 4, 4
+	binary.BigEndian.PutUint64(trailer[8:16], 3)
+	binary.BigEndian.PutUint64(trailer[24:32], uint64(len(data)-12))
+	data = append(data, trailer...)
+
+	if _, err := Decode(data); err == nil {
+		t.Fatal("a dict with an integer key decoded; want an error")
+	}
+}
