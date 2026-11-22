@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-21 -->
+<!-- reviewed-through: 2026-11-22 -->
 
 # Verification
 
