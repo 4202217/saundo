@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"slices"
 	"testing"
 
 	"saundo/internal/airplay/sender"
@@ -104,5 +105,25 @@ func TestMemberDeathPublishesANotice(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
 	if got := h.e.Snapshot().Notice; got.Kind != NoticeNone {
 		t.Fatalf("notice survived a user connect: %+v", got)
+	}
+}
+
+// TestMemberLostWithUnbuildableSurvivorsDropsLostKey pins the rebuild-failure
+// branch: when the survivors cannot form a plan, the lost key must still leave
+// the wanted set so no retry fights the receiver that took it over.
+func TestMemberLostWithUnbuildableSurvivorsDropsLostKey(t *testing.T) {
+	h := newHarness(t)
+	b := advertiseBoth(h)
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	h.launch()
+
+	// Add a phantom key so buildPlan(remaining) fails on it.
+	h.e.wantedKeys = append(h.e.wantedKeys, "phantom-key")
+	h.e.sessionLost(b.ID, false)
+
+	if slices.Contains(h.e.wantedKeys, b.ID) {
+		t.Fatalf("lost key %s stayed in wanted = %v", b.ID, h.e.wantedKeys)
 	}
 }

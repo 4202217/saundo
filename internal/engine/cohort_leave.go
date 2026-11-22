@@ -124,6 +124,10 @@ func (e *Engine) sessionLost(key string, auth bool) {
 			return
 		} else {
 			e.logf("cohort: continuing without %s failed: %v", e.nameFor(key), err)
+			// The lost receiver is gone (or taken over) whether or not the
+			// survivors can rebuild. Drop its key so a later retry does not
+			// fight the receiver that owns it now.
+			e.wantedKeys = remaining
 		}
 	}
 	e.closeSession(false)
