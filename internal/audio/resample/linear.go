@@ -82,8 +82,10 @@ func (r *Linear) Resample(dst []int16, pull func([]int16) int) int {
 		frac := r.phase - float64(i0)
 		a := r.in[i0*2:]
 		b := a[2:]
-		dst[produced*2] = int16(float64(a[0]) + float64(b[0]-a[0])*frac)
-		dst[produced*2+1] = int16(float64(a[1]) + float64(b[1]-a[1])*frac)
+		// The difference is taken in float64: an int16 subtraction wraps at
+		// full-scale jumps and drives the interpolation past int16 max.
+		dst[produced*2] = int16(float64(a[0]) + (float64(b[0])-float64(a[0]))*frac)
+		dst[produced*2+1] = int16(float64(a[1]) + (float64(b[1])-float64(a[1]))*frac)
 		r.phase += step
 		produced++
 	}
