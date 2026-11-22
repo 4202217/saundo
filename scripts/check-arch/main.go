@@ -166,6 +166,8 @@ func run(root string) error {
 				checkTimers(pf.rel, fset, pf.file)...)
 			violations = append(violations,
 				checkChannels(pf.rel, fset, pf.file, channelTypes)...)
+			violations = append(violations,
+				checkAssertions(pf.rel, fset, pf.file)...)
 		}
 	}
 	sort.Strings(violations)
@@ -332,6 +334,41 @@ func checkChannels(rel string, fset *token.FileSet, f *ast.File, aliases map[str
 			out = append(out, fmt.Sprintf(
 				"%s makes a channel through the named channel type %s; write make(chan T, n) so the gate can see the capacity",
 				at(rel, fset, call.Pos()), alias.Name))
+		}
+		return true
+	})
+	return out
+}
+
+// checkAssertions fails a type assertion whose ok is discarded: a failed
+// assertion means unknown, not empty, and the empty collapse has bitten the
+// decode paths before — a non-string bplist key collapsed to "" and two
+// entries overwrote each other silently. The panicking single-value form is
+// loud and stays allowed.
+func checkAssertions(rel string, fset *token.FileSet, f *ast.File) []string {
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
+		if !ok || assign.Tok == token.ILLEGAL {
+			return true
+		}
+		// A comma-ok assertion produces two values per right-hand side; the
+		// ok is the second left-hand ident of its pair.
+		if len(assign.Lhs) != 2*len(assign.Rhs) {
+			return true
+		}
+		for i, rhs := range assign.Rhs {
+			assert, ok := rhs.(*ast.TypeAssertExpr)
+			if !ok || assert.Type == nil { // nil Type is a type switch
+				continue
+			}
+			okIdent, ok := assign.Lhs[2*i+1].(*ast.Ident)
+			if !ok || okIdent.Name != "_" {
+				continue
+			}
+			out = append(out, fmt.Sprintf(
+				"%s discards the ok from a type assertion; a failed decode means unknown, not empty — handle ok or return the error",
+				at(rel, fset, assert.Pos())))
 		}
 		return true
 	})
