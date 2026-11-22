@@ -893,6 +893,10 @@ func (e *Engine) shutdown() {
 func (e *Engine) closeSession(holdLocalMute bool) {
 	if !holdLocalMute {
 		e.restoreLocalMute()
+		// The session is over, not rebuilt: end the drop accounting so the
+		// next connection opens a fresh baseline instead of inheriting this
+		// session's drops and pre-stream overflow.
+		e.endDropSession()
 	}
 	e.detachMemberRings()
 	e.resetIdle()
@@ -1666,7 +1670,10 @@ func (e *Engine) rememberDiscovered() {
 			entryChanged = true
 		}
 		featureBits, featureUnknown := d.Features.Persisted()
-		if featureBits != 0 && entry.Features != featureBits {
+		// A known value replaces the cache, zero included: an advertisement
+		// that now reports no feature bits is the receiver's current truth.
+		// An unknown one leaves the cache alone.
+		if !featureUnknown && entry.Features != featureBits {
 			entry.Features = featureBits
 			entryChanged = true
 		}

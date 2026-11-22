@@ -83,7 +83,9 @@ func (l *Log) Printf(format string, args ...any) {
 }
 
 // rotateLocked moves an oversized log to path+".1" and reopens a fresh one.
-// The size is tracked by counter, not by a per-line Stat.
+// The size is tracked by counter, not by a per-line Stat. A failed reopen
+// keeps the failure visible in the memory log instead of silently stopping
+// every later file write.
 func (l *Log) rotateLocked() {
 	if l.written < l.maxBytes {
 		return
@@ -91,7 +93,14 @@ func (l *Log) rotateLocked() {
 	_ = l.file.Close()
 	_ = os.Remove(l.path + ".1")
 	_ = os.Rename(l.path, l.path+".1")
-	l.file, _ = os.OpenFile(l.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(l.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		l.file = nil
+		l.written = 0
+		l.lines = append(l.lines, time.Now().Format("15:04:05.000 ")+"diagnostics: log reopen failed: "+err.Error())
+		return
+	}
+	l.file = file
 	l.written = 0
 }
 
