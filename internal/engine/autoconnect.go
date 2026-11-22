@@ -183,8 +183,9 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 // key is the joiner whose row offers the cancel.
 func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target, joiner string) {
 	// A launch supersedes the previous attempt's state: a stale PIN dialog,
-	// a takeover notice, and the old failure all end here.
-	e.life.freshAttempt()
+	// a takeover notice, and the old failure all end here. The flagged keys
+	// are the user's own choices, so a member loss on them is un-lost.
+	e.life.freshAttempt(keys...)
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
 	e.notice = SessionNotice{}

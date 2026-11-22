@@ -693,8 +693,9 @@ func (e *Engine) connectTargets(key string) {
 func (e *Engine) connectResolved(key string) {
 	e.autoTried = true
 	// A user action supersedes the previous attempt's state: a stale PIN
-	// dialog, a takeover notice, and the old failure all end here.
-	e.life.freshAttempt()
+	// dialog, a takeover notice, and the old failure all end here. The key is
+	// the user's explicit choice, so a member loss on it is un-lost.
+	e.life.freshAttempt(key)
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
 	e.notice = SessionNotice{}
