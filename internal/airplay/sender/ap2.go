@@ -21,7 +21,8 @@ func (s *Sender) sendAP2RTSP(method, uri, contentType string, body []byte) {
 func (s *Sender) sendAP2RTSPAttempt(method, uri, contentType string, body []byte, afterAuth bool) {
 	var b strings.Builder
 	b.WriteString(method + " " + uri + " RTSP/1.0\r\n")
-	b.WriteString("CSeq: " + itoa(s.cseq) + "\r\n")
+	cseq := s.cseq
+	b.WriteString("CSeq: " + itoa(cseq) + "\r\n")
 	s.cseq++
 	b.WriteString("User-Agent: " + clientUserAgent + "\r\n")
 	b.WriteString("DACP-ID: " + s.dacpID + "\r\n")
@@ -52,7 +53,7 @@ func (s *Sender) sendAP2RTSPAttempt(method, uri, contentType string, body []byte
 		b.WriteString("Content-Length: " + itoa(len(body)) + "\r\n")
 	}
 	b.WriteString("\r\n")
-	req := pendingReq{method: method, http: true, authRetry: afterAuth}
+	req := pendingReq{method: method, uri: uri, cseq: cseq, http: true, authRetry: afterAuth}
 	if !afterAuth {
 		req.replay = func() { s.sendAP2RTSPAttempt(method, uri, contentType, body, true) }
 	}

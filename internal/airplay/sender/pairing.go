@@ -90,7 +90,8 @@ func (s *Sender) sendAuthSetup() {
 func (s *Sender) httpPost(uri, contentType string, body []byte) {
 	var b strings.Builder
 	b.WriteString("POST " + uri + " HTTP/1.1\r\n")
-	b.WriteString("CSeq: " + itoa(s.cseq) + "\r\n")
+	cseq := s.cseq
+	b.WriteString("CSeq: " + itoa(cseq) + "\r\n")
 	s.cseq++
 	b.WriteString("User-Agent: " + clientUserAgent + "\r\n")
 	b.WriteString("Connection: keep-alive\r\n")
@@ -107,7 +108,7 @@ func (s *Sender) httpPost(uri, contentType string, body []byte) {
 		b.WriteString("Content-Type: " + contentType + "\r\n")
 	}
 	b.WriteString("Content-Length: " + itoa(len(body)) + "\r\n\r\n")
-	s.pending = append(s.pending, pendingReq{method: "POST", http: true})
+	s.pending = append(s.pending, pendingReq{method: "POST", uri: uri, cseq: cseq, http: true})
 	s.writeRTSP(append([]byte(b.String()), body...))
 	if !s.waitingForPin {
 		s.timeout.arm(s.now())
@@ -531,8 +532,10 @@ func (s *Sender) handlePairVerifyM2(body []byte) {
 		// A stored pairing means the next message carries key material: the
 		// client's signature, and later a receiver password. Never
 		// offer either to a receiver that did not prove it holds the stored
-		// long-term key, whatever the permissive default says.
-		if s.strictAuth || s.credsJSON != "" {
+		// long-term key, whatever the permissive default says. A password
+		// entered this session is key material too: the Digest response it
+		// produces is offline-crackable, so it is fail-closed as well.
+		if s.strictAuth || s.credsJSON != "" || s.digestPassword != "" {
 			s.fail("The device's pair-verify signature did not verify (receiver not authenticated)")
 			return
 		}

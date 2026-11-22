@@ -9,7 +9,7 @@
 internal/engine/engine.go	1792
 internal/app/app.go	975
 internal/app/settings_window.go	885
-internal/airplay/sender/sender.go	881
-internal/airplay/sender/rtsp.go	679
+internal/airplay/sender/sender.go	891
+internal/airplay/sender/rtsp.go	745
 internal/capture/capture_darwin.go	697
 internal/app/flyout.go	447

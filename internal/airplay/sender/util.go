@@ -23,6 +23,36 @@ func toInt(s string) int {
 	return v
 }
 
+// toIntOK parses an integer header value and reports whether it parsed. A
+// header that is present but unreadable is unknown, not zero.
+func toIntOK(s string) (int, bool) {
+	v, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
+// contentLengthOf reads a response's Content-Length. A missing header is a
+// zero-length body; a negative value parses but lies about the frame, and
+// clamping it to zero keeps the stream parseable. A header that is present
+// but unreadable is unknown and reports false, which the frame splitters
+// treat as a broken stream.
+func contentLengthOf(h map[string]string) (int, bool) {
+	raw := headerValue(h, "content-length")
+	if raw == "" {
+		return 0, true
+	}
+	n, ok := toIntOK(raw)
+	if !ok {
+		return 0, false
+	}
+	if n < 0 {
+		return 0, true
+	}
+	return n, true
+}
+
 func toUInt16(s string) uint16 {
 	v, err := strconv.ParseUint(strings.TrimSpace(s), 10, 16)
 	if err != nil {
