@@ -24,7 +24,7 @@ func TestLoopbackOpen(t *testing.T) {
 		t.Fatalf("Endpoints: %v", err)
 	}
 	if len(eps) == 0 {
-		t.Fatal("no active render endpoints")
+		t.Skip("no active render endpoints on this machine")
 	}
 	def, err := DefaultEndpoint()
 	if err != nil {
@@ -87,6 +87,9 @@ func TestLoopbackOpen(t *testing.T) {
 func TestLoopbackReceivesSamples(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
+	}
+	if eps, err := Endpoints(); err != nil || len(eps) == 0 {
+		t.Skip("no active render endpoints on this machine")
 	}
 	r := ring.New(44100 * 4)
 	var mu sync.Mutex

@@ -356,6 +356,10 @@ func (st *stream) pump(s *Source, en uintptr, follow bool) error {
 			if frames > maxPacketFrames {
 				return fmt.Errorf("capture: implausible packet of %d frames", frames)
 			}
+			if s.pushStopped.Load() {
+				_ = comCall(st.capture, 4, uintptr(frames)) // ReleaseBuffer
+				return nil
+			}
 			// DATA_DISCONTINUITY is normal on loopback (render paused, device
 			// reconfigured) and can arrive spuriously, so it is not an error.
 			st.push(data, frames, flags, s.cfg.Ring)

@@ -94,10 +94,15 @@ type Source struct {
 	// muteReq is the per-app tap's desired local-output state. Only the
 	// darwin leaf reads it; other platforms leave it false.
 	muteReq atomic.Bool
+	// pushStopped is set at the top of Stop so a pump already inside its
+	// packet loop stops pushing before a replacement source starts, keeping
+	// the SPSC ring single-producer during a device switch.
+	pushStopped atomic.Bool
 }
 
 // Stop ends capture. It is idempotent and waits for the capture goroutine.
 func (s *Source) Stop() {
+	s.pushStopped.Store(true)
 	s.mu.Lock()
 	stop, done := s.stop, s.done
 	first := !s.stopped
