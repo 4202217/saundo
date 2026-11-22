@@ -467,9 +467,9 @@ func (e *Engine) connectIntent(key string) (connectAction, []string) {
 		}
 		return connectReplace, []string{key}
 	}
-	for _, k := range e.wantedKeys {
+	for _, k := range e.life.wantedKeys {
 		if k == key {
-			return connectRetry, append([]string(nil), e.wantedKeys...)
+			return connectRetry, append([]string(nil), e.life.wantedKeys...)
 		}
 	}
 	return connectStart, []string{key}
@@ -482,8 +482,8 @@ func (e *Engine) activeKeys() []string {
 	if e.tr != nil {
 		return e.plan.keys()
 	}
-	if len(e.wantedKeys) > 0 {
-		return append([]string(nil), e.wantedKeys...)
+	if len(e.life.wantedKeys) > 0 {
+		return append([]string(nil), e.life.wantedKeys...)
 	}
 	return nil
 }

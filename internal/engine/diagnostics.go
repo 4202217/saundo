@@ -121,7 +121,7 @@ func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 	} else {
 		e.stability.reset()
 	}
-	d := aggregateDiagnostics(members, kind, size, name, e.reconnectCount, uptime, e.stability.recent, now)
+	d := aggregateDiagnostics(members, kind, size, name, e.life.reconnectCount, uptime, e.stability.recent, now)
 	if e.tr != nil {
 		d.DroppedEvents = e.tr.DroppedEvents()
 	}

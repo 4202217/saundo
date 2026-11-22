@@ -222,8 +222,8 @@ func TestDisconnectEndsCohort(t *testing.T) {
 	if snap.Active(testDeviceID) || snap.Active(b.ID) {
 		t.Fatalf("rows stayed active after Disconnect: %v", snap.ActiveTargets)
 	}
-	if h.e.plan.live() || len(h.e.wantedKeys) != 0 || h.e.tr != nil {
-		t.Fatalf("engine kept the cohort: plan=%v wanted=%v tr=%v", h.e.plan.live(), h.e.wantedKeys, h.e.tr)
+	if h.e.plan.live() || len(h.e.life.wantedKeys) != 0 || h.e.tr != nil {
+		t.Fatalf("engine kept the cohort: plan=%v wanted=%v tr=%v", h.e.plan.live(), h.e.life.wantedKeys, h.e.tr)
 	}
 	if len(h.e.memberRings) != 0 {
 		t.Fatalf("member rings survived: %d", len(h.e.memberRings))
@@ -281,7 +281,7 @@ func TestRetryPrunesMissingWantedKeys(t *testing.T) {
 	if got := h.e.plan.keys(); len(got) != 1 || got[0] != testDeviceID {
 		t.Fatalf("retry plan = %v, want the surviving target only", got)
 	}
-	if got := h.e.wantedKeys; len(got) != 1 || got[0] != testDeviceID {
+	if got := h.e.life.wantedKeys; len(got) != 1 || got[0] != testDeviceID {
 		t.Fatalf("wanted keys = %v, want the surviving target only", got)
 	}
 	if n := countLogLines(h, "dropping "+b.ID); n != 1 {
@@ -312,7 +312,7 @@ func TestRetryRefusesAGuardViolationAndKeepsTheWantedSet(t *testing.T) {
 	if snap := h.e.Snapshot(); snap.ErrorKey != ErrFairPlay {
 		t.Fatalf("error key = %q, want %q (error %q)", snap.ErrorKey, ErrFairPlay, snap.Error)
 	}
-	if got := h.e.wantedKeys; len(got) != 2 || got[0] != testDeviceID || got[1] != b.ID {
+	if got := h.e.life.wantedKeys; len(got) != 2 || got[0] != testDeviceID || got[1] != b.ID {
 		t.Fatalf("wanted keys = %v, want the requested set intact", got)
 	}
 	if n := countLogLines(h, "retry: "+b.ID+" refused"); n != 1 {
@@ -441,13 +441,13 @@ func TestMemberFailureReconnectsLastCohort(t *testing.T) {
 	h.launch()
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
 	h.launch()
-	if got := h.e.wantedKeys; len(got) != 2 {
+	if got := h.e.life.wantedKeys; len(got) != 2 {
 		t.Fatalf("wanted keys = %v, want both targets", got)
 	}
 
 	h.fake.state = sender.StateIdle
 	h.e.onClosed()
-	if !h.e.reconnectWanted || h.e.reconnectAt.IsZero() {
+	if !h.e.life.reconnectWanted || h.e.life.reconnectAt.IsZero() {
 		t.Fatal("a member close did not arm the session reconnect")
 	}
 
@@ -512,12 +512,12 @@ func TestWantedSetSurvivesAFailedLaunch(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
 	h.fake.launch(false, "refused")
 
-	if got := h.e.wantedKeys; len(got) != 2 || got[0] != testDeviceID || got[1] != b.ID {
+	if got := h.e.life.wantedKeys; len(got) != 2 || got[0] != testDeviceID || got[1] != b.ID {
 		t.Fatalf("wanted keys after a failed launch = %v", got)
 	}
 	h.e.handleCommand(command{kind: cmdDisconnect})
-	if len(h.e.wantedKeys) != 0 {
-		t.Fatalf("disconnect kept the wanted set: %v", h.e.wantedKeys)
+	if len(h.e.life.wantedKeys) != 0 {
+		t.Fatalf("disconnect kept the wanted set: %v", h.e.life.wantedKeys)
 	}
 }
 
@@ -531,11 +531,11 @@ func TestPreemptedKeepsTheWantedSetWithoutRetry(t *testing.T) {
 	h.launch()
 	h.e.onPreempted("receiver closed the session")
 
-	if got := h.e.wantedKeys; len(got) != 1 || got[0] != testDeviceID {
+	if got := h.e.life.wantedKeys; len(got) != 1 || got[0] != testDeviceID {
 		t.Fatalf("wanted keys after a takeover = %v, want the requested target", got)
 	}
-	if h.e.reconnectWanted || !h.e.reconnectAt.IsZero() {
-		t.Fatalf("a takeover armed a retry: wanted=%v at=%v", h.e.reconnectWanted, h.e.reconnectAt)
+	if h.e.life.reconnectWanted || !h.e.life.reconnectAt.IsZero() {
+		t.Fatalf("a takeover armed a retry: wanted=%v at=%v", h.e.life.reconnectWanted, h.e.life.reconnectAt)
 	}
 	// The run loop tears the dead transport down next; the row must stay active
 	// so the flyout still offers 重新连接, not 连接.

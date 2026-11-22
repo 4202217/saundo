@@ -394,7 +394,7 @@ func TestRemovingALiveTargetEndsTheCohort(t *testing.T) {
 	h.launch()
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: key})
 	h.launch()
-	if got := h.e.wantedKeys; len(got) != 2 {
+	if got := h.e.life.wantedKeys; len(got) != 2 {
 		t.Fatalf("wanted keys before the remove = %v, want both targets", got)
 	}
 
@@ -403,8 +403,8 @@ func TestRemovingALiveTargetEndsTheCohort(t *testing.T) {
 	if h.e.tr != nil {
 		t.Fatal("the removed target left a live transport")
 	}
-	if len(h.e.wantedKeys) != 0 {
-		t.Fatalf("wanted keys survived the remove: %v", h.e.wantedKeys)
+	if len(h.e.life.wantedKeys) != 0 {
+		t.Fatalf("wanted keys survived the remove: %v", h.e.life.wantedKeys)
 	}
 	snap := h.e.Snapshot()
 	if snap.Active(key) || snap.Active(testDeviceID) {
@@ -450,8 +450,8 @@ func TestAutoConnectFailureFallsIntoReconnect(t *testing.T) {
 		t.Fatalf("auto-connect did not start: sessions=%d", h.sessions)
 	}
 	h.fake.launch(false, "receiver refused")
-	if !h.e.reconnectWanted || h.e.reconnectAt.IsZero() {
-		t.Fatalf("failure did not schedule a retry: wanted=%v at=%v", h.e.reconnectWanted, h.e.reconnectAt)
+	if !h.e.life.reconnectWanted || h.e.life.reconnectAt.IsZero() {
+		t.Fatalf("failure did not schedule a retry: wanted=%v at=%v", h.e.life.reconnectWanted, h.e.life.reconnectAt)
 	}
 }
 

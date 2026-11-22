@@ -138,11 +138,10 @@ func (e *Engine) handleUpdateReceiver(key string, patch receivers.Patch) {
 				}
 				e.publish()
 			} else {
-				e.userDisconnect = false
 				// A delay edit is a user action even when it lands while an
 				// automatic reconnect is still connecting. Start the standby
 				// clock at the new session so the light shows the restart.
-				e.connectAuto = false
+				e.life.userRebuild()
 				e.rebuildSession()
 			}
 		}
@@ -237,10 +236,10 @@ func (e *Engine) isLive(key string) bool {
 	if e.tr != nil {
 		return e.plan.has(key)
 	}
-	if !e.reconnectWanted {
+	if !e.life.reconnectWanted {
 		return false
 	}
-	for _, k := range e.wantedKeys {
+	for _, k := range e.life.wantedKeys {
 		if k == key {
 			return true
 		}

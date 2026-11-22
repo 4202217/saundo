@@ -139,7 +139,7 @@ func TestFailedAttemptPublishesRetryOrReopening(t *testing.T) {
 	}
 
 	h.e.setsValue.Reconnect = false
-	h.e.reconnectAt = time.Time{}
+	h.e.life.reconnectAt = time.Time{}
 	h.connect()
 	h.fake.launch(false, "no answer")
 	h.e.closeSession(false)

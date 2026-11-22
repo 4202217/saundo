@@ -2,7 +2,6 @@ package engine
 
 import (
 	"slices"
-	"time"
 )
 
 // Per-target leave: one row's disconnect drops that target from the plan, and
@@ -21,18 +20,14 @@ func (e *Engine) DisconnectTarget(id string) {
 func (e *Engine) disconnectAll() {
 	e.notice = SessionNotice{}
 	e.autoTried = true
-	e.userDisconnect = true
-	e.reconnectCount = 0
 	// A cancel or a disconnect ends the attempt, so its failure is stale.
-	// Clear it before reconnectPendingOff publishes the idle snapshot.
+	// Clear it before the cancel publishes the idle snapshot.
 	e.clearError()
-	e.takenOver = false
-	e.reconnectWanted = false
-	e.reconnectPendingOff()
+	e.life.userCancel()
 	if e.tr != nil && e.tr.Active() {
 		e.tr.Stop()
 	}
-	e.wantedKeys = nil
+	e.life.clearWanted()
 	e.closeSession(false)
 	e.connectedName = ""
 	e.pinRequired = false
@@ -54,7 +49,7 @@ func (e *Engine) leaveTarget(key string) {
 	live := e.tr != nil && e.plan.live()
 	keys := e.plan.keys()
 	if !live {
-		keys = e.wantedKeys
+		keys = e.life.wantedKeys
 	}
 	remaining := make([]string, 0, len(keys))
 	for _, k := range keys {
@@ -72,7 +67,7 @@ func (e *Engine) leaveTarget(key string) {
 			e.disconnectAll()
 			return
 		}
-		e.wantedKeys = remaining
+		e.life.wantedKeys = remaining
 		e.publish()
 		return
 	}
@@ -96,13 +91,11 @@ func (e *Engine) leaveTarget(key string) {
 // the wanted set, so no retry drags the survivors down. A session whose only
 // target died keeps the existing close-and-retry path.
 func (e *Engine) sessionLost(key string, auth bool) {
-	if key != "" && len(e.wantedKeys) > 1 && slices.Contains(e.wantedKeys, key) {
-		remaining := make([]string, 0, len(e.wantedKeys)-1)
-		for _, k := range e.wantedKeys {
-			if k != key {
-				remaining = append(remaining, k)
-			}
-		}
+	if key != "" && len(e.life.wantedKeys) > 1 && slices.Contains(e.life.wantedKeys, key) {
+		// The lost receiver is gone (or taken over) whether or not the
+		// survivors can rebuild. dropLost removes its key either way, so no
+		// later retry fights the receiver that owns it now.
+		remaining := e.life.dropLost(key)
 		if plan, err := e.buildPlan(remaining); err == nil {
 			name := e.nameFor(key)
 			if name == "" {
@@ -117,17 +110,11 @@ func (e *Engine) sessionLost(key string, auth bool) {
 			// The session continues, so the retry onClosed scheduled must not
 			// fire into the new cohort. The survivor rebuild is automatic: it
 			// must not count as a user connect and light a standby display.
-			e.reconnectAt = time.Time{}
-			e.reconnectNum = 0
-			e.connectAuto = true
+			e.life.memberLostRebuilt()
 			e.startPlan(plan, true)
 			return
 		} else {
 			e.logf("cohort: continuing without %s failed: %v", e.nameFor(key), err)
-			// The lost receiver is gone (or taken over) whether or not the
-			// survivors can rebuild. Drop its key so a later retry does not
-			// fight the receiver that owns it now.
-			e.wantedKeys = remaining
 		}
 	}
 	e.closeSession(false)

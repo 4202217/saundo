@@ -97,13 +97,13 @@ func (e *Engine) channelFor(key string) sender.ChannelMode {
 // offers no cancel. Without a plan, a wanted key is reopening while a retry
 // waits and failed once the engine stops retrying.
 func (e *Engine) targetState(key string) TargetState {
-	if e.plan.live() && !e.takenOver {
+	if e.plan.live() && !e.life.takenOver {
 		if key == e.plan.joinKey {
 			return TargetJoining
 		}
 		return TargetMember
 	}
-	if e.reconnectWanted && !e.reconnectAt.IsZero() {
+	if e.life.reconnectWanted && !e.life.reconnectAt.IsZero() {
 		return TargetReopening
 	}
 	return TargetFailed

@@ -47,7 +47,7 @@ func (e *Engine) maybeAutoConnect() bool {
 		e.autoPendingAt = time.Time{}
 		return false
 	}
-	if e.tr != nil || e.reconnectWanted {
+	if e.tr != nil || e.life.reconnectWanted {
 		e.autoTried = true
 		e.autoPendingAt = time.Time{}
 		return false
@@ -184,12 +184,9 @@ func (e *Engine) autoConnectSet(flagged []string) (keys []string, views map[stri
 func (e *Engine) connectLaunch(keys []string, views map[string]receivers.Target, joiner string) {
 	// A launch supersedes the previous attempt's state: a stale PIN dialog,
 	// a takeover notice, and the old failure all end here.
-	e.userDisconnect = false
-	e.reconnectCount, e.reconnectNum = 0, 0
-	e.connectAuto = false
+	e.life.freshAttempt()
 	e.pinRequired, e.pinDevice = false, ""
 	e.clearError()
-	e.takenOver = false
 	e.notice = SessionNotice{}
 	for _, key := range keys {
 		if err := e.validateTarget(views[key]); err != nil {

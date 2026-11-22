@@ -27,12 +27,11 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.sessionStartedAt = now
 		// The dark threshold counts from the last RTP push: a user connect
 		// starts it, an automatic reconnect does not.
-		if e.connectAuto {
+		if e.life.connectAuto {
 			e.darkBaseline = time.Time{}
 		} else {
 			e.darkBaseline = now
 		}
-		e.connectAuto = false
 		if e.lastPushAt.IsZero() {
 			e.lastPushAt = now
 		}
@@ -48,10 +47,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 			e.markSettingsDirty()
 		}
 		e.clearError()
-		e.takenOver = false
-		e.reconnectWanted = true
-		e.reconnectNum = 0
-		e.reconnectAt = time.Time{}
+		e.life.launchSucceeded()
 		e.adoptInitialVolumes()
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
@@ -77,7 +73,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 			e.beginDropSession()
 		}
 	} else {
-		e.connectAuto = false
+		e.life.connectAuto = false
 		e.restoreLocalMute()
 		e.connectedName = ""
 		e.receiverLatency = 0
@@ -98,14 +94,12 @@ func (e *Engine) onLaunched(ok bool, err string) {
 				e.passwordTargetID = failure.DeviceID
 			}
 			e.fail(ErrPasswordRejected, failure.Name)
-			e.reconnectAt = time.Time{}
+			e.life.passwordRejected()
 			e.logf("session failed: %s did not accept the password", failure.Name)
 		} else {
 			e.failText(err)
 			e.logf("session failed: %s", err)
-			if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
-				e.planReconnect()
-			}
+			e.armReconnect()
 		}
 	}
 	e.publish()
@@ -120,9 +114,7 @@ func (e *Engine) onClosed() {
 	e.endDropSession()
 	e.pinRequired = false
 	e.clearPasswordPrompt()
-	if e.reconnectShouldRetry() && e.reconnectAt.IsZero() {
-		e.planReconnect()
-	}
+	e.armReconnect()
 	e.publish()
 }
 
@@ -138,10 +130,7 @@ func (e *Engine) onPreempted(reason string) {
 		e.logf("session taken over: %s; the other targets continue", reason)
 		return
 	}
-	e.takenOver = true
-	e.reconnectWanted = false
-	e.reconnectNum = 0
-	e.reconnectAt = time.Time{}
+	e.life.preempted()
 	e.connectedName = ""
 	e.receiverLatency = 0
 	e.sessionStartedAt = time.Time{}

@@ -473,7 +473,7 @@ func TestPreemptionOfOneMemberKeepsTheSession(t *testing.T) {
 	h.e.handleCommand(command{kind: cmdConnect, deviceID: comboSecondDevice().ID})
 	h.launch()
 	h.e.onPreempted("客厅 HomePod：another sender")
-	if h.e.takenOver {
+	if h.e.life.takenOver {
 		t.Fatal("a member takeover marked the whole session taken over")
 	}
 	if snap := h.e.Snapshot(); snap.ConnectedName == "" {

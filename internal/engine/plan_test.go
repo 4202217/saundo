@@ -255,7 +255,7 @@ func TestConnectIntent(t *testing.T) {
 	})
 	t.Run("failed plan key retries every wanted target", func(t *testing.T) {
 		h := newHarness(t)
-		h.e.wantedKeys = []string{testDeviceID, "AA:02"}
+		h.e.life.wantedKeys = []string{testDeviceID, "AA:02"}
 		action, keys := h.e.connectIntent("AA:02")
 		if action != connectRetry || len(keys) != 2 || keys[0] != testDeviceID {
 			t.Fatalf("intent = %v %v, want retry of the whole set", action, keys)
