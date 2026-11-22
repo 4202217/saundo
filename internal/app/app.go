@@ -510,11 +510,13 @@ func (a *App) refreshNowPlaying() {
 		errText = err.Error()
 	}
 	track, ok := nowPlayingTrack(snap)
-	streaming := false
-	if a.nowPlayingStreaming != nil {
-		streaming = a.nowPlayingStreaming()
-	}
 	a.updateUI(func() {
+		// Sample the streaming flag here, on the main thread: a value taken
+		// on the poll goroutine could already be stale when this runs.
+		streaming := false
+		if a.nowPlayingStreaming != nil {
+			streaming = a.nowPlayingStreaming()
+		}
 		a.setNowSnapshot(snap, errText)
 		if streaming && !a.lastStreaming {
 			a.nowSent = ""
@@ -1020,7 +1022,9 @@ func (a *App) submitPin() {
 }
 
 func (a *App) submitPassword() {
-	password := strings.TrimSpace(a.passwordPrompt)
+	// The password is submitted as typed: trimming it would silently change
+	// a secret with leading or trailing spaces.
+	password := a.passwordPrompt
 	id := a.snap.PasswordDeviceID
 	target := a.snap.PasswordTargetID
 	if target == "" {

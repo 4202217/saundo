@@ -114,3 +114,23 @@ func TestSineFrequency(t *testing.T) {
 		t.Fatalf("frequency %.1f Hz, want %.1f", got, freq)
 	}
 }
+
+// TestFullScaleInterpolation pins the int16 wrap bug: a full-scale jump
+// between adjacent frames wraps the int16 subtraction before interpolation,
+// pushing the midpoint past int16 max and back to -32768.
+func TestFullScaleInterpolation(t *testing.T) {
+	r := NewLinear(48000)
+	src := []int16{30000, 30000, -30000, -30000}
+	next := 0
+	pull := func(dst []int16) int {
+		n := copy(dst, src[next:])
+		next += n
+		return n
+	}
+	r.phase = 0.5 // land midway between the two staged frames
+	out := make([]int16, 2)
+	r.Resample(out, pull)
+	if out[0] != 0 || out[1] != 0 {
+		t.Fatalf("midpoint of +/-30000 = %d, want 0", out[0])
+	}
+}

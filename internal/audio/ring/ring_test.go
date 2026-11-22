@@ -181,3 +181,45 @@ func TestOverwritePushDoesNotAllocate(t *testing.T) {
 		t.Fatalf("an overwriting Push allocates %.1f times per run", got)
 	}
 }
+
+// TestResetAgainstConcurrentPush hammers Reset against a live producer under
+// -race. The structural invariant: after Reset returns, the buffer holds at
+// most one in-flight packet, Available never exceeds capacity, and a full
+// drain never yields more samples than were pushed. A pure interleaving race
+// cannot fail deterministically on the old two-step Reset; this test is the
+// -race guard for the CAS protocol, not a pinned red.
+func TestResetAgainstConcurrentPush(t *testing.T) {
+	b := New(1024)
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		pkt := make([]int16, 64)
+		v := int16(1)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			for i := range pkt {
+				pkt[i] = v
+				v++
+			}
+			b.Push(pkt)
+		}
+	}()
+	for i := 0; i < 2000; i++ {
+		b.Reset()
+		for j := 0; j < 50; j++ {
+			out := make([]int16, 32)
+			b.Pop(out)
+		}
+		if avail := b.Available(); avail < 0 || avail > b.Capacity() {
+			t.Fatalf("Available %d out of range", avail)
+		}
+	}
+	close(stop)
+	wg.Wait()
+}

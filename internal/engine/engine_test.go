@@ -212,6 +212,10 @@ func TestUsesPTPSelectsHomePodAndMac(t *testing.T) {
 		{"unknown features on a mac", device.Device{Model: "Mac14,2", Auth: device.AuthHAPPassword}, true},
 		{"unknown features on a non-ptp family", device.Device{Model: "AppleTV6,2", Auth: device.AuthHAPPIN}, false},
 		{"non-ap2 mac", device.Device{Model: "Mac14,2", Features: device.NewFeatures(ptpFeatureBit), Auth: device.AuthNone}, false},
+		// An AP2 receiver of a PTP family needs the follower whatever the
+		// pairing method is: the family picks the clock, not the auth.
+		{"password ap2 mac", device.Device{Model: "Mac14,2", Features: device.NewFeatures(ptpFeatureBit), Auth: device.AuthPassword, AirPlay2: true}, true},
+		{"open ap2 homepod", device.Device{Model: "AudioAccessory5,1", Features: device.NewFeatures(ptpFeatureBit), Auth: device.AuthNone, AirPlay2: true}, true},
 		{"fairplay tv", device.Device{Model: "AppleTV3,2", Auth: device.AuthLegacyPin}, false},
 	}
 	for _, c := range cases {
@@ -1375,5 +1379,60 @@ func TestLastSessionFirstFallsBackToTheLegacyDeviceID(t *testing.T) {
 	cfg.LastTargets = []string{"combo:01", "AA:00"}
 	if got := lastSessionFirst(cfg); got != "combo:01" {
 		t.Fatalf("first = %q, want the remembered combo", got)
+	}
+}
+
+// TestCleanDisconnectRebasesDropAccounting pins the session-end rule: a
+// clean disconnect must end the drop session, so the next connection opens a
+// fresh baseline and the session total starts at zero instead of inheriting
+// the previous session's drops.
+func TestCleanDisconnectRebasesDropAccounting(t *testing.T) {
+	h := newHarness(t)
+	fanout := &ring.Fanout{}
+	fanout.Add(h.e.ring)
+	h.e.captureSink = fanout
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	overflowRing(h.e.ring)
+	h.e.publish()
+	if h.e.Snapshot().DroppedSamples == 0 {
+		t.Fatal("precondition: the streaming ring did not drop")
+	}
+
+	h.e.handleCommand(command{kind: cmdDisconnect})
+	h.connect()
+	h.launch()
+	if got := h.e.Snapshot().DroppedSamples; got != 0 {
+		t.Fatalf("session drops after a clean reconnect = %d, want 0", got)
+	}
+}
+
+// TestRememberDiscoveredUpdatesKnownZeroFeatures pins the cache rule: an
+// advertisement with a parsed zero features value is the receiver's current
+// truth and replaces the cached bits; an unknown value leaves the cache.
+func TestRememberDiscoveredUpdatesKnownZeroFeatures(t *testing.T) {
+	h := newHarness(t)
+	h.e.setDevices([]device.Device{{
+		ID: testDeviceID, Name: "客厅 HomePod", Host: "192.0.2.10", Port: 7000,
+		Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true,
+		Features: device.NewFeatures(1 << 41),
+	}})
+	if entry, ok := h.e.reg.Get(testDeviceID); !ok || entry.Features != 1<<41 {
+		t.Fatalf("cached features = %+v ok=%v, want bit 41", entry, ok)
+	}
+
+	h.e.setDevices([]device.Device{{
+		ID: testDeviceID, Name: "客厅 HomePod", Host: "192.0.2.10", Port: 7000,
+		Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true,
+		Features: device.NewFeatures(0),
+	}})
+	entry, ok := h.e.reg.Get(testDeviceID)
+	if !ok || entry.Features != 0 {
+		t.Fatalf("features after a known-zero advertisement = %d ok=%v, want 0", entry.Features, ok)
+	}
+	if entry.FeaturesUnknown {
+		t.Fatal("a parsed zero must not read as unknown")
 	}
 }

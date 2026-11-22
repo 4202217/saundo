@@ -157,8 +157,18 @@ func (b *Buffer) KeepNewest(newest int) int {
 	}
 }
 
-// Reset empties the buffer and clears the drop counter.
+// Reset empties the buffer and clears the drop counter. It is safe against a
+// concurrent Push: the read index is swapped to a write snapshot by CAS and
+// the swap only sticks when that snapshot is still the committed write, so a
+// Pop after Reset never replays audio a Push committed before the reset.
 func (b *Buffer) Reset() {
-	b.read.Store(b.write.Load())
-	b.dropped.Store(0)
+	for {
+		w := b.write.Load()
+		if b.read.CompareAndSwap(b.read.Load(), w) {
+			if b.write.Load() == w {
+				b.dropped.Store(0)
+				return
+			}
+		}
+	}
 }

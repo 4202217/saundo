@@ -583,3 +583,42 @@ func TestMuteLocalCommandUpdatesStateOnly(t *testing.T) {
 		t.Fatal("the engine's save wrote the app-owned mute preference")
 	}
 }
+
+// TestSwitchingToPerAppCaptureReleasesAnInFlightEndpointMute pins the orphan
+// rule: when the user switches to per-app capture while an endpoint mute is
+// still in flight, the release request goes out unconditionally. Gating it
+// on the applied endpoint id leaves the worker holding a mute nobody will
+// ever release until the next launch.
+func TestSwitchingToPerAppCaptureReleasesAnInFlightEndpointMute(t *testing.T) {
+	h := newHarness(t)
+	h.e.setsValue.MuteLocalOnConnect = true
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	h.e.applyLocalMute()
+	// The endpoint mute is requested but its result has not been applied
+	// yet: endpointID is still empty.
+	if h.e.mute.endpointID != "" {
+		t.Fatal("precondition: the mute result was already applied")
+	}
+
+	// Switch to per-app capture while the endpoint mute is in flight.
+	h.e.processMute = true
+	h.e.setProcessMuted = func(bool) error { return nil }
+	h.e.captureApps = []string{"app"}
+	h.e.applyLocalMute()
+
+	last := muteRequest{}
+	for drained := false; !drained; {
+		select {
+		case req := <-h.e.muteReq:
+			last = req
+		default:
+			drained = true
+		}
+	}
+	if last.on {
+		t.Fatalf("no release request went out after switching to per-app capture (last: %+v)", last)
+	}
+}

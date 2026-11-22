@@ -99,7 +99,10 @@ func unprotect(cipherText []byte) ([]byte, error) {
 	}
 	key, err := masterKey()
 	if err != nil {
-		return nil, err
+		// The key side failing — a locked Keychain, a malformed override —
+		// says nothing about the blob. Classified so readAll keeps the file
+		// and the last known state instead of quarantining the store.
+		return nil, fmt.Errorf("%w: %v", errKeyUnavailable, err)
 	}
 	g, err := gcm(key)
 	if err != nil {

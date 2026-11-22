@@ -265,11 +265,11 @@ func (e *Engine) applyLocalMute() {
 		return
 	}
 	if e.processMute && e.perAppCapture() {
-		if e.mute.endpointID != "" {
-			// Release a previous endpoint mute before the per-app tap owns
-			// the local output.
-			e.requestMute(muteRequest{on: false})
-		}
+		// Release any endpoint mute unconditionally: the result of an
+		// in-flight mute may not have been applied yet, so the applied
+		// endpoint id can be empty while the worker still holds a mute. The
+		// worker no-ops a release when nothing is active.
+		e.requestMute(muteRequest{on: false})
 		if e.setProcessMuted == nil {
 			e.setProcessMuteState(MuteLocalFailed, "process mute is unavailable")
 			return
@@ -298,11 +298,10 @@ func (e *Engine) applyLocalMute() {
 // the next launch can retry.
 func (e *Engine) restoreLocalMute() {
 	if e.processMute && e.perAppCapture() {
-		if e.mute.endpointID != "" {
-			// A previous endpoint mute must be released even though the
-			// capture now owns the local output.
-			e.requestMute(muteRequest{on: false})
-		}
+		// Unconditional, like applyLocalMute: an in-flight endpoint mute
+		// must be released even though the capture now owns the local
+		// output, and the worker no-ops a release when nothing is active.
+		e.requestMute(muteRequest{on: false})
 		if e.setProcessMuted != nil {
 			if err := e.setProcessMuted(false); err != nil {
 				e.logf("process mute restore: %v", err)

@@ -16,6 +16,20 @@ import (
 // eventBodyHook is a test hook for live probes. Production leaves it nil.
 var eventBodyHook func(firstLine, contentType string, body []byte)
 
+// maxPendingRequests bounds the unacknowledged-request queue. A receiver
+// that stops answering must not grow it without bound; a full queue drops
+// the oldest entry and later CSeq matching resyncs.
+const maxPendingRequests = 32
+
+// eventDecryptFailLimit is the consecutive event-channel decrypt failures
+// after which the session fails: a TCP tag failure means the keys or the
+// counter are truly out of sync and will not self-heal.
+const eventDecryptFailLimit = 8
+
+// volumeQueryTimeout is how long an unanswered GET /info volume poll stays
+// in flight before the next poll tick recovers it.
+const volumeQueryTimeout = 3 * time.Second
+
 func (s *Sender) rtspURI() string {
 	return "rtsp://" + s.localIP + "/" + utoa(uint64(s.sessionID))
 }
@@ -29,7 +43,8 @@ func (s *Sender) sendRequest(method, uri, contentType, body string, extra []head
 	b.WriteString(uri)
 	b.WriteString(" RTSP/1.0\r\n")
 	b.WriteString("CSeq: ")
-	b.WriteString(itoa(s.cseq))
+	cseq := s.cseq
+	b.WriteString(itoa(cseq))
 	b.WriteString("\r\n")
 	s.cseq++
 	b.WriteString("User-Agent: " + clientUserAgent + "\r\n")
@@ -63,7 +78,11 @@ func (s *Sender) sendRequest(method, uri, contentType, body string, extra []head
 	if len(body) > 0 {
 		label += " (" + itoa(len(body)) + " B)"
 	}
-	s.pending = append(s.pending, pendingReq{method: method, label: label})
+	s.pending = append(s.pending, pendingReq{method: method, uri: uri, cseq: cseq, label: label})
+	if len(s.pending) > maxPendingRequests {
+		s.warn("dropping the oldest unacknowledged request (%s)", s.pending[0].describe())
+		s.pending = s.pending[1:]
+	}
 	s.writeRTSP([]byte(b.String()))
 	if s.state == StateHandshake || s.state == StatePairing {
 		s.timeout.arm(s.now())
@@ -143,9 +162,12 @@ func (s *Sender) onRTSPData(data []byte) {
 			}
 			headers[trimASCII(lowerASCII(line[:colon]))] = trimASCII(line[colon+1:])
 		}
-		contentLen := toInt(headerValue(headers, "content-length"))
-		if contentLen < 0 {
-			contentLen = 0
+		contentLen, contentLenOK := contentLengthOf(headers)
+		if !contentLenOK {
+			// An unreadable length is a broken stream, not an empty body:
+			// continuing would parse the body as the next response.
+			s.fail("RTSP response carried an unreadable Content-Length")
+			return
 		}
 		// Compare against the remaining bytes before adding: a length near
 		// MaxInt would overflow the frame end and slice with a negative index.
@@ -175,8 +197,12 @@ func (s *Sender) onRTSPData(data []byte) {
 			s.warn("unexpected response (code %d)", code)
 			continue
 		}
-		p := s.pending[0]
-		s.pending = s.pending[1:]
+		p, matched := s.takePending(headerValue(headers, "cseq"))
+		if !matched {
+			s.warn("response CSeq %q matches no pending request (code %d), dropping it",
+				headerValue(headers, "cseq"), code)
+			continue
+		}
 		s.info("reply %q for %s", statusLine, p.describe())
 		switch {
 		case p.http && code == 401 && (p.replay != nil || p.authRetry):
@@ -184,12 +210,41 @@ func (s *Sender) onRTSPData(data []byte) {
 		case p.http:
 			s.onPairingResponse(code, headers, body)
 		default:
-			s.handleResponse(p.method, code, headers, body)
+			s.handleResponse(p, code, headers, body)
 		}
 		if s.state == StateIdle {
 			return
 		}
 	}
+}
+
+// takePending matches a reply against the queued requests by CSeq. A reply
+// without a CSeq header falls back to FIFO order, which is what the pairing
+// POSTs — the only requests that carry no CSeq — rely on. A reply whose CSeq
+// matches nothing keeps the queue intact and is dropped: one misplaced reply
+// must not shift every later reply onto the wrong handler.
+func (s *Sender) takePending(cseqHeader string) (pendingReq, bool) {
+	if cseqHeader == "" {
+		p := s.pending[0]
+		s.pending = s.pending[1:]
+		return p, true
+	}
+	cseq, ok := toIntOK(cseqHeader)
+	if !ok {
+		return pendingReq{}, false
+	}
+	for i := range s.pending {
+		if s.pending[i].cseq != cseq {
+			continue
+		}
+		p := s.pending[i]
+		if i > 0 {
+			s.warn("dropping %d unanswered request(s) older than CSeq %d", i, cseq)
+		}
+		s.pending = s.pending[i+1:]
+		return p, true
+	}
+	return pendingReq{}, false
 }
 
 // digestUsername picks the user the receiver expects in the digest response:
@@ -246,14 +301,23 @@ func (s *Sender) handleAP2DigestChallenge(p pendingReq, headers map[string]strin
 	p.replay()
 }
 
-func (s *Sender) handleResponse(method string, code int, headers map[string]string, body string) {
-	switch method {
+// handleResponse applies a non-pairing reply. Only the URI the request went
+// to decides what the reply means: a POST /feedback arms or disarms the
+// keep-alive, a POST /command is just a command result.
+func (s *Sender) handleResponse(p pendingReq, code int, headers map[string]string, body string) {
+	switch p.method {
 	case "SET_PARAMETER":
 		if code != 200 {
 			s.warn("SET_PARAMETER rejected (%d)", code)
 		}
 		return
 	case "POST":
+		if p.uri != "/feedback" {
+			if code != 200 {
+				s.warn("POST %s rejected (%d)", p.uri, code)
+			}
+			return
+		}
 		if s.events.FeedbackBody != nil {
 			s.events.FeedbackBody([]byte(body))
 		}
@@ -268,7 +332,7 @@ func (s *Sender) handleResponse(method string, code int, headers map[string]stri
 		}
 		return
 	case "FEEDBACK", "TEARDOWN", "GET":
-		if method == "FEEDBACK" && s.events.FeedbackBody != nil {
+		if p.method == "FEEDBACK" && s.events.FeedbackBody != nil {
 			s.events.FeedbackBody([]byte(body))
 		}
 		return
@@ -292,8 +356,8 @@ func (s *Sender) handleResponse(method string, code int, headers map[string]stri
 			return
 		}
 		s.digestRetried = true
-		s.info("digest challenge, re-sending %s with auth", method)
-		switch method {
+		s.info("digest challenge, re-sending %s with auth", p.method)
+		switch p.method {
 		case "OPTIONS":
 			s.sendOptions()
 		case "ANNOUNCE":
@@ -309,15 +373,15 @@ func (s *Sender) handleResponse(method string, code int, headers map[string]stri
 	}
 
 	if code < 200 || code >= 300 {
-		if s.state == StateStreaming && (method == "RECORD" || method == "FLUSH") {
-			s.info("%s not accepted (%d), non-fatal on AP2 realtime", method, code)
+		if s.state == StateStreaming && (p.method == "RECORD" || p.method == "FLUSH") {
+			s.info("%s not accepted (%d), non-fatal on AP2 realtime", p.method, code)
 			return
 		}
-		s.fail(fmtError("Device refused %s (%d)", method, code))
+		s.fail(fmtError("Device refused %s (%d)", p.method, code))
 		return
 	}
 
-	switch method {
+	switch p.method {
 	case "OPTIONS":
 		s.sendAnnounce()
 	case "ANNOUNCE":
@@ -414,11 +478,20 @@ func (s *Sender) onEventData(data []byte) {
 		if err != nil {
 			// The counter already advanced with the receiver's, so the next
 			// coalesced frame is still decryptable. Drop only this frame
-			// instead of the rest of the batch.
-			s.warn("event-channel decrypt failed, dropping frame")
+			// instead of the rest of the batch — but a stream that never
+			// decrypts again is a lost channel, not a hiccup: fail instead
+			// of running mute until the receiver tears down.
+			s.eventDecryptFails++
+			s.warn("event-channel decrypt failed, dropping frame (%d consecutive)",
+				s.eventDecryptFails)
 			s.eventEncBuf = s.eventEncBuf[need:]
+			if s.eventDecryptFails >= eventDecryptFailLimit {
+				s.fail("The event channel lost its decryption sync")
+				return
+			}
 			continue
 		}
+		s.eventDecryptFails = 0
 		s.eventPlain = append(s.eventPlain, plain...)
 		s.eventEncBuf = s.eventEncBuf[need:]
 	}
@@ -432,6 +505,7 @@ func (s *Sender) onEventData(data []byte) {
 			return
 		}
 		contentLen := 0
+		contentLenOK := true
 		cseq := ""
 		contentType := ""
 		for _, line := range strings.Split(string(s.eventPlain[:headEnd]), "\n") {
@@ -442,15 +516,27 @@ func (s *Sender) onEventData(data []byte) {
 			}
 			switch trimASCII(lowerASCII(line[:colon])) {
 			case "content-length":
-				contentLen = toInt(line[colon+1:])
-				if contentLen < 0 {
-					contentLen = 0
+				n, ok := toIntOK(line[colon+1:])
+				if !ok {
+					contentLenOK = false
+				} else {
+					// A negative value parses but lies about the frame;
+					// clamping keeps the stream parseable.
+					if n < 0 {
+						n = 0
+					}
+					contentLen = n
 				}
 			case "cseq":
 				cseq = trimASCII(line[colon+1:])
 			case "content-type":
 				contentType = trimASCII(line[colon+1:])
 			}
+		}
+		if !contentLenOK {
+			// An unreadable length is a broken stream, not an empty body.
+			s.fail("The event channel carried an unreadable Content-Length")
+			return
 		}
 		// Compare against the remaining bytes before adding: a length near
 		// MaxInt would overflow the frame end and slice with a negative index.
@@ -487,12 +573,21 @@ func (s *Sender) onEventData(data []byte) {
 }
 
 // onVolumePoll refreshes the receiver's own volume: AirPlay 2 receivers
-// update `initialVolume` in GET /info as their hardware volume moves.
+// update `initialVolume` in GET /info as their hardware volume moves. A poll
+// whose reply never arrives is recovered after volumeQueryTimeout, so one
+// lost reply cannot stall the poll for the rest of the session.
 func (s *Sender) onVolumePoll() {
-	if s.state != StateStreaming || !s.airplay2 || s.volQuery {
+	if s.state != StateStreaming || !s.airplay2 {
 		return
 	}
+	if s.volQuery {
+		if s.now().Sub(s.volQueryAt) < volumeQueryTimeout {
+			return
+		}
+		s.warn("volume poll timed out, retrying")
+	}
 	s.volQuery = true
+	s.volQueryAt = s.now()
 	s.sendAP2RTSP("GET", "/info", "", nil)
 }
 

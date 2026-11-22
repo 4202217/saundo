@@ -127,6 +127,101 @@ func TestCorruptStoreIsQuarantinedAndRebuilt(t *testing.T) {
 	}
 }
 
+// TestLoadKeepsPreviousOnReadError pins the rule that a failed read is
+// unknown, not empty: a transient I/O failure must not read as "unpaired",
+// which would silently re-pair the receiver.
+func TestLoadKeepsPreviousOnReadError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.dat")
+	s := NewStoreAt(path)
+	if err := s.Save("dev", `{"atvId":"aa"}`); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	// Swap the file for a directory so ReadFile fails with a non-not-exist
+	// error while the store still holds its last good map.
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if got := s.Load("dev"); got != `{"atvId":"aa"}` {
+		t.Fatalf("Load after read error = %q, want the last known credentials", got)
+	}
+}
+
+// TestKeyUnavailableDoesNotQuarantine pins the decrypt-error taxonomy: a key
+// side failure keeps the blob and fails closed; only an authentic decrypt
+// failure moves the file aside.
+func TestKeyUnavailableDoesNotQuarantine(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.dat")
+	s := NewStoreAt(path)
+	if err := s.Save("dev", `{"atvId":"aa"}`); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	orig := unprotectFunc
+	unprotectFunc = func([]byte) ([]byte, error) {
+		return nil, fmt.Errorf("%w: keychain locked", errKeyUnavailable)
+	}
+	defer func() { unprotectFunc = orig }()
+	if got := s.Load("dev"); got != `{"atvId":"aa"}` {
+		t.Fatalf("Load on key unavailable = %q, want the last known credentials", got)
+	}
+	if p := s.TakeQuarantine(); p != "" {
+		t.Fatalf("key unavailable quarantined to %q, want no quarantine", p)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("credentials file was removed: %v", err)
+	}
+	if err := s.Save("dev", `{"atvId":"bb"}`); err == nil {
+		t.Fatal("Save on key unavailable succeeded, want fail closed")
+	}
+}
+
+// TestAuthFailureStillQuarantines pins the other side of the taxonomy.
+func TestAuthFailureStillQuarantines(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.dat")
+	s := NewStoreAt(path)
+	if err := s.Save("dev", `{"atvId":"aa"}`); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	orig := unprotectFunc
+	unprotectFunc = func([]byte) ([]byte, error) {
+		return nil, fmt.Errorf("creds: decrypt: cipher: message authentication failed")
+	}
+	defer func() { unprotectFunc = orig }()
+	_ = s.Load("dev")
+	if p := s.TakeQuarantine(); p == "" {
+		t.Fatal("an authentic decrypt failure did not quarantine the file")
+	}
+}
+
+// TestNullPlaintextDoesNotPanic pins the nil-map guard: a blob that
+// decrypts to the JSON literal null must read as an empty store, and a Save
+// on top of it must not panic.
+func TestNullPlaintextDoesNotPanic(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.dat")
+	s := NewStoreAt(path)
+	// The store needs an existing file so readAll reaches the decrypt step.
+	if err := s.Save("seed", `{"atvId":"00"}`); err != nil {
+		t.Fatalf("seed save: %v", err)
+	}
+	orig := unprotectFunc
+	unprotectFunc = func([]byte) ([]byte, error) {
+		return []byte("null"), nil
+	}
+	defer func() { unprotectFunc = orig }()
+	if got := s.Load("dev"); got != "" {
+		t.Fatalf("Load on null plaintext = %q, want empty", got)
+	}
+	if err := s.Save("dev", `{"atvId":"aa"}`); err != nil {
+		t.Fatalf("save over null plaintext: %v", err)
+	}
+	unprotectFunc = orig
+	if got := s.Load("dev"); got != `{"atvId":"aa"}` {
+		t.Fatalf("Load after save = %q, want the saved credentials", got)
+	}
+}
+
 func TestPasswordNamespaceRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "credentials.dat")
 	s := NewStoreAt(path)

@@ -610,7 +610,10 @@ const ptpFeatureBit = 1 << 41
 // software 27 and macOS AirPlay receivers advertise the PTP bit and silently
 // ignore an NTP-timed stream; both use the same follower.
 func usesPTP(d device.Device) bool {
-	if !d.Auth.IsHAP() {
+	// The family picks the clock, not the pairing method: an AP2 receiver of
+	// a PTP family needs the follower even when it pairs by password or
+	// advertises no HAP bits. An AP1-only receiver stays on NTP.
+	if !d.AirPlay2 && !d.Auth.IsHAP() {
 		return false
 	}
 	if !strings.HasPrefix(d.Model, "AudioAccessory") && !strings.HasPrefix(d.Model, "Mac") {

@@ -319,7 +319,16 @@ type Sender struct {
 	// volQuery marks an in-flight GET /info volume poll, and receiverVol is
 	// the last percentage reported to the host (-1 = nothing yet).
 	volQuery    bool
+	volQueryAt  time.Time
 	receiverVol int
+	// eventDecryptFails counts consecutive event-channel decrypt failures;
+	// a stream that never decrypts again must fail, not run mute forever.
+	eventDecryptFails int
+	// eventChannelUp records that the event channel connected this session.
+	// A clean control close can only classify as a takeover when the
+	// receiver had a working event channel; a session without one is torn
+	// down by the receiver after roughly 30 s, which is a connect failure.
+	eventChannelUp bool
 	// ptpWaitUntil extends the handshake deadline while the sender waits for
 	// the PTP clock: after a long session the receiver needs a longer
 	// re-synchronization window than the 10 s handshake timeout.
@@ -614,6 +623,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.cseq = 0
 	s.rxBuf = s.rxBuf[:0]
 	s.controlEncrypted = false
+	s.eventChannelUp = false
 	s.controlGen, s.eventGen = 0, 0
 	s.ctrlSendCtr, s.ctrlRecvCtr = 0, 0
 	s.rtspEncBuf = s.rtspEncBuf[:0]
@@ -842,6 +852,7 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 	switch ev.Kind {
 	case raopio.EventTCPConnected:
 		if ev.TCP == raopio.TCPEvent {
+			s.eventChannelUp = true
 			if s.state != StateIdle {
 				s.info("event channel open (%s:%d)", ev.Peer.IP, ev.Peer.Port)
 			}
@@ -904,7 +915,14 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 			return
 		}
 		if s.state == StateStreaming {
-			s.preempt("receiver closed the session")
+			if s.eventChannelUp {
+				s.preempt("receiver closed the session")
+			} else {
+				// The event channel never came up this session: a receiver
+				// tears a session without one down after roughly 30 s. That
+				// is a connect failure, not a takeover, and stays retryable.
+				s.fail("The receiver closed the session without a working event channel")
+			}
 			return
 		}
 		wasStarting := s.state != StateStreaming
@@ -1100,15 +1118,16 @@ func (s *Sender) onFeedbackTimer() {
 		s.sendRequest("POST", "/feedback", "", "", nil)
 		return
 	}
+	cseq := s.cseq
 	req := "POST /feedback RTSP/1.0\r\n" +
-		"CSeq: " + itoa(s.cseq) + "\r\n" +
+		"CSeq: " + itoa(cseq) + "\r\n" +
 		"User-Agent: " + clientUserAgent + "\r\n" +
 		"DACP-ID: " + s.dacpID + "\r\n" +
 		"Active-Remote: " + utoa(uint64(s.activeRemote)) + "\r\n" +
 		"Client-Instance: " + s.dacpID + "\r\n" +
 		"Content-Length: 0\r\n\r\n"
 	s.cseq++
-	s.pending = append(s.pending, pendingReq{method: "FEEDBACK"})
+	s.pending = append(s.pending, pendingReq{method: "FEEDBACK", uri: "/feedback", cseq: cseq})
 	s.writeRTSP([]byte(req))
 }
 

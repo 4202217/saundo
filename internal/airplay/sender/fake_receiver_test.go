@@ -335,11 +335,13 @@ type fakeReceiver struct {
 	seen                 []request
 	setParams            []string
 	commands             []string
-	sessionSetup         map[string]any
-	streamSetup          map[string]any
-	setPeersBody         []byte
-	encryptAfterReply    bool
-	failAll              bool
+	// commandStatus overrides the /command reply; zero means 200.
+	commandStatus     int
+	sessionSetup      map[string]any
+	streamSetup       map[string]any
+	setPeersBody      []byte
+	encryptAfterReply bool
+	failAll           bool
 
 	digestChallenge  bool
 	digestNonce      string
@@ -524,7 +526,11 @@ func (f *fakeReceiver) dispatch(req request) {
 		f.reply(req, 200, "", nil)
 	case req.method == "POST" && req.uri == "/command":
 		f.commands = append(f.commands, req.headers["content-type"]+"\x00"+string(req.body))
-		f.reply(req, 200, "", nil)
+		status := f.commandStatus
+		if status == 0 {
+			status = 200
+		}
+		f.reply(req, status, "", nil)
 	case req.method == "POST" && req.uri == "/feedback":
 		f.feedbacks++
 		f.reply(req, 200, "", nil)

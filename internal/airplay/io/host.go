@@ -73,11 +73,23 @@ func terminalEvent(kind EventKind) bool {
 	return false
 }
 
+// mustDeliver reports whether this event must reach the engine even when the
+// event channel is full. A TCP data chunk is part of a byte stream: dropping
+// one shifts every later encrypted frame and reads as an authentication
+// failure, so it backs pressure into the socket instead. UDP datagrams stay
+// droppable — one lost packet is what UDP already means.
+func mustDeliver(ev Event) bool {
+	if terminalEvent(ev.Kind) {
+		return true
+	}
+	return ev.Kind == EventTCPData && (ev.TCP == TCPControl || ev.TCP == TCPEvent)
+}
+
 func (h *Host) emit(ev Event) {
 	if ev.Data != nil {
 		ev.Data = append([]byte(nil), ev.Data...)
 	}
-	if terminalEvent(ev.Kind) {
+	if mustDeliver(ev) {
 		// A dropped connect or close can hide a dead socket. Wait for the
 		// engine to drain it; Close releases the producer if the session ends
 		// first. The cost is backpressure on one socket goroutine, not a
@@ -293,14 +305,23 @@ func (s *tcpSlot) isClosing() bool {
 	return s.aborted || s.draining
 }
 
+// maxTCPQueueBytes bounds the bytes queued for one socket's writer. A peer
+// that stops reading fills the kernel buffer and then this queue; past the
+// bound the slot fails like a write error instead of growing without end.
+const maxTCPQueueBytes = 4 << 20
+
 func (s *tcpSlot) send(data []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.aborted || s.draining || s.conn == nil && s.cond == nil {
-		if s.conn == nil && !s.aborted && !s.draining {
-			// Connect is still in flight; the sender only writes after the
-			// connected event, so this is a programming error worth surfacing.
-			return ErrSlotClosed
+	if s.aborted || s.draining || s.writeErr != nil || s.conn == nil && s.cond == nil {
+		// A slot whose writer already died — recorded in writeErr — accepts
+		// no further sends: returning nil would report bytes the peer will
+		// never see.
+		return ErrSlotClosed
+	}
+	if queuedBytes(s.queue)+int64(len(data)) > maxTCPQueueBytes {
+		if s.writeErr == nil {
+			s.writeErr = errors.New("raopio: send queue exceeded its bound")
 		}
 		return ErrSlotClosed
 	}
@@ -309,6 +330,14 @@ func (s *tcpSlot) send(data []byte) error {
 		s.cond.Signal()
 	}
 	return nil
+}
+
+func queuedBytes(queue [][]byte) int64 {
+	var n int64
+	for _, b := range queue {
+		n += int64(len(b))
+	}
+	return n
 }
 
 func (s *tcpSlot) startWriter() {

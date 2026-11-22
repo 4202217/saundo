@@ -6,8 +6,27 @@ import (
 	"testing"
 	"time"
 
+	"saundo/internal/airplay/crypto"
 	"saundo/internal/airplay/device"
 )
+
+// TestUnprovenReceiverGetsNoPassword pins the fail-closed rule for password
+// pairing: a receiver whose pair-verify signature does not verify must not
+// be offered the RFC 2069 Digest response, whatever the permissive default
+// says, because the response is offline-crackable.
+func TestUnprovenReceiverGetsNoPassword(t *testing.T) {
+	r := newRig(t, modePassword, device.AuthHAPPassword, true, nil)
+	r.sender.SetAuth(device.AuthHAPPassword, true, "AA:BB:CC:DD:EE:FF", "", testReceiverPassword)
+	r.sender.SetStrictReceiverAuth(false)
+	r.rx.verifySignSeed = crypto.RandomBytes(32)
+	r.start()
+	if len(r.launched) == 0 || r.launched[0].ok {
+		t.Fatalf("launch results = %+v, want a failure", r.launched)
+	}
+	if !strings.Contains(r.launched[0].err, "receiver not authenticated") {
+		t.Fatalf("error = %q, want the receiver-not-authenticated message", r.launched[0].err)
+	}
+}
 
 // TestHAPPasswordPairsAndStreams drives the password-protected macOS
 // receiver: HAP pair-setup keyed by the stored receiver password on one
