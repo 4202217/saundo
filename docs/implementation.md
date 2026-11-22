@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-21 -->
+<!-- reviewed-through: 2026-11-22 -->
 
 # Implementation overview
 
@@ -223,7 +223,10 @@ publish. The Wi-Fi object is the stream SETUP response's `wiFiMetrics` (capital 
 to 30 minutes old, and a missing object reads unknown.
 
 A clean control close during a streaming session is a takeover, not a
-retryable failure. `Sender` reports it through `Events.Preempted`;
+retryable failure, but only when the event channel worked this session: a
+receiver whose event port never accepted the connection tears a session
+without one down after roughly 30 s, and that close stays a retryable
+failure. `Sender` reports the takeover through `Events.Preempted`;
 `Engine.onPreempted` sets `Snapshot.TakenOver` and clears the pending
 reconnect, and the session's dead signal makes the engine goroutine run
 `closeSession`, which stops the transport outside the sender callback. A
@@ -380,7 +383,7 @@ All under `%APPDATA%\saundo\` on Windows and `~/Library/Application Support/saun
 - `settings.json` — configuration (`internal/settings`), including the update preferences (automatic checks and downloads, skipped version, last check), the tray animation switch, the language and appearance choices, the Now Playing panel options, the local-output mute, the per-app capture selection (`captureAppIds`, `captureAppNames`), the last session's target combination (`lastTargets`), and the global ambient-light choice (`lamp.off`, `lamp.cover`, `lamp.preset`). The mute and the light default on; `lamp.off` defaults to false, `lamp.cover` to true, and the preset to `dune` (沙丘). An old `lamp.enabled` is inverted into `lamp.off`; an old `preset: "media"`, an empty preset, or an unknown value turns cover mode on and resets the template to `dune`; a valid template keeps cover priority off unless the file also stored `cover: true`. The legacy `origin` value is handled by the same fallback. The legacy `autoConnect` flag and `passwords` map stay decodable but unread: migration seeds the registry's auto-connect entry and moves passwords to the OS secret store. Writes are field-owned: `Store.Update` loads, merges, and saves under one lock; `MergeApp` and `MergeEngine` copy only the fields each side owns; a reflection test requires every field to be classified; and only the two startup saves write the whole file, because they run before the engine exists.
 - `receivers.json` — the receiver registry (`internal/receivers`): one entry per remembered receiver, stereo pair, stereo combo (two member keys in playback order), or manually added receiver, with hidden, auto-connect, delay, the stereo channel preference (`channel`: `stereo`, `left`, or `right`; empty and unknown read as stereo), last address, cached member addresses, feature/auth bits, the target's own last session's retransmit ratio, and sighting-time fields. Written atomically, versioned, and only by the engine goroutine (the startup migration runs before the engine exists). A file that fails to parse, cannot be read, or was written by a newer schema is never overwritten.
 - `credentials.dat` — protected credential JSON keyed by receiver
-  `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM. A file that fails to decrypt is moved to `credentials.dat.corrupt-<UTC time>` and a fresh store is created in its place; the next connect logs the quarantined path and says a receiver may need to be paired again.
+  `deviceid` (`internal/airplay/creds`), holding the HAP long-term keys plus receiver passwords under the `password:` namespace. DPAPI protects it on Windows; on macOS a Keychain-held master key encrypts it with AES-256-GCM. A file that fails to decrypt is moved to `credentials.dat.corrupt-<UTC time>` and a fresh store is created in its place — but only when the blob itself failed authentication: a key-side failure such as a locked Keychain or a malformed master-key override keeps the file and serves the last known state instead of quarantining a store that would decrypt once the key returns. The next connect logs the quarantined path and says a receiver may need to be paired again.
 - `mute-guard.json` — written before the engine mutes the local render
   endpoint and removed after it releases it. The connection mute is temporary
   and never outlives the session; an in-place restart such as a latency change

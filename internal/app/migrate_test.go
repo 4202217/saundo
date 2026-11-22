@@ -80,3 +80,28 @@ func TestMigrateLegacyDataWithoutOldDirectoryIsANoOp(t *testing.T) {
 		t.Fatalf("migration created the new directory without an old one: %v", err)
 	}
 }
+
+// TestMigrateCopyGoesThroughTheTmpFile pins the atomic protocol: the copy
+// lands via tmp+rename, so a tmp path that cannot be written blocks the copy
+// instead of the destination being written directly.
+func TestMigrateCopyGoesThroughTheTmpFile(t *testing.T) {
+	configDir := configDirForTest(t, t.TempDir())
+	oldDir := filepath.Join(configDir, legacyAppDir)
+	newDir := filepath.Join(configDir, "saundo")
+	if err := os.MkdirAll(oldDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(oldDir, "settings.json"), []byte(`{"name":"legacy"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// A directory occupying the tmp path blocks the atomic copy.
+	if err := os.MkdirAll(filepath.Join(newDir, "settings.json.tmp"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	migrateLegacyData()
+
+	if _, err := os.Stat(filepath.Join(newDir, "settings.json")); !os.IsNotExist(err) {
+		t.Fatal("the destination was written directly instead of via tmp+rename")
+	}
+}

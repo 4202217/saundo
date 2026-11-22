@@ -74,6 +74,10 @@ type Store struct {
 	mu            sync.Mutex
 	path          string
 	quarantinedTo string
+	// lastGood is the last successfully decrypted map. A failed read is
+	// unknown, not empty: loads serve it so a transient I/O failure or a
+	// locked Keychain never reads as "unpaired", which would re-pair.
+	lastGood map[string]string
 }
 
 // NewStore returns the per-user credentials store, creating no file yet.
@@ -103,6 +107,16 @@ func (s *Store) TakeQuarantine() string {
 // move aside. Loads fail closed to "", and writes refuse to replace the file,
 // so one bad save cannot destroy the keys it cannot decrypt.
 var ErrCorrupt = errors.New("creds: unreadable credentials file")
+
+// errKeyUnavailable classifies a decrypt error that comes from the key side,
+// not from the blob: a locked or unreadable Keychain, a malformed master-key
+// override. Such an error is transient and says nothing about the stored
+// blob, so the store keeps the file and fails closed instead of quarantining
+// a store that would decrypt fine once the key returns.
+var errKeyUnavailable = errors.New("creds: key unavailable")
+
+// unprotectFunc is the swap point tests use to classify decrypt outcomes.
+var unprotectFunc = unprotect
 
 // Load returns the stored JSON for deviceID, or "".
 func (s *Store) Load(deviceID string) string {
@@ -200,17 +214,32 @@ func (s *Store) readAll() (map[string]string, error) {
 	blob, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			s.lastGood = all
 			return all, nil
 		}
-		return all, fmt.Errorf("creds: read: %w", err)
+		// A failed read is unknown, not empty: keep the last good map so a
+		// transient I/O failure never reads as "unpaired".
+		return s.lastGood, fmt.Errorf("creds: read: %w", err)
 	}
-	plain, err := unprotect(blob)
+	plain, err := unprotectFunc(blob)
 	if err != nil {
+		if errors.Is(err, errKeyUnavailable) {
+			// The key side failed, not the blob: the file stays, loads serve
+			// the last known state, and writes refuse to run.
+			return s.lastGood, err
+		}
 		return all, s.quarantine(fmt.Errorf("%w: %v", ErrCorrupt, err))
 	}
 	if err := json.Unmarshal(plain, &all); err != nil {
 		return all, s.quarantine(fmt.Errorf("%w: %v", ErrCorrupt, err))
 	}
+	if all == nil {
+		// A plaintext of the JSON literal null unmarshals to a nil map
+		// without error; treat it as an empty store so a later write cannot
+		// panic.
+		all = make(map[string]string)
+	}
+	s.lastGood = all
 	return all, nil
 }
 
@@ -239,8 +268,32 @@ func (s *Store) writeAll(all map[string]string) error {
 		return err
 	}
 	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, blob, 0o600); err != nil {
+	if err := writeFileSynced(tmp, blob); err != nil {
 		return err
 	}
-	return os.Rename(tmp, s.path)
+	if err := os.Rename(tmp, s.path); err != nil {
+		return err
+	}
+	// The write is the newest truth: a read that fails right after must not
+	// serve the map from before it.
+	s.lastGood = all
+	return nil
+}
+
+// writeFileSynced writes and flushes a temp file so a rename survives a
+// power cut, not just a process crash.
+func writeFileSynced(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }

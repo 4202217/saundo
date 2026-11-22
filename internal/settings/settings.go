@@ -421,10 +421,28 @@ func (s *Store) saveLocked(v Settings) error {
 		return err
 	}
 	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+	if err := writeFileSynced(tmp, data); err != nil {
 		return err
 	}
 	return os.Rename(tmp, s.path)
+}
+
+// writeFileSynced writes and flushes a temp file so a rename survives a
+// power cut, not just a process crash.
+func writeFileSynced(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func newDeviceID() string {
