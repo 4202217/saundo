@@ -1135,15 +1135,13 @@ func (e *Engine) handleCommand(cmd command) {
 // planReconnect schedules the next retry with the backoff schedule. After
 // maxReconnectAttempts retries it gives up and surfaces an error.
 func (e *Engine) planReconnect() {
-	if e.life.reconnectNum >= maxReconnectAttempts {
-		e.life.giveUpRetry()
+	delay, scheduled := e.life.planRetry(e.now())
+	if scheduled {
+		e.logf("reconnect scheduled in %s (attempt %d)", delay, e.life.reconnectNum)
+	} else {
 		e.fail(ErrReconnectStopped, fmt.Sprint(e.life.reconnectNum))
 		e.logf("giving up after %d reconnect attempts", e.life.reconnectNum)
-		e.publish()
-		return
 	}
-	delay := e.life.scheduleRetry(e.now())
-	e.logf("reconnect scheduled in %s (attempt %d)", delay, e.life.reconnectNum)
 	e.publish()
 }
 
