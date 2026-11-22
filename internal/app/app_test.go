@@ -998,6 +998,30 @@ func TestFlyoutKeepsPlaybackGap(t *testing.T) {
 	}
 }
 
+// The device head and card share a child column like the ambient section, so
+// the head meets its card through the card's own 2-DIP margin rather than the
+// body's 8-DIP section gap. Without that column the head floats 6 DIP too far
+// above the card, visibly looser than the ambient head.
+func TestFlyoutKeepsDeviceHeadGap(t *testing.T) {
+	a := previewApp()
+	tt := ui.NewTester(a.view, flyoutWidth, visibleFlyoutHeight(a))
+	tt.Frame()
+	head, ok := tt.Find("接收器")
+	if !ok {
+		t.Fatal("the device head is missing")
+	}
+	card, ok := tt.Find("接收器列表")
+	if !ok {
+		t.Fatal("the device card is missing")
+	}
+	// Centered 26-DIP action leaves ~5.3 DIP above the 15.3-DIP label, plus
+	// the row's 2-DIP bottom padding and the card's 2-DIP top margin.
+	gap := card.Y - (head.Y + head.H)
+	if abs32(gap-9.33) > 1 {
+		t.Fatalf("device head-to-card gap %.2f DIP, want ~9.3", gap)
+	}
+}
+
 func TestFlyoutTargetHeightFitsPlayback(t *testing.T) {
 	const lastRow = "自定义"
 	find := func(devices int) ui.Rect {

@@ -31,8 +31,14 @@ func (a *App) deviceSection(c *ui.Context, p palette) {
 		}
 		ui.Row(c).Width(0).Height(26)
 	}
-	sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)), false, action)
-	a.deviceCard(c, p, devices)
+	// The head and card share one child column, like the ambient section, so
+	// the head-to-card gap is the card's own margin rather than the body's
+	// section gap. This keeps all three flyout heads equally close to their
+	// cards.
+	ui.Column(c).Children(func() {
+		sectionHead(c, p, locales.FlyoutDevices(), locales.FlyoutDeviceCount(len(devices)), false, action)
+		a.deviceCard(c, p, devices)
+	})
 	a.sessionNoticeBar(c, p)
 	if a.errorBarShown() {
 		statusBar(c, p, barDanger, iconAlert, locales.FlyoutConnectFailed(a.errorText()), nil)
@@ -65,7 +71,7 @@ func (a *App) errorBarShown() bool {
 }
 
 func (a *App) deviceCard(c *ui.Context, p palette, devices []device.Device) {
-	card := ui.Column(c).Height(deviceCardHeight(len(devices))).Radius(10).
+	card := ui.Column(c).Margin(2, 0, 0, 0).Height(deviceCardHeight(len(devices))).Radius(10).
 		Background(p.card).Border(1, p.line).Clip().Label(locales.DeviceListLabel())
 	card.Children(func() {
 		if len(devices) == 0 {
