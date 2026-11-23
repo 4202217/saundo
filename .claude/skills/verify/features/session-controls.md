@@ -105,16 +105,18 @@ on the settings 关于 page.
   footer reads 已被其他设备接管 and the active receiver row offers
   重新连接 (`flyout.go:418-426`; the row action at
   `flyout_devices.go:459-478`; `docs/ui.md`).
-- Idle standby: after the configured silence threshold the engine sends
-  playback state 2, the top display goes dark, and the flyout lamp card
-  shows the 待机 chip (`engine.go:874-936`; the dark gate at `:841-847`;
-  see [ambient-light.md](ambient-light.md)).
-- Silence suspend: after 5 s of digital silence the pacer suspends (zero
-  audio packets, sync/feedback/volume keep running); the first audible block
-  resumes with a re-anchored RTP timeline and a 50 ms cushion trim
-  (`engine.go:874-936`; the meter Push is `silence.go:40-64`; resume
-  `stream.go:67-101`). AP2 only; an AP1 session keeps the continuous silence
-  stream.
+- Idle standby: five seconds after the last audible block the source idle
+  phase starts, and after the configured threshold counted from that block
+  the engine sends playback state 2, the top display goes dark, and the
+  flyout lamp card shows the 待机 chip (`internal/engine/engine.go` idle
+  phase and dark base; the dark gate; see [ambient-light.md](ambient-light.md)).
+- Silent keepalive: a silent source keeps one packet per 8 ms flowing and a
+  fully starved packet carries the 16-byte compressed ALAC silence frame, so
+  the receiver's renderer never starves and a pause resumes with no
+  reconnect (`internal/airplay/sender/stream.go` `sendAudioPacket`,
+  `internal/airplay/alac/encoder.go` `EncodeCompactSilence`). The pacer never
+  stops while the session is up; only the phase, the tray, and the standby
+  clock report the silence.
 - Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log
   dialog whose 复制 button puts the visible log on the clipboard
   (`log_dialog.go:11-42`).

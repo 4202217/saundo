@@ -30,9 +30,6 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		} else {
 			e.darkBaseline = now
 		}
-		if e.lastPushAt.IsZero() {
-			e.lastPushAt = now
-		}
 		e.connectedName = e.plan.connectedName()
 		if e.connectedName == "" {
 			e.connectedName = e.nameFor(e.selectedID)
@@ -49,18 +46,9 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.adoptInitialVolumes()
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
-		// The sender arms its pacer before reporting the launch. If the
-		// capture is already silent, stop it here so the stream never pushes a
-		// stale cushion, then derive the phase from the actual push state. The
-		// phase is computed before the lamp, so a reconnect past the threshold
-		// goes straight to dark with no state 1 flash.
-		if e.tr != nil && e.tr.Pushing() && now.Sub(e.silence.LastLoud()) >= audioPauseAfter {
-			if e.tr.SetPaused(true) {
-				e.silence.SetPaused(true)
-			} else {
-				e.pauseUnsupported = true
-			}
-		}
+		// The phase is computed before the lamp, so a session launched into
+		// silence goes straight to the idle face with no state 1 flash. The
+		// pacer keeps streaming compact silence either way.
 		e.idle = e.idlePhase(now)
 		e.applyLamp()
 		// A launch, including a rebuild that adds a member, opens fresh

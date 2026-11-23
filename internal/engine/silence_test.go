@@ -115,85 +115,55 @@ func TestSilenceMeterDropsSilentBlocksOnlyWhilePaused(t *testing.T) {
 	}
 }
 
-func TestEngineSuspendsAfterSilenceAndResumes(t *testing.T) {
+// TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles pins the policy: a
+// silent source never stops the pacer, so the receiver's renderer stays fed
+// and a pause resumes seamlessly; only the phase, the tray, and the standby
+// clock report the silence.
+func TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles(t *testing.T) {
 	h := newHarness(t)
 	f := newFakeTransport(sender.Events{})
 	f.state = sender.StateStreaming
 	h.e.tr = f
 
-	h.e.silence.lastLoud.Store(h.now.Add(-6 * time.Second).UnixNano())
+	h.e.silence.lastLoud.Store(h.now.Add(-audioPauseAfter).UnixNano())
 	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 1 || !f.pauses[0] {
-		t.Fatalf("pauses = %v, want [true]", f.pauses)
+	if len(f.pauses) != 0 {
+		t.Fatalf("pauses = %v, want none", f.pauses)
+	}
+	if !f.pushing {
+		t.Fatal("a silent source stopped the pipe")
 	}
 	if h.e.idle != idleSuspended {
 		t.Fatal("engine did not enter the suspended phase")
 	}
 	if !h.e.buildSnapshot().AudioIdle {
-		t.Fatal("snapshot did not report audio idle while suspended")
+		t.Fatal("snapshot did not report audio idle while the source is silent")
 	}
-	if !h.e.silence.paused.Load() {
-		t.Fatal("silence meter did not stop forwarding")
+	if h.e.silence.paused.Load() {
+		t.Fatal("silence meter stopped forwarding")
+	}
+
+	// No cutoff follows: an hours-long silence keeps the compact stream
+	// flowing too, so a resume never faces a starved renderer.
+	h.advance(2 * time.Hour)
+	h.e.updateIdlePhase(h.now)
+	if len(f.pauses) != 0 || !f.pushing {
+		t.Fatalf("silence suspended the stream: pauses=%v pushing=%v", f.pauses, f.pushing)
 	}
 
 	h.e.silence.lastLoud.Store(h.now.UnixNano())
 	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 2 || f.pauses[1] {
-		t.Fatalf("pauses = %v, want [true false]", f.pauses)
-	}
 	if h.e.buildSnapshot().AudioIdle {
 		t.Fatal("snapshot still reports audio idle after resume")
 	}
 	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 2 {
-		t.Fatalf("duplicate pause transition: %v", f.pauses)
+	if len(f.pauses) != 0 {
+		t.Fatalf("resuming paused the transport: %v", f.pauses)
 	}
 
 	h.e.idle = idleSuspended
 	wake := h.e.nextWake()
 	if wake.IsZero() || wake.After(h.now.Add(2*audioPausePoll)) {
-		t.Fatalf("nextWake while paused = %v, want a %s poll", wake, audioPausePoll)
-	}
-}
-
-// TestPauseThresholdFitsTheCaptureRing keeps the silence policy inside the
-// ring, so a pause never overflows it with silence and the UI's dropped
-// figure keeps meaning capture overflow.
-func TestPauseThresholdFitsTheCaptureRing(t *testing.T) {
-	h := newHarness(t)
-	block := make([]int16, 960) // 10 ms at 48 kHz stereo
-	blocks := int(audioPauseAfter.Seconds() * 100)
-	for range blocks {
-		h.e.silence.Push(block)
-	}
-	if h.e.ring.Capacity() < blocks*len(block) {
-		t.Fatalf("ring capacity %d < %d samples of silence", h.e.ring.Capacity(), blocks*len(block))
-	}
-	if got := h.e.silence.Dropped(); got != 0 {
-		t.Fatalf("silence policy overflowed the capture ring: dropped %d samples", got)
-	}
-}
-
-func TestEngineKeepsLegacySessionStreaming(t *testing.T) {
-	h := newHarness(t)
-	f := newFakeTransport(sender.Events{})
-	f.state = sender.StateStreaming
-	f.pauseOK = false
-	h.e.tr = f
-
-	h.e.silence.lastLoud.Store(h.now.Add(-6 * time.Second).UnixNano())
-	h.e.updateIdlePhase(h.now)
-	if h.e.idle != idleActive {
-		t.Fatal("engine paused a legacy AirPlay 1 session")
-	}
-	if !h.e.pauseUnsupported {
-		t.Fatal("engine did not remember the unsupported pause")
-	}
-	if h.e.silence.paused.Load() {
-		t.Fatal("silence meter stopped forwarding for a legacy session")
-	}
-	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 1 {
-		t.Fatalf("pauses = %v, want one attempt", f.pauses)
+		t.Fatalf("nextWake while idle = %v, want a %s poll", wake, audioPausePoll)
 	}
 }

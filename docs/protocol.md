@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-21 -->
+<!-- reviewed-through: 2026-11-23 -->
 
 # AirPlay 2 wire protocol
 
@@ -159,7 +159,7 @@ Feedback is not the keep-alive; the event channel is. Implement both. The AP2 `/
 
 ## 6. RTP streaming
 
-The realtime stream sends uncompressed ALAC frames, MSB-first:
+The realtime stream sends uncompressed ALAC frames for real audio, MSB-first:
 
 ```
 3b  channel tag = 1 (stereo CPE)
@@ -173,13 +173,32 @@ The realtime stream sends uncompressed ALAC frames, MSB-first:
 pad to a byte boundary
 ```
 
+A packet whose ring is completely dry carries a **compressed ALAC silence frame** instead: same 352-frame timeline, 16 bytes instead of 1412. ALAC codes a run of zeros through the rice coder's zero-run case, so the frame is one header plus, per channel, a first zero residual and the run count of the remaining 351 frames:
+
+```
+3b  channel tag = 1 (stereo CPE)
+4b  0
+12b 0
+1b  hasSize = 0 (use the cookie default 352)
+2b  wastedBytes = 0
+1b  isNotCompressed = 0
+8b  interlace shift = 0
+8b  interlace leftweight = 0
+per channel: 4b prediction type 0, 4b quantization, 3b rice modifier 4, 5b order 0
+per channel: rice {one 0 bit (first residual), nine 1 bits (escape prefix), be16 351 (zero run)}
+3b  END tag = 7
+pad to a byte boundary
+```
+
+`alac.EncodeCompactSilence` builds that cached frame; the reference decoder logic in `internal/airplay/alac/compact_test.go` expands it to 352 zero frames per channel, and the fake receiver decodes it on the sender path. With the RTP/AP2/UDP headers the whole silent packet is about 80 bytes, so a silent stream costs roughly 80 kbps per member instead of 1.4 Mbps.
+
 RTP header, 12 bytes: `0x80, 0xE0` on the first packet (marker set), `0x60` afterwards, seq (be16), timestamp (be32), `ssrc` (be32, the session id). AP2 encryption: AAD is RTP header bytes 4–11 (timestamp, ssrc); the nonce is an 8-byte little-endian counter whose last 8 bytes are appended after the ciphertext.
 
 Pacing uses a token bucket at 44100 frames per second, about one tick per 8 ms. While a stream is active, push silence when the ring is empty. Keep a recent packet backlog for `0x55` retransmit requests; a retransmit is answered with the original packet.
 
 At the start epoch the sender sends two prefill packets. Each audio packet carries extra copies chosen from the previous session's retransmit ratio: the first session and any lossy session send an extra copy, a clean session sends none, and a session above roughly 3% loss sends two extras. A receiver deduplicates by RTP sequence number, so extra copies cost bandwidth, not duplicated audio.
 
-**Silence suspend.** After 5 s of digital silence the engine suspends the audio pacer and the sender sends no RTP, while sync, feedback, volume polling, and the event channel keep running — the receiver underruns silently instead of losing the session. On the first audible block the sender re-anchors `framesSent` to the elapsed wall clock, trims the ring to the 50 ms start cushion, rebuilds the resampler, and re-arms the pacer. `SETRATEANCHORTIME` is not part of this: a HomePod answers it on realtime streams with plist `status: -12782` and ignores it — the method is for buffered streams, and the realtime stream takes its timeline from the UDP sync channel. The suspend is AP2-only; an AirPlay 1 session keeps the continuous silence stream.
+**Silent keepalive.** A silent source does not stop the RTP stream. For as long as the session is up, the pacer keeps one packet per 8 ms flowing and every fully starved packet carries the compact silence frame, so the receiver's jitter buffer and renderer never starve: a pause and its resume are seamless, with no reconnect and no renderer recovery. The sender's own view of the source is separate: `Snapshot.AudioIdle` and the standby clock flip 5 s after the last audible block (`audioPauseAfter`). The pacer is what keeps the receiver fed; sync, feedback, volume polling, and the event channel stay alive either way. `SETRATEANCHORTIME` is not part of this: a HomePod answers it on realtime streams with plist `status: -12782` and ignores it — the method is for buffered streams, and the realtime stream takes its timeline from the UDP sync channel.
 
 ## 7. Timing
 
@@ -273,7 +292,7 @@ Content-Length: <n>
 
   `mrPlaybackState` is `1` playing and `2` paused. The receiver's AirPlay command processor applies it to the main session; `NowPlayingCap` observes the MediaRemote `isPlaying` change and clears the LED effect, so `SoundBoardFramework.MediaRenderer` stops the Sound Glow and the top display goes dark. The command does not stop the RTP stream.
 
-  **Idle standby** uses the same command. After five seconds without an audible block the engine suspends the pacer; once the configured standby threshold (1, 5, 10, or 30 minutes, default 30) has passed since the last RTP push, the sender sends state `2` and the top display goes dark while the session stays up. The first audible block sends state `1`, resends the artwork, and resumes the pacer. The clock counts from the last RTP packet, not from the silence meter, so a manual light action or a late packet does not lengthen or shorten the threshold. Measured on a muted HomePod mini `AudioAccessory5,1` 27.2 on 2026-11-07: a tide palette cover lit the display, state 2 turned it off, state 1 lit it again, state 2 turned it off again, with `framesSent` rising 1.50M → 2.38M and no session close. On a stereo pair the state reaches both members; a mid-session state `1` on the follower can leave its renderer white, and only a new session restores it, so a sender should avoid a redundant mid-session state `1` and resend the artwork after a resume. A pair member does get one explicit state `1` at stream start, sent before the first cover, because a follower does not assume playing; that first cover is its first light. The on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) remains a local-only path, but it is no longer the only way to turn the LEDs off.
+  **Idle standby** uses the same command. Five seconds after the last audible block the engine reports the idle phase, while the compact silence keepalive keeps the pacer pushing; once the configured standby threshold (1, 5, 10, or 30 minutes, default 30) has passed since that last audible block, the sender sends state `2` and the top display goes dark while the session and its silent stream stay up. The first audible block sends state `1` and resends the artwork, and the next audio packet replaces the compact silence frame. The clock counts from the last audible block, so a manual light action or a late packet does not lengthen or shorten the threshold, and the keepalive cannot postpone the dark display. Measured on a muted HomePod mini `AudioAccessory5,1` 27.2 on 2026-11-07: a tide palette cover lit the display, state 2 turned it off, state 1 lit it again, state 2 turned it off again, with `framesSent` rising 1.50M → 2.38M and no session close. On a stereo pair the state reaches both members; a mid-session state `1` on the follower can leave its renderer white, and only a new session restores it, so a sender should avoid a redundant mid-session state `1` and resend the artwork after a resume. A pair member does get one explicit state `1` at stream start, sent before the first cover, because a follower does not assume playing; that first cover is its first light. The on-device `com.apple.soundboardservices.server` XPC (`setLEDContents:`, `disable_leds`) remains a local-only path, but it is no longer the only way to turn the LEDs off.
 
   **Stereo pair follower (2026-11-15, corrected 2026-11-16, `AudioAccessory5,1` software 27.3):** with identical bytes pushed to both members over their own sessions — every `SET_PARAMETER image/jpeg` answered `200 OK` on both — the leader followed every mid-session artwork change and the follower never did on 2026-11-15; artwork-only pushes were ignored, and artwork re-pushed after a real state 2→1 resume was also ignored (the follower relit with its session-start image). The follower's display follows the pair's HomeKit/tightSync media-system sync, not its own session's artwork stream. The 2026-11-15 attribution to SETPEERS was not the mechanism: on a PTP session SETPEERS is a no-op on the receiver, so it cannot seed the sync; the same-day live success came from the freshly power-cycled pair, as the commit body noted. The session's first light is a one-shot race, so a pair member re-sends it 2 s later (`coverRetry`). A pair member also sends an explicit state `1` at stream start, before the first cover, so the follower's renderer starts; a standalone receiver keeps the image-only path. A standalone HomePod is unaffected — three consecutive `SET_PARAMETER` covers repainted it (2026-11-07 finding below).
 - A song's own cover competes for the artwork slot: a template owns it; cover priority hands it to the receiver track-info cover. The playback state is independent of that slot: with state 2 the display is dark whatever image is attached, and state 1 restores the current image. Clearing the sender's slot only stops future sends; the receiver keeps the last image.

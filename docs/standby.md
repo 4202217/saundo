@@ -1,4 +1,4 @@
-<!-- status: implemented; live dark and resume verified 2026-11-10; long soak pending -->
+<!-- status: implemented; live dark and resume verified 2026-11-10; compact keepalive and long soak pending -->
 
 # Idle standby
 
@@ -37,7 +37,7 @@ type idlePhase uint8
 
 const (
 	idleActive    idlePhase = iota // pushing RTP, or a session that just started
-	idleSuspended                  // not pushing, session alive
+	idleSuspended                  // source silent, session alive
 	idleDark                       // lamp off, session alive
 )
 ```
@@ -48,34 +48,34 @@ func (e *Engine) idlePhase(now time.Time) idlePhase
 
 Derivation, in order:
 
-1. No streaming transport, an AirPlay 1 session, or `pauseUnsupported`: `idleActive`.
-2. The transport is pushing RTP: `idleActive`.
+1. No streaming transport: `idleActive`.
+2. The source has been audible within `audioPauseAfter` (5 s): `idleActive`.
 3. Dark eligible and `now - darkBase >= standbyAfter`: `idleDark`.
 4. Otherwise: `idleSuspended`.
 
 Dark eligible means AP2, `TopDisplayCapable`, `Lamp.Off` false, standby enabled, and no manual hold.
 
-The 5 second silence policy is separate from the phase. While the transport pushes, `updateIdlePhase` stops the pacer after 5 seconds of digital silence and records the last push; the phase then follows the actual push state. The first audible block re-arms the pacer and updates the last push.
+The phase reads the captured source, not the pacer. A silent source keeps the compact silence stream flowing, so the receiver's renderer never starves and a pause resumes seamlessly; the pacer never stops while the session is up, and the stream costs about 80 kbps per member while silent.
 
 Transitions:
 
-- active to suspended: the silence policy has called `SetPaused(true)`; the silence meter drops silent blocks.
-- suspended to dark: `SetPlaybackState(false)`; one `updateMRPlaybackState` command with state 2.
-- dark to active: the silence policy re-arms the pacer on the first audible block; the transition sends `SetPlaybackState(true)`, which restores the image and resends the cover, before the sender's next tick sends audio.
-- suspended to active: the silence policy calls `SetPaused(false)`.
+- active to suspended: 5 s after the last audible block; the phase, the tray, and the standby clock only.
+- suspended to dark: `SetPlaybackState(false)`; one `updateMRPlaybackState` command with state 2. The command touches the display, not the RTP stream.
+- dark to active: the transition sends `SetPlaybackState(true)`, which restores the image and resends the cover, before the sender's next tick sends audio.
+- suspended to active: the phase alone; the next audio packet replaces the compact silence frame.
 - any to active on session close: reset the phase and clear the hold.
 - dark to suspended when standby becomes ineligible: `SetPlaybackState(true)`, then follow the suspended rules.
 
 ## Timing
 
-`standbyAfter` is a setting. The default is 30 minutes. Stored values normalize to 1, 5, 10, or 30 minutes, and an unknown value becomes 30. The 5 second RTP suspend stays a constant.
+`standbyAfter` is a setting. The default is 30 minutes. Stored values normalize to 1, 5, 10, or 30 minutes, and an unknown value becomes 30. The 5 second phase threshold stays a constant.
 
-The dark baseline is `max(last RTP push, sessionBaseline)`. The engine records the last push while the transport is pushing, so the threshold starts when the stream actually stopped, not when the last audible sample arrived. `sessionBaseline` is set when the session starts:
+The dark baseline is `max(last audible block, sessionBaseline)`. The threshold starts when the source last made sound, not when the pacer stopped, so the keepalive cannot postpone the dark display. `sessionBaseline` is set when the session starts:
 
 - a user connect sets it to the session start, so a fresh connect shows the light and darkens only after a full idle period;
-- an automatic reconnect sets it to zero, so a background reconnect while the PC has not pushed for hours goes dark immediately and does not light the room.
+- an automatic reconnect sets it to zero, so a background reconnect while the PC has been silent for hours goes dark immediately and does not light the room.
 
-AirFlash counts from the last audio sample; saundo counts from the last RTP packet, which is the state the receiver sees.
+AirFlash counts from the last audio sample; saundo does too.
 
 ## Manual lamp action
 
@@ -101,12 +101,12 @@ Any user `SetLamp` call while the session is idle lifts the dark phase and suppr
 
 ## Engine and sender changes
 
-- `internal/engine`: phase enum, push-state derivation, last-push tracking, threshold, hold, session baseline, snapshot fields, `SetStandby`, log lines.
-- `internal/airplay/sender`: adds `Pushing() bool`; no wire change. Reuse `SetPaused` and `SetPlaybackState`. `SetPlaybackState(true)` already restores the artwork after a pause transition.
+- `internal/engine`: phase enum, source-silence derivation, last-sound tracking, threshold, hold, session baseline, snapshot fields, `SetStandby`, log lines.
+- `internal/airplay/sender`: the silent keepalive adds the compact ALAC silence frame to the wire; `SetPlaybackState` handles the display. `SetPlaybackState(true)` already restores the artwork after a pause transition.
 - `internal/settings`: struct, defaults, normalization, ownership.
 - `internal/app`: settings row, flyout status and power state, locale strings.
-- The capture ring grows to eight seconds at 48 kHz stereo, so the 5 second silence policy fits without counting silence as capture overflow.
-- No new sockets, timers, or goroutines. The existing 25 ms audio poll while suspended also drives the threshold.
+- The capture ring stays at eight seconds at 48 kHz stereo: a silent source does not fill it — the pacer drains it — so silence never counts as capture overflow.
+- No new sockets, timers, or goroutines. The existing 25 ms audio poll while the phase is idle also drives the threshold.
 
 At stream start, compute the phase before `applyLamp`. An automatic reconnect that is already past the threshold goes straight to dark, without a state 1 flash.
 
@@ -119,7 +119,7 @@ At stream start, compute the phase before `applyLamp`. An automatic reconnect th
 
 ## Tests
 
-- Phase derivation with a fake clock: 5 second suspend, threshold dark, loud resume, hold, session baseline, ineligible devices.
+- Phase derivation with a fake clock: 5 second idle, threshold dark, loud resume, hold, session baseline, ineligible devices.
 - The last-push anchor advances while the pacer pushes and freezes when it stops; the threshold counts from the stop, not from the last audible sample.
 - Exactly one playback-state command per transition; no duplicates and no redundant state 1.
 - Stream start while already idle goes straight to dark.

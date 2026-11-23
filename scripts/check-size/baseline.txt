@@ -6,10 +6,10 @@
 # Raising a number is an explicit override that shows up in review. New files
 # must stay at or below 800 code lines. Generated files and _test.go files are
 # exempt.
-internal/engine/engine.go	1775
+internal/engine/engine.go	1747
 internal/app/app.go	975
 internal/app/settings_window.go	885
-internal/airplay/sender/sender.go	891
+internal/airplay/sender/sender.go	892
 internal/airplay/sender/rtsp.go	745
 internal/capture/capture_darwin.go	697
 internal/app/flyout.go	447

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-22 -->
+<!-- reviewed-through: 2026-11-23 -->
 
 # Implementation overview
 
@@ -31,7 +31,7 @@ level-analysis worker, both behind bounded queues:
   no-op.
 - **The engine goroutine** (`internal/engine`, `Engine.run`) is the only
   caller of sender methods. It drains the command channel, runs the timers
-  (reconnect backoff, silence suspend, capture restart), renders the
+  (reconnect backoff, silent keepalive and its cutoff, capture restart), renders the
   ambient-light JPEG off the sender's tick path, and publishes a
   `Snapshot` on every state change. A cohort member that dies
   signals the loop through the transport's `Dead` channel, and the loop
@@ -88,7 +88,7 @@ flyout cannot move the preview away from the top display.
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`; its creation in `settings_window_create.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; the same path on both platforms, each updating from its own signed manifest), the tray flyout window creation (`flyout_window.go`), window sizing and the text-scale zoom (`window_scale.go`), the tray menu model and native menu (`tray_menu.go`), the settings preview's sample card (`now_playing_preview.go`), tray and menu icons, receiver glyphs (the filled set in `icons_sf_gen.go`), the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling (`commands.go` carries the command vocabulary), the session plan and its cohort transport (`plan.go`, `cohort.go`), per-target volume and channel commands and the target control projection (`target_controls.go`), receiver management (`receivers.go`, `receivers_cmd.go`), the stereo-combo lifecycle — link two receivers, unlink, swap sides in place (`combo.go`), silence meter and suspend (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy, the capture retry backoff, snapshots |
+| `internal/engine` | UI-agnostic session controller: command handling (`commands.go` carries the command vocabulary), the session plan and its cohort transport (`plan.go`, `cohort.go`), per-target volume and channel commands and the target control projection (`target_controls.go`), receiver management (`receivers.go`, `receivers_cmd.go`), the stereo-combo lifecycle — link two receivers, unlink, swap sides in place (`combo.go`), silence meter (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy, the capture retry backoff, snapshots |
 | `internal/discovery` | mDNS browse through a logger that drops the client's repeated IPv6 bind failures, plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking (the window is at least one directed-pass period plus its timeout), and local marking when an advertised address belongs to this host (`device.Device.Local`) |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), the Windows per-app process-loopback leaf (`app_windows.go`, not offered in the product; see platforms.md), the macOS Core Audio process tap aggregated with the output device, including the selected apps' stereo mixdown resolved from bundle IDs and its own local mute (`capture_darwin.go`, `SetProcessMuted`), and its device mute (`mute_darwin.go`), format conversion (`convert.go`), the 30-second device-retry backoff, and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/darwin` | The macOS FFI layer, pure Go through purego: the Objective-C bridge (`objc.go`), the login-Keychain SecItem calls (`keychain.go`), Core Audio bindings (`coreaudio.go`), and LaunchServices app identity (`appinfo.go`). Serves the darwin leaves only; the UI keeps to mygo |
@@ -96,7 +96,7 @@ flyout cannot move the preview away from the top display.
 | `internal/audio/analyze` | Capture-block level and five-band Goertzel meter with a -50 dBFS noise gate, a floored per-band AGC, deadband smoothing, and a delayed frame ring for the Now Playing card |
 | `internal/audio/resample` | Linear 48 kHz → 44.1 kHz conversion for interleaved stereo int16 |
 | `internal/airplay/crypto` | Wire primitives: SHA-512/HMAC/HKDF, ChaCha20-Poly1305, X25519/Ed25519, SRP-6a, TLV8, bplist, Digest |
-| `internal/airplay/alac` | Uncompressed ALAC frame encoder (`EncodeUncompressed`) |
+| `internal/airplay/alac` | ALAC frame encoder: uncompressed frames for real audio and the compact compressed silence frame (`EncodeCompactSilence`) |
 | `internal/airplay/io` | Package `raopio`: the `IO` seam, event types, and the Go net `Host` |
 | `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), the stereo-to-mono channel mix (`channel.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
 | `internal/airplay/ptp` | `Follower` for one receiver that keeps its own grandmaster (`ptp.go`), `Followers` for several standalone receivers over one shared socket pair (`followers.go`), sender-side `Master` for stereo pairs (`master.go`) |
@@ -197,9 +197,11 @@ last session's first target, moved by clicks, and kept on a listed device.
 timing packet, ring buffer milliseconds, and the SETUP Wi-Fi snapshot); the
 engine calls it on the event loop and folds it once per publish. An underrun
 is a packet padded with silence while the ring was still being fed real
-audio — roughly two start cushions after the last fed packet; padding over an
-idle source is the stream's correct output and stays uncounted, so connecting
-with nothing playing reads zero. The engine owns the group rules: Wi-Fi, late
+audio and the source came back within the window — roughly two start
+cushions after the last fed packet. A source that stays away is a pause: its
+short fills are discarded and its silence run never counts, so connecting
+with nothing playing and every pause read zero. The engine owns the group
+rules: Wi-Fi, late
 ticks, and buffer take the worst member, resends sum, and the dropped-sample
 source sums the member rings' session drops. A stereo pair reports the oldest
 member's sync age, and `SyncValid` is false when any member has not sent a
@@ -348,15 +350,19 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
 4. Capture starts, or the fanout attaches one ring per cohort member; the one
    `StartGate` waits for every member, trims every ring to the newest 50 ms
    cushion, and seals the shared start epoch; RTP flows at 44100 frames per
-   second. The ring holds
-   eight seconds at 48 kHz stereo, enough for the 5 second silence policy.
+   second. The ring holds eight seconds at 48 kHz stereo, enough for capture
+   jitter and a stalled consumer; a silent source does not fill it.
 5. While streaming: feedback every 2 s, receiver-volume polling per member,
    sync packets, and event-channel replies run on the sender's timers; a
    volume knob report updates only its target, and a channel change reaches
-   the next packet. After 5 s
-   of digital silence the engine suspends the pacer until the next audible
-   block, and after the configured idle threshold counted from the last RTP
-   push it turns the top display dark; the next audible block restores both.
+   the next packet. A silent source keeps the pacer pushing: once the ring is
+   dry every packet carries the 16-byte compressed ALAC silence frame, so the
+   receiver's renderer stays fed and a pause resumes seamlessly. The phase
+   reads the source instead: after 5 s of digital silence the engine reports
+   `AudioIdle`, and after the configured idle threshold counted from the last
+   audible block it turns the top display dark. The pacer never stops while
+   the session is up; the first audible block replaces the compact frame and
+   restores the display.
    The engine reapplies the ambient light once the session streams:
    the manual 关灯 sends the paused playback state; cover priority hands the
    slot to the media cover and keeps the display lit, and a template owns the

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-22 -->
+<!-- reviewed-through: 2026-11-23 -->
 
 # Verification
 
@@ -1302,3 +1302,53 @@ speaker power cycles; the sender treats it as receiver state and carries
 no workaround. Evidence: the maintainer's `saundo.log` and `saundo.log.1`
 for 2026-11-21; the profile note lives in devices.md's HomePod stereo
 pair section. No code change, so nothing is pinned.
+
+
+## 2026-11-23 — the silent keepalive removes the pause crackle's cause
+
+The pause crackle reproduces on main with a software combo of two standalone
+`AudioAccessory5,1` HomePods (software 27.3): a Bilibili video paused at
+18:54:33 was suspended by the 5 s idle policy and resumed at 18:58:13 (a
+3 m 40 s gap); both speakers then played persistent static until a
+reconnect. Shorter pauses reproduced it at 20:19:39 → 20:20:40 and
+20:21:05 → 20:21:13. The session's connection card read 丢样 0 and 0.0%
+retransmit, and the sender's stream is bit-clean across a suspension, so the
+defect is the HomePod's renderer state after its jitter buffer starved, not
+the wire. The receiver's realtime path is a pull jitter buffer with PLC
+(`.audit/homepod-re-latency/findings.md`): stop feeding it and PLC covers
+the gap, and a long starvation leaves the renderer unrecovered until the
+stream is rebuilt.
+
+The fix removes the starvation instead of repairing the renderer:
+
+- A silent source never stops the pacer. For as long as the session is up,
+  a fully starved packet carries a 16-byte compressed ALAC silence frame
+  (352 zero frames through the rice coder's zero-run case,
+  `alac.EncodeCompactSilence`). With the RTP/AP2/UDP headers the silent
+  packet is about 80 bytes, so the silent stream costs about 80 kbps per
+  member instead of 1.4 Mbps. Offline pins:
+  `TestCompactSilenceDecodesToZeroFrames` (the reference decoder port
+  expands the frame to 352 zero frames per channel; the frame uses 126
+  bits) and `TestStarvedPacketsCarryTheCompactSilenceFrame` (a dry-ring
+  packet on the sender is that frame).
+- The idle phase, `Snapshot.AudioIdle`, and the standby clock read the
+  source (`silence.LastLoud`), not the pacer, so the 5 s timing is
+  unchanged; the pacer never stops, and a resume needs no reconnect.
+  Pins: `TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles`,
+  `TestLaunchIntoSilenceKeepsTheStream`, and
+  `TestDarkAnchorTracksSoundNotTheStream`.
+- The 欠载 counter reports a short fill only when the source comes back
+  within the window; a pause's silence run is discarded.
+  `TestStatsCountUnderrunsAndBuffer` covers both sides.
+
+Owed live: a pause of 5 minutes on each HomePod and a resume, which must
+play clean with no reconnect and no 欠载 on the card; that run is also the
+first confirmation that a HomePod decodes the compact silence frame
+(silence, no noise) — the one receiver-side assumption in this change.
+
+One wire-format caveat for the live run: the zero run (351) exceeds the
+ALAC cookie's `maxRun` (255), which the reference decoder documents as
+"currently unused" and consumes in one go. If a HomePod's decoder enforces
+it, the fallback is to split the run at 255 — the decoder's sign modifier
+makes the next sample -1 LSB, then the remaining 95 frames run, inaudible
+but no longer bit-exact silence.

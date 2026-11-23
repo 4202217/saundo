@@ -59,9 +59,10 @@ type Snapshot struct {
 	Name             string
 	Reconnect        bool
 	Reconnecting     bool
-	// AudioIdle is true while the engine has suspended the audio after
-	// sustained digital silence, either with the lamp lit or dark. The session
-	// stays connected.
+	// AudioIdle is true while the source has been silent past the idle
+	// threshold, either with the lamp lit or dark. The session stays
+	// connected and, inside the pipe window, the compact silence stream keeps
+	// the receiver's renderer fed.
 	AudioIdle bool
 	// Standby is true while the top display is dark and the session is alive.
 	// StandbyEnabled and StandbyMinutes carry the setting itself.
@@ -131,8 +132,10 @@ type captureStart struct {
 const settingsSaveDebounce = 500 * time.Millisecond
 
 // audioPauseAfter is how long the capture stream must be digitally silent
-// before the engine suspends the audio pacer. Five seconds keeps longer track
-// gaps and silent passages streaming while stopping a real pause quickly.
+// before the session reports the source idle. Five seconds keeps longer track
+// gaps and silent passages streaming while a real pause flips the phase (and
+// starts the standby clock) promptly. The pacer itself keeps running: the
+// compact silence stream keeps the receiver's renderer fed.
 const (
 	audioPauseAfter = 5 * time.Second
 	audioPausePoll  = 25 * time.Millisecond
@@ -279,8 +282,6 @@ type Engine struct {
 	idle                 idlePhase
 	standbyHoldAt        time.Time
 	darkBaseline         time.Time
-	lastPushAt           time.Time
-	pauseUnsupported     bool
 	autoTried            bool
 	autoPendingAt        time.Time
 
@@ -314,9 +315,11 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		recvStore: recvStore,
 		log:       log,
 		onChange:  onChange,
-		// Eight seconds at 48 kHz stereo: the ring must outlast the 5 s
-		// silence policy, so a pause never overflows it with silence and the
-		// drop counter keeps meaning real capture overflow.
+		// Eight seconds at 48 kHz stereo: the ring outlasts capture jitter
+		// and a stalled consumer. A silent source does not fill it — the
+		// pacer drains it while pushing, and the meter drops silent blocks
+		// once the pipe stops — so the drop counter keeps meaning real
+		// capture overflow.
 		ring:            ring.New(48000 * 2 * 8),
 		levelFeed:       ring.New(levelFeedSamples),
 		levelStop:       make(chan struct{}),
@@ -726,15 +729,15 @@ func (e *Engine) onWake() {
 	}
 }
 
-// idlePhase derives the session's idle phase from whether the stream is
-// pushing RTP. The 5 s silence policy below is what stops the push; the phase
-// reports the result, so the standby clock follows the actual stream state and
-// not a property of the captured audio.
+// idlePhase derives the session's idle phase from the captured audio, not
+// from the pacer: a silent source keeps the compact silence stream flowing
+// (so the receiver's renderer never starves), while the phase, the standby
+// clock, and the tray read the source itself.
 func (e *Engine) idlePhase(now time.Time) idlePhase {
-	if e.tr == nil || e.tr.State() != sender.StateStreaming || e.pauseUnsupported {
+	if e.tr == nil || e.tr.State() != sender.StateStreaming {
 		return idleActive
 	}
-	if e.tr.Pushing() {
+	if now.Sub(e.silence.LastLoud()) < audioPauseAfter {
 		return idleActive
 	}
 	if e.darkEligible() && now.Sub(e.darkBase()) >= e.standbyAfter() {
@@ -746,17 +749,16 @@ func (e *Engine) idlePhase(now time.Time) idlePhase {
 func (e *Engine) darkEligible() bool {
 	return !e.setsValue.Lamp.Off &&
 		e.setsValue.Standby.Enabled &&
-		!e.pauseUnsupported &&
 		e.lampTargetCapable() &&
 		e.standbyHoldAt.IsZero()
 }
 
 // darkBase is when the current idle stretch started for the dark threshold:
-// the last RTP push, or the session start a user connect carries. An automatic
-// reconnect carries no baseline, so it counts from the last push and an idle PC
-// does not wake the room.
+// the last audible block, or the session start a user connect carries. An
+// automatic reconnect carries no baseline, so it counts from the last sound
+// and an idle PC does not wake the room.
 func (e *Engine) darkBase() time.Time {
-	base := e.lastPushAt
+	base := e.silence.LastLoud()
 	if e.darkBaseline.After(base) {
 		base = e.darkBaseline
 	}
@@ -774,38 +776,12 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 	if !e.standbyHoldAt.IsZero() && e.silence.LastLoud().After(e.standbyHoldAt) {
 		e.standbyHoldAt = time.Time{}
 	}
-	if e.tr == nil || e.tr.State() != sender.StateStreaming || e.pauseUnsupported {
+	if e.tr == nil || e.tr.State() != sender.StateStreaming {
 		if phase := e.idlePhase(now); phase != e.idle {
 			e.idle = phase
 			e.publish()
 		}
 		return
-	}
-
-	if e.tr.Pushing() {
-		if now.Sub(e.silence.LastLoud()) >= audioPauseAfter {
-			if !e.tr.SetPaused(true) {
-				// A legacy AirPlay 1 session keeps its continuous silence stream.
-				e.pauseUnsupported = true
-				e.idle = idleActive
-				e.publish()
-				return
-			}
-			e.silence.SetPaused(true)
-			e.logf("audio idle for %s, stream suspended", audioPauseAfter)
-		} else {
-			e.lastPushAt = now
-		}
-	} else if now.Sub(e.silence.LastLoud()) < audioPauseAfter {
-		if !e.tr.SetPaused(false) {
-			e.pauseUnsupported = true
-			e.idle = idleActive
-			e.publish()
-			return
-		}
-		e.silence.SetPaused(false)
-		e.lastPushAt = now
-		e.logf("audio resumed")
 	}
 
 	phase := e.idlePhase(now)
@@ -884,7 +860,6 @@ func (e *Engine) resetIdle() {
 	e.idle = idleActive
 	e.standbyHoldAt = time.Time{}
 	e.darkBaseline = time.Time{}
-	e.pauseUnsupported = false
 	if e.silence != nil {
 		e.silence.SetPaused(false)
 	}

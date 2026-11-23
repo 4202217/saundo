@@ -98,6 +98,7 @@ func (s *Sender) applyPause(paused bool) {
 		return
 	}
 	s.paused = paused
+	s.pendingUnderruns = 0
 	if paused {
 		s.pacer.disarm()
 		s.info("audio idle: stream suspended")
@@ -119,17 +120,23 @@ func (s *Sender) sendAudioPacket() {
 	var frames [framesPerPacket * channels]int16
 	available := s.fillFrames(frames[:])
 	if available < framesPerPacket {
-		// A starve is a defect the receiver can hear only while the source
-		// was feeding the ring: roughly two start cushions after the last
-		// real packet. Past that window the padding carries silence over
-		// silence, which is what an idle source should stream. The window
-		// divides the capture rate while framesSent counts output frames, so
-		// at 48 kHz capture it runs about a tenth longer than 100 ms — close
-		// enough for a heuristic.
+		// A short fill is padded with silence. Whether that is a defect
+		// depends on what follows: a source that comes back within the window
+		// lost audio, while one that stays away is a pause and the padding is
+		// the correct output. Hold the count until a full packet commits it or
+		// the window closes. The window divides the capture rate while
+		// framesSent counts output frames, so at 48 kHz capture it runs about
+		// a tenth longer than 100 ms — close enough for a heuristic.
 		if s.ringFed && s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
-			s.underruns++
+			s.pendingUnderruns++
+		} else {
+			s.pendingUnderruns = 0
 		}
 	} else {
+		if s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+			s.underruns += s.pendingUnderruns
+		}
+		s.pendingUnderruns = 0
 		s.ringFed = true
 		s.lastFedFrames = s.framesSent
 	}
@@ -147,7 +154,13 @@ func (s *Sender) sendAudioPacket() {
 
 	var payload []byte
 	if s.ap2 != nil && s.ap2.encryptAudio {
-		if frame, err := alac.EncodeUncompressed(frames[:]); err == nil {
+		if available == 0 {
+			// A fully starved packet is a silent fill. The compressed silence
+			// frame keeps the receiver's realtime timeline fed at a fraction
+			// of the uncompressed frame's bandwidth, so an idle source never
+			// starves the receiver's renderer.
+			payload = alac.EncodeCompactSilence()
+		} else if frame, err := alac.EncodeUncompressed(frames[:]); err == nil {
 			payload = frame
 		} else {
 			payload = alac.EncodeSilence()

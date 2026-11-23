@@ -41,8 +41,8 @@ func TestStandbyDarkensAtThresholdAndResumesOnSound(t *testing.T) {
 	if len(h.fake.playback) != 2 || h.fake.playback[1] {
 		t.Fatalf("playback = %v, want the launch state 1 then one state 2", h.fake.playback)
 	}
-	if len(h.fake.pauses) != 1 || !h.fake.pauses[0] {
-		t.Fatalf("pauses = %v, want one pause", h.fake.pauses)
+	if len(h.fake.pauses) != 0 {
+		t.Fatalf("pauses = %v, want none: the silent stream keeps running", h.fake.pauses)
 	}
 	if n := countLogLines(h, "standby: lamp off after"); n != 1 {
 		t.Fatalf("lamp-off log lines = %d, want 1", n)
@@ -50,8 +50,8 @@ func TestStandbyDarkensAtThresholdAndResumesOnSound(t *testing.T) {
 
 	h.e.updateIdlePhase(h.now)
 	h.e.updateIdlePhase(h.now)
-	if len(h.fake.playback) != 2 || len(h.fake.pauses) != 1 {
-		t.Fatalf("duplicate commands: playback=%v pauses=%v", h.fake.playback, h.fake.pauses)
+	if len(h.fake.playback) != 2 {
+		t.Fatalf("duplicate commands: playback=%v", h.fake.playback)
 	}
 
 	h.e.silence.lastLoud.Store(h.now.UnixNano())
@@ -62,15 +62,12 @@ func TestStandbyDarkensAtThresholdAndResumesOnSound(t *testing.T) {
 	if len(h.fake.playback) != 3 || !h.fake.playback[2] {
 		t.Fatalf("playback = %v, want state 2 then state 1", h.fake.playback)
 	}
-	if len(h.fake.pauses) != 2 || h.fake.pauses[1] {
-		t.Fatalf("pauses = %v, want pause then resume", h.fake.pauses)
+	if len(h.fake.pauses) != 0 {
+		t.Fatalf("resuming paused the transport: %v", h.fake.pauses)
 	}
 	snap = h.e.Snapshot()
 	if snap.Standby || snap.AudioIdle {
 		t.Fatalf("snapshot standby/idle = %v/%v, want false/false", snap.Standby, snap.AudioIdle)
-	}
-	if n := countLogLines(h, "standby: lamp on"); n != 1 {
-		t.Fatalf("lamp-on log lines = %d, want 1", n)
 	}
 }
 
@@ -99,7 +96,6 @@ func TestAutomaticReconnectStartsDarkWithoutStateOne(t *testing.T) {
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.connect()
 	h.e.life.connectAuto = true
-	h.e.lastPushAt = h.now.Add(-2 * time.Hour)
 	h.e.silence.lastLoud.Store(h.now.Add(-2 * time.Hour).UnixNano())
 	h.launch()
 
@@ -142,16 +138,21 @@ func TestManualLampActionHoldsTheLightUntilTheNextSound(t *testing.T) {
 		t.Fatalf("the held light sent another playback command: %v", h.fake.playback)
 	}
 
+	old, sessions := h.fake, h.sessions
 	h.e.silence.lastLoud.Store(h.now.UnixNano())
 	h.e.updateIdlePhase(h.now)
 	if h.e.idle != idleActive {
 		t.Fatalf("idle after sound = %v, want active", h.e.idle)
 	}
+	// The stream never stopped, so the next sound is the same transport.
+	if h.sessions != sessions || h.fake != old {
+		t.Fatalf("the resume rebuilt the session (sessions=%d)", h.sessions-sessions)
+	}
+	if got := old.pauses; len(got) != 0 {
+		t.Fatalf("pauses = %v, want none", got)
+	}
 	if !h.e.standbyHoldAt.IsZero() {
 		t.Fatal("the hold survived the next sound")
-	}
-	if len(h.fake.pauses) != 2 || h.fake.pauses[1] {
-		t.Fatalf("pauses = %v, want pause then resume", h.fake.pauses)
 	}
 }
 
@@ -216,34 +217,56 @@ func TestTakeoverClearsStandby(t *testing.T) {
 	}
 }
 
-// TestLastPushTracksTheStreamNotSilence pins the standby anchor: the clock
-// advances while the sender pushes and freezes when the pacer stops, not when
-// the captured audio happens to be quiet.
-func TestLastPushTracksTheStreamNotSilence(t *testing.T) {
-	h := standbyHarness(t)
-	h.e.silence.lastLoud.Store(h.now.UnixNano())
-	h.e.updateIdlePhase(h.now)
-	if !h.e.lastPushAt.Equal(h.now) {
-		t.Fatalf("last push = %v, want %v while pushing", h.e.lastPushAt, h.now)
-	}
+// TestLaunchIntoSilenceKeepsTheStream pins the launch path: a session opened
+// while the source is silent keeps pushing compact silence and only the phase
+// reports the silence.
+func TestLaunchIntoSilenceKeepsTheStream(t *testing.T) {
+	h := newHarness(t)
+	h.e.setDevices([]device.Device{capableLampDevice()})
+	h.e.lampJPEG = func(preset string) ([]byte, error) { return []byte("jpeg:" + preset), nil }
+	h.e.silence.lastLoud.Store(h.now.Add(-audioPauseAfter).UnixNano())
+	h.connect()
+	h.launch()
 
-	h.advance(time.Minute)
-	h.e.silence.lastLoud.Store(h.now.UnixNano())
-	h.e.updateIdlePhase(h.now)
-	if !h.e.lastPushAt.Equal(h.now) {
-		t.Fatalf("last push did not advance while pushing: %v", h.e.lastPushAt)
+	if h.e.idle != idleSuspended {
+		t.Fatalf("idle after the silent launch = %v, want suspended", h.e.idle)
 	}
+	if !h.fake.pushing {
+		t.Fatal("the launch did not keep pushing")
+	}
+	if got := h.fake.pauses; len(got) != 0 {
+		t.Fatalf("pauses = %v, want none", got)
+	}
+}
+
+// TestDarkAnchorTracksSoundNotTheStream pins the standby anchor: the clock
+// starts at the last audible block, and a silent source keeps the compact
+// stream running without moving that anchor.
+func TestDarkAnchorTracksSoundNotTheStream(t *testing.T) {
+	h := standbyHarness(t)
+	lastSound := h.now
+	h.e.silence.lastLoud.Store(lastSound.UnixNano())
+	h.e.updateIdlePhase(h.now)
 
 	h.advance(6 * time.Second)
 	h.e.updateIdlePhase(h.now)
-	if h.fake.pushing {
-		t.Fatal("three seconds of silence did not stop the push")
+	if !h.fake.pushing {
+		t.Fatal("a short silence stopped the push")
 	}
-	paused := h.e.lastPushAt
+	if h.e.idle != idleSuspended {
+		t.Fatalf("idle = %v, want suspended", h.e.idle)
+	}
+	if !h.e.darkBase().Equal(lastSound) {
+		t.Fatalf("dark base = %v, want the last sound %v", h.e.darkBase(), lastSound)
+	}
+
 	h.advance(10 * time.Minute)
 	h.e.updateIdlePhase(h.now)
-	if !h.e.lastPushAt.Equal(paused) {
-		t.Fatalf("last push moved while the pacer was stopped: %v -> %v", paused, h.e.lastPushAt)
+	if !h.e.darkBase().Equal(lastSound) {
+		t.Fatalf("dark base moved without sound: %v", h.e.darkBase())
+	}
+	if h.e.idle != idleSuspended {
+		t.Fatalf("idle = %v, want suspended before the dark threshold", h.e.idle)
 	}
 }
 
@@ -255,11 +278,11 @@ func TestIdlePhaseChangesSendOneCommandEach(t *testing.T) {
 	for range 4 {
 		h.e.updateIdlePhase(h.now)
 	}
-	if len(h.fake.pauses) != 1 || !h.fake.pauses[0] {
-		t.Fatalf("pauses = %v, want one pause", h.fake.pauses)
+	if len(h.fake.pauses) != 0 {
+		t.Fatalf("a silent source suspended the stream: %v", h.fake.pauses)
 	}
 	if len(h.fake.playback) != 0 {
-		t.Fatalf("suspending sent playback commands: %v", h.fake.playback)
+		t.Fatalf("idling sent playback commands: %v", h.fake.playback)
 	}
 
 	h.advance(31 * time.Minute)
@@ -269,5 +292,8 @@ func TestIdlePhaseChangesSendOneCommandEach(t *testing.T) {
 	}
 	if len(h.fake.playback) != 1 || h.fake.playback[0] {
 		t.Fatalf("playback = %v, want exactly one state 2", h.fake.playback)
+	}
+	if len(h.fake.pauses) != 0 {
+		t.Fatalf("pauses = %v, want none", h.fake.pauses)
 	}
 }

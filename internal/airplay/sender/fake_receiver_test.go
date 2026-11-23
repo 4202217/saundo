@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math/bits"
 	"strconv"
 	"strings"
 	"testing"
@@ -835,6 +836,10 @@ func (f *fakeReceiver) handleAudio(data []byte) {
 }
 
 // decodeALAC reads the uncompressed ALAC frame layout, MSB-first.
+// decodeALAC reads the ALAC frame the sender may put on the wire: the
+// uncompressed layout and the compressed zero-run frame a silent fill uses.
+// The compressed path mirrors the reference decoder for the layouts
+// alac.EncodeCompactSilence writes (interlace 0/0, prediction order 0).
 func decodeALAC(frame []byte) ([]int16, error) {
 	br := bitReader{data: frame}
 	tag := br.read(3)
@@ -843,19 +848,126 @@ func decodeALAC(frame []byte) ([]int16, error) {
 	}
 	br.read(4)
 	br.read(12)
-	br.read(1)
-	br.read(2)
-	if br.read(1) != 1 {
-		return nil, errString("not uncompressed")
+	if br.read(1) != 0 {
+		return nil, errString("frame carries its own sample size")
 	}
-	out := make([]int16, framesPerPacket*channels)
-	for i := range out {
-		out[i] = int16(br.read(16))
+	if br.read(2) != 0 {
+		return nil, errString("frame carries wasted bytes")
+	}
+	if br.read(1) == 1 {
+		out := make([]int16, framesPerPacket*channels)
+		for i := range out {
+			out[i] = int16(br.read(16))
+		}
+		if br.read(3) != 7 {
+			return nil, errString("missing END tag")
+		}
+		return out, nil
+	}
+	if shift := br.read(8); shift != 0 {
+		return nil, errString("interlaced compressed frame")
+	}
+	if weight := br.read(8); weight != 0 {
+		return nil, errString("weighted compressed frame")
+	}
+	const (
+		initialHistory = 10
+		kmodifier      = 14
+		historyMult    = 40
+	)
+	riceMods := make([]int, channels)
+	for i := range riceMods {
+		if pred := br.read(4); pred != 0 {
+			return nil, errString("unexpected prediction type")
+		}
+		br.read(4) // quantization
+		riceMods[i] = int(br.read(3))
+		if order := br.read(5); order != 0 {
+			return nil, errString("unexpected predictor order")
+		}
+	}
+	left := make([]int, framesPerPacket)
+	right := make([]int, framesPerPacket)
+	mask := (1 << kmodifier) - 1
+	if err := br.rice(left, 17, initialHistory, kmodifier, riceMods[0]*historyMult/4, mask); err != nil {
+		return nil, err
+	}
+	if err := br.rice(right, 17, initialHistory, kmodifier, riceMods[1]*historyMult/4, mask); err != nil {
+		return nil, err
 	}
 	if br.read(3) != 7 {
 		return nil, errString("missing END tag")
 	}
+	out := make([]int16, framesPerPacket*channels)
+	for i := 0; i < framesPerPacket; i++ {
+		out[i*channels] = int16(left[i])
+		out[i*channels+1] = int16(right[i])
+	}
 	return out, nil
+}
+
+// rice mirrors the reference decoder's entropy_rice_decode, including the
+// zero-run case that makes a silent block small.
+func (b *bitReader) rice(out []int, readSampleSize, initialHistory, kmodifier, historyMult, kmodifierMask int) error {
+	history := initialHistory
+	signModifier := 0
+	for i := 0; i < len(out); i++ {
+		k := 31 - kmodifier - bits.LeadingZeros32(uint32((history>>9)+3))
+		if k < 0 {
+			k += kmodifier
+		} else {
+			k = kmodifier
+		}
+		decoded := b.entropyValue(readSampleSize, k, 0xFFFFFFFF)
+		decoded += signModifier
+		final := (decoded + 1) / 2
+		if decoded&1 != 0 {
+			final = -final
+		}
+		out[i] = final
+		signModifier = 0
+		history += decoded*historyMult - ((history * historyMult) >> 9)
+		if decoded > 0xFFFF {
+			history = 0xFFFF
+		}
+		if history < 128 && i+1 < len(out) {
+			signModifier = 1
+			k = bits.LeadingZeros32(uint32(history)) + (history+16)/64 - 24
+			block := b.entropyValue(16, k, uint32(kmodifierMask))
+			for j := 1; j <= block && i+j < len(out); j++ {
+				out[i+j] = 0
+			}
+			i += block
+			if block > 0xFFFF {
+				signModifier = 0
+			}
+			history = 0
+		}
+	}
+	return nil
+}
+
+// entropyValue mirrors the reference decoder's entropy_decode_value: a unary
+// prefix, then a k-bit remainder, with the escape form (a prefix longer than
+// eight ones followed by a raw value).
+func (b *bitReader) entropyValue(readSampleSize, k int, kmodifierMask uint32) int {
+	x := 0
+	for x <= 8 && b.read(1) == 1 {
+		x++
+	}
+	if x > 8 {
+		return int(b.read(readSampleSize) & (0xFFFFFFFF >> uint(32-readSampleSize)))
+	}
+	if k != 1 {
+		extra := int(b.read(k))
+		x *= int(uint32((1<<uint(k))-1) & kmodifierMask)
+		if extra > 1 {
+			x += extra - 1
+		} else {
+			b.pos--
+		}
+	}
+	return x
 }
 
 type bitReader struct {

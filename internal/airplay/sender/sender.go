@@ -243,15 +243,19 @@ type Sender struct {
 	retransmits       uint64
 	lateTicks         uint64
 	underruns         uint64
-	sentBlocks        uint64
-	sendErrors        uint64
-	ringFed           bool
-	lastFedFrames     uint64
-	encryptErrors     uint64
-	duplicates        int
-	prefill           int
-	lastSync          time.Time
-	wifi              WiFiMetrics
+	// pendingUnderruns counts short fills the source has not yet recovered
+	// from: a full packet within the window commits them, the window closing
+	// first discards them.
+	pendingUnderruns uint64
+	sentBlocks       uint64
+	sendErrors       uint64
+	ringFed          bool
+	lastFedFrames    uint64
+	encryptErrors    uint64
+	duplicates       int
+	prefill          int
+	lastSync         time.Time
+	wifi             WiFiMetrics
 
 	rtspConnected bool
 	udpBound      bool

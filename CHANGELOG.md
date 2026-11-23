@@ -5,6 +5,21 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## Unreleased
+
+### Fixed
+
+- Pauses no longer crackle or force a reconnect. A silent source now keeps a
+  compact silence stream flowing at about 80 kbps per receiver instead of
+  stopping RTP: a fully starved packet carries a 16-byte compressed ALAC
+  silence frame (352 zero frames through the rice coder's zero-run case), so
+  the receiver's jitter buffer and renderer stay fed and the resume is
+  seamless. The idle state and the standby clock still start five seconds
+  after the last sound; the pacer never stops while the session is up.
+- The 欠载 counter reports a short fill only when the source comes back
+  within the window. A paused source's silence run is no longer counted, so
+  pausing a track no longer reads as 有卡顿.
+
 ## 0.6.5 - 2026-11-22
 
 ### Added

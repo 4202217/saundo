@@ -11,10 +11,10 @@ type Stats struct {
 	// LateTicks counts pacer ticks that ended at least one packet behind the
 	// wall-clock target after the capped burst.
 	LateTicks uint64
-	// Underruns counts audio packets padded with silence because the ring
-	// ran dry while it was still being fed real audio. Padding silence over
-	// an idle source is the stream's correct output, not a defect, so it is
-	// not counted.
+	// Underruns counts audio packets padded with silence because the ring ran
+	// dry while it was still being fed real audio, with the source back
+	// within the window. A source that stays away is a pause: its silence run
+	// is the stream's correct output and its short fills are never counted.
 	Underruns uint64
 	// SentBlocks counts audio packets at least one copy of which reached the
 	// host. SendErrors counts the datagrams the host refused, including a
@@ -37,6 +37,7 @@ type Stats struct {
 
 func (s *Sender) resetSessionCounters() {
 	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
+	s.pendingUnderruns = 0
 	s.ringFed, s.lastFedFrames = false, 0
 	s.encryptErrors = 0
 	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
