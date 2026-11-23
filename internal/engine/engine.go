@@ -317,9 +317,8 @@ func NewWithReceivers(sets *settings.Store, credsStore *creds.Store, recvStore *
 		onChange:  onChange,
 		// Eight seconds at 48 kHz stereo: the ring outlasts capture jitter
 		// and a stalled consumer. A silent source does not fill it — the
-		// pacer drains it while pushing, and the meter drops silent blocks
-		// once the pipe stops — so the drop counter keeps meaning real
-		// capture overflow.
+		// pacer keeps draining it at 44.1 kHz through the silence keepalive
+		// — so the drop counter keeps meaning real capture overflow.
 		ring:            ring.New(48000 * 2 * 8),
 		levelFeed:       ring.New(levelFeedSamples),
 		levelStop:       make(chan struct{}),
