@@ -24,8 +24,8 @@ live state:
 
 - Apple TV on-screen PIN pairing and stored-credential reconnect — the
   remaining definition-of-done gap.
-- Apple TV realtime sessions: the silence suspend deliberately excludes
-  AirPlay 1, and an Apple TV AP2 realtime session has not been run.
+- Apple TV realtime sessions: an Apple TV AP2 realtime session has not been
+  run.
 - A 30-minute soak at the 200 ms production preset with a stable audio
   device and no other app takeover. The 100 ms soak is withdrawn: the
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
@@ -1080,6 +1080,24 @@ one took it from 1627.
   `TestDiagnosticsUnderrunsAgeOutOfTheWindow`; the live gaps (the notice in
   a live session, the reworked page on real receivers) live in
   `Currently pending`.
+- 2026-11-23, the silent keepalive removes the pause crackle: the
+  receiver's realtime path is a pull jitter buffer with PLC, and a stream
+  suspended for more than a moment leaves the renderer unrecovered —
+  measured on `AudioAccessory5,1` 27.3 with a software combo of two
+  standalone HomePods: a 275 ms pause resumed clean, pauses of 3.5 s
+  through 2 h resumed with persistent static until a reconnect, with 丢样 0
+  and 0.0% retransmit. The sender now never suspends the stream: a fully
+  starved packet carries the compact ALAC silence frame (protocol.md §6),
+  the idle phase and the standby clock read `silence.LastLoud`, and the
+  欠载 counter commits a short fill only when the source returns inside the
+  window. Pins: `TestCompactSilenceDecodesToZeroFrames`,
+  `TestStarvedPacketsCarryTheCompactSilenceFrame`,
+  `TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles`,
+  `TestLaunchIntoSilenceKeepsTheStream`,
+  `TestDarkAnchorTracksSoundNotTheStream`, and
+  `TestStatsCountUnderrunsAndBuffer`. The receiver-side decode is covered
+  by the maintainer's 0.6.6 test (below); the zero run's `maxRun` caveat
+  lives in protocol.md §6, and the device behavior in devices.md.
 
 ## 2026-11-21 — the launch deadline and the multi-homed cohort route
 
@@ -1303,52 +1321,125 @@ no workaround. Evidence: the maintainer's `saundo.log` and `saundo.log.1`
 for 2026-11-21; the profile note lives in devices.md's HomePod stereo
 pair section. No code change, so nothing is pinned.
 
+## 2026-11-23 — 0.6.6 commit range review
 
-## 2026-11-23 — the silent keepalive removes the pause crackle's cause
+The release range v0.6.5..HEAD holds 33 commits, oldest d1666d2 (site: the
+hero flyout replica matches the 0.6.5 interface), tip 819226f (capture: the
+darwin stop guard fits the file's line budget). The two merge commits
+adfca01 (PR #55) and 65bd739 (PR #54) carry commits listed below. Twelve
+are user-visible and map to the changelog lines of the 0.6.6 section;
+nineteen are internal.
 
-The pause crackle reproduces on main with a software combo of two standalone
-`AudioAccessory5,1` HomePods (software 27.3): a Bilibili video paused at
-18:54:33 was suspended by the 5 s idle policy and resumed at 18:58:13 (a
-3 m 40 s gap); both speakers then played persistent static until a
-reconnect. Shorter pauses reproduced it at 20:19:39 → 20:20:40 and
-20:21:05 → 20:21:13. The session's connection card read 丢样 0 and 0.0%
-retransmit, and the sender's stream is bit-clean across a suspension, so the
-defect is the HomePod's renderer state after its jitter buffer starved, not
-the wire. The receiver's realtime path is a pull jitter buffer with PLC
-(`.audit/homepod-re-latency/findings.md`): stop feeding it and PLC covers
-the gap, and a long starvation leaves the renderer unrecovered until the
-stream is rebuilt.
+Internal, no changelog line: d1666d2, 6f0a21d, 31d2760, 63b43eb, and
+1d44b3a (site-only, not app behavior), 6624dc5 and 9058256 (the 0.6.5
+release record and the README previews), 524729a (mygo v0.10.0; the Go API
+is unchanged, the single-instance and popup-fitting behavior rides library
+code), 6c56c16 (the lifecycle refactor, behavior pinned by existing
+tests), c4e5e79 and afa25e2 (the lifecycle model and its test sweep),
+9096f42 (the architecture gate), d1ad62d (comment restatement plus the
+disclosed SRP Wipe reshape), 750b32a and 9124959 (the capture restart race
+and its macOS half; no reproducible user symptom), 819226f (the macOS guard
+folded into the buffer loop to keep the file's line budget), a93eeb2 (a
+malformed bplist key fails closed), 7fa18d5 (the non-string-key test
+fixture), and f350dc9 (two stale comments).
 
-The fix removes the starvation instead of repairing the renderer:
+User-visible, by 0.6.6 changelog line:
 
-- A silent source never stops the pacer. For as long as the session is up,
-  a fully starved packet carries a 16-byte compressed ALAC silence frame
-  (352 zero frames through the rice coder's zero-run case,
-  `alac.EncodeCompactSilence`). With the RTP/AP2/UDP headers the silent
-  packet is about 80 bytes, so the silent stream costs about 80 kbps per
-  member instead of 1.4 Mbps. Offline pins:
-  `TestCompactSilenceDecodesToZeroFrames` (the reference decoder port
-  expands the frame to 352 zero frames per channel; the frame uses 126
-  bits) and `TestStarvedPacketsCarryTheCompactSilenceFrame` (a dry-ring
-  packet on the sender is that frame).
-- The idle phase, `Snapshot.AudioIdle`, and the standby clock read the
-  source (`silence.LastLoud`), not the pacer, so the 5 s timing is
-  unchanged; the pacer never stops, and a resume needs no reconnect.
-  Pins: `TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles`,
-  `TestLaunchIntoSilenceKeepsTheStream`, and
-  `TestDarkAnchorTracksSoundNotTheStream`.
-- The 欠载 counter reports a short fill only when the source comes back
-  within the window; a pause's silence run is discarded.
-  `TestStatsCountUnderrunsAndBuffer` covers both sides.
+- Fixed, pauses no crackle, and the underrun rebase: 145a2dc.
+- Fixed, full-scale clicks and the ring reset replay: d6e2d4d.
+- Fixed, no password material to an unproven receiver, the CSeq reply
+  matching, the feedback keep-alive, the event decrypt failure, the
+  takeover classification, and the TCP data path: f33a553 and c3483ee.
+- Fixed, PTP by transport, the drop-accounting rebase, and the per-app mute
+  release: 30a5edc.
+- Fixed, the credentials store on a locked Keychain and the password
+  projection: b3ebca8 and 4cf7a47.
+- Fixed, a lost member leaves the wanted set: d310b34.
+- Fixed, the password as typed and the metadata sample: 8a0eb6e.
+- Fixed, the stability label, the hidden row's click target, and the
+  flyout device head gap: 4e4b433, 4362574, and 7bfb291.
 
-Owed live: a pause of 5 minutes on each HomePod and a resume, which must
-play clean with no reconnect and no 欠载 on the card; that run is also the
-first confirmation that a HomePod decodes the compact silence frame
-(silence, no noise) — the one receiver-side assumption in this change.
+Code review: subset ran (12 commits) -> fixed in 4cf7a47, 9124959
+(line-budget follow-up 819226f), 7fa18d5, and f350dc9. Both axes returned
+no P0. The Standards axis's hard
+findings were the ALAC rule in AGENTS.md still demanding uncompressed
+frames only (the rule now names the compact silence frame; fixed in the
+release commit), `creds.HasPassword` discarding the last known map
+(4cf7a47), and the capture race's missing test, which 750b32a documents as
+needing live WASAPI timing — 9124959 extends the same guard to the macOS
+tap, which had the gap in full. The Spec axis's confirmable findings were
+that macOS half, a bplist fixture whose offsets pointed at the null marker
+instead of the integer key it names (7fa18d5), two comments that
+contradicted the code (f350dc9), and the changelog's bandwidth claim,
+now scoped to a fully starved packet. Left as judgement calls: the
+now-callerless transport `SetPaused`/`Pushing` surface, `pendingReq`
+entries appended outside the `sendRequest` cap, a 4 MB slot overflow
+killing the slot for the session, and `lastGood` being process-local.
 
-One wire-format caveat for the live run: the zero run (351) exceeds the
-ALAC cookie's `maxRun` (255), which the reference decoder documents as
-"currently unused" and consumes in one go. If a HomePod's decoder enforces
-it, the fallback is to split the run at 255 — the decoder's sign modifier
-makes the next sample -1 LSB, then the remaining 95 frames run, inaudible
-but no longer bit-exact silence.
+## 2026-11-23 — the 0.6.6 UI review and mockup refresh
+
+The range changes no catalog string (no `cmd/saundo/locales` diff), and
+the copy gates pass in this release's acceptance gate (`TestCatalogKeyParity`,
+`TestCatalogHasNoDeadKeys`, `TestCatalogBannedTerms`,
+`TestCatalogUniqueValues`, `TestLatencyText`). The preview matrix rendered
+290 files into `.audit/release-0.6.6/ui-review/` in zh-CN and English,
+light and dark. The changed surfaces were inspected: the connection card's
+stability label with its 60-second note at 720 and 640 DIP (English no
+longer truncates either text), the hidden-receivers trigger (the pill's
+90-DIP hit box is pinned by `TestHiddenGroupTriggerMatchesPill`; a static
+render does not show a hit box), and the flyout device head (9.3 DIP to
+its card, matching the ambient head). No P0, no terminology finding.
+
+The ui-mockup templates were compared with the shipped surface
+(`theme.go`, `ui_kit.go`, `flyout.go`, `settings_window.go`,
+`receivers_page.go`). They were refreshed to the 0.6.5 interface in
+6eb59d4, and 0.6.6 changes no token, widget size, or shell geometry they
+describe: already current, no template change. The release matrix rendered
+44 PNGs into `.audit/release-0.6.6/mockups/` — settings target, normal, and
+edge; flyout idle, streaming, empty, error, media-off, and the cover,
+template, and expanded lamp states; zh-CN and English, light and dark — and
+every render was inspected for clipping, overflow, and wrapped copy.
+
+## 2026-11-23 — the verification skill's 0.6.6 maintenance run
+
+Outcome: **changed** — 9d5d971. The source audit was targeted at the
+range's user-facing surfaces (the silent keepalive and the three geometry
+fixes); the previous full six-page wave ran 2026-11-21. It found two
+drifts: `features/README.md` still listed the retired silence suspend as a
+cross-cutting state, and `ambient-light.md`'s standby recipe waited for the
+engine's retired idle and resume log lines. Both were corrected, and
+`verify-map` passes.
+
+Live pass: attached read-only to the maintainer's running 0.6.5 instance
+(doctor pid 25572, streaming to HomePod L and HomePod R, FEEDBACK and GET
+replies flowing; evidence in `/tmp/saundo-verify/20261123-224510`). The
+passive mDNS browse found HomePod L, HomePod R, MacBook Air, and the
+Apple TV-class display row. Unreachable this run, with the concrete
+prerequisite: the fresh-instance drives (the keepalive's pause and resume,
+the flyout and settings geometry) need the single-instance lock, which the
+running app owns; receiver handshake probes (`SAUNDO_DEVICE_TEST=1`) would
+interrupt the maintainer's live session. The maintainer's own test of this
+build covers the pause and resume (next section).
+
+## 2026-11-23 — the 0.6.6 candidate build and the maintainer's test
+
+The candidate build (`go tool mygo build -platform windows/amd64`,
+`MYGO_LDFLAGS=-X saundo/internal/app.Version=0.6.6`, signed with
+`MYGO_UPDATER_PRIVATE_KEY`) produced
+`cmd/saundo/build/windows-amd64/update-windows-amd64.json`: version 0.6.6,
+the English 0.6.6 changelog section as its notes, one signature, and
+download URLs under `releases/download/v0.6.6/`. The update archive and
+three deltas (0.6.3, 0.6.4, 0.6.5 → 0.6.6) sit beside it with their
+signatures, plus `install.ps1` and `SHA256SUMS`. The signing key's actual
+location on this machine is the Claude desktop container path
+(`AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Roaming/mygo/update-keys/`),
+not the documented `%APPDATA%\mygo\update-keys`.
+
+The release request of 2026-11-23 (0.6.6 ships mainly the urgent pause
+crackle fix) stands as the maintainer's confirmation that this build was
+tested on their own PC. It covers the pause and resume the silent-keepalive
+batch left owed, including the HomePod's decode of the compact silence
+frame (silence, no noise, no reconnect), which is why that batch graduated
+above. The tag and the GitHub publish are held at the maintainer's
+request: the release is prepared locally, no `v0.6.6` tag exists, and
+nothing was pushed or published.

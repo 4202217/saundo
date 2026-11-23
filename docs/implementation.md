@@ -10,9 +10,9 @@ receiver profiles; [ui.md](ui.md) the UI design language;
 [verification.md](verification.md) the evidence. This page describes the code
 as it is; update it in the same change that makes it wrong.
 
-The native UI uses mygo (`github.com/egoist/mygo` v0.9.1). The
+The native UI uses mygo (`github.com/egoist/mygo` v0.10.0). The
 [mygo guides](https://mygo.run/zh/docs) cover windows, widgets, packaging, and
-updates. The [`ui` package reference](https://pkg.go.dev/github.com/egoist/mygo@v0.9.1/ui)
+updates. The [`ui` package reference](https://pkg.go.dev/github.com/egoist/mygo@v0.10.0/ui)
 documents the API.
 
 ## Runtime model
