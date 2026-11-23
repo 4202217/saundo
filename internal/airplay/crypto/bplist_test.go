@@ -302,7 +302,7 @@ func TestBPListNonStringKeyIsAnError(t *testing.T) {
 		0xD1, 0, 0, 0, 1, 0, 0, 0, 2, // object 0: dict, key ref 1, val ref 2
 		0x10, 0x2A, // object 1: int 42 as the key
 		0x51, 'P', 'a', 'i', 'r', // object 2: "Pair"
-		0, 0, 0, 8, 0, 0, 0, 13, 0, 0, 0, 15, // offset table
+		0, 0, 0, 8, 0, 0, 0, 17, 0, 0, 0, 19, // offset table
 	}
 	trailer := make([]byte, 32)
 	trailer[6], trailer[7] = 4, 4
