@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-23 -->
+<!-- reviewed-through: 2026-11-24 -->
 
 # Verification
 
@@ -1443,3 +1443,27 @@ frame (silence, no noise, no reconnect), which is why that batch graduated
 above. The tag and the GitHub publish are held at the maintainer's
 request: the release is prepared locally, no `v0.6.6` tag exists, and
 nothing was pushed or published.
+
+## 2026-11-24 — the 0.6.6 draft and publish
+
+The maintainer authorized the release on 2026-11-24; the release commit
+was written the day before while the tag was held, so its body still
+records the hold. Before tagging, the maintainer's machine was running the
+0.6.6 build from this tree (doctor pid 35456, started 08:36), and the
+final gate reran green on `63de5f4`.
+
+Workflow 45299615476 succeeded on `63de5f4`: `check`, `check-macos`,
+`draft`, `build`, and `build-macos` all green. The tag `v0.6.6` points at
+`build: release 0.6.6`, pushed to main with the commit. The draft carried
+fifteen assets — the Windows installer, both update archives, both signed
+manifests, `install.ps1`, `install.sh`, the dmg, `SHA256SUMS`, and the
+0.6.3/0.6.4/0.6.5 deltas for both platforms — and
+`sha256sum -c SHA256SUMS` passed every listed asset. Both manifests carry
+version 0.6.6, the English 0.6.6 notes, and a main signature with signed
+deltas. The bilingual release notes were set from
+`scripts/release-notes.sh`, and the release was published 2026-11-24 at
+https://github.com/4202217/saundo/releases/tag/v0.6.6. The public feed
+serves `update-windows-amd64.json` and `update-darwin-arm64.json` at
+version 0.6.6 with signatures; the installer and dmg return 200. Not run:
+a live update from 0.6.5 to 0.6.6 — it needs the installed previous build
+and stays in `Currently pending`.
