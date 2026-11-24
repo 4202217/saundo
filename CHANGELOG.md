@@ -7,18 +7,68 @@ release notes.
 
 ## Unreleased
 
+### Added
+
+- The connection page is a live send-side dashboard. The measured card reads
+  the latency against the receiver family's measured floor, the ring headroom
+  with the trailing minute's low, the window's underruns split between a
+  combo's sides, and the session's L4 traffic with its packet size. A latency
+  below the floor adds a warning banner and points at the audio page; the
+  channel and volume left the page for the tray panel's mixer. A 60-second
+  strip plots the headroom and the two event kinds, marks a silent stretch
+  with a labeled band, labels the current value at its right edge, and names
+  the latest event with its age and count; the device rows carry each
+  member's headroom, rate, and the age of its last underrun.
+
+## 0.6.6 - 2026-11-23
+
 ### Fixed
 
-- Pauses no longer crackle or force a reconnect. A silent source now keeps a
-  compact silence stream flowing at about 80 kbps per receiver instead of
-  stopping RTP: a fully starved packet carries a 16-byte compressed ALAC
+- Pauses no longer crackle or force a reconnect. The stream never stops while
+  the session is up: a fully starved packet carries a 16-byte compact ALAC
   silence frame (352 zero frames through the rice coder's zero-run case), so
-  the receiver's jitter buffer and renderer stay fed and the resume is
-  seamless. The idle state and the standby clock still start five seconds
-  after the last sound; the pacer never stops while the session is up.
-- The 欠载 counter reports a short fill only when the source comes back
+  a silent stream costs about 80 kbps per receiver instead of 1.4 Mbps and
+  the receiver's jitter buffer and renderer never starve. The idle state and
+  the standby clock still start five seconds after the last sound; the pacer
+  never stops while the session is up.
+- The underrun counter reports a short fill only when the source comes back
   within the window. A paused source's silence run is no longer counted, so
-  pausing a track no longer reads as 有卡顿.
+  pausing a track no longer reads as stuttering.
+- A full-scale transition between adjacent samples no longer wraps into a
+  click at maximum volume, and a ring reset no longer replays one packet of
+  pre-reset audio.
+- A receiver password is never offered to a receiver that has not proven the
+  pairing: a failed pair-verify signature now ends the session when a
+  password is in play, because that response is offline-crackable.
+- A stalled event channel no longer drops control data and kills the session
+  as an authentication failure: TCP backpressure absorbs the stall, a
+  connection whose writer died reports later sends as failed, and replies
+  match their request by CSeq instead of shifting every later handler.
+- The keep-alive is armed only by a feedback reply, so a rejected command no
+  longer disables it. Eight consecutive event-channel decrypt failures end
+  the session instead of streaming mute, and a lost volume reply recovers
+  after three seconds.
+- A clean control close counts as a takeover only when the event channel
+  worked this session, so an AirPlay 1 session retries instead of reading as
+  taken over.
+- PTP timing follows the transport, not the pairing method: an AirPlay 2
+  HomePod or Mac that pairs by password, or advertises no HAP bits, now gets
+  PTP timing instead of an NTP stream the receiver silently ignores.
+- A clean disconnect rebases the drop accounting, so the next connection no
+  longer counts pre-stream overflow as stutter, and switching to per-app
+  capture releases an in-flight local-output mute instead of leaving the
+  computer muted until the next launch.
+- A locked Keychain no longer quarantines the credentials file: loads serve
+  the last known store, writes refuse, and a transient read failure no longer
+  reads as "no password" and re-pairs the receiver.
+- A member lost from a multi-device session leaves the wanted set even when
+  the survivors cannot rebuild, so a reconnect no longer retries a receiver
+  that is gone or has been taken over.
+- The password prompt submits the secret exactly as typed, including spaces.
+- In English, the connection card's stability label keeps its width and the
+  60-second note carries the ellipsis.
+- The hidden-receivers row's click target matches its pill, and the flyout
+  device head sits as close to its card as the ambient head.
 
 ## 0.6.5 - 2026-11-22
 

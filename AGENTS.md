@@ -79,7 +79,7 @@ system. A rule added here without a gate is judgment-only.
 - Keep the engine UI-agnostic. The UI talks to an `Engine` interface and channels. No IPC and no sidecar.
 - Keep the sender sans-i/o, following `airplay2-sender-cpp`: `RaopIo` has six methods (TCP connect/send/close, UDP bind/send/close). The sender owns no sockets, timers, or threads; the host pushes connection, data, and close events into it, and the host loop pulls timers with `NextDeadline` and `Tick`.
 - One engine event-loop goroutine drives the sender and owns session timers; the host's I/O goroutines own the protocol sockets, and PTP runs its own loop. Capture runs in its own goroutine. The UI runs on mygo's main thread. Do not share mutable state; use bounded queues and command channels.
-- ALAC is mandatory on the AP2 realtime stream. Send uncompressed ALAC frames, never PCM there. Use `internal/airplay/alac.EncodeUncompressed`. The plaintext AP1 fallback for `_raop`-only receivers is the only raw-PCM path, and AP1 is not a target.
+- ALAC is mandatory on the AP2 realtime stream. Send ALAC frames, never PCM there: `internal/airplay/alac.EncodeUncompressed` for real audio, and `alac.EncodeCompactSilence` only for a fully starved packet (the one hand-built compressed frame, the rice coder's zero-run case). The plaintext AP1 fallback for `_raop`-only receivers is the only raw-PCM path, and AP1 is not a target.
 - Use NTP for receivers that accept it. A HomePod on software 27 and a macOS
   AirPlay receiver keep their own PTP grandmaster and silently ignore an
   NTP-timed stream: when the model starts with `AudioAccessory` or `Mac` and

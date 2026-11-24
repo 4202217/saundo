@@ -282,9 +282,10 @@ func (st *stream) pump(s *Source, follow bool) error {
 
 // push converts one IO buffer to stereo int16 and drops it into the ring,
 // which discards its oldest samples when full, so capture never blocks. It
-// runs on the audio thread and does not lock or allocate.
+// runs on the audio thread without locking; a stopped source stops pushing at
+// the next buffer, like the Windows pump at its packet boundary.
 func (st *stream) push(input *darwin.AudioBufferList) {
-	for i := 0; i < int(input.NumberBuffers); i++ {
+	for i := 0; i < int(input.NumberBuffers) && !st.src.pushStopped.Load(); i++ {
 		buf := input.Buffer(i)
 		if buf.Data == nil || buf.DataByteSize == 0 {
 			continue

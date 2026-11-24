@@ -10,9 +10,9 @@ receiver profiles; [ui.md](ui.md) the UI design language;
 [verification.md](verification.md) the evidence. This page describes the code
 as it is; update it in the same change that makes it wrong.
 
-The native UI uses mygo (`github.com/egoist/mygo` v0.9.1). The
+The native UI uses mygo (`github.com/egoist/mygo` v0.10.0). The
 [mygo guides](https://mygo.run/zh/docs) cover windows, widgets, packaging, and
-updates. The [`ui` package reference](https://pkg.go.dev/github.com/egoist/mygo@v0.9.1/ui)
+updates. The [`ui` package reference](https://pkg.go.dev/github.com/egoist/mygo@v0.10.0/ui)
 documents the API.
 
 ## Runtime model
@@ -181,19 +181,24 @@ with its device row and published controls, plus the joined session name and
 the slowest member's effective latency. The tray, the connection page, the
 settings sidebar, and the playback head's latency line read that layer instead
 of a single selected device; the flyout already renders one row per member.
-The connection page draws two sections from it: 已连接设备 lists the members
-with their channel, volume, and state, naming retransmits and trailing-window
-underruns only when notable, and 本次连接 reads `Snapshot.Diagnostics` for
-uptime, stability, the session retransmit share, and reconnects while the
-session streams. A dropped member leaves the list and appears as the engine
-notice's reconnect row. Neither card restates a setting or a device constant. Two selection
+The connection page draws two sections from it: 已连接设备 lists each member
+with its state and its live send side — the current event (the trailing
+window's underruns with their age, or a notable retransmit share) over the
+ring headroom and the per-target L4 rate — and 本次连接 reads
+`Snapshot.Diagnostics` for the four live numbers (latency with the receiver
+family's floor, the ring headroom with its trailing low, the window's
+underruns, and the session's L4 traffic), the session-total exception row,
+and the 60-second strip. The card shows the effective latency against its
+family floor by design — the setting-based guard — but carries no control:
+the latency mode stays on 音频. Two selection
 semantics stay distinct: the engine's `SelectedID` is the primary target — the
 session's first key, which guards the reconnect policy and anchors the tray's
 retry — while the app's `selID` is the panel's view selection, seeded from the
 last session's first target, moved by clicks, and kept on a listed device.
 
 `Snapshot.Diagnostics` is the diagnostics model. The sender exposes
-`Stats` (retransmits served, late pacer ticks, underruns, sent blocks, last
+`Stats` (retransmits served, late pacer ticks, underruns, sent blocks and L4
+bytes, the last packet's size, the last committed underrun's time, last
 timing packet, ring buffer milliseconds, and the SETUP Wi-Fi snapshot); the
 engine calls it on the event loop and folds it once per publish. An underrun
 is a packet padded with silence while the ring was still being fed real
@@ -209,15 +214,25 @@ timing packet. The group shape comes from the
 plan: one stereo target reports `GroupStereo`, one single `GroupSingle`, and
 more than one target `GroupCohort` with the sender count as its size.
 
-The stability verdict is a trailing-window reading, not a session total.
-`sessionStability` (`internal/engine/stability.go`) samples each sender's
-cumulative underruns and the session's dropped-sample count once per publish.
-`RecentUnderruns` and `RecentDropped` are the growth over the last 60 seconds,
-and `Degraded` reads only those; `TargetControl.Health.RecentUnderruns` uses
-the same per-member samples. Joining a receiver or rebuilding the cohort can
-pad a packet or two with silence, and that blip stops reading as 有卡顿 once
-it ages out. A counter that moves backwards means its sender session
-restarted, so its window starts over. While a session streams the engine
+The trailing window is still the card's evidence, but it no longer names a
+verdict. `sessionStability` (`internal/engine/stability.go`) samples each
+sender's cumulative underruns and the session's dropped-sample count once per
+publish. `RecentUnderruns` and `RecentDropped` are the growth over the last
+60 seconds; `TargetHealth` uses the same per-member samples and adds
+`UnderrunAge`, the time since the last committed underrun, so a row can say
+when the trouble last happened. Joining a receiver or rebuilding the cohort
+can pad a packet or two with silence, and that blip ages out of the window. A
+counter that moves backwards means its sender session restarted, so its
+window starts over. `Snapshot.Diagnostics` also carries the numbers the card
+reads: `TrafficBPS` and `PacketBytes` from the senders' L4 byte counts,
+`BufferMinMS` from the strip's history, and the session totals. The strip's
+`streamHistory` (`internal/engine/streamhistory.go`) samples the member
+stats every 100 ms on the engine loop, keeps a trailing minute, and copies
+one-second buckets to the UI under a lock when the page paints. Each sample
+also records whether the source was idle: the card's trailing low skips the
+idle zeros, while the strip draws them as a 静音 band. The strip's summary
+line comes from the newest bucket with an event, using that second's count
+and the bucket's age, so it answers when and how many without a tooltip. While a session streams the engine
 publishes diagnostics every 5 seconds (`statsWake`), which is what expires a
 window on a quiet session; the engine folds the model on each snapshot
 publish. The Wi-Fi object is the stream SETUP response's `wiFiMetrics` (capital F: `rssi`, `ssid`, and

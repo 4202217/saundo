@@ -149,6 +149,28 @@ func TestLoadKeepsPreviousOnReadError(t *testing.T) {
 	}
 }
 
+// TestHasPasswordKeepsPreviousOnReadError pins the projection: a failed read
+// keeps the last good map, so the receivers merge does not read "no
+// password" and re-pair the receiver.
+func TestHasPasswordKeepsPreviousOnReadError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "credentials.dat")
+	s := NewStoreAt(path)
+	if err := s.SavePassword("AA:BB", "secret"); err != nil {
+		t.Fatalf("save password: %v", err)
+	}
+	// Swap the file for a directory so ReadFile fails with a non-not-exist
+	// error while the store still holds its last good map.
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if !s.HasPassword("AA:BB") {
+		t.Fatal("HasPassword after read error = false, want the last known password")
+	}
+}
+
 // TestKeyUnavailableDoesNotQuarantine pins the decrypt-error taxonomy: a key
 // side failure keeps the blob and fails closed; only an authentic decrypt
 // failure moves the file aside.

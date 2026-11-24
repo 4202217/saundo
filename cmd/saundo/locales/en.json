@@ -344,12 +344,8 @@
   "settingsReconnectDesc": "Retries automatically a few times before giving up",
   "settingsStrictAuth": "Strict receiver verification",
   "settingsStrictAuthDesc": "Disconnect when receiver verification fails",
-  "settingsHealthDrops": "Stability",
-  "settingsHealthDropsGood": "Good",
-  "settingsHealthDropsBad": "Stuttering",
   "settingsConnectionDevices": "Connected devices",
   "settingsConnectionThis": "This connection",
-  "settingsConnectionUptime": "Connected for",
   "settingsConnectionRetransmit": "Network retransmit",
   "settingsConnectionReconnects": "Reconnects",
   "settingsConnectionLost": "{name} disconnected",
@@ -383,17 +379,6 @@
   "@settingsUptimeHoursWhole": {
     "placeholders": {
       "h": {
-        "type": "int"
-      }
-    }
-  },
-  "settingsStabilityNote": "last 60 s · {drops} dropped · {underruns} underruns",
-  "@settingsStabilityNote": {
-    "placeholders": {
-      "drops": {
-        "type": "int"
-      },
-      "underruns": {
         "type": "int"
       }
     }
@@ -823,6 +808,134 @@
     "placeholders": {
       "name": {
         "type": "String"
+      }
+    }
+  },
+  "settingsConnectionLatency": "Latency",
+  "settingsConnectionFloor": "measured floor {ms} ms",
+  "@settingsConnectionFloor": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionBelowFloor": "below floor {ms} ms",
+  "@settingsConnectionBelowFloor": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionLatencyWarn": "Latency {ms} ms is below the receiver's measured floor (about {floor} ms); audio may click or drop. Raise it on the Audio page.",
+  "@settingsConnectionLatencyWarn": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroom": "Pending audio",
+  "settingsConnectionHeadroomMin": "60 s low {ms} ms",
+  "@settingsConnectionHeadroomMin": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroomMinWorst": "60 s low {ms} ms (worst member)",
+  "@settingsConnectionHeadroomMinWorst": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroomIdle": "Idle",
+  "settingsConnectionHeadroomDevice": "Pending {ms} ms",
+  "@settingsConnectionHeadroomDevice": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroomDeviceIdle": "Pending — (idle)",
+  "settingsConnectionHeadroomDeviceDash": "Pending —",
+  "settingsConnectionUnderrun": "Underruns",
+  "settingsConnectionUnderrunWindow": "last 60 s",
+  "settingsConnectionUnderrunSplit": "last 60 s · {left} {l} · {right} {r}",
+  "@settingsConnectionUnderrunSplit": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      },
+      "l": {
+        "type": "int"
+      },
+      "right": {
+        "type": "String"
+      },
+      "r": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionUnderrunsAgo": "{n} underruns · {s}s ago",
+  "@settingsConnectionUnderrunsAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionTraffic": "Traffic",
+  "settingsConnectionPacketNote": "{size} per packet",
+  "@settingsConnectionPacketNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsConnectionDropped": "{n} dropped",
+  "@settingsConnectionDropped": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionStripWindow": "Last 60 s",
+  "settingsConnectionChartPending": "Pending",
+  "settingsConnectionChartRetransmit": "Retransmit",
+  "settingsConnectionRecentUnder": "Latest event {s}s ago · {n} underruns",
+  "@settingsConnectionRecentUnder": {
+    "placeholders": {
+      "s": {
+        "type": "int"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionRecentRetr": "Latest event {s}s ago · {n} retransmits",
+  "@settingsConnectionRecentRetr": {
+    "placeholders": {
+      "s": {
+        "type": "int"
+      },
+      "n": {
+        "type": "int"
       }
     }
   }

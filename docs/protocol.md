@@ -190,7 +190,7 @@ per channel: rice {one 0 bit (first residual), nine 1 bits (escape prefix), be16
 pad to a byte boundary
 ```
 
-`alac.EncodeCompactSilence` builds that cached frame; the reference decoder logic in `internal/airplay/alac/compact_test.go` expands it to 352 zero frames per channel, and the fake receiver decodes it on the sender path. With the RTP/AP2/UDP headers the whole silent packet is about 80 bytes, so a silent stream costs roughly 80 kbps per member instead of 1.4 Mbps.
+`alac.EncodeCompactSilence` builds that cached frame; the reference decoder logic in `internal/airplay/alac/compact_test.go` expands it to 352 zero frames per channel, and the fake receiver decodes it on the sender path. With the RTP/AP2/UDP headers the whole silent packet is about 80 bytes, so a silent stream costs roughly 80 kbps per member instead of 1.4 Mbps. The zero run (351) is longer than the ALAC cookie's `maxRun` (255), which the reference decoder documents as currently unused and consumes in one go; should a receiver's decoder enforce it, the fallback is to split the run at 255 — the rice sign modifier makes the next sample -1 LSB, then the remaining 95 frames run, inaudible but no longer bit-exact silence.
 
 RTP header, 12 bytes: `0x80, 0xE0` on the first packet (marker set), `0x60` afterwards, seq (be16), timestamp (be32), `ssrc` (be32, the session id). AP2 encryption: AAD is RTP header bytes 4–11 (timestamp, ssrc); the nonce is an 8-byte little-endian counter whose last 8 bytes are appended after the ciphertext.
 

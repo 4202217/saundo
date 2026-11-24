@@ -198,13 +198,12 @@ func (s *Store) DeletePassword(deviceID string) error {
 
 // HasPassword reports whether a password exists for the receiver. The
 // engine keeps this projection so the merge does not decrypt DPAPI per row.
+// A failed read keeps the last good map: a transient I/O failure or a locked
+// Keychain must not read as "no password" and re-pair the receiver.
 func (s *Store) HasPassword(deviceID string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	all, err := s.readAll()
-	if err != nil {
-		return false
-	}
+	all, _ := s.readAll()
 	_, ok := all[passwordKey(deviceID)]
 	return ok
 }

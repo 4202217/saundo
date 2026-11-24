@@ -21,6 +21,15 @@ type Stats struct {
 	// primary send whose duplicate still went out.
 	SentBlocks uint64
 	SendErrors uint64
+	// SentBytes counts the audio datagrams the host accepted at L4, the UDP
+	// header included: every duplicate and every retransmit reply.
+	SentBytes uint64
+	// LastPacketBytes is the L4 size of the last audio datagram built (RTP
+	// header, payload, UDP header). Zero before the first packet.
+	LastPacketBytes int
+	// LastUnderrun is when the last counted underrun committed: the source
+	// returned inside the window after a short fill. Zero means none yet.
+	LastUnderrun time.Time
 	// EncryptErrors counts audio packets dropped because the AP2 cipher
 	// refused the payload. A packet that cannot be encrypted is never sent.
 	EncryptErrors uint64
@@ -37,6 +46,7 @@ type Stats struct {
 
 func (s *Sender) resetSessionCounters() {
 	s.retransmits, s.lateTicks, s.underruns, s.sentBlocks, s.sendErrors = 0, 0, 0, 0, 0
+	s.sentBytes, s.lastPacketBytes, s.lastUnderrun = 0, 0, time.Time{}
 	s.pendingUnderruns = 0
 	s.ringFed, s.lastFedFrames = false, 0
 	s.encryptErrors = 0
@@ -48,14 +58,17 @@ func (s *Sender) resetSessionCounters() {
 // Stats returns the session's diagnostic counters.
 func (s *Sender) Stats() Stats {
 	stats := Stats{
-		Retransmits:   s.retransmits,
-		LateTicks:     s.lateTicks,
-		Underruns:     s.underruns,
-		SentBlocks:    s.sentBlocks,
-		SendErrors:    s.sendErrors,
-		EncryptErrors: s.encryptErrors,
-		LastSync:      s.lastSync,
-		WiFi:          s.wifi,
+		Retransmits:     s.retransmits,
+		LateTicks:       s.lateTicks,
+		Underruns:       s.underruns,
+		SentBlocks:      s.sentBlocks,
+		SendErrors:      s.sendErrors,
+		SentBytes:       s.sentBytes,
+		LastPacketBytes: s.lastPacketBytes,
+		LastUnderrun:    s.lastUnderrun,
+		EncryptErrors:   s.encryptErrors,
+		LastSync:        s.lastSync,
+		WiFi:            s.wifi,
 	}
 	if s.ring != nil && s.inputRate > 0 {
 		frames := float64(s.ring.Available()) / channels

@@ -8,12 +8,12 @@ import (
 	"saundo/cmd/saundo/locales"
 )
 
-// TestConnectionStabilityLabelKeepsItsWidth pins the stat cell layout: the
-// label never truncates; the 60-second note carries the ellipsis. The en
-// note is long enough that the row once squeezed the label to "Stabil…".
-func TestConnectionStabilityLabelKeepsItsWidth(t *testing.T) {
+// TestConnectionHeadroomLabelKeepsItsWidth pins the stat cell layout: the
+// label never truncates; the 60-second note carries the ellipsis. The English
+// note is long enough to squeeze a label that can shrink.
+func TestConnectionHeadroomLabelKeepsItsWidth(t *testing.T) {
 	withLocale(t, "en")
-	label := locales.SettingsHealthDrops()
+	label := locales.SettingsConnectionHeadroom()
 
 	// The same text unconstrained: the width the label must keep. The row
 	// keeps the text at its intrinsic width instead of the window's.
@@ -35,6 +35,6 @@ func TestConnectionStabilityLabelKeepsItsWidth(t *testing.T) {
 		t.Fatalf("the connection page is missing %q; texts: %q", label, tt.Texts())
 	}
 	if got.W < want.W-0.5 {
-		t.Fatalf("the stability label laid out at %.1f DIPs, want its full %.1f DIPs; the note must carry the truncation", got.W, want.W)
+		t.Fatalf("the headroom label laid out at %.1f DIPs, want its full %.1f DIPs; the note must carry the truncation", got.W, want.W)
 	}
 }

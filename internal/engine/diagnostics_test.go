@@ -277,3 +277,58 @@ func TestDiagnosticsUnknownWhenMemberDidNotReportWiFi(t *testing.T) {
 		t.Fatal("a member without Wi-Fi data still read as a valid group value")
 	}
 }
+
+// TestDiagnosticsTrafficStripAndTargetHealth pins the dashboard's live
+// numbers: the session rate from the byte delta, the packet size, the strip's
+// trailing headroom low, and the per-target fold the device rows read.
+func TestDiagnosticsTrafficStripAndTargetHealth(t *testing.T) {
+	h := newHarness(t)
+	h.addDevice()
+	h.connect()
+	h.launch()
+
+	h.fake.stats = []sender.Stats{{BufferMS: 40, BufferValid: true, SentBytes: 1000, LastPacketBytes: 60}}
+	h.e.sampleStream(h.now)
+	h.e.publish()
+	h.advance(time.Second)
+
+	lastUnderrun := h.now.Add(-8 * time.Second)
+	h.fake.stats = []sender.Stats{{
+		BufferMS: 30, BufferValid: true,
+		SentBytes: 3000, LastPacketBytes: 1456,
+		Underruns: 4, LastUnderrun: lastUnderrun,
+	}}
+	h.e.sampleStream(h.now)
+	h.e.publish()
+
+	snap := h.e.Snapshot()
+	d := snap.Diagnostics
+	if !d.TrafficValid || d.TrafficBPS != 2000 {
+		t.Fatalf("traffic = %v/%v, want 2000/valid", d.TrafficBPS, d.TrafficValid)
+	}
+	if d.PacketBytes != 1456 {
+		t.Fatalf("packet bytes = %d, want 1456", d.PacketBytes)
+	}
+	if !d.BufferMinValid || d.BufferMinMS != 30 {
+		t.Fatalf("buffer low = %v/%v, want 30/valid", d.BufferMinMS, d.BufferMinValid)
+	}
+	if len(snap.Targets) == 0 {
+		t.Fatal("no target controls")
+	}
+	health := snap.Targets[0].Health
+	if !health.BufferValid || health.BufferMS != 30 {
+		t.Fatalf("target buffer = %v/%v, want 30", health.BufferMS, health.BufferValid)
+	}
+	if !health.TrafficValid || health.TrafficBPS != 2000 {
+		t.Fatalf("target traffic = %v/%v, want 2000", health.TrafficBPS, health.TrafficValid)
+	}
+	if health.PacketBytes != 1456 {
+		t.Fatalf("target packet = %d, want 1456", health.PacketBytes)
+	}
+	if health.RecentUnderruns != 4 {
+		t.Fatalf("target window underruns = %d, want 4", health.RecentUnderruns)
+	}
+	if health.UnderrunAge != 8*time.Second {
+		t.Fatalf("underrun age = %s, want 8s", health.UnderrunAge)
+	}
+}

@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"time"
+
 	"saundo/internal/airplay/sender"
 	"saundo/internal/receivers"
 )
@@ -35,6 +37,20 @@ type TargetHealth struct {
 	// trailing stability window. The row names a device causing trouble now,
 	// not one that blipped when the session rebuilt.
 	RecentUnderruns uint64
+	// BufferMS is the lowest valid ring headroom among the target's members;
+	// BufferValid is false when any member has no live ring.
+	BufferMS    float64
+	BufferValid bool
+	// SentBytes and TrafficBPS describe the target's audio datagrams at L4.
+	// TrafficValid is false before the first rate window closes.
+	SentBytes    uint64
+	TrafficBPS   float64
+	TrafficValid bool
+	// PacketBytes is the last audio datagram's L4 size.
+	PacketBytes int
+	// UnderrunAge is how long ago the last counted underrun committed. Zero
+	// means none this session.
+	UnderrunAge time.Duration
 }
 
 // TargetControl is one active target's per-device audio settings and its role
@@ -119,20 +135,46 @@ func (e *Engine) targetHealth() map[string]TargetHealth {
 	if len(stats) != len(e.plan.members) {
 		return nil
 	}
+	now := e.now()
 	recent := e.stability.recent.Members
 	out := make(map[string]TargetHealth, len(e.plan.targets))
 	i := 0
 	for _, t := range e.plan.targets {
 		var h TargetHealth
+		bufferAll := true
+		var latest time.Time
 		for j := 0; j < t.count; j++ {
 			s := stats[i]
 			h.Retransmits += s.Retransmits
 			h.SentBlocks += s.SentBlocks
+			h.SentBytes += s.SentBytes
+			if s.LastPacketBytes > h.PacketBytes {
+				h.PacketBytes = s.LastPacketBytes
+			}
+			if s.LastUnderrun.After(latest) {
+				latest = s.LastUnderrun
+			}
+			if s.BufferValid {
+				if !h.BufferValid || s.BufferMS < h.BufferMS {
+					h.BufferMS = s.BufferMS
+				}
+				h.BufferValid = true
+			} else {
+				bufferAll = false
+			}
 			if i < len(recent) {
 				h.RecentUnderruns += recent[i]
 			}
 			i++
 		}
+		h.BufferValid = h.BufferValid && bufferAll
+		if !latest.IsZero() {
+			h.UnderrunAge = now.Sub(latest)
+			if h.UnderrunAge < 0 {
+				h.UnderrunAge = 0
+			}
+		}
+		h.TrafficBPS, h.TrafficValid = e.linkRate(now, t.key, h.SentBytes)
 		out[t.key] = h
 	}
 	return out

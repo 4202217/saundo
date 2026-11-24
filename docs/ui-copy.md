@@ -18,6 +18,9 @@ Scope: every string in `cmd/saundo/locales/en.json` and `cmd/saundo/locales/zh-C
 | A target's volume | 音量 | volume | 音量大小, 输出音量 |
 | A target's stereo side | 声道 | channel | 左声道, 右声道, 立体声 as the receiver row's word; the channel segment and the combo layout use the short 左 / 右 |
 | A receiver on the machine running saundo | 本机 | local | 自身接收器, this device, this Mac as the chip |
+| The audio queued for sending | 待发余量 | pending audio | 缓冲余量, 发送缓冲, 队列水位 |
+| The session's L4 send rate | 流量 | traffic | 码率, 带宽 |
+| The receiver family's measured safe latency | 实测下限 | measured floor | 安全下限, 最小延迟 |
 
 The receiver is the product concept. The flyout section head and the settings page use the same word. A Windows audio endpoint is named 系统声音 / system audio, never 接收器 or 设备. A receiver on this machine is never a target. `本机` / `Local` as a receiver label appears only on its row; the mute-local copy uses `本机输出` / `local output` for the computer's audio output.
 
@@ -33,7 +36,7 @@ The tray menu's receiver rows keep the flyout's 离线 status. The session actio
 | Session audio stability | 稳定性 | stability | 丢样本, 丢帧 |
 | Where the latency mode is changed | 可在音频页调整 | Adjust on Audio | — |
 
-The connection page shows no latency value; the latency mode lives on 音频 and the flyout's playback head carries the effective value. The receiver's own processing time is measured for diagnostics and has no surface.
+The connection page shows the effective latency against the receiver family's measured floor as its setting guard; the latency mode itself is changed on 音频, and the flyout's playback head carries the effective value. The receiver's own processing time is measured for diagnostics and has no surface.
 
 ## Per-device controls
 
@@ -55,7 +58,7 @@ A member that leaves while the rest continue reads `{name} 已断开，其他设
 
 A refused saved password reads `{device} 的密码未被接收器接受。` / `The receiver did not accept the password for {device}.` The masked password dialog that opens is the same one used on first connect; the error explains why it reopened.
 
-The 连接 page names its two sections 已连接设备 / Connected devices and 本次连接 / This connection, in the group-label style above the card. A device row's state reuses 正在播放 / Streaming, 正在连接… / Connecting…, 正在重连… / Reconnecting…, and 连接失败 / Connection failed. A device dropped while the rest continue appears as `{name} 已断开` / `{name} disconnected` with 重新连接 / Reconnect. The measured card reads 已连接时长 / Connected for, 稳定性 / Stability with `60 秒内丢样 {drops} · 欠载 {underruns}` / `last 60 s · {drops} dropped · {underruns} underruns`, 网络重传 / Network retransmit, and 重连 / Reconnects. Stability and both counters read the trailing 60 seconds, so a blip while another device joins stops reading as 有卡顿 / Stuttering once it ages out; a healthy device's counters stay hidden, and a notable one reads `重传 {pct}%` / `{pct}% retransmitted` and `欠载 {n}` / `{n} underruns`, the underrun count over that same window.
+The 连接 page names its two sections 已连接设备 / Connected devices and 本次连接 / This connection, in the group-label style above the card. A device row's state reuses 正在播放 / Streaming, 正在连接… / Connecting…, 正在重连… / Reconnecting…, and 连接失败 / Connection failed. A device dropped while the rest continue appears as `{name} 已断开` / `{name} disconnected` with 重新连接 / Reconnect. A member row's event reads `欠载 {n} · {s} 秒前` / `{n} underruns · {s}s ago` or `重传 {pct}%` / `{pct}% retransmitted`; its second line reads `待发余量 {ms} ms · {rate} KB/s` / `Pending {ms} ms · {rate} KB/s`, or `待发余量 —（静音） · {rate}` / `Pending — (idle) · {rate}` when the source is silent. The measured card reads 延迟 / Latency with `实测下限 {ms} ms` / `measured floor {ms} ms`, 待发余量 / Pending audio with `60 秒内最低 {ms} ms` / `60 s low {ms} ms` (for more than one sender `…（最差成员）` / `… (worst member)`), 欠载 / Underruns with `60 秒内` / `last 60 s` and, for a left and a right target, `60 秒内 · 左 {l} · 右 {r}` / `last 60 s · Left {l} · Right {r}`, and 流量 / Traffic with `每包 {size}` / `{size} per packet`. A latency below the receiver's measured floor adds `延迟 {ms} ms 低于接收器的实测下限（约 {floor} ms），可能出现杂音；请在音频页调高。` / `Latency {ms} ms is below the receiver's measured floor (about {floor} ms); audio may click or drop. Raise it on the Audio page.` The session-total exceptions read `本次连接` / `This connection` with 网络重传 / Network retransmit, `丢样 {n}` / `{n} dropped`, and 重连 / Reconnects, each only when non-zero. The strip names its window 最近 60 秒 / Last 60 s and its marks 待发 / Pending, 静音 / Idle (only while the window holds a silent stretch), 重传 / Retransmit, and 欠载 / Underruns; one summary line names the latest event, `最近事件 {s} 秒前 · 欠载 {n} 次` / `Latest event {s}s ago · {n} underruns` or `最近事件 {s} 秒前 · 重传 {n} 次` / `Latest event {s}s ago · {n} retransmits`. A healthy device's counters stay hidden, and the page carries no verdict: 良好 / Good and 有卡顿 / Stuttering were removed with the stability cell.
 
 ## One state, one phrase
 

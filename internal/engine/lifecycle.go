@@ -81,8 +81,8 @@ func (l *lifecycle) userCancel() {
 	l.cancelRetry()
 }
 
-// clearWanted drops the requested set. Only Disconnect, a takeover, and
-// shutdown reach it.
+// clearWanted drops the requested set. Only Disconnect and shutdown reach it;
+// a takeover keeps the set so the row can still reconnect by hand.
 func (l *lifecycle) clearWanted() {
 	l.wantedKeys = nil
 }

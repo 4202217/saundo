@@ -239,12 +239,8 @@
   "settingsReconnectDesc": "断开后会自动重试几次，然后停止",
   "settingsStrictAuth": "严格验证接收器",
   "settingsStrictAuthDesc": "接收器验证不通过时断开",
-  "settingsHealthDrops": "稳定性",
-  "settingsHealthDropsGood": "良好",
-  "settingsHealthDropsBad": "有卡顿",
   "settingsConnectionDevices": "已连接设备",
   "settingsConnectionThis": "本次连接",
-  "settingsConnectionUptime": "已连接时长",
   "settingsConnectionRetransmit": "网络重传",
   "settingsConnectionReconnects": "重连",
   "settingsConnectionLost": "{name} 已断开",
@@ -278,17 +274,6 @@
   "@settingsUptimeHoursWhole": {
     "placeholders": {
       "h": {
-        "type": "int"
-      }
-    }
-  },
-  "settingsStabilityNote": "60 秒内丢样 {drops} · 欠载 {underruns}",
-  "@settingsStabilityNote": {
-    "placeholders": {
-      "drops": {
-        "type": "int"
-      },
-      "underruns": {
         "type": "int"
       }
     }
@@ -718,6 +703,134 @@
     "placeholders": {
       "name": {
         "type": "String"
+      }
+    }
+  },
+  "settingsConnectionLatency": "延迟",
+  "settingsConnectionFloor": "实测下限 {ms} ms",
+  "@settingsConnectionFloor": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionBelowFloor": "低于实测下限 {ms} ms",
+  "@settingsConnectionBelowFloor": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionLatencyWarn": "延迟 {ms} ms 低于接收器的实测下限（约 {floor} ms），可能出现杂音；请在音频页调高。",
+  "@settingsConnectionLatencyWarn": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      },
+      "floor": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroom": "待发余量",
+  "settingsConnectionHeadroomMin": "60 秒内最低 {ms} ms",
+  "@settingsConnectionHeadroomMin": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroomMinWorst": "60 秒内最低 {ms} ms（最差成员）",
+  "@settingsConnectionHeadroomMinWorst": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroomIdle": "静音",
+  "settingsConnectionHeadroomDevice": "待发余量 {ms} ms",
+  "@settingsConnectionHeadroomDevice": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionHeadroomDeviceIdle": "待发余量 —（静音）",
+  "settingsConnectionHeadroomDeviceDash": "待发余量 —",
+  "settingsConnectionUnderrun": "欠载",
+  "settingsConnectionUnderrunWindow": "60 秒内",
+  "settingsConnectionUnderrunSplit": "60 秒内 · {left} {l} · {right} {r}",
+  "@settingsConnectionUnderrunSplit": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      },
+      "l": {
+        "type": "int"
+      },
+      "right": {
+        "type": "String"
+      },
+      "r": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionUnderrunsAgo": "欠载 {n} · {s} 秒前",
+  "@settingsConnectionUnderrunsAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionTraffic": "流量",
+  "settingsConnectionPacketNote": "每包 {size}",
+  "@settingsConnectionPacketNote": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsConnectionDropped": "丢样 {n}",
+  "@settingsConnectionDropped": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionStripWindow": "最近 60 秒",
+  "settingsConnectionChartPending": "待发",
+  "settingsConnectionChartRetransmit": "重传",
+  "settingsConnectionRecentUnder": "最近事件 {s} 秒前 · 欠载 {n} 次",
+  "@settingsConnectionRecentUnder": {
+    "placeholders": {
+      "s": {
+        "type": "int"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsConnectionRecentRetr": "最近事件 {s} 秒前 · 重传 {n} 次",
+  "@settingsConnectionRecentRetr": {
+    "placeholders": {
+      "s": {
+        "type": "int"
+      },
+      "n": {
+        "type": "int"
       }
     }
   }
