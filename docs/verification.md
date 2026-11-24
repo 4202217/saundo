@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-23 -->
+<!-- reviewed-through: 2026-11-24 -->
 
 # Verification
 
@@ -1443,3 +1443,39 @@ frame (silence, no noise, no reconnect), which is why that batch graduated
 above. The tag and the GitHub publish are held at the maintainer's
 request: the release is prepared locally, no `v0.6.6` tag exists, and
 nothing was pushed or published.
+
+## 2026-11-24 — the connection page's send-side dashboard
+
+The maintainer's custom 95 ms latency session crackled continuously while
+every sender counter read clean: no underruns, no dropped samples, no
+retransmits. The 2026-11-10 floor entry explains it — the HomePod render
+pipeline breaks up below roughly 200 ms — so the page now guards the setting
+instead of inventing a verdict: a latency below the receiver family's
+measured floor turns the latency cell amber and adds a banner naming the
+floor and the audio page. HomePod: 200 ms (the 2026-11-10 sweep); Mac: 250
+ms (the known worse floor); an unknown family gets no invented floor.
+
+The measured card now carries four live numbers: latency against the floor,
+the ring headroom with the trailing minute's low (the worst member), the
+window's underruns split between a left and a right target, and the session's
+L4 traffic with the per-packet size. The device rows carry the current event
+(underrun count with its age, or a retransmit share) over each member's
+headroom and rate; the channel and volume left the page for the tray panel's
+mixer. A 60-second strip plots the headroom and the two event kinds from a
+10 Hz ring the engine samples on its loop; a silent stretch is a labeled
+band (the card's trailing low ignores those idle zeros), the line's right
+end carries the current value, and a summary line names the latest event
+with its age and that second's count.
+
+Verified here: headless UI tests and native preview renders across the sizes
+and locales (`TestConnectionPageSessionCard`,
+`TestConnectionLatencyFloorWarns`, `TestConnectionPageDeviceHealthNotableOnly`,
+`TestConnectionHeadroomLabelKeepsItsWidth`), the engine fold and strip
+(`TestDiagnosticsTrafficStripAndTargetHealth`,
+`TestStreamHistoryBucketsAndMin`, `TestRateSampleKeepsThePreviousValue`),
+and the sender's wire counters (`TestStatsCarryWireBytes`), plus the
+strip's summary, idle legend, and idle-excluded low
+(`TestConnectionEventSummary`, `TestConnectionStripSummaryAndIdle`,
+`TestStreamHistoryIdleDoesNotLowerTheMin`). Owed: a live
+session with the page open, including the 95 ms banner and a real starve's red
+tick; the native preview renders the strip from a fixture, not a live stream.

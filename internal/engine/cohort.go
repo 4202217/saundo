@@ -646,6 +646,7 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 		return
 	}
 	e.tr = tr
+	e.resetDashboard()
 	tr.SetIdentity(sender.Identity{Name: e.setsValue.Name, DeviceID: e.setsValue.DeviceID, Model: "iPhone14,3"})
 	tr.SetStrictReceiverAuth(e.setsValue.StrictReceiverAuth)
 	if e.captureRate > 0 {

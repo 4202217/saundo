@@ -80,16 +80,31 @@ func previewApp() *App {
 			{ID: "AA:BB:CC:DD:EE:02", Name: "Apple TV", Model: "AppleTV6,2", Auth: device.AuthHAPPIN, AirPlay2: true, Online: true},
 			{ID: "AA:BB:CC:DD:EE:03", Name: "HomePod mini", Model: "AudioAccessory5,1", Auth: device.AuthHAPTransient, AirPlay2: true},
 		},
-		SelectedID:        "AA:BB:CC:DD:EE:01",
-		Diagnostics:       engine.Diagnostics{HasStats: true, SessionUptime: 42 * time.Minute, Retransmits: 2, SentBlocks: 1000},
-		ActiveTargets:     []string{"AA:BB:CC:DD:EE:01"},
-		Targets:           []engine.TargetControl{{ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo", State: engine.TargetMember}},
+		SelectedID: "AA:BB:CC:DD:EE:01",
+		Diagnostics: engine.Diagnostics{
+			HasStats: true, GroupSize: 1, SessionUptime: 42 * time.Minute,
+			Retransmits: 2, SentBlocks: 1000,
+			SendBufferMS: 34, BufferValid: true,
+			BufferMinMS: 12, BufferMinValid: true,
+			TrafficBPS: 182000, TrafficValid: true, PacketBytes: 1456,
+		},
+		ActiveTargets: []string{"AA:BB:CC:DD:EE:01"},
+		Targets: []engine.TargetControl{{
+			ID: "AA:BB:CC:DD:EE:01", Name: "HomePods", Volume: 65, Channel: "stereo",
+			State: engine.TargetMember,
+			Health: engine.TargetHealth{
+				Retransmits: 2, SentBlocks: 1000,
+				BufferMS: 34, BufferValid: true,
+				SentBytes: 182000, TrafficBPS: 182000, TrafficValid: true, PacketBytes: 1456,
+			},
+		}},
 		State:             sender.StateStreaming,
 		ConnectedName:     "HomePods",
 		CaptureName:       "Speakers",
 		CaptureRate:       48000,
 		CaptureRunning:    true,
 		Name:              "声渡",
+		LatencyMS:         200,
 		ReceiverLatencyMS: 70,
 		DroppedSamples:    0,
 		PTPActive:         true,
@@ -236,7 +251,7 @@ func TestSettingsPagesRender(t *testing.T) {
 		want []string
 	}{
 		{pageGeneral, []string{"通用", "发送端身份、启动与外观。", "发送端名称", "保存", "登录时自动启动", "托盘动画", "语言", "外观"}},
-		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "立体声 · 65%", "正在播放", "本次连接", "已连接时长", "42 分钟", "稳定性", "良好", "60 秒内丢样 0 · 欠载 0", "网络重传", "0.2%", "重连", "0 次", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
+		{pageConnection, []string{"连接", "设备与本次连接的状态。", "已连接设备", "HomePods", "正在播放", "本次连接", "已连接 42 分钟", "延迟", "实测下限 200 ms", "待发余量", "60 秒内最低 12 ms", "欠载", "60 秒内", "流量", "每包 1456 B", "182 KB/s", "最近 60 秒", "待发", "重传", "网络重传 0.2%", "断开后自动重连", "严格验证接收器", "连接后静音本机输出", "避免本机与接收器同时出声；断开或退出后恢复"}},
 		{pageReceivers, []string{"接收器", "管理接收器、自动连接、显示与声道。", "单独接收器", "添加接收器", "手动填写 IP 或主机名"}},
 		{pageAudio, []string{"音频", "在延迟与稳定性之间权衡", "延迟模式", "托盘面板中显示", "低延迟", "标准", "稳定", "自定义", "200 ms", "1.5 s", "2 s", "700 ms", "音频格式", "ALAC · 44.1 kHz · 立体声", "同步方式", "PTP · 已同步"}},
 		{pageLamp, []string{"氛围灯", "所有 HomePod 顶屏显示同一盏灯。", "HomePod 专属", "颜色来源", "跟随媒体封面，或使用固定模板", "封面", "模板", "六组预设灯光颜色，点击切换。", "暖烬", "沙丘", "苔庭", "潮汐", "兰夜", "月白"}},
@@ -318,11 +333,14 @@ func TestConnectionPageDeviceList(t *testing.T) {
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
 		locales.SettingsConnectionDevices(), "2", "HomePods", "Apple TV",
-		"立体声 · 65%", "立体声 · 50%",
+		"待发余量 34 ms", "182 KB/s",
 	} {
 		if !hasExactText(tt, want) {
 			t.Fatalf("device list is missing exact %q; texts: %q", want, tt.Texts())
 		}
+	}
+	if hasExactText(tt, "立体声 · 65%") || hasExactText(tt, "立体声 · 50%") {
+		t.Fatalf("the page still restates a member's channel and volume; texts: %q", tt.Texts())
 	}
 	// The sidebar's 正在播放 nav entry contributes two labels of its own.
 	if got := countExactText(tt, locales.StatusStreaming()); got != 4 {
@@ -333,15 +351,22 @@ func TestConnectionPageDeviceList(t *testing.T) {
 	}
 }
 
-// TestConnectionPageDeviceHealthNotableOnly pins the per-device counters: a
-// notable retransmit share or any underrun is named, a healthy device keeps
-// its row quiet.
+// TestConnectionPageDeviceHealthNotableOnly pins the per-device event: a
+// notable retransmit share or an underrun is named once, and the underrun
+// wins with its age. A healthy device keeps its row quiet.
 func TestConnectionPageDeviceHealthNotableOnly(t *testing.T) {
 	a := multiSessionApp()
 	a.page = pageConnection
-	a.snap.Targets[1].Health = engine.TargetHealth{Retransmits: 12, SentBlocks: 1000, RecentUnderruns: 3}
+	a.snap.Targets[1].Health = engine.TargetHealth{Retransmits: 12, SentBlocks: 1000}
 	tt := ui.NewTester(a.settingsView, 720, 500)
-	want := locales.SettingsRetransmitShort("1.2") + " · " + locales.SettingsUnderrunsShort(3)
+	want := locales.SettingsRetransmitShort("1.2")
+	if !hasExactText(tt, want) {
+		t.Fatalf("device row is missing %q; texts: %q", want, tt.Texts())
+	}
+
+	a.snap.Targets[1].Health = engine.TargetHealth{RecentUnderruns: 3, UnderrunAge: 8 * time.Second}
+	tt = ui.NewTester(a.settingsView, 720, 500)
+	want = locales.SettingsConnectionUnderrunsAgo(3, 8)
 	if !hasExactText(tt, want) {
 		t.Fatalf("device row is missing %q; texts: %q", want, tt.Texts())
 	}
@@ -350,29 +375,30 @@ func TestConnectionPageDeviceHealthNotableOnly(t *testing.T) {
 	}
 }
 
-// TestConnectionPageSessionCard pins the measured card: uptime, stability with
-// its evidence, the session retransmit share, and the reconnect count.
+// TestConnectionPageSessionCard pins the measured card: the setting guard,
+// the four live numbers, and the session-total exception row.
 func TestConnectionPageSessionCard(t *testing.T) {
 	a := multiSessionApp()
 	a.page = pageConnection
 	a.snap.Diagnostics = engine.Diagnostics{
-		HasStats: true, SessionUptime: 42 * time.Minute,
+		HasStats: true, GroupSize: 2, SessionUptime: 42 * time.Minute,
 		Retransmits: 2, SentBlocks: 1000, Reconnects: 1,
+		SendBufferMS: 34, BufferValid: true,
+		BufferMinMS: 12, BufferMinValid: true,
+		TrafficBPS: 364000, TrafficValid: true, PacketBytes: 1456,
 	}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		locales.SettingsConnectionThis(), locales.SettingsConnectionUptime(), "42 分钟",
-		locales.SettingsHealthDrops(), locales.SettingsHealthDropsGood(),
-		" · " + locales.SettingsStabilityNote(0, 0),
-		locales.SettingsConnectionRetransmit(), "0.2%",
-		locales.SettingsConnectionReconnects(), locales.SettingsReconnectsValue(1),
+		locales.SettingsConnectionThis(), "已连接 42 分钟",
+		locales.SettingsConnectionLatency(), " · " + locales.SettingsConnectionFloor(200), "200 ms",
+		locales.SettingsConnectionHeadroom(), " · " + locales.SettingsConnectionHeadroomMinWorst(12), "34 ms",
+		locales.SettingsConnectionUnderrun(), " · " + locales.SettingsConnectionUnderrunWindow(), "0",
+		locales.SettingsConnectionTraffic(), " · " + locales.SettingsConnectionPacketNote("1456 B"), "364 KB/s",
+		locales.SettingsConnectionThis(), "网络重传 0.2%", "重连 1 次",
 	} {
 		if !hasExactText(tt, want) {
 			t.Fatalf("session card is missing exact %q; texts: %q", want, tt.Texts())
 		}
-	}
-	if hasExactText(tt, locales.SettingsLatency()) {
-		t.Fatalf("session card restates the latency setting; texts: %q", tt.Texts())
 	}
 }
 
@@ -380,19 +406,20 @@ func TestConnectionPageSessionCardDegraded(t *testing.T) {
 	a := multiSessionApp()
 	a.page = pageConnection
 	a.snap.Diagnostics = engine.Diagnostics{
-		HasStats: true, SessionUptime: 6 * time.Minute,
+		HasStats: true, GroupSize: 2, SessionUptime: 6 * time.Minute,
 		Degraded: true, RecentDropped: 120, RecentUnderruns: 8,
+		SendBufferMS: 0, BufferValid: true, BufferMinMS: 0, BufferMinValid: true,
 	}
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		locales.SettingsHealthDropsBad(), " · " + locales.SettingsStabilityNote(120, 8),
+		locales.SettingsConnectionUnderrun(), "8", locales.SettingsConnectionDropped(120),
 	} {
 		if !hasExactText(tt, want) {
 			t.Fatalf("degraded card is missing exact %q; texts: %q", want, tt.Texts())
 		}
 	}
-	if hasExactText(tt, locales.SettingsHealthDropsGood()) {
-		t.Fatalf("degraded card still reads %q; texts: %q", locales.SettingsHealthDropsGood(), tt.Texts())
+	if hasExactText(tt, "良好") || hasExactText(tt, "有卡顿") {
+		t.Fatalf("the card still carries a stability verdict; texts: %q", tt.Texts())
 	}
 }
 
@@ -446,8 +473,8 @@ func TestConnectionPageHidesSessionCard(t *testing.T) {
 	}
 }
 
-// TestConnectionPagePairRow pins a stereo pair as one device row with its
-// shared volume and stereo side.
+// TestConnectionPagePairRow pins a stereo pair as one device row: the page
+// shows its state and live headroom, not the shared volume or stereo side.
 func TestConnectionPagePairRow(t *testing.T) {
 	a := previewApp()
 	a.page = pageConnection
@@ -471,12 +498,15 @@ func TestConnectionPagePairRow(t *testing.T) {
 
 	tt := ui.NewTester(a.settingsView, 720, 500)
 	for _, want := range []string{
-		"HomePods", "立体声 · 52%",
+		"HomePods", locales.SettingsConnectionHeadroomDeviceDash(),
 		locales.StatusStreaming(),
 	} {
 		if !hasExactText(tt, want) {
 			t.Fatalf("pair row is missing exact %q; texts: %q", want, tt.Texts())
 		}
+	}
+	if hasExactText(tt, "立体声 · 52%") {
+		t.Fatalf("the pair row restates its channel and volume; texts: %q", tt.Texts())
 	}
 }
 

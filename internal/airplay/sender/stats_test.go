@@ -173,3 +173,47 @@ func TestStats48kFullRingIsNotAnUnderrun(t *testing.T) {
 		t.Fatalf("a full 48 kHz ring counted %d underruns", got)
 	}
 }
+
+// TestStatsCarryWireBytes pins the dashboard's flow numbers: the audio packet
+// is over a kilobyte, the starved fill is the compact frame, and a committed
+// underrun records when it happened.
+func TestStatsCarryWireBytes(t *testing.T) {
+	r := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	rb, _ := fillRing(44100)
+	r.sender.AttachRing(rb)
+	r.start()
+	requireLaunched(t, r)
+	rb.Push(make([]int16, 4410*2)) // 100 ms after the gate trimmed the cushion
+	r.advance(100 * time.Millisecond)
+	audio := r.sender.Stats()
+	if audio.SentBytes == 0 {
+		t.Fatal("no wire bytes counted")
+	}
+	if audio.LastPacketBytes <= 1000 {
+		t.Fatalf("audio packet = %d bytes, want a full frame", audio.LastPacketBytes)
+	}
+
+	// An empty ring streams compact silence frames; the last packet shrinks.
+	idle := newRig(t, modeTransient, device.AuthHAPTransient, true, nil)
+	empty := ring.New(44100 * 2 * 2)
+	idle.sender.AttachRing(empty)
+	idle.start()
+	requireLaunched(t, idle)
+	idle.advance(100 * time.Millisecond)
+	if got := idle.sender.Stats().LastPacketBytes; got >= 100 {
+		t.Fatalf("silent packet = %d bytes, want the compact frame", got)
+	}
+
+	// A short fill the source recovers from commits an underrun and stamps it.
+	empty.Push(make([]int16, 441*2))
+	idle.advance(20 * time.Millisecond)
+	empty.Push(make([]int16, 441*2))
+	idle.advance(20 * time.Millisecond)
+	stats := idle.sender.Stats()
+	if stats.Underruns == 0 {
+		t.Fatal("a recovered starve was not counted")
+	}
+	if stats.LastUnderrun.IsZero() {
+		t.Fatal("the committed underrun has no timestamp")
+	}
+}

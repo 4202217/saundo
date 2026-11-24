@@ -5,6 +5,21 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## Unreleased
+
+### Added
+
+- The connection page is a live send-side dashboard. The measured card reads
+  the latency against the receiver family's measured floor, the ring headroom
+  with the trailing minute's low, the window's underruns split between a
+  combo's sides, and the session's L4 traffic with its packet size. A latency
+  below the floor adds a warning banner and points at the audio page; the
+  channel and volume left the page for the tray panel's mixer. A 60-second
+  strip plots the headroom and the two event kinds, marks a silent stretch
+  with a labeled band, labels the current value at its right edge, and names
+  the latest event with its age and count; the device rows carry each
+  member's headroom, rate, and the age of its last underrun.
+
 ## 0.6.6 - 2026-11-23
 
 ### Fixed

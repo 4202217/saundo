@@ -1846,36 +1846,6 @@ func (msgs Messages) SettingsStrictAuthDesc() string {
 	return Catalog.Format(msgs.locale, "settingsStrictAuthDesc", nil)
 }
 
-// SettingsHealthDrops says "Stability"
-// in the language the app shows.
-func SettingsHealthDrops() string { return In(i18n.Locale()).SettingsHealthDrops() }
-
-// SettingsHealthDrops says "Stability"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthDrops() string {
-	return Catalog.Format(msgs.locale, "settingsHealthDrops", nil)
-}
-
-// SettingsHealthDropsGood says "Good"
-// in the language the app shows.
-func SettingsHealthDropsGood() string { return In(i18n.Locale()).SettingsHealthDropsGood() }
-
-// SettingsHealthDropsGood says "Good"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthDropsGood() string {
-	return Catalog.Format(msgs.locale, "settingsHealthDropsGood", nil)
-}
-
-// SettingsHealthDropsBad says "Stuttering"
-// in the language the app shows.
-func SettingsHealthDropsBad() string { return In(i18n.Locale()).SettingsHealthDropsBad() }
-
-// SettingsHealthDropsBad says "Stuttering"
-// in the language of msgs.
-func (msgs Messages) SettingsHealthDropsBad() string {
-	return Catalog.Format(msgs.locale, "settingsHealthDropsBad", nil)
-}
-
 // SettingsConnectionDevices says "Connected devices"
 // in the language the app shows.
 func SettingsConnectionDevices() string { return In(i18n.Locale()).SettingsConnectionDevices() }
@@ -1894,16 +1864,6 @@ func SettingsConnectionThis() string { return In(i18n.Locale()).SettingsConnecti
 // in the language of msgs.
 func (msgs Messages) SettingsConnectionThis() string {
 	return Catalog.Format(msgs.locale, "settingsConnectionThis", nil)
-}
-
-// SettingsConnectionUptime says "Connected for"
-// in the language the app shows.
-func SettingsConnectionUptime() string { return In(i18n.Locale()).SettingsConnectionUptime() }
-
-// SettingsConnectionUptime says "Connected for"
-// in the language of msgs.
-func (msgs Messages) SettingsConnectionUptime() string {
-	return Catalog.Format(msgs.locale, "settingsConnectionUptime", nil)
 }
 
 // SettingsConnectionRetransmit says "Network retransmit"
@@ -1966,18 +1926,6 @@ func SettingsUptimeHoursWhole(h int) string { return In(i18n.Locale()).SettingsU
 // in the language of msgs.
 func (msgs Messages) SettingsUptimeHoursWhole(h int) string {
 	return Catalog.Format(msgs.locale, "settingsUptimeHoursWhole", map[string]any{"h": h})
-}
-
-// SettingsStabilityNote says "last 60 s · {drops} dropped · {underruns} underruns"
-// in the language the app shows.
-func SettingsStabilityNote(drops int, underruns int) string {
-	return In(i18n.Locale()).SettingsStabilityNote(drops, underruns)
-}
-
-// SettingsStabilityNote says "last 60 s · {drops} dropped · {underruns} underruns"
-// in the language of msgs.
-func (msgs Messages) SettingsStabilityNote(drops int, underruns int) string {
-	return Catalog.Format(msgs.locale, "settingsStabilityNote", map[string]any{"drops": drops, "underruns": underruns})
 }
 
 // SettingsRetransmitShort says "{pct}% retransmitted"
@@ -4194,4 +4142,266 @@ func ErrorDeviceOffline(name string) string { return In(i18n.Locale()).ErrorDevi
 // in the language of msgs.
 func (msgs Messages) ErrorDeviceOffline(name string) string {
 	return Catalog.Format(msgs.locale, "errorDeviceOffline", map[string]any{"name": name})
+}
+
+// SettingsConnectionLatency says "Latency"
+// in the language the app shows.
+func SettingsConnectionLatency() string { return In(i18n.Locale()).SettingsConnectionLatency() }
+
+// SettingsConnectionLatency says "Latency"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionLatency() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionLatency", nil)
+}
+
+// SettingsConnectionFloor says "measured floor {ms} ms"
+// in the language the app shows.
+func SettingsConnectionFloor(ms int) string { return In(i18n.Locale()).SettingsConnectionFloor(ms) }
+
+// SettingsConnectionFloor says "measured floor {ms} ms"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionFloor(ms int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionFloor", map[string]any{"ms": ms})
+}
+
+// SettingsConnectionBelowFloor says "below floor {ms} ms"
+// in the language the app shows.
+func SettingsConnectionBelowFloor(ms int) string {
+	return In(i18n.Locale()).SettingsConnectionBelowFloor(ms)
+}
+
+// SettingsConnectionBelowFloor says "below floor {ms} ms"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionBelowFloor(ms int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionBelowFloor", map[string]any{"ms": ms})
+}
+
+// SettingsConnectionLatencyWarn says "Latency {ms} ms is below the receiver's measured floor (about {floor} ms); audio may click or drop. Raise it on the A…"
+// in the language the app shows.
+func SettingsConnectionLatencyWarn(ms int, floor int) string {
+	return In(i18n.Locale()).SettingsConnectionLatencyWarn(ms, floor)
+}
+
+// SettingsConnectionLatencyWarn says "Latency {ms} ms is below the receiver's measured floor (about {floor} ms); audio may click or drop. Raise it on the A…"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionLatencyWarn(ms int, floor int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionLatencyWarn", map[string]any{"ms": ms, "floor": floor})
+}
+
+// SettingsConnectionHeadroom says "Pending audio"
+// in the language the app shows.
+func SettingsConnectionHeadroom() string { return In(i18n.Locale()).SettingsConnectionHeadroom() }
+
+// SettingsConnectionHeadroom says "Pending audio"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroom() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroom", nil)
+}
+
+// SettingsConnectionHeadroomMin says "60 s low {ms} ms"
+// in the language the app shows.
+func SettingsConnectionHeadroomMin(ms int) string {
+	return In(i18n.Locale()).SettingsConnectionHeadroomMin(ms)
+}
+
+// SettingsConnectionHeadroomMin says "60 s low {ms} ms"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroomMin(ms int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroomMin", map[string]any{"ms": ms})
+}
+
+// SettingsConnectionHeadroomMinWorst says "60 s low {ms} ms (worst member)"
+// in the language the app shows.
+func SettingsConnectionHeadroomMinWorst(ms int) string {
+	return In(i18n.Locale()).SettingsConnectionHeadroomMinWorst(ms)
+}
+
+// SettingsConnectionHeadroomMinWorst says "60 s low {ms} ms (worst member)"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroomMinWorst(ms int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroomMinWorst", map[string]any{"ms": ms})
+}
+
+// SettingsConnectionHeadroomIdle says "Idle"
+// in the language the app shows.
+func SettingsConnectionHeadroomIdle() string {
+	return In(i18n.Locale()).SettingsConnectionHeadroomIdle()
+}
+
+// SettingsConnectionHeadroomIdle says "Idle"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroomIdle() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroomIdle", nil)
+}
+
+// SettingsConnectionHeadroomDevice says "Pending {ms} ms"
+// in the language the app shows.
+func SettingsConnectionHeadroomDevice(ms int) string {
+	return In(i18n.Locale()).SettingsConnectionHeadroomDevice(ms)
+}
+
+// SettingsConnectionHeadroomDevice says "Pending {ms} ms"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroomDevice(ms int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroomDevice", map[string]any{"ms": ms})
+}
+
+// SettingsConnectionHeadroomDeviceIdle says "Pending — (idle)"
+// in the language the app shows.
+func SettingsConnectionHeadroomDeviceIdle() string {
+	return In(i18n.Locale()).SettingsConnectionHeadroomDeviceIdle()
+}
+
+// SettingsConnectionHeadroomDeviceIdle says "Pending — (idle)"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroomDeviceIdle() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroomDeviceIdle", nil)
+}
+
+// SettingsConnectionHeadroomDeviceDash says "Pending —"
+// in the language the app shows.
+func SettingsConnectionHeadroomDeviceDash() string {
+	return In(i18n.Locale()).SettingsConnectionHeadroomDeviceDash()
+}
+
+// SettingsConnectionHeadroomDeviceDash says "Pending —"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionHeadroomDeviceDash() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionHeadroomDeviceDash", nil)
+}
+
+// SettingsConnectionUnderrun says "Underruns"
+// in the language the app shows.
+func SettingsConnectionUnderrun() string { return In(i18n.Locale()).SettingsConnectionUnderrun() }
+
+// SettingsConnectionUnderrun says "Underruns"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionUnderrun() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionUnderrun", nil)
+}
+
+// SettingsConnectionUnderrunWindow says "last 60 s"
+// in the language the app shows.
+func SettingsConnectionUnderrunWindow() string {
+	return In(i18n.Locale()).SettingsConnectionUnderrunWindow()
+}
+
+// SettingsConnectionUnderrunWindow says "last 60 s"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionUnderrunWindow() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionUnderrunWindow", nil)
+}
+
+// SettingsConnectionUnderrunSplit says "last 60 s · {left} {l} · {right} {r}"
+// in the language the app shows.
+func SettingsConnectionUnderrunSplit(left string, l int, right string, r int) string {
+	return In(i18n.Locale()).SettingsConnectionUnderrunSplit(left, l, right, r)
+}
+
+// SettingsConnectionUnderrunSplit says "last 60 s · {left} {l} · {right} {r}"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionUnderrunSplit(left string, l int, right string, r int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionUnderrunSplit", map[string]any{"left": left, "l": l, "right": right, "r": r})
+}
+
+// SettingsConnectionUnderrunsAgo says "{n} underruns · {s}s ago"
+// in the language the app shows.
+func SettingsConnectionUnderrunsAgo(n int, s int) string {
+	return In(i18n.Locale()).SettingsConnectionUnderrunsAgo(n, s)
+}
+
+// SettingsConnectionUnderrunsAgo says "{n} underruns · {s}s ago"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionUnderrunsAgo(n int, s int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionUnderrunsAgo", map[string]any{"n": n, "s": s})
+}
+
+// SettingsConnectionTraffic says "Traffic"
+// in the language the app shows.
+func SettingsConnectionTraffic() string { return In(i18n.Locale()).SettingsConnectionTraffic() }
+
+// SettingsConnectionTraffic says "Traffic"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionTraffic() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionTraffic", nil)
+}
+
+// SettingsConnectionPacketNote says "{size} per packet"
+// in the language the app shows.
+func SettingsConnectionPacketNote(size string) string {
+	return In(i18n.Locale()).SettingsConnectionPacketNote(size)
+}
+
+// SettingsConnectionPacketNote says "{size} per packet"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionPacketNote(size string) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionPacketNote", map[string]any{"size": size})
+}
+
+// SettingsConnectionDropped says "{n} dropped"
+// in the language the app shows.
+func SettingsConnectionDropped(n int) string { return In(i18n.Locale()).SettingsConnectionDropped(n) }
+
+// SettingsConnectionDropped says "{n} dropped"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionDropped(n int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionDropped", map[string]any{"n": n})
+}
+
+// SettingsConnectionStripWindow says "Last 60 s"
+// in the language the app shows.
+func SettingsConnectionStripWindow() string { return In(i18n.Locale()).SettingsConnectionStripWindow() }
+
+// SettingsConnectionStripWindow says "Last 60 s"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionStripWindow() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionStripWindow", nil)
+}
+
+// SettingsConnectionChartPending says "Pending"
+// in the language the app shows.
+func SettingsConnectionChartPending() string {
+	return In(i18n.Locale()).SettingsConnectionChartPending()
+}
+
+// SettingsConnectionChartPending says "Pending"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionChartPending() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionChartPending", nil)
+}
+
+// SettingsConnectionChartRetransmit says "Retransmit"
+// in the language the app shows.
+func SettingsConnectionChartRetransmit() string {
+	return In(i18n.Locale()).SettingsConnectionChartRetransmit()
+}
+
+// SettingsConnectionChartRetransmit says "Retransmit"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionChartRetransmit() string {
+	return Catalog.Format(msgs.locale, "settingsConnectionChartRetransmit", nil)
+}
+
+// SettingsConnectionRecentUnder says "Latest event {s}s ago · {n} underruns"
+// in the language the app shows.
+func SettingsConnectionRecentUnder(s int, n int) string {
+	return In(i18n.Locale()).SettingsConnectionRecentUnder(s, n)
+}
+
+// SettingsConnectionRecentUnder says "Latest event {s}s ago · {n} underruns"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionRecentUnder(s int, n int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionRecentUnder", map[string]any{"s": s, "n": n})
+}
+
+// SettingsConnectionRecentRetr says "Latest event {s}s ago · {n} retransmits"
+// in the language the app shows.
+func SettingsConnectionRecentRetr(s int, n int) string {
+	return In(i18n.Locale()).SettingsConnectionRecentRetr(s, n)
+}
+
+// SettingsConnectionRecentRetr says "Latest event {s}s ago · {n} retransmits"
+// in the language of msgs.
+func (msgs Messages) SettingsConnectionRecentRetr(s int, n int) string {
+	return Catalog.Format(msgs.locale, "settingsConnectionRecentRetr", map[string]any{"s": s, "n": n})
 }

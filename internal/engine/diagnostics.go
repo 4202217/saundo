@@ -52,7 +52,19 @@ type Diagnostics struct {
 	RecentDropped   uint64
 	SendBufferMS    float64
 	BufferValid     bool
-	WiFi            sender.WiFiMetrics
+	// BufferMinMS is the lowest valid ring headroom seen in the trailing
+	// minute. BufferMinValid is false before the strip has a sample.
+	BufferMinMS    float64
+	BufferMinValid bool
+	// TrafficBPS is the session's send rate at L4 over the last rate window.
+	// TrafficValid is false until the window closes or the counters reset.
+	TrafficBPS   float64
+	TrafficValid bool
+	// PacketBytes is the largest last-packet size among the members: the
+	// audio frame when any member sends audio, the compact silence frame when
+	// every member is idle.
+	PacketBytes int
+	WiFi        sender.WiFiMetrics
 	// Degraded is true when the stability window saw a dropped sample, a
 	// packet padded with silence, or a refused audio datagram.
 	Degraded bool
@@ -125,6 +137,17 @@ func (e *Engine) buildDiagnostics(now time.Time, dropped uint64) Diagnostics {
 	if e.tr != nil {
 		d.DroppedEvents = e.tr.DroppedEvents()
 	}
+	var bytes uint64
+	for _, m := range members {
+		bytes += m.SentBytes
+		if m.LastPacketBytes > d.PacketBytes {
+			d.PacketBytes = m.LastPacketBytes
+		}
+	}
+	if len(members) > 0 {
+		d.TrafficBPS, d.TrafficValid = e.netRate(now, bytes)
+	}
+	d.BufferMinMS, d.BufferMinValid = e.dash.stream.minHead(now)
 	return d
 }
 

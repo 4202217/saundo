@@ -27,6 +27,8 @@ import (
 // languages. Run with SAUNDO_PREVIEW_DIR set; it is not part of the regular
 // suite.
 func TestRenderPreviews(t *testing.T) {
+	previewStream = previewBuckets
+	defer func() { previewStream = nil }()
 	dir := os.Getenv("SAUNDO_PREVIEW_DIR")
 	if dir == "" {
 		t.Skip("set SAUNDO_PREVIEW_DIR to write preview images")
@@ -49,6 +51,24 @@ func TestRenderPreviews(t *testing.T) {
 // previewWanted filters the matrix by SAUNDO_PREVIEW_ONLY, a comma-separated
 // list of name prefixes such as settings-audio,flyout, so a UI change renders
 // only the pages it touched. An empty or unset value renders everything.
+// previewBuckets draws a plausible strip for the preview images: a steady
+// headroom, one starved second with its ticks, and a retransmit burst.
+func previewBuckets(dst []engine.StreamBucket) []engine.StreamBucket {
+	if len(dst) < engine.StreamBucketCount {
+		return nil
+	}
+	now := time.Now()
+	for i := 0; i < engine.StreamBucketCount; i++ {
+		dst[i] = engine.StreamBucket{At: now.Add(-time.Duration(engine.StreamBucketCount-1-i) * time.Second), Valid: true, HeadMS: float64(30 + (i*7)%10)}
+	}
+	dst[38].HeadMS = 14
+	dst[39].HeadMS = 12
+	dst[40].HeadMS = 20
+	dst[51].Retransmits = 2
+	dst[59].HeadMS = 34
+	return dst[:engine.StreamBucketCount]
+}
+
 func previewWanted() func(string) bool {
 	only := strings.TrimSpace(os.Getenv("SAUNDO_PREVIEW_ONLY"))
 	if only == "" {

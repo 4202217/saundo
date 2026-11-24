@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"strings"
+	"math"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -13,8 +13,9 @@ import (
 )
 
 // The 连接 settings page: the devices in the current session, the session's
-// measured health, and the connection switches. Every value comes from the
-// snapshot; the page never restates a setting or a device constant.
+// measured state, and the connection switches. Every value comes from the
+// snapshot; the only setting the page echoes is the effective latency, with
+// the family floor its guard needs.
 
 // deviceUnhealthyRetransmit is the retransmit share that makes one device's
 // link worth naming. Below it the counters stay hidden, so a healthy session
@@ -67,13 +68,25 @@ func (a *App) connectionSession(c *ui.Context, p palette) {
 	})
 	a.connectionLostNotice(c, p)
 	if phaseOf(a.snap) == phaseStreaming && a.snap.Diagnostics.HasStats {
-		groupHead(c, p, locales.SettingsConnectionThis(), 0, 12, nil)
+		a.connectionThisHead(c, p)
 		a.connectionSessionCard(c, p)
 	}
 }
 
-// connectionDeviceRow is one connected target: the device's name, its audio
-// state, and its network counters only when they are worth naming.
+// connectionThisHead is the measured card's section head. The session's age
+// is context, not a KPI, so it rides the right edge at note size.
+func (a *App) connectionThisHead(c *ui.Context, p palette) {
+	ui.Row(c).Margin(12, 0, 0, 0).FillWidth().Height(26).Gap(7).AlignItems(ui.Center).Shrink(0).Children(func() {
+		ui.Text(c, locales.SettingsConnectionThis()).FontSize(11.5).FontWeight(600).LetterSpacing(0.55).TextColor(p.muted)
+		ui.Spacer(c)
+		ui.Text(c, locales.SummaryConnected()+" "+connectionUptimeText(a.snap.Diagnostics.SessionUptime)).
+			FontSize(10.5).TextColor(p.muted).SingleLine()
+	})
+}
+
+// connectionDeviceRow is one connected target on two lines: the name with a
+// notable event (and its age) over the live ring headroom and the send rate.
+// Channel and volume belong to the tray panel's mixer, not this page.
 func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, last bool) {
 	row := ui.Row(c).Padding(8, 14).Gap(10).AlignItems(ui.Center)
 	if !last {
@@ -82,14 +95,18 @@ func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, las
 	row.Children(func() {
 		connectionGlyph(c, p, m.Device)
 		ui.Column(c).Grow(1).Gap(2).Children(func() {
-			ui.Row(c).Height(22).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, m.Device.Name).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…")
-			})
-			ui.Row(c).Height(18).Gap(8).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, connectionDeviceMeta(m)).FontSize(11.5).TextColor(p.muted).SingleLine().Ellipsis("…")
-				if metrics := a.connectionDeviceMetrics(m); metrics != "" {
-					ui.Text(c, metrics).FontSize(11.5).TextColor(p.warning).SingleLine()
+			ui.Row(c).Height(20).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, m.Device.Name).FontSize(13).FontWeight(500).Shrink(1).SingleLine().Ellipsis("…")
+				if event := a.connectionDeviceEvent(m); event != "" {
+					ui.Text(c, event).FontSize(11.5).TextColor(p.warning).Shrink(0).SingleLine()
 				}
+			})
+			ui.Row(c).Height(14).Gap(6).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.connectionDeviceHead(m)).FontSize(10.5).TextColor(p.muted).
+					FontFeatures("tnum").SingleLine()
+				ui.Text(c, "·").FontSize(10.5).TextColor(p.faint).SingleLine()
+				ui.Text(c, a.connectionDeviceRate(m)).FontSize(10.5).TextColor(p.muted).
+					FontFeatures("tnum").SingleLine()
 			})
 		})
 		text, tone := a.connectionMemberState(m, p)
@@ -98,6 +115,61 @@ func (a *App) connectionDeviceRow(c *ui.Context, p palette, m sessionMember, las
 			ui.Text(c, text).FontSize(11.5).TextColor(p.muted).SingleLine()
 		})
 	})
+}
+
+// connectionDeviceEvent names the member's current trouble: an underrun in
+// the window with its age, or a retransmit share worth seeing.
+func (a *App) connectionDeviceEvent(m sessionMember) string {
+	if !m.HasTarget {
+		return ""
+	}
+	h := m.Target.Health
+	if h.RecentUnderruns > 0 {
+		if h.UnderrunAge > 0 {
+			seconds := int(h.UnderrunAge.Seconds() + 0.5)
+			if seconds < 1 {
+				seconds = 1
+			}
+			return locales.SettingsConnectionUnderrunsAgo(int(h.RecentUnderruns), seconds)
+		}
+		return locales.SettingsUnderrunsShort(int(h.RecentUnderruns))
+	}
+	if rate, ok := retransmitRate(h.Retransmits, h.SentBlocks); ok && rate >= deviceUnhealthyRetransmit {
+		return locales.SettingsRetransmitShort(fmt.Sprintf("%.1f", rate))
+	}
+	return ""
+}
+
+// connectionDeviceHead is one member's current ring headroom. A silent source
+// leaves the ring dry by design, so it reads as idle instead of zero.
+func (a *App) connectionDeviceHead(m sessionMember) string {
+	if a.snap.AudioIdle {
+		return locales.SettingsConnectionHeadroomDeviceIdle()
+	}
+	if !m.HasTarget || !m.Target.Health.BufferValid {
+		return locales.SettingsConnectionHeadroomDeviceDash()
+	}
+	return locales.SettingsConnectionHeadroomDevice(int(math.Round(m.Target.Health.BufferMS)))
+}
+
+// connectionDeviceRate is one member's send rate at L4.
+func (a *App) connectionDeviceRate(m sessionMember) string {
+	if !m.HasTarget || !m.Target.Health.TrafficValid {
+		return "—"
+	}
+	return connectionTrafficText(m.Target.Health.TrafficBPS)
+}
+
+func connectionTrafficText(bps float64) string {
+	kb := bps / 1000
+	if kb < 10 {
+		return fmt.Sprintf("%.1f KB/s", kb)
+	}
+	return fmt.Sprintf("%.0f KB/s", kb)
+}
+
+func connectionPacketText(bytes int) string {
+	return fmt.Sprintf("%d B", bytes)
 }
 
 func connectionGlyph(c *ui.Context, p palette, d device.Device) {
@@ -110,33 +182,6 @@ func connectionGlyph(c *ui.Context, p palette, d device.Device) {
 				Attach(ui.AnchorBottomRight, ui.AnchorBottomRight).Right(-1).Bottom(-1)
 		}
 	})
-}
-
-// connectionDeviceMeta is the connected device's own audio state: its channel
-// and the level it is set to.
-func connectionDeviceMeta(m sessionMember) string {
-	if !m.HasTarget {
-		return ""
-	}
-	return strings.Join([]string{
-		channelDisplay(m.Target.Channel),
-		locales.FlyoutVolumeValue(m.Target.Volume),
-	}, " · ")
-}
-
-func (a *App) connectionDeviceMetrics(m sessionMember) string {
-	if !m.HasTarget {
-		return ""
-	}
-	h := m.Target.Health
-	var parts []string
-	if rate, ok := retransmitRate(h.Retransmits, h.SentBlocks); ok && rate >= deviceUnhealthyRetransmit {
-		parts = append(parts, locales.SettingsRetransmitShort(fmt.Sprintf("%.1f", rate)))
-	}
-	if h.RecentUnderruns > 0 {
-		parts = append(parts, locales.SettingsUnderrunsShort(int(h.RecentUnderruns)))
-	}
-	return strings.Join(parts, " · ")
 }
 
 // connectionMemberState names one member's role in the session, not the
@@ -184,46 +229,6 @@ func (a *App) connectionLostNotice(c *ui.Context, p palette) {
 	})
 }
 
-// connectionSessionCard is the measured side of the connection: how long it
-// has run, whether it is stable, and how much the link and reconnects cost.
-func (a *App) connectionSessionCard(c *ui.Context, p palette) {
-	diag := a.snap.Diagnostics
-	card := ui.Column(c).Margin(8, 0, 0, 0).Radius(12).Background(p.card).Border(1, p.line).Clip().Shrink(0)
-	card.Children(func() {
-		ui.Row(c).Padding(12, 14).Gap(18).Children(func() {
-			connectionStatCell(c, p, locales.SettingsConnectionUptime(),
-				connectionUptimeText(diag.SessionUptime), "", p.fg)
-			status, tone := locales.SettingsHealthDropsGood(), p.green
-			if diag.Degraded {
-				status, tone = locales.SettingsHealthDropsBad(), p.red
-			}
-			connectionStatCell(c, p, locales.SettingsHealthDrops(), status,
-				locales.SettingsStabilityNote(int(diag.RecentDropped), int(diag.RecentUnderruns)), tone)
-		})
-		rowLine(c, p)
-		ui.Row(c).Padding(12, 14).Gap(18).Children(func() {
-			connectionStatCell(c, p, locales.SettingsConnectionRetransmit(),
-				connectionRetransmitText(diag.Retransmits, diag.SentBlocks), "", p.fg)
-			connectionStatCell(c, p, locales.SettingsConnectionReconnects(),
-				locales.SettingsReconnectsValue(diag.Reconnects), "", p.fg)
-		})
-	})
-}
-
-func connectionStatCell(c *ui.Context, p palette, label, value, note string, tone ui.Color) {
-	ui.Column(c).Grow(1).Gap(2).Children(func() {
-		ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, label).FontSize(11.5).TextColor(p.muted).SingleLine().Shrink(0)
-			if note != "" {
-				ui.Text(c, " · "+note).FontSize(10.5).TextColor(p.faint).
-					SingleLine().Ellipsis("…").Shrink(1)
-			}
-		})
-		ui.Text(c, value).FontSize(15).FontWeight(600).TextColor(tone).
-			FontFeatures("tnum").SingleLine()
-	})
-}
-
 func connectionUptimeText(d time.Duration) string {
 	minutes := int(d.Minutes())
 	if minutes < 1 {
@@ -246,19 +251,6 @@ func retransmitRate(retransmits, sent uint64) (float64, bool) {
 	return float64(retransmits) / float64(sent) * 100, true
 }
 
-func connectionRetransmitText(retransmits, sent uint64) string {
-	rate, ok := retransmitRate(retransmits, sent)
-	if !ok {
-		return "—"
-	}
-	return fmt.Sprintf("%.1f%%", rate)
-}
-
-// sidebarIdentity is the settings sidebar's footer: the session's name, its
-// link state, and the tooltip that carries the full member list. A
-// multi-member session names itself by its first member and a count — the
-// joined name overflows the 190 sidebar — and the tooltip holds what the
-// count folds away.
 // sidebarFooterColumn is the settings sidebar's footer text: the identity
 // name with the joined session name as its tooltip when the count folded
 // members away, over the link-state line.

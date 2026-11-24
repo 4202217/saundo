@@ -22,24 +22,34 @@ Nine pages behind a 190 DIP sidebar, in nav order 通用, 连接, 接收器, 音
   外观 (跟随系统/浅色/深色; persists as `theme` and repaints both windows at
   once).
 - 连接 page: two sections above the switches card. 已连接设备 lists every
-  target in the session: a 24-DIP glyph, the name, a second line of channel · volume, and the member state
-  (正在播放, 正在连接…, 正在重连…, 连接失败) right-aligned and vertically
-  centered. A retransmit share of at least 0.5% or any underrun joins the
-  second line in the warning color; healthy devices show no counters. A
-  dropped member leaves the list and appears under the card as
-  `{name} 已断开` with 重新连接, from the engine's session notice. 本次连接
-  appears only while streaming with measurements: a 2×2 grid of 已连接时长,
-  稳定性 (良好 or 有卡顿, with 丢样 and 欠载 on the label line), 网络重传,
-  and 重连, above one full-width hairline. Both section labels use the group
-  style (11.5 / 600 / letter-spacing) above the cards. No latency mode and no
-  receiver-processing stat appear here. The sidebar's footer identity names a
+  target: a 24-DIP glyph, the name with the current event in the warning
+  color (欠载 {n} · {s} 秒前 or 重传 {pct}%), and a second line of
+  待发余量 {ms} ms · {rate} KB/s (—（静音） for a silent source), with the
+  member state (正在播放, 正在连接…, 正在重连…, 连接失败) right-aligned.
+  Channel and volume are not repeated here. A dropped member leaves the list
+  and appears under the card as `{name} 已断开` with 重新连接, from the
+  engine's session notice. 本次连接 appears only while streaming with
+  measurements; its head carries `已连接 {uptime}`. The card is a 2×2 grid:
+  延迟 with 实测下限 {floor} ms, 待发余量 with the trailing minute's low
+  (`…（最差成员）` for more than one sender), 欠载 with 60 秒内 (and a
+  left/right split for a combo), and 流量 with 每包 {size}. A latency below
+  the family floor adds the banner
+  `延迟 {ms} ms 低于接收器的实测下限（约 {floor} ms），可能出现杂音；请在音频页调高。`
+  and turns the latency cell amber. 网络重传, 丢样, and 重连 appear only as a
+  one-row `本次连接` footer when non-zero. Below the grid, the 60-second
+  strip draws the ring headroom over a 50 ms/0 gutter, amber bars for
+  retransmits, and red ticks for underruns, labels the current value at its
+  right edge, marks a silent stretch with a 静音 band (which joins the
+  legend), and names the latest event with its age and count. Both section labels use the group style (11.5 / 600 /
+  letter-spacing) above the cards. The sidebar's footer identity names a
   multi-member session `{name} 和其他 {n} 台` / `{name} and {n} more` (the
   first member plus a count, joined name on the tooltip); one member keeps
   its name, a stereo pair reads 已连接 · 立体声组. Pinned by
   `TestConnectionPageDeviceList`, `TestConnectionPageDeviceHealthNotableOnly`,
   `TestConnectionPageSessionCard`, `TestConnectionPageSessionCardDegraded`,
   `TestConnectionPageLostNotice`, `TestConnectionPageHidesSessionCard`,
-  `TestConnectionPagePairRow`, `TestConnectionPageSpeaksForTheSession`. Below
+  `TestConnectionPagePairRow`, `TestConnectionHeadroomLabelKeepsItsWidth`,
+  `TestConnectionLatencyFloorWarns`, `TestConnectionPageSpeaksForTheSession`. Below
   the sections are 断开后自动重连, 严格验证接收器, and 连接后静音本机输出 (on
   by default).
   The mute row's subtitle follows the engine state (`MuteLocal`): off,

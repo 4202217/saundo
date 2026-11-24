@@ -134,7 +134,10 @@ func (s *Sender) sendAudioPacket() {
 		}
 	} else {
 		if s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
-			s.underruns += s.pendingUnderruns
+			if s.pendingUnderruns > 0 {
+				s.underruns += s.pendingUnderruns
+				s.lastUnderrun = s.now()
+			}
 		}
 		s.pendingUnderruns = 0
 		s.ringFed = true
@@ -186,6 +189,7 @@ func (s *Sender) sendAudioPacket() {
 	pkt := make([]byte, 0, len(header)+len(wire))
 	pkt = append(pkt, header[:]...)
 	pkt = append(pkt, wire...)
+	s.lastPacketBytes = len(pkt) + 8 // UDP header included: L4
 	delivered := false
 	for i := 0; i <= s.duplicates; i++ {
 		if err := s.io.UDPSend(raopio.UDPAudio, raopio.Endpoint{IP: s.hostIP, Port: s.serverPort}, pkt); err != nil {
@@ -195,6 +199,7 @@ func (s *Sender) sendAudioPacket() {
 			}
 			continue
 		}
+		s.sentBytes += uint64(len(pkt) + 8)
 		delivered = true
 	}
 	if delivered {
@@ -326,6 +331,7 @@ func (s *Sender) onControlDatagram(dg []byte, from raopio.Endpoint) {
 		resp = append(resp, s.backlog[slot]...)
 		if err := s.io.UDPSend(raopio.UDPControl, from, resp); err == nil {
 			s.retransmits++
+			s.sentBytes += uint64(len(resp) + 8)
 		}
 	}
 }
