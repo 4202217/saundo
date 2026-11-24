@@ -30,6 +30,10 @@ live state:
   device and no other app takeover. The 100 ms soak is withdrawn: the
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
   mini pair breaks up below roughly 200 ms whatever the sender.
+- A live long-idle resume on a HomePod pair: leave the session silent for
+  more than ten minutes, then play; the first audible block must rebuild the
+  cohort and the pair must play. The 2026-11-24 rebuild has only headless
+  coverage so far.
 - Local output mute: the connection page showed the switch on with
   本机已静音；断开或退出时恢复 during the 2026-11-11 live pass, and the
   engine session path passed (`TestLiveMuteLocal`); toggling the switch
@@ -1467,3 +1471,47 @@ serves `update-windows-amd64.json` and `update-darwin-arm64.json` at
 version 0.6.6 with signatures; the installer and dmg return 200. Not run:
 a live update from 0.6.5 to 0.6.6 — it needs the installed previous build
 and stays in `Currently pending`.
+
+## 2026-11-24 — a long silent stretch left a 27.3 stereo pair silent until a new session
+
+The maintainer reported that after a long pause the HomePod pair stayed
+silent while the app showed a live session. The failure was live at 22:45:
+the source had been audible until 22:43:45 and the phase was dark, but the
+report's state had followed a much longer idle earlier in the evening
+(19:47–21:18, 91 minutes of source silence, with the stream up).
+
+Measurements during the failure, in order:
+
+- A loopback capture probe opened the same default render endpoint saundo
+  uses and read the source audio (peak 28704) while the receiver stayed
+  silent, so capture and encoding were not the fault.
+- Both members answered every `GET` and `FEEDBACK` with `200 OK`; the
+  session, PTP, and the event channel stayed up.
+- A volume nudge did nothing. A state 2→1 cycle did nothing. A manual
+  reconnect restored both members immediately, and stayed working.
+- A manual 关灯 (state 2) for one minute while music kept playing, then
+  开灯 (state 1), did not disturb the audio. `updateMRPlaybackState` is not
+  the trigger.
+- A two-minute pause did not reproduce it; the maintainer reported that two
+  minutes is not a long pause, and no shorter stable repro exists.
+- The compact silence frame is not the suspect: the 0.6.6 pause/resume run
+  decoded it as silence with no noise and no reconnect.
+
+Conclusion: a HomePod pair at software 27.3 stops rendering the realtime
+stream after a long silent stretch, regardless of the continuing RTP
+keepalive. State 1, volume, and artwork do not revive it; only a new session
+does. The display and the standby setting are unrelated to the audio.
+
+Fix: the engine rebuilds the cohort on the first audible block when the
+captured source was silent for at least `longIdleRebuildAfter` (ten
+minutes); a shorter pause keeps the live stream and its seamless resume. The
+rebuild reuses `rebuildSession`, holds the local mute, and re-applies the
+light through the new session's launch. Pins:
+`TestLongIdleRebuildsTheSessionOnResume`,
+`TestShortIdleKeepsTheLiveStream`,
+`TestLongIdleRebuildSkipsAnUnaddressablePlan`,
+`TestLongIdleRebuildSkipsANonStreamingTransport`.
+
+Not run: a live long-idle resume with the rebuild (needs a pause longer than
+ten minutes and a listen) and the 30-minute default standby soak. Both stay
+in `Currently pending`.

@@ -282,6 +282,7 @@ type Engine struct {
 	idle                 idlePhase
 	standbyHoldAt        time.Time
 	darkBaseline         time.Time
+	lastLoudSeen         time.Time
 	autoTried            bool
 	autoPendingAt        time.Time
 
@@ -719,6 +720,9 @@ func (e *Engine) onWake() {
 	if !e.settingsDirtyAt.IsZero() && !now.Before(e.settingsDirtyAt) {
 		e.saveSettingsNow()
 	}
+	if e.rebuildAfterLongIdle() {
+		return // the new session's deadlines take over
+	}
 	e.updateIdlePhase(now)
 	if e.tr != nil {
 		e.tr.Tick()
@@ -852,15 +856,6 @@ func (e *Engine) closeSession(holdLocalMute bool) {
 		e.tr = nil
 		e.plan = sessionPlan{}
 		tr.Stop()
-	}
-}
-
-func (e *Engine) resetIdle() {
-	e.idle = idleActive
-	e.standbyHoldAt = time.Time{}
-	e.darkBaseline = time.Time{}
-	if e.silence != nil {
-		e.silence.SetPaused(false)
 	}
 }
 

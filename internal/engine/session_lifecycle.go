@@ -25,6 +25,7 @@ func (e *Engine) onLaunched(ok bool, err string) {
 	if ok {
 		now := e.now()
 		e.sessionStartedAt = now
+		e.lastLoudSeen = now
 		if e.life.connectAuto {
 			e.darkBaseline = time.Time{}
 		} else {

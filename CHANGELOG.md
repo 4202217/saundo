@@ -5,6 +5,18 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
+## Unreleased
+
+### Fixed
+
+- A long pause no longer leaves the HomePod silent while the app shows a live
+  session. After ten minutes without sound, the first audio rebuilds the
+  session instead of streaming into a receiver that has stopped rendering;
+  shorter pauses resume the live stream as before. A HomePod pair on software
+  27.3 stops rendering the realtime stream after a long silent stretch, and a
+  volume change, a lamp off/on cycle, and a new cover do not revive it — only
+  a new session does.
+
 ## 0.6.6 - 2026-11-23
 
 ### Fixed

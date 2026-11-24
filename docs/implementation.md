@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-23 -->
+<!-- reviewed-through: 2026-11-24 -->
 
 # Implementation overview
 
@@ -362,7 +362,10 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
    `AudioIdle`, and after the configured idle threshold counted from the last
    audible block it turns the top display dark. The pacer never stops while
    the session is up; the first audible block replaces the compact frame and
-   restores the display.
+   restores the display. After a long source silence the first audible block
+   rebuilds the cohort instead: a HomePod pair at 27.3 stops rendering the
+   realtime stream after such a stretch and only a new session revives it
+   (`longIdleRebuildAfter`, ten minutes, in `internal/engine/long_idle.go`).
    The engine reapplies the ambient light once the session streams:
    the manual 关灯 sends the paused playback state; cover priority hands the
    slot to the media cover and keeps the display lit, and a template owns the
