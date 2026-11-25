@@ -1659,6 +1659,6 @@ The artwork and transport controls are unchanged. Pins:
 `TestProgressRowDoesNotFlipRemaining` (the old logic rendered `0:03` / `-0:00`
 where the fixed one holds `0:02` / `-0:01`).
 
-Not run: a live visual check of the flyout across a full Apple Music track on
-this host after the fix (the maintainer's eyes are needed for the rendered
-card); no receiver was involved.
+On 2026-11-26 the maintainer ran the fixed build on macOS 27.3 with Apple
+Music and confirmed the card no longer bounces at the start of a track. The
+live visual check is done; no receiver was involved.
