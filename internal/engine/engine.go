@@ -131,24 +131,6 @@ type captureStart struct {
 // drag or a burst of toggles costs one disk write, not one per change.
 const settingsSaveDebounce = 500 * time.Millisecond
 
-// audioPauseAfter is how long the capture stream must be digitally silent
-// before the session reports the source idle. Five seconds keeps longer track
-// gaps and silent passages streaming while a real pause flips the phase (and
-// starts the standby clock) promptly. The pacer itself keeps running: the
-// compact silence stream keeps the receiver's renderer fed.
-const (
-	audioPauseAfter = 5 * time.Second
-	audioPausePoll  = 25 * time.Millisecond
-)
-
-type idlePhase uint8
-
-const (
-	idleActive    idlePhase = iota // audible audio, or a session that just started
-	idleSuspended                  // RTP stopped, session alive
-	idleDark                       // lamp off, session alive
-)
-
 // lastSeenWriteEvery bounds how often a discovery sighting rewrites
 // receivers.json. The stale-group grace is a day, so an hour of resolution is
 // plenty and avoids a file write on every three-second discovery cycle.
@@ -730,87 +712,6 @@ func (e *Engine) onWake() {
 	if e.statsDue(now) {
 		e.publish()
 	}
-}
-
-// idlePhase derives the session's idle phase from the captured audio, not
-// from the pacer: a silent source keeps the compact silence stream flowing
-// (so the receiver's renderer never starves), while the phase, the standby
-// clock, and the tray read the source itself.
-func (e *Engine) idlePhase(now time.Time) idlePhase {
-	if e.tr == nil || e.tr.State() != sender.StateStreaming {
-		return idleActive
-	}
-	if now.Sub(e.silence.LastLoud()) < audioPauseAfter {
-		return idleActive
-	}
-	if e.darkEligible() && now.Sub(e.darkBase()) >= e.standbyAfter() {
-		return idleDark
-	}
-	return idleSuspended
-}
-
-func (e *Engine) darkEligible() bool {
-	return !e.setsValue.Lamp.Off &&
-		e.setsValue.Standby.Enabled &&
-		e.lampTargetCapable() &&
-		e.standbyHoldAt.IsZero()
-}
-
-// darkBase is when the current idle stretch started for the dark threshold:
-// the last audible block, or the session start a user connect carries. An
-// automatic reconnect carries no baseline, so it counts from the last sound
-// and an idle PC does not wake the room.
-func (e *Engine) darkBase() time.Time {
-	base := e.silence.LastLoud()
-	if e.darkBaseline.After(base) {
-		base = e.darkBaseline
-	}
-	if base.IsZero() {
-		base = e.now()
-	}
-	return base
-}
-
-func (e *Engine) standbyAfter() time.Duration {
-	return time.Duration(settings.NormalizeStandbyMinutes(e.setsValue.Standby.IdleMinutes)) * time.Minute
-}
-
-func (e *Engine) updateIdlePhase(now time.Time) {
-	if !e.standbyHoldAt.IsZero() && e.silence.LastLoud().After(e.standbyHoldAt) {
-		e.standbyHoldAt = time.Time{}
-	}
-	if e.tr == nil || e.tr.State() != sender.StateStreaming {
-		if phase := e.idlePhase(now); phase != e.idle {
-			e.idle = phase
-			e.publish()
-		}
-		return
-	}
-
-	phase := e.idlePhase(now)
-	if phase == e.idle {
-		return
-	}
-	prev := e.idle
-	switch phase {
-	case idleActive:
-		if prev == idleDark {
-			// State 1 reopens the Now Playing renderer and makes the sender
-			// resend the cover that state 2 dropped. The policy has re-armed
-			// the pacer; the sender sends its first packet on the next Tick.
-			e.tr.SetPlaybackState(true)
-			e.logf("standby: lamp on")
-		}
-	case idleSuspended, idleDark:
-		if phase == idleDark {
-			e.tr.SetPlaybackState(false)
-			e.logf("standby: lamp off after %s idle on %s", now.Sub(e.darkBase()).Round(time.Second), e.connectedName)
-		} else if prev == idleDark {
-			e.tr.SetPlaybackState(true)
-		}
-	}
-	e.idle = phase
-	e.publish()
 }
 
 func (e *Engine) shutdown() {

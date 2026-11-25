@@ -1,4 +1,4 @@
-<!-- status: implemented; live dark and resume verified 2026-11-10; compact keepalive verified 2026-11-23; long-silence rebuild live run pending -->
+<!-- status: implemented; live dark and resume verified 2026-11-10; idle suspension verified 2026-11-25 (short pauses); long-silence rebuild live run pending -->
 
 # Idle standby
 
@@ -55,28 +55,28 @@ Derivation, in order:
 
 Dark eligible means AP2, `TopDisplayCapable`, `Lamp.Off` false, standby enabled, and no manual hold.
 
-The phase reads the captured source, not the pacer. A silent source keeps the compact silence stream flowing, so the receiver's renderer never starves and a pause resumes seamlessly within the receiver's silence limit; the pacer never stops while the session is up, and the stream costs about 80 kbps per member while silent. The limit is real: a HomePod pair at 27.3 stops rendering the realtime stream after a long silent stretch and only a new session revives it (see Long silence below).
+The phase reads the captured source, not the pacer. A silent source suspends the RTP pacer five seconds after the last audible block, so the receiver's buffer drains while the session, sync, and control channel stay up. The first audible block resumes the pacer from a re-anchored timeline; a receiver that cannot suspend (AirPlay 1) keeps the continuous silence stream. The compact frame is now only the fill for a packet that starves while the pacer is running, not an idle keepalive.
 
 Transitions:
 
-- active to suspended: 5 s after the last audible block; the phase, the tray, and the standby clock only.
+- active to suspended: 5 s after the last audible block; the pacer suspends (`SetPaused(true)`), the silence meter stops filling the rings, and the phase, the tray, and the standby clock report the idle. A receiver that refuses the pause keeps the continuous silence stream.
 - suspended to dark: `SetPlaybackState(false)`; one `updateMRPlaybackState` command with state 2. The command touches the display, not the RTP stream.
-- dark to active: after a short idle the transition sends `SetPlaybackState(true)`, which restores the image and resends the cover, before the sender's next tick sends audio. After a long idle the engine rebuilds the cohort first, and the new session applies the light.
-- suspended to active: after a short idle the phase alone changes; the next audio packet replaces the compact silence frame. After a long idle the rebuild below replaces the live stream.
+- dark to active: after a short idle the transition resumes the pacer and sends `SetPlaybackState(true)`, which restores the image and resends the cover, before the new stream's first packet. After a long idle the engine rebuilds the cohort first, and the new session applies the light.
+- suspended to active: after a short idle the pacer resumes with a re-anchored RTP time and starts from the newest capture cushion. After a long idle the rebuild below replaces the suspended stream.
 - any to active on session close: reset the phase and clear the hold.
 - dark to suspended when standby becomes ineligible: `SetPlaybackState(true)`, then follow the suspended rules.
 
 ## Long silence
 
-A HomePod pair at software 27.3 stops rendering the realtime stream after a long silent stretch even though the compact keepalive keeps RTP flowing. The display still answers `updateMRPlaybackState`, and a volume nudge, a state 2→1 cycle, and a fresh cover do not restore the audio; only a new session does (measured 2026-11-24; devices.md and verification.md). The compact frame is not the cause: the 0.6.6 pause/resume test decoded it as silence.
+A HomePod pair at software 27.3 stopped rendering the realtime stream after a long silent stretch while the keepalive still kept RTP flowing (measured 2026-11-24; devices.md and verification.md). The display still answered `updateMRPlaybackState`, and a volume nudge, a state 2→1 cycle, and a fresh cover did not restore the audio; only a new session did. With the idle suspension the stream is stopped before that point: the 2026-11-25 short-pause runs (48 s, 55 s, 3 m 25 s) resumed clean, and a long suspension still falls back to the rebuild.
 
-The engine therefore rebuilds the cohort on the first audible block when the source has been silent for at least `longIdleRebuildAfter` (30 minutes). The rebuild costs one connect, which drops the first moment of the resume; a pause shorter than the threshold keeps the live stream and its seamless resume. The threshold is independent of the standby setting, which only controls the display.
+The engine therefore rebuilds the cohort on the first audible block when the source has been suspended silent for at least `longIdleRebuildAfter` (30 minutes); the suspended stream is discarded and the new session starts clean. The rebuild costs one connect, which drops the first moment of the resume; a shorter pause resumes the live stream. The threshold is independent of the standby setting, which only controls the display. A receiver that kept the continuous stream was never suspended, so the rebuild does not fire for it.
 
 ## Timing
 
 `standbyAfter` is a setting. The default is 30 minutes. Stored values normalize to 1, 5, 10, or 30 minutes, and an unknown value becomes 30. The 5 second phase threshold stays a constant.
 
-The dark baseline is `max(last audible block, sessionBaseline)`. The threshold starts when the source last made sound, not when the pacer stopped, so the keepalive cannot postpone the dark display. `sessionBaseline` is set when the session starts:
+The dark baseline is `max(last audible block, sessionBaseline)`. The threshold starts when the source last made sound, not when the pacer stopped, so the suspension cannot postpone the dark display. `sessionBaseline` is set when the session starts:
 
 - a user connect sets it to the session start, so a fresh connect shows the light and darkens only after a full idle period;
 - an automatic reconnect sets it to zero, so a background reconnect while the PC has been silent for hours goes dark immediately and does not light the room.
@@ -107,11 +107,11 @@ Any user `SetLamp` call while the session is idle lifts the dark phase and suppr
 
 ## Engine and sender changes
 
-- `internal/engine`: phase enum, source-silence derivation, last-sound tracking, threshold, hold, session baseline, snapshot fields, `SetStandby`, log lines. `long_idle.go` owns the long-idle threshold and the rebuild-on-resume step; the rebuild reuses `rebuildSession` and holds the local mute.
-- `internal/airplay/sender`: the silent keepalive adds the compact ALAC silence frame to the wire; `SetPlaybackState` handles the display. `SetPlaybackState(true)` already restores the artwork after a pause transition.
+- `internal/engine`: `idle.go` owns the phase enum, the source-silence derivation, the 5 s pacer suspension and resume, the last-sound tracking, the threshold, the hold, the session baseline, the snapshot fields, `SetStandby`, and the log lines. `long_idle.go` owns the long-idle threshold and the rebuild-on-resume step; the rebuild reuses `rebuildSession` and holds the local mute.
+- `internal/airplay/sender`: `SetPaused` suspends or resumes the pacer; the resume re-anchors the RTP time and starts from the newest cushion. The compact ALAC silence frame remains the fill for a packet that starves while the pacer is running (a capture hiccup), not an idle keepalive. `SetPlaybackState` handles the display; `SetPlaybackState(true)` already restores the artwork after a pause transition.
 - `internal/settings`: struct, defaults, normalization, ownership.
 - `internal/app`: settings row, flyout status and power state, locale strings.
-- The capture ring stays at eight seconds at 48 kHz stereo: a silent source does not fill it — the pacer drains it — so silence never counts as capture overflow.
+- The capture ring stays at eight seconds at 48 kHz stereo: a silent source does not fill it — the meter is paused and the pacer is suspended — so silence never counts as capture overflow.
 - No new sockets, timers, or goroutines. The existing 25 ms audio poll while the phase is idle also drives the threshold.
 
 At stream start, compute the phase before `applyLamp`. An automatic reconnect that is already past the threshold goes straight to dark, without a state 1 flash.
@@ -126,17 +126,18 @@ At stream start, compute the phase before `applyLamp`. An automatic reconnect th
 ## Tests
 
 - Phase derivation with a fake clock: 5 second idle, threshold dark, loud resume, hold, session baseline, ineligible devices.
-- The last-push anchor advances while the pacer pushes and freezes when it stops; the threshold counts from the stop, not from the last audible sample.
+- The dark anchor tracks the last audible block, not the pacer; a suspended or stopped stream cannot move it (`TestDarkAnchorTracksSoundNotTheStream`).
+- Idle suspension: five seconds of silence suspends the pacer and the meter, the first audible block resumes both with a re-anchored timeline (`TestSilentSourceSuspendsTheStreamAndThePhaseIdles`); a session launched into silence suspends immediately (`TestLaunchIntoSilenceSuspendsTheStream`).
 - Exactly one playback-state command per transition; no duplicates and no redundant state 1.
 - Stream start while already idle goes straight to dark.
 - Stereo pair: both capable members receive the state; a non-capable member is filtered.
 - Settings normalization and defaults.
 - Snapshot and locale coverage for the new labels.
-- Long idle: a gap at or above `longIdleRebuildAfter` rebuilds the cohort on the first audible block, a shorter gap keeps the live stream, and an offline member or a non-streaming transport skips the rebuild (`TestLongIdleRebuildsTheSessionOnResume`, `TestShortIdleKeepsTheLiveStream`, `TestLongIdleRebuildSkipsAnUnaddressablePlan`, `TestLongIdleRebuildSkipsANonStreamingTransport`).
+- Long idle: a gap at or above `longIdleRebuildAfter` rebuilds the cohort on the first audible block, a shorter gap keeps the suspended stream, a receiver that kept pushing is skipped, and an offline member or a non-streaming transport skips the rebuild (`TestLongIdleRebuildsTheSessionOnResume`, `TestShortIdleKeepsTheLiveStream`, `TestLongIdleRebuildSkipsAnUnaddressablePlan`, `TestLongIdleRebuildSkipsANonStreamingTransport`).
 
 ## Live verification
 
-The 2026-11-07 measurement ran with RTP flowing. On 2026-11-10 a stereo pair went dark at both 1 minute and 5 minutes after the last push while the session stayed up, and the first sound sent state 1, restored both displays, and resumed the audio (see `docs/verification.md`, 2026-11-10). On 2026-11-24 a long silent stretch left the same family silent until a new session; the rebuild-on-resume fix is in place, and its live long-idle run is still owed. A two hour idle soak and the 30 minute default on a live pair remain.
+The 2026-11-07 measurement ran with RTP flowing. On 2026-11-10 a stereo pair went dark at both 1 minute and 5 minutes after the last push while the session stayed up, and the first sound sent state 1, restored both displays, and resumed the audio (see `docs/verification.md`, 2026-11-10). On 2026-11-25 the idle suspension was tested on the same pair: 48 s, 55 s, and 3 m 25 s pauses resumed clean, and the 10-second experimental dark threshold fired on both displays at the one-minute mark of the restored setting. On 2026-11-24 a long silent stretch left the same family silent until a new session; the rebuild-on-resume fix is in place, and its live long-idle run is still owed. A 15–20 minute suspension run, a two hour idle soak, and the 30 minute default on a live pair remain.
 
 ## Out of scope
 

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-23 -->
+<!-- reviewed-through: 2026-11-25 -->
 
 # saundo Architecture and Technology Selection
 
@@ -161,11 +161,12 @@ The wire-level protocol — discovery and auth selection, pairing, the encrypted
 **ALAC for AP2, raw PCM only for AP1.** Modern receivers require ALAC on the
 realtime stream. Real audio is sent as uncompressed ALAC frames, not the
 compression algorithm; the encoder is about 40 lines. One hand-built
-compressed frame exists: a fully starved packet carries the compact silence
-frame (`alac.EncodeCompactSilence`, the rice coder's zero-run case), so a
-silent stream keeps the receiver's renderer fed at a fraction of the
-bandwidth instead of stopping. The plaintext AP1 fallback for
-`_raop`-only receivers sends big-endian int16 PCM, and AP1 is not a target.
+compressed frame exists: a fully starved packet while the pacer is running
+carries the compact silence frame (`alac.EncodeCompactSilence`, the rice
+coder's zero-run case), so a capture hiccup does not send a full-size
+silence frame. An idle source suspends the pacer instead. The plaintext AP1
+fallback for `_raop`-only receivers sends big-endian int16 PCM, and AP1 is
+not a target.
 
 **Receiver family is separate from pairing method.** `device.Auth` selects the
 pairing flow; `device.Family` selects the audio key, latency profile, and

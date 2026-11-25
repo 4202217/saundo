@@ -34,6 +34,11 @@ live state:
   more than 30 minutes, then play; the first audible block must rebuild the
   cohort and the pair must play. The 2026-11-24 rebuild has only headless
   coverage so far.
+- A 15–20 minute idle suspension on a HomePod pair: the pacer is suspended
+  after 5 s and the first sound resumes from a re-anchored timeline. The
+  2026-11-25 48 s, 55 s, and 3 m 25 s runs were clean; the longer window is
+  untested. An AP2 receiver outside the HomePod family (the MacBook Air) is
+  also unverified under the suspension.
 - A live bandwidth re-measure of the duplicate policy: two HomePods
   standalone and the same two as a combo should settle near 360 KB/s total
   on a clean link after one closed session. The 2026-11-25 change has
@@ -1578,3 +1583,30 @@ minutes of source silence with the measured gap and the threshold, so the
 next miss shows the number instead of the wall-clock estimate. Thirty
 minutes remains a middle ground: the 5-minute resume of 2026-11-10 was
 clean, the 59-minute one was not, and the exact limit is still unmeasured.
+
+## 2026-11-25 — the idle suspension replaces the compact keepalive
+
+A working-tree experiment suspended the RTP pacer after five seconds of
+source silence and resumed on the first audible block. On the
+`AudioAccessory5,1` 27.3 pair, pauses of 48 s, 55 s, and 3 m 25 s resumed
+clean with the source test tone and the display active. This contradicts the
+2026-11-23 entry, which measured persistent static after a suspension of
+3.5 s or more; the static did not reproduce with this build and receiver, so
+the compact keepalive is no longer the idle policy.
+
+The idle path now: suspends the pacer and pauses the silence meter after 5 s
+of source silence; resumes with a re-anchored RTP timeline on the first
+sound; keeps the continuous silence stream for a receiver that cannot
+suspend (AirPlay 1); suspends a session launched into silence immediately;
+and rebuilds the cohort on the first sound after 30 minutes of suspension
+(the 2026-11-24 long-idle wedge). The compact frame still fills a packet
+that starves while the pacer is running, such as a capture hiccup. Pins:
+`TestSilentSourceSuspendsTheStreamAndThePhaseIdles`,
+`TestLaunchIntoSilenceSuspendsTheStream`,
+`TestStandbyDarkensAtThresholdAndResumesOnSound`,
+`TestDarkAnchorTracksSoundNotTheStream`,
+`TestLongIdleRebuildsTheSessionOnResume` and its guards.
+
+Not run: a 15–20 minute suspended run, an AP2 receiver outside the HomePod
+family under the suspension (the MacBook Air is on the network), and the
+live 30-minute long-idle rebuild. All stay in `Currently pending`.

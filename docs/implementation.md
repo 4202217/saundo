@@ -31,7 +31,7 @@ level-analysis worker, both behind bounded queues:
   no-op.
 - **The engine goroutine** (`internal/engine`, `Engine.run`) is the only
   caller of sender methods. It drains the command channel, runs the timers
-  (reconnect backoff, silent keepalive and its cutoff, capture restart), renders the
+  (reconnect backoff, the idle suspension and the long-idle rebuild, capture restart), renders the
   ambient-light JPEG off the sender's tick path, and publishes a
   `Snapshot` on every state change. A cohort member that dies
   signals the loop through the transport's `Dead` channel, and the loop
@@ -355,17 +355,22 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
 5. While streaming: feedback every 2 s, receiver-volume polling per member,
    sync packets, and event-channel replies run on the sender's timers; a
    volume knob report updates only its target, and a channel change reaches
-   the next packet. A silent source keeps the pacer pushing: once the ring is
-   dry every packet carries the 16-byte compressed ALAC silence frame, so the
-   receiver's renderer stays fed and a pause resumes seamlessly. The phase
-   reads the source instead: after 5 s of digital silence the engine reports
-   `AudioIdle`, and after the configured idle threshold counted from the last
-   audible block it turns the top display dark. The pacer never stops while
-   the session is up; the first audible block replaces the compact frame and
-   restores the display. After a long source silence the first audible block
-   rebuilds the cohort instead: a HomePod pair at 27.3 stops rendering the
-   realtime stream after such a stretch and only a new session revives it
-   (`longIdleRebuildAfter`, 30 minutes, in `internal/engine/long_idle.go`).
+   the next packet. A silent source suspends the pacer after 5 s: the rings
+   stop filling and no RTP goes out, while sync, feedback, volume polling,
+   and the event channel stay alive. The first audible block resumes with a
+   re-anchored timeline from the newest capture cushion. The compact silence
+   frame now fills only a packet that starves while the pacer is running (a
+   capture hiccup); a receiver that cannot suspend keeps the continuous
+   silence stream. The phase reads the source instead: after 5 s of digital
+   silence the engine reports `AudioIdle`, and after the configured idle
+   threshold counted from the last audible block it turns the top display
+   dark. The first audible block resumes the pacer and restores the display;
+   a session launched into silence suspends immediately. After a long source
+   silence the first audible block rebuilds the cohort instead: a HomePod
+   pair at 27.3 stops rendering the realtime stream after such a stretch and
+   only a new session revives it (`longIdleRebuildAfter`, 30 minutes, in
+   `internal/engine/long_idle.go`). A receiver that kept the continuous
+   stream was never starved, so the rebuild skips it.
    The engine reapplies the ambient light once the session streams:
    the manual 关灯 sends the paused playback state; cover priority hands the
    slot to the media cover and keeps the display lit, and a template owns the

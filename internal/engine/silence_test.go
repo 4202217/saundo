@@ -115,11 +115,11 @@ func TestSilenceMeterDropsSilentBlocksOnlyWhilePaused(t *testing.T) {
 	}
 }
 
-// TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles pins the policy: a
-// silent source never stops the pacer, so the receiver's renderer stays fed
-// and a pause resumes seamlessly; only the phase, the tray, and the standby
-// clock report the silence.
-func TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles(t *testing.T) {
+// TestSilentSourceSuspendsTheStreamAndThePhaseIdles pins the policy: after
+// five seconds of digital silence the engine suspends the pacer, so the
+// receiver's buffer drains; the first audible block resumes it with a
+// re-anchored timeline.
+func TestSilentSourceSuspendsTheStreamAndThePhaseIdles(t *testing.T) {
 	h := newHarness(t)
 	f := newFakeTransport(sender.Events{})
 	f.state = sender.StateStreaming
@@ -127,11 +127,11 @@ func TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles(t *testing.T) {
 
 	h.e.silence.lastLoud.Store(h.now.Add(-audioPauseAfter).UnixNano())
 	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 0 {
-		t.Fatalf("pauses = %v, want none", f.pauses)
+	if len(f.pauses) != 1 || !f.pauses[0] {
+		t.Fatalf("pauses = %v, want one suspend", f.pauses)
 	}
-	if !f.pushing {
-		t.Fatal("a silent source stopped the pipe")
+	if f.pushing {
+		t.Fatal("a silent source kept the pacer running")
 	}
 	if h.e.idle != idleSuspended {
 		t.Fatal("engine did not enter the suspended phase")
@@ -139,26 +139,33 @@ func TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles(t *testing.T) {
 	if !h.e.buildSnapshot().AudioIdle {
 		t.Fatal("snapshot did not report audio idle while the source is silent")
 	}
-	if h.e.silence.paused.Load() {
-		t.Fatal("silence meter stopped forwarding")
+	if !h.e.silence.paused.Load() {
+		t.Fatal("silence meter kept forwarding silent blocks")
 	}
 
-	// No cutoff follows: an hours-long silence keeps the compact stream
-	// flowing too, so a resume never faces a starved renderer.
 	h.advance(2 * time.Hour)
 	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 0 || !f.pushing {
-		t.Fatalf("silence suspended the stream: pauses=%v pushing=%v", f.pauses, f.pushing)
+	if len(f.pauses) != 1 || f.pushing {
+		t.Fatalf("an hours-long silence changed the suspension: pauses=%v pushing=%v", f.pauses, f.pushing)
 	}
 
 	h.e.silence.lastLoud.Store(h.now.UnixNano())
 	h.e.updateIdlePhase(h.now)
+	if len(f.pauses) != 2 || f.pauses[1] {
+		t.Fatalf("pauses = %v, want suspend then resume", f.pauses)
+	}
+	if !f.pushing {
+		t.Fatal("the first audible block did not resume the pacer")
+	}
+	if h.e.silence.paused.Load() {
+		t.Fatal("silence meter stayed paused after the resume")
+	}
 	if h.e.buildSnapshot().AudioIdle {
 		t.Fatal("snapshot still reports audio idle after resume")
 	}
 	h.e.updateIdlePhase(h.now)
-	if len(f.pauses) != 0 {
-		t.Fatalf("resuming paused the transport: %v", f.pauses)
+	if len(f.pauses) != 2 {
+		t.Fatalf("resuming paused the transport again: %v", f.pauses)
 	}
 
 	h.e.idle = idleSuspended

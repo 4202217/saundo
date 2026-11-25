@@ -41,8 +41,11 @@ func TestStandbyDarkensAtThresholdAndResumesOnSound(t *testing.T) {
 	if len(h.fake.playback) != 2 || h.fake.playback[1] {
 		t.Fatalf("playback = %v, want the launch state 1 then one state 2", h.fake.playback)
 	}
-	if len(h.fake.pauses) != 0 {
-		t.Fatalf("pauses = %v, want none: the silent stream keeps running", h.fake.pauses)
+	if len(h.fake.pauses) != 1 || !h.fake.pauses[0] {
+		t.Fatalf("pauses = %v, want one suspend", h.fake.pauses)
+	}
+	if h.fake.pushing {
+		t.Fatal("the silent stream kept pushing")
 	}
 	if n := countLogLines(h, "standby: lamp off after"); n != 1 {
 		t.Fatalf("lamp-off log lines = %d, want 1", n)
@@ -62,8 +65,11 @@ func TestStandbyDarkensAtThresholdAndResumesOnSound(t *testing.T) {
 	if len(h.fake.playback) != 3 || !h.fake.playback[2] {
 		t.Fatalf("playback = %v, want state 2 then state 1", h.fake.playback)
 	}
-	if len(h.fake.pauses) != 0 {
-		t.Fatalf("resuming paused the transport: %v", h.fake.pauses)
+	if len(h.fake.pauses) != 2 || h.fake.pauses[1] {
+		t.Fatalf("pauses = %v, want suspend then resume", h.fake.pauses)
+	}
+	if !h.fake.pushing {
+		t.Fatal("the resume did not restart the pacer")
 	}
 	snap = h.e.Snapshot()
 	if snap.Standby || snap.AudioIdle {
@@ -144,12 +150,12 @@ func TestManualLampActionHoldsTheLightUntilTheNextSound(t *testing.T) {
 	if h.e.idle != idleActive {
 		t.Fatalf("idle after sound = %v, want active", h.e.idle)
 	}
-	// The stream never stopped, so the next sound is the same transport.
+	// The session kept its transport; only the pacer suspended and resumed.
 	if h.sessions != sessions || h.fake != old {
 		t.Fatalf("the resume rebuilt the session (sessions=%d)", h.sessions-sessions)
 	}
-	if got := old.pauses; len(got) != 0 {
-		t.Fatalf("pauses = %v, want none", got)
+	if got := old.pauses; len(got) != 2 || got[1] {
+		t.Fatalf("pauses = %v, want suspend then resume", got)
 	}
 	if !h.e.standbyHoldAt.IsZero() {
 		t.Fatal("the hold survived the next sound")
@@ -217,10 +223,9 @@ func TestTakeoverClearsStandby(t *testing.T) {
 	}
 }
 
-// TestLaunchIntoSilenceKeepsTheStream pins the launch path: a session opened
-// while the source is silent keeps pushing compact silence and only the phase
-// reports the silence.
-func TestLaunchIntoSilenceKeepsTheStream(t *testing.T) {
+// TestLaunchIntoSilenceSuspendsTheStream pins the launch path: a session
+// opened while the source is silent suspends the pacer immediately.
+func TestLaunchIntoSilenceSuspendsTheStream(t *testing.T) {
 	h := newHarness(t)
 	h.e.setDevices([]device.Device{capableLampDevice()})
 	h.e.lampJPEG = func(preset string) ([]byte, error) { return []byte("jpeg:" + preset), nil }
@@ -231,11 +236,11 @@ func TestLaunchIntoSilenceKeepsTheStream(t *testing.T) {
 	if h.e.idle != idleSuspended {
 		t.Fatalf("idle after the silent launch = %v, want suspended", h.e.idle)
 	}
-	if !h.fake.pushing {
-		t.Fatal("the launch did not keep pushing")
+	if h.fake.pushing {
+		t.Fatal("the launch kept pushing")
 	}
-	if got := h.fake.pauses; len(got) != 0 {
-		t.Fatalf("pauses = %v, want none", got)
+	if got := h.fake.pauses; len(got) != 1 || !got[0] {
+		t.Fatalf("pauses = %v, want one suspend", got)
 	}
 }
 
@@ -250,8 +255,8 @@ func TestDarkAnchorTracksSoundNotTheStream(t *testing.T) {
 
 	h.advance(6 * time.Second)
 	h.e.updateIdlePhase(h.now)
-	if !h.fake.pushing {
-		t.Fatal("a short silence stopped the push")
+	if h.fake.pushing {
+		t.Fatal("a silent source kept the pacer running")
 	}
 	if h.e.idle != idleSuspended {
 		t.Fatalf("idle = %v, want suspended", h.e.idle)
@@ -278,8 +283,8 @@ func TestIdlePhaseChangesSendOneCommandEach(t *testing.T) {
 	for range 4 {
 		h.e.updateIdlePhase(h.now)
 	}
-	if len(h.fake.pauses) != 0 {
-		t.Fatalf("a silent source suspended the stream: %v", h.fake.pauses)
+	if len(h.fake.pauses) != 1 || !h.fake.pauses[0] {
+		t.Fatalf("a silent source did not suspend the stream: %v", h.fake.pauses)
 	}
 	if len(h.fake.playback) != 0 {
 		t.Fatalf("idling sent playback commands: %v", h.fake.playback)
@@ -293,7 +298,7 @@ func TestIdlePhaseChangesSendOneCommandEach(t *testing.T) {
 	if len(h.fake.playback) != 1 || h.fake.playback[0] {
 		t.Fatalf("playback = %v, want exactly one state 2", h.fake.playback)
 	}
-	if len(h.fake.pauses) != 0 {
-		t.Fatalf("pauses = %v, want none", h.fake.pauses)
+	if len(h.fake.pauses) != 1 {
+		t.Fatalf("pauses = %v, want the one suspend", h.fake.pauses)
 	}
 }

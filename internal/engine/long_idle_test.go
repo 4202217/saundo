@@ -17,6 +17,7 @@ func TestLongIdleRebuildsTheSessionOnResume(t *testing.T) {
 	h.e.setDevices([]device.Device{onlineDevice()})
 	h.connect()
 	h.launch()
+	h.fake.pushing = false // the suspended idle is what the rebuild revives
 	if h.sessions != 1 {
 		t.Fatalf("sessions = %d, want 1", h.sessions)
 	}
@@ -38,6 +39,7 @@ func TestShortIdleKeepsTheLiveStream(t *testing.T) {
 	h.e.setDevices([]device.Device{onlineDevice()})
 	h.connect()
 	h.launch()
+	h.fake.pushing = false
 
 	h.advance(longIdleRebuildAfter / 2)
 	h.e.silence.lastLoud.Store(h.now.UnixNano())
@@ -56,6 +58,7 @@ func TestLongIdleRebuildSkipsAnUnaddressablePlan(t *testing.T) {
 	h.e.setDevices([]device.Device{onlineDevice()})
 	h.connect()
 	h.launch()
+	h.fake.pushing = false
 
 	offline := onlineDevice()
 	offline.Online = false

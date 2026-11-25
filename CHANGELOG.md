@@ -11,11 +11,15 @@ release notes.
 
 - A long pause no longer leaves the HomePod silent while the app shows a live
   session. After 30 minutes without sound, the first audio rebuilds the
-  session instead of streaming into a receiver that has stopped rendering;
-  shorter pauses resume the live stream as before. A HomePod pair on software
-  27.3 stops rendering the realtime stream after a long silent stretch, and a
-  volume change, a lamp off/on cycle, and a new cover do not revive it — only
-  a new session does.
+  session instead of resuming a receiver that has stopped rendering; shorter
+  pauses suspend the stream and resume it on the first sound (see below). A
+  HomePod pair on software 27.3 stops rendering the realtime stream after a
+  long silent stretch, and a volume change, a lamp off/on cycle, and a new
+  cover do not revive it — only a new session does.
+- A silent source no longer streams keepalive audio. The stream suspends five
+  seconds after the last sound and resumes on the first new sound from a
+  re-anchored timeline, so a pause costs no bandwidth. A receiver that cannot
+  suspend (AirPlay 1) keeps the continuous silence stream.
 - A stereo pair or combo no longer sends a duplicate audio copy forever. Its
   synthesized target had no loss history, because the ratio was saved only
   when the receiver closed the session; every user disconnect, quit, and

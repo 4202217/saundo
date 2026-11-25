@@ -43,6 +43,12 @@ func (e *Engine) rebuildAfterLongIdle() bool {
 	if gap < longIdleRebuildAfter || e.stopping || e.tr == nil || e.tr.State() != sender.StateStreaming {
 		return false
 	}
+	if e.tr.Pushing() {
+		// The pacer never suspended (an AirPlay 1 receiver, or one that
+		// refused the pause): its continuous silence kept the renderer fed,
+		// so there is no renderer to revive.
+		return false
+	}
 	if e.tr.WaitingForPin() || !e.plan.live() {
 		return false
 	}

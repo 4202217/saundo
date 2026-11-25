@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-23 -->
+<!-- reviewed-through: 2026-11-25 -->
 
 # UI design language
 
@@ -82,7 +82,7 @@ Implementation notes: smoothing the selection color needs a custom row column, b
 
 ## State faces
 
-- One smile mark carries the product. The tray icon and the flyout footer show the face whose mouth names the phase: `idle-open` (open eyes, straight line) while disconnected, `smile` while the session is connected but silent, `stream` (spectrum bars) while streaming, `connect` (three dots) while connecting or reconnecting, `error` (X eyes) on failure. A connected stream with no audible audio shows `smile`: after five seconds of digital silence the engine reports `Snapshot.AudioIdle` (the compact silence keepalive keeps RTP flowing), so the face names playback, not the session. The empty device card pulses the search face while discovery runs.
+- One smile mark carries the product. The tray icon and the flyout footer show the face whose mouth names the phase: `idle-open` (open eyes, straight line) while disconnected, `smile` while the session is connected but silent, `stream` (spectrum bars) while streaming, `connect` (three dots) while connecting or reconnecting, `error` (X eyes) on failure. A connected stream with no audible audio shows `smile`: after five seconds of digital silence the engine reports `Snapshot.AudioIdle` (it suspends the pacer), so the face names playback, not the session. The empty device card pulses the search face while discovery runs.
 - A session taken over by another sender keeps the error phase and uses the copy 已被其他设备接管 / Taken over by another device, with 重新连接 / Reconnect as the active row's action. The tray keeps the error face. A user connect or disconnect returns the idle face.
 - While streaming, the other online receiver rows keep their 连接 / Connect action: choosing one adds that receiver to the cohort, and the local-output mute stays in force across the rebuild. While a connection attempt is in progress, the other rows stay disabled until it finishes or is cancelled.
 - The tray animates the `stream` and `connect` faces at 12 frames per 100 ms while the 托盘动画 setting is on. Turning the setting off, or Windows animation effects (Reduce Motion), holds the static face. The static stream icon is animation frame 0; the static connect icon is a fixed three-dot face, and the animated connect frames pulse the dots.

@@ -48,9 +48,12 @@ func (e *Engine) onLaunched(ok bool, err string) {
 		e.applyLocalMute()
 		e.logf("streaming to %s", e.connectedName)
 		// The phase is computed before the lamp, so a session launched into
-		// silence goes straight to the idle face with no state 1 flash. The
-		// pacer keeps streaming compact silence either way.
+		// silence goes straight to the idle face with no state 1 flash. A
+		// silent launch suspends the pacer immediately.
 		e.idle = e.idlePhase(now)
+		if e.idle != idleActive {
+			e.pauseAudio()
+		}
 		e.applyLamp()
 		// A launch, including a rebuild that adds a member, opens fresh
 		// senders with zeroed counters; the stability window starts over
