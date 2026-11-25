@@ -10,7 +10,7 @@ release notes.
 ### Fixed
 
 - A long pause no longer leaves the HomePod silent while the app shows a live
-  session. After an hour without sound, the first audio rebuilds the
+  session. After 30 minutes without sound, the first audio rebuilds the
   session instead of streaming into a receiver that has stopped rendering;
   shorter pauses resume the live stream as before. A HomePod pair on software
   27.3 stops rendering the realtime stream after a long silent stretch, and a

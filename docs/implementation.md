@@ -365,7 +365,7 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
    restores the display. After a long source silence the first audible block
    rebuilds the cohort instead: a HomePod pair at 27.3 stops rendering the
    realtime stream after such a stretch and only a new session revives it
-   (`longIdleRebuildAfter`, one hour, in `internal/engine/long_idle.go`).
+   (`longIdleRebuildAfter`, 30 minutes, in `internal/engine/long_idle.go`).
    The engine reapplies the ambient light once the session streams:
    the manual 关灯 sends the paused playback state; cover priority hands the
    slot to the media cover and keeps the display lit, and a template owns the

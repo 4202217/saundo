@@ -31,7 +31,7 @@ live state:
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
   mini pair breaks up below roughly 200 ms whatever the sender.
 - A live long-idle resume on a HomePod pair: leave the session silent for
-  more than one hour, then play; the first audible block must rebuild the
+  more than 30 minutes, then play; the first audible block must rebuild the
   cohort and the pair must play. The 2026-11-24 rebuild has only headless
   coverage so far.
 - A live bandwidth re-measure of the duplicate policy: two HomePods
@@ -1564,3 +1564,17 @@ sooner than an hour — the 25-minute gap that evening is not confirmed either
 way — which still needs a manual reconnect. The 30-second working value used
 to exercise the rebuild path is replaced by the production value in the same
 change. A live long-idle run at one hour stays in `Currently pending`.
+
+## 2026-11-25 — the threshold settles at 30 minutes after a 59-minute crackle
+
+After the one-hour value landed, a pause of roughly 59 measured minutes
+(eight minutes short of the wall-clock impression) resumed with PLC static
+on the old stream. The rebuild did not run: the log had no `long idle` line
+and no `session stopped`, so the gap was just under the threshold and the
+engine took the silent short-gap branch. The receiver was already bad at
+that point, which puts its limit below an hour. `longIdleRebuildAfter` is
+now 30 minutes. A diagnostic line records every resume after at least five
+minutes of source silence with the measured gap and the threshold, so the
+next miss shows the number instead of the wall-clock estimate. Thirty
+minutes remains a middle ground: the 5-minute resume of 2026-11-10 was
+clean, the 59-minute one was not, and the exact limit is still unmeasured.

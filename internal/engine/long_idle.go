@@ -11,12 +11,13 @@ import (
 // stream. A HomePod 27.3 stereo pair stops rendering the realtime stream after
 // a long silent stretch even though RTP keeps flowing with the compact silence
 // frame: the display state, a volume change, and a fresh cover do not revive
-// it, and only a new session does (measured 2026-11-24). One hour follows the
-// maintainer's call: it keeps ordinary pauses on the live stream and stays
-// below the 91-minute idle that was measured failing. The rebuild costs one
-// connect and the first moment of the resume; a receiver that gives up sooner
-// than the threshold still needs a manual reconnect.
-const longIdleRebuildAfter = time.Hour
+// it, and only a new session does (measured 2026-11-24). Thirty minutes is the
+// maintainer's middle ground after the 2026-11-25 failure: a 59-minute silence
+// resumed with PLC static, so the limit sits below an hour, while the 5-minute
+// resume of 2026-11-10 was clean. The rebuild costs one connect and the first
+// moment of the resume; a receiver that gives up sooner than the threshold
+// still needs a manual reconnect.
+const longIdleRebuildAfter = 30 * time.Minute
 
 // rebuildAfterLongIdle rebuilds the session when the source becomes audible
 // again after a long silent stretch. A HomePod 27.3 pair stops rendering the
@@ -34,6 +35,11 @@ func (e *Engine) rebuildAfterLongIdle() bool {
 	}
 	gap := loud.Sub(e.lastLoudSeen)
 	e.lastLoudSeen = loud
+	// Record the measured gap on every long resume, so a missed rebuild shows
+	// whether the silence was under the threshold or a guard refused it.
+	if gap >= 5*time.Minute {
+		e.logf("source audible after %s of silence (rebuild threshold %s)", gap.Round(time.Second), longIdleRebuildAfter)
+	}
 	if gap < longIdleRebuildAfter || e.stopping || e.tr == nil || e.tr.State() != sender.StateStreaming {
 		return false
 	}
