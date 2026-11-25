@@ -12,7 +12,9 @@ type audioRecordIO struct {
 	control [][]byte
 }
 
-func (a *audioRecordIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
+func (a *audioRecordIO) TCPConnect(raopio.TCPChannel, string, uint16) (uint64, error) {
+	return 0, nil
+}
 func (a *audioRecordIO) TCPSend(ch raopio.TCPChannel, data []byte) error {
 	if ch == raopio.TCPEvent {
 		a.events = append(a.events, append([]byte(nil), data...))

@@ -376,6 +376,11 @@ type Sender struct {
 	playbackState     int
 	playbackStateSent int
 
+	// controlDialGen and eventDialGen are the tokens of the current dial per
+	// channel. Completion events from a replaced dial are ignored.
+	controlDialGen uint64
+	eventDialGen   uint64
+
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
 	// lists every member's address for SETPEERS; empty means this receiver
@@ -612,6 +617,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.controlEncrypted = false
 	s.eventChannelUp = false
 	s.controlGen, s.eventGen = 0, 0
+	s.controlDialGen, s.eventDialGen = 0, 0
 	s.ctrlSendCtr, s.ctrlRecvCtr = 0, 0
 	s.rtspEncBuf = s.rtspEncBuf[:0]
 	s.eventSendCtr, s.eventRecvCtr = 0, 0
@@ -691,11 +697,14 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.rtspConnected = false
 	s.timeout.arm(s.now())
 	s.info("connecting to %s:%d (%q)", host, port, name)
-	if err := s.io.TCPConnect(raopio.TCPControl, host, port); err != nil {
+	gen, err := s.io.TCPConnect(raopio.TCPControl, host, port)
+	if err != nil {
 		// A host may report an immediate failure; the normal path reports it
 		// through an Event.
 		s.fail(err.Error())
+		return
 	}
+	s.controlDialGen = gen
 }
 
 // Stop tears the session down and closes the sockets.
@@ -813,6 +822,13 @@ func (s *Sender) stopTimers() {
 	s.coverRetry.disarm()
 }
 
+// staleDial reports whether a completion belongs to a dial the sender already
+// replaced. A zero on either side is an unknown token, so test doubles that
+// do not number their dials keep the older behavior.
+func staleDial(gen, dial uint64) bool {
+	return gen != 0 && dial != 0 && gen != dial
+}
+
 // HandleEvent feeds one host notification into the sender.
 func (s *Sender) HandleEvent(ev raopio.Event) {
 	// Ignore late bytes or a close from a socket the sender already replaced.
@@ -820,7 +836,14 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 	case raopio.TCPControl:
 		switch ev.Kind {
 		case raopio.EventTCPConnected:
+			if staleDial(ev.Gen, s.controlDialGen) {
+				return
+			}
 			s.controlGen = ev.Gen
+		case raopio.EventTCPConnectFailed:
+			if staleDial(ev.Gen, s.controlDialGen) {
+				return
+			}
 		case raopio.EventTCPData, raopio.EventTCPClosed:
 			if ev.Gen != s.controlGen {
 				return
@@ -829,7 +852,14 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 	case raopio.TCPEvent:
 		switch ev.Kind {
 		case raopio.EventTCPConnected:
+			if staleDial(ev.Gen, s.eventDialGen) {
+				return
+			}
 			s.eventGen = ev.Gen
+		case raopio.EventTCPConnectFailed:
+			if staleDial(ev.Gen, s.eventDialGen) {
+				return
+			}
 		case raopio.EventTCPData, raopio.EventTCPClosed:
 			if ev.Gen != s.eventGen {
 				return
@@ -886,6 +916,12 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 			s.fail(why)
 		}
 	case raopio.EventTCPData:
+		if s.state == StateIdle {
+			// A stopped session keeps no pending requests or keys. Late
+			// bytes from its socket must not re-enter the state machine and
+			// fail the session a second time.
+			return
+		}
 		switch ev.TCP {
 		case raopio.TCPControl:
 			s.onRTSPData(ev.Data)
@@ -967,6 +1003,11 @@ func (s *Sender) resetStartState() {
 	s.startWaitUntil = time.Time{}
 	s.paused = false
 	s.pauseWanted = false
+	// The session is over. Drop its request queue and receive buffers so a
+	// late reply cannot match a stale CSeq or a half-decrypted frame.
+	s.pending = s.pending[:0]
+	s.rxBuf = s.rxBuf[:0]
+	s.rtspEncBuf = s.rtspEncBuf[:0]
 }
 
 // ntpAt returns 64-bit NTP wall time for t: seconds since 1900 in the high word

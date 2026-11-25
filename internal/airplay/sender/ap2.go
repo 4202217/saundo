@@ -138,10 +138,12 @@ func (s *Sender) handleAP2SetupSession(body []byte) {
 	// instead of reporting a stream that is already dead.
 	s.pairStage = pairAP2Event
 	s.io.TCPClose(raopio.TCPEvent, false)
-	if err := s.io.TCPConnect(raopio.TCPEvent, s.hostIP, eventPort); err != nil {
+	gen, err := s.io.TCPConnect(raopio.TCPEvent, s.hostIP, eventPort)
+	if err != nil {
 		s.fail(fmtError("The receiver's event channel did not connect: %s", err))
 		return
 	}
+	s.eventDialGen = gen
 	s.info("opening event channel to %s:%d", s.host, eventPort)
 }
 

@@ -16,10 +16,10 @@ import (
 // senders through Start and Stop.
 type fakeIO struct{}
 
-func (fakeIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
-func (fakeIO) TCPSend(raopio.TCPChannel, []byte) error            { return nil }
-func (fakeIO) TCPClose(raopio.TCPChannel, bool)                   {}
-func (fakeIO) UDPBind(raopio.UDPChannel) (uint16, error)          { return 53561, nil }
+func (fakeIO) TCPConnect(raopio.TCPChannel, string, uint16) (uint64, error) { return 0, nil }
+func (fakeIO) TCPSend(raopio.TCPChannel, []byte) error                      { return nil }
+func (fakeIO) TCPClose(raopio.TCPChannel, bool)                             {}
+func (fakeIO) UDPBind(raopio.UDPChannel) (uint16, error)                    { return 53561, nil }
 func (fakeIO) UDPSend(raopio.UDPChannel, raopio.Endpoint, []byte) error {
 	return nil
 }

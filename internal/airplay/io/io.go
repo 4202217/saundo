@@ -35,7 +35,10 @@ type Endpoint struct {
 // IO is the six-method seam. Every method is safe to call from the sender's
 // event-loop goroutine while the host is reading its sockets.
 type IO interface {
-	TCPConnect(ch TCPChannel, host string, port uint16) error
+	// TCPConnect starts a dial and returns the attempt's token, the same
+	// value the completion events carry. A sender compares the token so a
+	// late completion from a replaced dial cannot touch the new session.
+	TCPConnect(ch TCPChannel, host string, port uint16) (uint64, error)
 	TCPSend(ch TCPChannel, data []byte) error
 	TCPClose(ch TCPChannel, flush bool)
 

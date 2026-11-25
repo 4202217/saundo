@@ -65,6 +65,9 @@ type rig struct {
 	// failEventConnect makes the event-channel dial report a failure, so a
 	// test can pin the handshake gate before RECORD.
 	failEventConnect bool
+	// tcpGen numbers fake dials, matching the host's attempt token.
+	tcpGen               uint64
+	controlGen, eventGen uint64
 }
 
 func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *storedPairing) *rig {
@@ -158,13 +161,20 @@ func (r *rig) start() {
 
 type fakeIO struct{ r *rig }
 
-func (f *fakeIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) error {
+func (f *fakeIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) (uint64, error) {
+	f.r.tcpGen++
+	gen := f.r.tcpGen
+	if ch == raopio.TCPControl {
+		f.r.controlGen = gen
+	} else {
+		f.r.eventGen = gen
+	}
 	if ch == raopio.TCPEvent && f.r.failEventConnect {
 		f.r.emit(raopio.Event{
-			Kind: raopio.EventTCPConnectFailed, TCP: ch,
+			Kind: raopio.EventTCPConnectFailed, TCP: ch, Gen: gen,
 			Err: "connect: connection refused",
 		})
-		return nil
+		return gen, nil
 	}
 	local, peer := f.r.localIP, f.r.peerIP
 	if local == "" {
@@ -174,11 +184,11 @@ func (f *fakeIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) erro
 		peer = "192.168.1.20"
 	}
 	f.r.emit(raopio.Event{
-		Kind: raopio.EventTCPConnected, TCP: ch,
+		Kind: raopio.EventTCPConnected, TCP: ch, Gen: gen,
 		Local: raopio.Endpoint{IP: local, Port: 40000},
 		Peer:  raopio.Endpoint{IP: peer, Port: port},
 	})
-	return nil
+	return gen, nil
 }
 
 func (f *fakeIO) TCPSend(ch raopio.TCPChannel, data []byte) error {
@@ -435,7 +445,7 @@ func (f *fakeReceiver) reply(req request, code int, contentType string, body []b
 		}
 		out = framed
 	}
-	f.r.emit(raopio.Event{Kind: raopio.EventTCPData, TCP: raopio.TCPControl, Data: out})
+	f.r.emit(raopio.Event{Kind: raopio.EventTCPData, TCP: raopio.TCPControl, Gen: f.r.controlGen, Data: out})
 	if f.encryptAfterReply {
 		f.encrypted = true
 		f.encryptAfterReply = false
@@ -799,7 +809,7 @@ func (f *fakeReceiver) pushEvent(req string) {
 		off += n
 	}
 	f.eventOpen = true
-	f.r.emit(raopio.Event{Kind: raopio.EventTCPData, TCP: raopio.TCPEvent, Data: framed})
+	f.r.emit(raopio.Event{Kind: raopio.EventTCPData, TCP: raopio.TCPEvent, Gen: f.r.eventGen, Data: framed})
 }
 
 func (f *fakeReceiver) handleAudio(data []byte) {

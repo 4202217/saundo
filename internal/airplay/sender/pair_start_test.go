@@ -16,9 +16,11 @@ type recordingIO struct {
 	sync  [][]byte
 }
 
-func (io *recordingIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
-func (io *recordingIO) TCPSend(raopio.TCPChannel, []byte) error            { return nil }
-func (io *recordingIO) TCPClose(raopio.TCPChannel, bool)                   {}
+func (io *recordingIO) TCPConnect(raopio.TCPChannel, string, uint16) (uint64, error) {
+	return 0, nil
+}
+func (io *recordingIO) TCPSend(raopio.TCPChannel, []byte) error { return nil }
+func (io *recordingIO) TCPClose(raopio.TCPChannel, bool)        {}
 func (io *recordingIO) UDPBind(ch raopio.UDPChannel) (uint16, error) {
 	return 6000 + uint16(ch), nil
 }

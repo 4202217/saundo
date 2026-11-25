@@ -39,7 +39,7 @@ func TestTCPConnectSendReceiveClose(t *testing.T) {
 	h := NewHost()
 	defer h.Close()
 	port := uint16(ln.Addr().(*net.TCPAddr).Port)
-	if err := h.TCPConnect(TCPControl, "127.0.0.1", port); err != nil {
+	if _, err := h.TCPConnect(TCPControl, "127.0.0.1", port); err != nil {
 		t.Fatal(err)
 	}
 	ev := waitEvent(t, h, EventTCPConnected)

@@ -26,7 +26,7 @@ type lossyIO struct {
 	mu     sync.Mutex
 }
 
-func (l *lossyIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) error {
+func (l *lossyIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) (uint64, error) {
 	return l.inner.TCPConnect(ch, host, port)
 }
 
