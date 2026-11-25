@@ -54,7 +54,7 @@ Run the `Docs audit` section in `docs/releasing.md`. Fix drift in the release co
 
 - `docs/ui.md`, `docs/implementation.md`, `docs/protocol.md`, `docs/devices.md`, `docs/architecture.md`, and `docs/platforms.md`: the code and behavior they describe.
 - `docs/verification.md`: the `Currently pending` list and dated evidence. Keep every unverified feature in the list. Compress fully graduated dated batches into the file's Graduated section, per the rule in its header.
-- `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels.
+- `CHANGELOG.md`: the English canonical. Add the `## <version> - <date>` section. Keep it ASCII. Describe the UI in English. Do not use Chinese UI labels. Write every added, changed, and fixed entry in the user's language: lead with what they see, hear, or no longer have to do; name the symptom they reported; keep file, type, function, protocol-field, and counter names out unless the user must act on them. One plain line beats three mechanism lines, and related fixes that share a user-visible outcome group into one line.
 - `CHANGELOG.zh-CN.md`: the Chinese counterpart. It needs the same version headings and sections. The app's update history reads it when `i18n.Locale()` starts with `zh`.
 - Links and screenshots. Bump the `reviewed-through` dates on the docs you touched.
 
