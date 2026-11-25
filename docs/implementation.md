@@ -358,7 +358,9 @@ A single-target session keeps the close-and-retry path. A launch failure with a 
    the next packet. A silent source suspends the pacer after 5 s: the rings
    stop filling and no RTP goes out, while sync, feedback, volume polling,
    and the event channel stay alive. The first audible block resumes with a
-   re-anchored timeline from the newest capture cushion. The compact silence
+   re-anchored timeline from the newest capture cushion and sends a `FLUSH`
+   with the next seq/rtptime, so the receiver drops its stale buffer before
+   the new point; both HomePods answer `200 OK`. The compact silence
    frame now fills only a packet that starves while the pacer is running (a
    capture hiccup); a receiver that cannot suspend keeps the continuous
    silence stream. The phase reads the source instead: after 5 s of digital

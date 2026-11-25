@@ -20,6 +20,10 @@ release notes.
   seconds after the last sound and resumes on the first new sound from a
   re-anchored timeline, so a pause costs no bandwidth. A receiver that cannot
   suspend (AirPlay 1) keeps the continuous silence stream.
+- A resume now clears the receiver's buffered audio before the new timeline,
+  so a pause no longer leaves the stream crackling after many play/pause
+  cycles. An 18-minute pause resumed clean in testing; a pause of 30 minutes
+  or more still rebuilds the session.
 - A stereo pair or combo no longer sends a duplicate audio copy forever. Its
   synthesized target had no loss history, because the ratio was saved only
   when the receiver closed the session; every user disconnect, quit, and

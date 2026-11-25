@@ -335,6 +335,7 @@ type fakeReceiver struct {
 	requests             map[string]int
 	seen                 []request
 	setParams            []string
+	flushRTPInfo         []string
 	commands             []string
 	// commandStatus overrides the /command reply; zero means 200.
 	commandStatus     int
@@ -542,6 +543,7 @@ func (f *fakeReceiver) dispatch(req request) {
 	case req.method == "TEARDOWN":
 		f.reply(req, 200, "", nil)
 	case req.method == "FLUSH":
+		f.flushRTPInfo = append(f.flushRTPInfo, req.headers["rtp-info"])
 		f.reply(req, 200, "", nil)
 	default:
 		f.r.t.Fatalf("fake receiver: unhandled request %s", key)

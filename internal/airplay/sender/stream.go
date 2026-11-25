@@ -112,8 +112,30 @@ func (s *Sender) applyPause(paused bool) {
 		s.ring.KeepNewest(frames * channels)
 	}
 	s.ringFed, s.lastFedFrames = false, s.framesSent
+	// A resume re-anchors the RTP time. Without a flush the receiver sees a
+	// timestamp jump with a continuous sequence and can leave its jitter
+	// buffer or PLC in a bad state (2026-11-25); the flush tells it to discard
+	// buffered audio before the next packet.
+	s.sendFlush()
 	s.pacer.arm(now)
 	s.info("audio resumed at frame %d", s.framesSent)
+}
+
+// sendFlush tells the receiver to discard buffered audio before the next
+// packet. A resume after a suspension re-anchors the RTP time; the flush
+// marks the same point on the receiver's side so the timestamp jump is not
+// read as loss. A non-2xx reply is non-fatal on an AP2 realtime stream.
+func (s *Sender) sendFlush() {
+	if !s.airplay2 || s.state != StateStreaming {
+		return
+	}
+	rtpInfo := "seq=" + utoa(uint64(s.seq)) + ";rtptime=" + utoa(uint64(s.rtpTime32()))
+	extra := []header{{"RTP-Info", rtpInfo}}
+	if s.rtspSession != "" {
+		extra = append(extra, header{"Session", s.rtspSession})
+	}
+	s.sendRequest("FLUSH", s.rtspURI(), "", "", extra)
+	s.info("flush: seq=%d rtptime=%d", s.seq, s.rtpTime32())
 }
 
 func (s *Sender) sendAudioPacket() {

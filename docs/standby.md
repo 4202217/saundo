@@ -1,4 +1,4 @@
-<!-- status: implemented; live dark and resume verified 2026-11-10; idle suspension verified 2026-11-25 (short pauses); long-silence rebuild live run pending -->
+<!-- status: implemented; live dark and resume verified 2026-11-10; idle suspension and resume FLUSH verified 2026-11-25 (up to 18m10s); long-silence rebuild live run pending -->
 
 # Idle standby
 
@@ -61,8 +61,8 @@ Transitions:
 
 - active to suspended: 5 s after the last audible block; the pacer suspends (`SetPaused(true)`), the silence meter stops filling the rings, and the phase, the tray, and the standby clock report the idle. A receiver that refuses the pause keeps the continuous silence stream.
 - suspended to dark: `SetPlaybackState(false)`; one `updateMRPlaybackState` command with state 2. The command touches the display, not the RTP stream.
-- dark to active: after a short idle the transition resumes the pacer and sends `SetPlaybackState(true)`, which restores the image and resends the cover, before the new stream's first packet. After a long idle the engine rebuilds the cohort first, and the new session applies the light.
-- suspended to active: after a short idle the pacer resumes with a re-anchored RTP time and starts from the newest capture cushion. After a long idle the rebuild below replaces the suspended stream.
+- dark to active: after a short idle the transition resumes the pacer, sends the resume `FLUSH`, and sends `SetPlaybackState(true)`, which restores the image and resends the cover, before the new stream's first packet. After a long idle the engine rebuilds the cohort first, and the new session applies the light.
+- suspended to active: after a short idle the pacer resumes with a re-anchored RTP time, starts from the newest capture cushion, and sends `FLUSH` with the next sequence and RTP timestamp so the receiver discards buffered audio before the new point. After a long idle the rebuild below replaces the suspended stream.
 - any to active on session close: reset the phase and clear the hold.
 - dark to suspended when standby becomes ineligible: `SetPlaybackState(true)`, then follow the suspended rules.
 
@@ -108,7 +108,7 @@ Any user `SetLamp` call while the session is idle lifts the dark phase and suppr
 ## Engine and sender changes
 
 - `internal/engine`: `idle.go` owns the phase enum, the source-silence derivation, the 5 s pacer suspension and resume, the last-sound tracking, the threshold, the hold, the session baseline, the snapshot fields, `SetStandby`, and the log lines. `long_idle.go` owns the long-idle threshold and the rebuild-on-resume step; the rebuild reuses `rebuildSession` and holds the local mute.
-- `internal/airplay/sender`: `SetPaused` suspends or resumes the pacer; the resume re-anchors the RTP time and starts from the newest cushion. The compact ALAC silence frame remains the fill for a packet that starves while the pacer is running (a capture hiccup), not an idle keepalive. `SetPlaybackState` handles the display; `SetPlaybackState(true)` already restores the artwork after a pause transition.
+- `internal/airplay/sender`: `SetPaused` suspends or resumes the pacer; the resume re-anchors the RTP time, starts from the newest cushion, and sends `FLUSH` with the next seq/rtptime so the receiver discards its buffered audio before the new point. The compact ALAC silence frame remains the fill for a packet that starves while the pacer is running (a capture hiccup), not an idle keepalive. `SetPlaybackState` handles the display; `SetPlaybackState(true)` already restores the artwork after a pause transition.
 - `internal/settings`: struct, defaults, normalization, ownership.
 - `internal/app`: settings row, flyout status and power state, locale strings.
 - The capture ring stays at eight seconds at 48 kHz stereo: a silent source does not fill it — the meter is paused and the pacer is suspended — so silence never counts as capture overflow.
@@ -127,7 +127,7 @@ At stream start, compute the phase before `applyLamp`. An automatic reconnect th
 
 - Phase derivation with a fake clock: 5 second idle, threshold dark, loud resume, hold, session baseline, ineligible devices.
 - The dark anchor tracks the last audible block, not the pacer; a suspended or stopped stream cannot move it (`TestDarkAnchorTracksSoundNotTheStream`).
-- Idle suspension: five seconds of silence suspends the pacer and the meter, the first audible block resumes both with a re-anchored timeline (`TestSilentSourceSuspendsTheStreamAndThePhaseIdles`); a session launched into silence suspends immediately (`TestLaunchIntoSilenceSuspendsTheStream`).
+- Idle suspension: five seconds of silence suspends the pacer and the meter, the first audible block resumes both with a re-anchored timeline and a `FLUSH` carrying the next seq/rtptime (`TestSilentSourceSuspendsTheStreamAndThePhaseIdles`, `TestPauseStopsAudioKeepsKeepAliveAndResumesAnchored`); a session launched into silence suspends immediately (`TestLaunchIntoSilenceSuspendsTheStream`).
 - Exactly one playback-state command per transition; no duplicates and no redundant state 1.
 - Stream start while already idle goes straight to dark.
 - Stereo pair: both capable members receive the state; a non-capable member is filtered.
@@ -137,7 +137,7 @@ At stream start, compute the phase before `applyLamp`. An automatic reconnect th
 
 ## Live verification
 
-The 2026-11-07 measurement ran with RTP flowing. On 2026-11-10 a stereo pair went dark at both 1 minute and 5 minutes after the last push while the session stayed up, and the first sound sent state 1, restored both displays, and resumed the audio (see `docs/verification.md`, 2026-11-10). On 2026-11-25 the idle suspension was tested on the same pair: 48 s, 55 s, and 3 m 25 s pauses resumed clean, and the 10-second experimental dark threshold fired on both displays at the one-minute mark of the restored setting. On 2026-11-24 a long silent stretch left the same family silent until a new session; the rebuild-on-resume fix is in place, and its live long-idle run is still owed. A 15–20 minute suspension run, a two hour idle soak, and the 30 minute default on a live pair remain.
+The 2026-11-07 measurement ran with RTP flowing. On 2026-11-10 a stereo pair went dark at both 1 minute and 5 minutes after the last push while the session stayed up, and the first sound sent state 1, restored both displays, and resumed the audio (see `docs/verification.md`, 2026-11-10). On 2026-11-25 the idle suspension was tested on the same pair: 48 s, 55 s, and 3 m 25 s pauses resumed clean, and the 10-second experimental dark threshold fired on both displays. After the resume `FLUSH` was added, 7 m 3 s, 6 m 35 s, and 18 m 10 s suspensions resumed clean, with every `FLUSH` answered `200 OK` on both members; the same day's pre-FLUSH session had developed persistent static after 14 resumes. On 2026-11-24 a long silent stretch left the same family silent until a new session; the rebuild-on-resume fix is in place, and its live long-idle run is still owed. A two hour idle soak and the 30 minute default on a live pair remain.
 
 ## Out of scope
 

@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -52,6 +53,13 @@ func TestPauseStopsAudioKeepsKeepAliveAndResumesAnchored(t *testing.T) {
 	}
 	if got := r.rx.audioTS[first]; got != wantFirst {
 		t.Fatalf("first resumed RTP = %d, want %d", got, wantFirst)
+	}
+	if len(r.rx.flushRTPInfo) != 1 {
+		t.Fatalf("flush requests = %d, want one on resume", len(r.rx.flushRTPInfo))
+	}
+	wantFlush := fmt.Sprintf("seq=%d;rtptime=%d", r.rx.audioSeqs[first], wantFirst)
+	if got := r.rx.flushRTPInfo[0]; got != wantFlush {
+		t.Fatalf("flush RTP-Info = %q, want %q", got, wantFlush)
 	}
 }
 

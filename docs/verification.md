@@ -34,11 +34,11 @@ live state:
   more than 30 minutes, then play; the first audible block must rebuild the
   cohort and the pair must play. The 2026-11-24 rebuild has only headless
   coverage so far.
-- A 15–20 minute idle suspension on a HomePod pair: the pacer is suspended
-  after 5 s and the first sound resumes from a re-anchored timeline. The
-  2026-11-25 48 s, 55 s, and 3 m 25 s runs were clean; the longer window is
-  untested. An AP2 receiver outside the HomePod family (the MacBook Air) is
-  also unverified under the suspension.
+- A resume after a 30-minute-plus suspension on a HomePod pair (the rebuild
+  path): the 2026-11-25 18 m 10 s suspension was clean with the resume flush,
+  but the threshold itself and the rebuild behind it are still untested live.
+  An AP2 receiver outside the HomePod family (the MacBook Air) is also
+  unverified under the suspension and the flush.
 - A live bandwidth re-measure of the duplicate policy: two HomePods
   standalone and the same two as a combo should settle near 360 KB/s total
   on a clean link after one closed session. The 2026-11-25 change has
@@ -1610,3 +1610,22 @@ that starves while the pacer is running, such as a capture hiccup. Pins:
 Not run: a 15–20 minute suspended run, an AP2 receiver outside the HomePod
 family under the suspension (the MacBook Air is on the network), and the
 live 30-minute long-idle rebuild. All stay in `Currently pending`.
+
+## 2026-11-25 — the resume FLUSH clears the stop-send crackle
+
+The stop-send design suspends the pacer on silence and re-anchors the RTP
+time on resume. A 43-minute session with 14 pause/resume cycles developed
+persistent static, volume-correlated, with `0.0%` retransmits and no
+underrun; the static appeared after one resume and disappeared at another, so
+a receiver-side jitter buffer or PLC state was being disturbed by the
+timestamp jump with a continuous sequence. The sender now sends `FLUSH` with
+the next `seq` and `rtptime` before the first resumed packet.
+
+On the `AudioAccessory5,1` 27.3 pair both members answered `200 OK` on every
+flush. Suspensions of 7 m 3 s, 6 m 35 s, and 18 m 10 s resumed clean, with
+the display state 1 and cover on return; the maintainer heard no crackle in
+the run. The 30-minute rebuild remains for the long-idle wedge. Pins:
+`TestPauseStopsAudioKeepsKeepAliveAndResumesAnchored` (the request and its
+RTP-Info), the fake receiver's `FLUSH` reply, and the existing suspension
+tests. Not run: a resume after a 30-minute-plus suspension, and an AP2 Mac
+receiver under the flush; both stay in `Currently pending`.
