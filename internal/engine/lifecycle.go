@@ -59,6 +59,11 @@ func (l *lifecycle) freshAttempt(keys ...string) {
 	l.reconnectCount, l.reconnectNum = 0, 0
 	l.connectAuto = false
 	l.takenOver = false
+	// A pending retry belongs to the attempt the user just replaced. Leaving
+	// it armed lets it reconnect the old target after the new attempt fails
+	// its own guards.
+	l.reconnectWanted = false
+	l.reconnectAt = time.Time{}
 	for _, k := range keys {
 		if l.lost == nil {
 			l.lost = make(map[string]bool)

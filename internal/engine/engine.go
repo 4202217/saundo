@@ -1036,12 +1036,6 @@ func (e *Engine) attemptReconnect() {
 		return
 	}
 	e.startPlan(plan, false)
-	// startPlan can reject synchronously on a failed cohort open. That path
-	// sets lastError and never reaches the asynchronous callbacks that arm the
-	// backoff, so re-arm here or the loop stops for good.
-	if e.lastError != "" {
-		e.armReconnect()
-	}
 }
 
 func (e *Engine) reconnectShouldRetry() bool {

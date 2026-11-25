@@ -642,6 +642,9 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 		}
 		e.fail(ErrSessionOpen, err.Error())
 		e.logf("session open failed: %v", err)
+		// Every caller shares the open failure: a transient socket or PTP
+		// refusal must keep the retry loop alive, not leave an idle engine.
+		e.armReconnect()
 		e.publish()
 		return
 	}
