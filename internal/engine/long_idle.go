@@ -29,6 +29,11 @@ func (e *Engine) rebuildAfterLongIdle() bool {
 	if e.silence == nil {
 		return false
 	}
+	if e.longIdlePending {
+		if e.rebuildPendingLongIdle() {
+			return true
+		}
+	}
 	loud := e.silence.LastLoud()
 	if !loud.After(e.lastLoudSeen) {
 		return false
@@ -53,15 +58,60 @@ func (e *Engine) rebuildAfterLongIdle() bool {
 		return false
 	}
 	if missing, offline, ok := e.sessionAddressable(); !ok {
-		name := missing
-		if name == "" {
-			name = offline
+		// The audible block is consumed, but the rebuild is not. Keep the
+		// intent pending so the first wake after the target returns still
+		// rebuilds; otherwise a receiver that was briefly unreachable keeps
+		// the live stream and stays silent for the rest of the session.
+		e.longIdlePending = true
+		if !e.longIdlePendingLog {
+			e.longIdlePendingLog = true
+			name := missing
+			if name == "" {
+				name = offline
+			}
+			e.logf("long idle %s: %s is unavailable; keeping the live stream, rebuild pending", gap.Round(time.Second), name)
 		}
-		e.logf("long idle %s: %s is unavailable; keeping the live stream", gap.Round(time.Second), name)
 		return false
 	}
+	e.longIdlePending = false
+	e.longIdlePendingLog = false
 	old := e.tr
 	e.logf("long idle %s: rebuilding the session on resume", gap.Round(time.Second))
+	e.life.userRebuild()
+	e.rebuildSession()
+	return e.tr != old
+}
+
+// rebuildPendingLongIdle runs the rebuild a long gap asked for while the
+// target was unreachable. The first wake after the address returns performs
+// it, even when no new audible block arrives.
+func (e *Engine) rebuildPendingLongIdle() bool {
+	if e.stopping || e.tr == nil || e.tr.State() != sender.StateStreaming || !e.plan.live() {
+		e.longIdlePending = false
+		e.longIdlePendingLog = false
+		return false
+	}
+	if e.tr.Pushing() || e.tr.WaitingForPin() {
+		e.longIdlePending = false
+		e.longIdlePendingLog = false
+		return false
+	}
+	missing, offline, ok := e.sessionAddressable()
+	if !ok {
+		if !e.longIdlePendingLog {
+			e.longIdlePendingLog = true
+			name := missing
+			if name == "" {
+				name = offline
+			}
+			e.logf("long idle: %s is unavailable; rebuild still pending", name)
+		}
+		return false
+	}
+	e.longIdlePending = false
+	e.longIdlePendingLog = false
+	old := e.tr
+	e.logf("long idle: the target is reachable; rebuilding the pending session")
 	e.life.userRebuild()
 	e.rebuildSession()
 	return e.tr != old
@@ -75,6 +125,8 @@ func (e *Engine) resetIdle() {
 	e.standbyHoldAt = time.Time{}
 	e.darkBaseline = time.Time{}
 	e.lastLoudSeen = e.now()
+	e.longIdlePending = false
+	e.longIdlePendingLog = false
 	if e.silence != nil {
 		e.silence.SetPaused(false)
 	}

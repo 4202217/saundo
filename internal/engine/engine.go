@@ -265,6 +265,8 @@ type Engine struct {
 	standbyHoldAt        time.Time
 	darkBaseline         time.Time
 	lastLoudSeen         time.Time
+	longIdlePending      bool
+	longIdlePendingLog   bool
 	autoTried            bool
 	autoPendingAt        time.Time
 
