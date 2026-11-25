@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-21 -->
+<!-- reviewed-through: 2026-11-26 -->
 
 # UI copy standard
 
@@ -92,6 +92,7 @@ The interface speaks to the person using it, not about how it is built.
 ## Units and format
 
 - Latency uses one formatter, `settings.LatencyText`. Below 1000 ms it prints `700 ms`. At or above 1000 ms a whole number of seconds prints without a decimal, `2 s`; any other value prints one decimal, `1.5 s`. Slider scale endpoints follow the same rule.
+- Media clocks use `formatClock`: whole seconds as `m:ss` (elapsed) and a literal `-m:ss` prefix for remaining, never a negative time. A position advances from the payload's playback timestamp and is capped when that stamp is stale, so the two clocks cannot bounce between `0:00` and `-0:01` at the start of a track.
 - Volume prints as an integer percent.
 - Sample rates print as `44.1 kHz` or `48 kHz`.
 - Chinese copy uses full-width punctuation. Prose ends with `。` / `.`: page descriptions, card body text, notes, dialog copy, status lines, and empty states. A settings-row subtitle, a link description, and a chip label carry no terminal punctuation. English labels and menu items use sentence case, except product names.

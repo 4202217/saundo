@@ -127,6 +127,7 @@ type App struct {
 	// mygo.Theme.SetSource needs the running application's main thread.
 	setThemeSource func(mygo.ThemeSource)
 	nowSnap        nowplaying.Snapshot
+	nowTime        func() time.Time
 	nowMediaAUMID  string
 	nowArt         *ui.Bitmap
 	nowArtKey      string

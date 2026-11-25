@@ -1629,3 +1629,36 @@ the run. The 30-minute rebuild remains for the long-idle wedge. Pins:
 RTP-Info), the fake receiver's `FLUSH` reply, and the existing suspension
 tests. Not run: a resume after a 30-minute-plus suspension, and an AP2 Mac
 receiver under the flush; both stay in `Currently pending`.
+
+## 2026-11-26 — the Apple Music progress clock no longer bounces at the start
+
+On macOS 27.3 the Now Playing card's clocks flipped between `0:00` and
+`-0:01` in the first seconds of an Apple Music track. Live captures of the
+vendored adapter (`stream --no-diff --micros --debounce=200`) show why:
+`elapsedTimeMicros` is the position at `timestampEpochMicros` and stays frozen
+between MediaRemote notifications (one 12.36 s playback window left both values
+unchanged, then advanced both by 12.361 s together). The app polls every two
+seconds, and the old card extrapolated from the poll's arrival time, so each
+fresh poll rewound the displayed position to the stale elapsed value. A second
+capture at the start of playback caught `playing=true` arriving first with the
+previous paused session's stamp and `playbackRate=0`, then the real `rate=1`
+payload about 0.25 s later — the same stale stamp problem at the worst moment.
+
+The card now advances from the payload's playback timestamp (`PositionAt`,
+set from `timestampEpochMicros` on macOS; Windows leaves it zero because SMTC
+has no sampling instant) and only when the adapter reports a positive
+`playbackRate` (carried through as `Advancing`); extrapolation is capped at
+30 s, so a stale stamp cannot jump the clock forward.
+The artwork and transport controls are unchanged. Pins:
+`TestProgressPositionAnchorsToPayloadTimestamp`,
+`TestProgressPositionSurvivesStalePolls`,
+`TestProgressPositionBoundsStaleStamp`,
+`TestProgressPositionHoldsWhenRateIsZero`,
+`TestParseStreamLineMapsTheSession` (the rate=1 fixture marks `Advancing`),
+`TestProgressPositionAcceptsSeekAndNewerStamp`, and
+`TestProgressRowDoesNotFlipRemaining` (the old logic rendered `0:03` / `-0:00`
+where the fixed one holds `0:02` / `-0:01`).
+
+Not run: a live visual check of the flyout across a full Apple Music track on
+this host after the fix (the maintainer's eyes are needed for the rendered
+card); no receiver was involved.
