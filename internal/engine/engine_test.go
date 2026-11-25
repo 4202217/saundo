@@ -1267,11 +1267,12 @@ func TestLaunchAutoConnectUsesCachedGroup(t *testing.T) {
 
 func TestOnClosedRemembersRetransmitRatio(t *testing.T) {
 	h := newHarness(t)
-	const key = "AA:00"
-	h.e.reg.Put(receivers.Entry{Key: key, Kind: receivers.KindDiscovered})
-	h.e.snap.Targets = []TargetControl{{ID: key, Health: TargetHealth{Retransmits: 4, SentBlocks: 100}}}
+	h.e.setDevices([]device.Device{onlineDevice()})
+	h.connect()
+	h.launch()
+	h.fake.stats = []sender.Stats{{Retransmits: 4, SentBlocks: 100}}
 	h.e.onClosed()
-	entry, ok := h.e.reg.Get(key)
+	entry, ok := h.e.reg.Get(testDeviceID)
 	if !ok || entry.LastRetransmits != 4 || entry.LastSentBlocks != 100 {
 		t.Fatalf("remembered stats = %+v, ok=%v", entry, ok)
 	}

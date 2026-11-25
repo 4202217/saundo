@@ -836,29 +836,6 @@ func (e *Engine) shutdown() {
 	}
 }
 
-// closeSession tears the session down. holdLocalMute keeps the connection
-// mute in place for a rebuild, where the user's session continues over a new
-// cohort; every other close ends the mute with the session. wantedKeys is not
-// cleared here: a close during a rebuild must keep the requested set.
-func (e *Engine) closeSession(holdLocalMute bool) {
-	if !holdLocalMute {
-		e.restoreLocalMute()
-		// The session is over, not rebuilt: end the drop accounting so the
-		// next connection opens a fresh baseline instead of inheriting this
-		// session's drops and pre-stream overflow.
-		e.endDropSession()
-	}
-	e.detachMemberRings()
-	e.resetIdle()
-	e.sessionStartedAt = time.Time{}
-	if e.tr != nil {
-		tr := e.tr
-		e.tr = nil
-		e.plan = sessionPlan{}
-		tr.Stop()
-	}
-}
-
 // attachMemberRings switches capture from the single-session ring to the
 // group's per-member rings. The single ring is not consumed while a group
 // session owns the speakers, so it must stop receiving samples.

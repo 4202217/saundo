@@ -127,23 +127,82 @@ func (e *Engine) onPreempted(reason string) {
 	e.publish()
 }
 
-// rememberSessionStats stores each target's retransmit ratio in its own
-// registry entry, for that target's next launch's duplicate policy. The
-// snapshot's targets carry the health folded per target; a close reads the
-// last publish, the same source the connection card shows.
+// rememberSessionStats stores the retransmit ratio in each target's registry
+// entry and, for a pair or combo, in each member's own entry too. It reads
+// the live transport instead of the last publish so a close that lands
+// between two publishes, or a close the user started, still records the
+// session. A synthesized pair or combo key may have no history of its own;
+// the member entries are what the next plan reads for its duplicate policy.
 func (e *Engine) rememberSessionStats() {
+	health := e.targetHealth()
+	if health == nil {
+		return
+	}
 	saved := false
-	for _, t := range e.snap.Targets {
-		entry, ok := e.reg.Get(t.ID)
+	for _, t := range e.plan.targets {
+		h, ok := health[t.key]
 		if !ok {
 			continue
 		}
-		entry.LastRetransmits = t.Health.Retransmits
-		entry.LastSentBlocks = t.Health.SentBlocks
+		entry, ok := e.reg.Get(t.key)
+		if !ok {
+			continue
+		}
+		if entry.LastRetransmits == h.Retransmits && entry.LastSentBlocks == h.SentBlocks {
+			continue
+		}
+		entry.LastRetransmits = h.Retransmits
+		entry.LastSentBlocks = h.SentBlocks
 		e.reg.Put(entry)
 		saved = true
 	}
+	// A pair or combo's folded health also lands on each member, so its next
+	// plan can size the copies from the receiver that actually had loss.
+	stats := e.tr.Stats()
+	if len(stats) == len(e.plan.members) {
+		for i, pm := range e.plan.members {
+			entry, ok := e.reg.Get(pm.device.ID)
+			if !ok {
+				continue
+			}
+			if entry.LastRetransmits == stats[i].Retransmits && entry.LastSentBlocks == stats[i].SentBlocks {
+				continue
+			}
+			entry.LastRetransmits = stats[i].Retransmits
+			entry.LastSentBlocks = stats[i].SentBlocks
+			e.reg.Put(entry)
+			saved = true
+		}
+	}
 	if saved {
 		e.saveRegistry()
+	}
+}
+
+// closeSession tears the session down. holdLocalMute keeps the connection
+// mute in place for a rebuild, where the user's session continues over a new
+// cohort; every other close ends the mute with the session. wantedKeys is not
+// cleared here: a close during a rebuild must keep the requested set.
+func (e *Engine) closeSession(holdLocalMute bool) {
+	// Record the session's loss ratio before the transport goes away. User
+	// disconnect, quit, and every rebuild end here; without this write the
+	// duplicate policy would read a zero entry and keep the first-session
+	// extra copy forever.
+	e.rememberSessionStats()
+	if !holdLocalMute {
+		e.restoreLocalMute()
+		// The session is over, not rebuilt: end the drop accounting so the
+		// next connection opens a fresh baseline instead of inheriting this
+		// session's drops and pre-stream overflow.
+		e.endDropSession()
+	}
+	e.detachMemberRings()
+	e.resetIdle()
+	e.sessionStartedAt = time.Time{}
+	if e.tr != nil {
+		tr := e.tr
+		e.tr = nil
+		e.plan = sessionPlan{}
+		tr.Stop()
 	}
 }

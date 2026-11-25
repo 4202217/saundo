@@ -70,7 +70,7 @@ Transitions:
 
 A HomePod pair at software 27.3 stops rendering the realtime stream after a long silent stretch even though the compact keepalive keeps RTP flowing. The display still answers `updateMRPlaybackState`, and a volume nudge, a state 2→1 cycle, and a fresh cover do not restore the audio; only a new session does (measured 2026-11-24; devices.md and verification.md). The compact frame is not the cause: the 0.6.6 pause/resume test decoded it as silence.
 
-The engine therefore rebuilds the cohort on the first audible block when the source has been silent for at least `longIdleRebuildAfter` (10 minutes). The rebuild costs one connect, which drops the first moment of the resume; a pause shorter than the threshold keeps the live stream and its seamless resume. The threshold is independent of the standby setting, which only controls the display.
+The engine therefore rebuilds the cohort on the first audible block when the source has been silent for at least `longIdleRebuildAfter` (one hour). The rebuild costs one connect, which drops the first moment of the resume; a pause shorter than the threshold keeps the live stream and its seamless resume. The threshold is independent of the standby setting, which only controls the display.
 
 ## Timing
 

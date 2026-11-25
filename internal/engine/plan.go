@@ -265,7 +265,17 @@ func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]strin
 		target.channel = sender.ChannelStereo
 	}
 	latency := e.latencyFor(t.Entry.Key)
-	duplicates := receivers.DuplicatesFor(entry)
+	// A synthesized pair or combo key has no loss history of its own; each
+	// member does. Prefer the member's entry so a clean pair does not inherit
+	// the first-session extra copy forever, and fall back to the target entry
+	// when the member was never seen on its own.
+	targetDuplicates := receivers.DuplicatesFor(entry)
+	duplicatesFor := func(m device.Device) int {
+		if memberEntry, ok := e.reg.Get(m.ID); ok {
+			return receivers.DuplicatesFor(memberEntry)
+		}
+		return targetDuplicates
+	}
 	authFor := func(m device.Device) memberAuth {
 		return memberAuth{
 			method:    m.Auth,
@@ -318,7 +328,7 @@ func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]strin
 				device:      m,
 				auth:        authFor(m),
 				latencyMS:   latency,
-				duplicates:  duplicates,
+				duplicates:  duplicatesFor(m),
 				groupUUID:   groupUUID,
 				timingPeers: timingPeers,
 				ptpTimed:    ptpTimed,
@@ -342,7 +352,7 @@ func (e *Engine) planTarget(t receivers.Target, first int, seen map[string]strin
 		device:      d,
 		auth:        authFor(d),
 		latencyMS:   latency,
-		duplicates:  duplicates,
+		duplicates:  duplicatesFor(d),
 		groupUUID:   d.StereoID,
 		timingPeers: nil,
 		ptpTimed:    target.ptp,

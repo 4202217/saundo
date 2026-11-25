@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-24 -->
+<!-- reviewed-through: 2026-11-25 -->
 
 # Verification
 
@@ -31,9 +31,13 @@ live state:
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
   mini pair breaks up below roughly 200 ms whatever the sender.
 - A live long-idle resume on a HomePod pair: leave the session silent for
-  more than ten minutes, then play; the first audible block must rebuild the
+  more than one hour, then play; the first audible block must rebuild the
   cohort and the pair must play. The 2026-11-24 rebuild has only headless
   coverage so far.
+- A live bandwidth re-measure of the duplicate policy: two HomePods
+  standalone and the same two as a combo should settle near 360 KB/s total
+  on a clean link after one closed session. The 2026-11-25 change has
+  headless coverage only.
 - Local output mute: the connection page showed the switch on with
   本机已静音；断开或退出时恢复 during the 2026-11-11 live pass, and the
   engine session path passed (`TestLiveMuteLocal`); toggling the switch
@@ -1515,3 +1519,48 @@ light through the new session's launch. Pins:
 Not run: a live long-idle resume with the rebuild (needs a pause longer than
 ten minutes and a listen) and the 30-minute default standby soak. Both stay
 in `Currently pending`.
+
+## 2026-11-25 — a combo streamed twice the audio rate of two standalone HomePods
+
+The maintainer measured about 360 KB/s with HomePod L and R connected
+standalone and about 720 KB/s with the same two speakers combined into a
+stereo combo. An uncompressed ALAC packet is 352 stereo frames, about
+1.4 KB, and the pacer sends one every 8 ms: one copy per member is about
+181 KB/s, so 360 KB/s is the two-member single-copy rate and 720 KB/s is the
+same with one extra copy per member.
+
+The combo target is a synthesized registry key. It had no
+`lastSentBlocks`/`lastRetransmits`, because `rememberSessionStats` ran only
+on a receiver-initiated close or a takeover; a user disconnect, an app quit,
+and every rebuild skipped it. `DuplicatesFor` therefore read a zero entry
+and returned the first-session extra copy for both members forever. The
+plan also took the count from the synthesized target entry rather than from
+the members' own entries, so the standalone histories never helped.
+
+Fix: `closeSession` records the session's ratio before the transport goes
+away (it covers user disconnect, quit, and every rebuild), reading the live
+transport instead of the last publish; each pair or combo member's own
+counters are written into its own entry as well as the folded target entry;
+and each member's copy count is sized from its own entry, falling back to
+the target entry when the member has none. A clean combo now sends one copy
+per member (~360 KB/s total); only a member that actually retransmitted pays
+the extra copy. Pins: `TestUserDisconnectRemembersTheSessionStats`,
+`TestComboCloseRemembersTheSessionStats`,
+`TestComboPlanSizesCopiesPerMember`,
+`TestOnClosedRemembersRetransmitRatio`,
+`TestRememberSessionStatsPerTarget`.
+
+Not run: a live bandwidth re-measure after the fix (the running test build
+predates it; the 360 KB/s expectation is arithmetic from the packet layout
+and the pinned duplicate choice).
+
+## 2026-11-25 — the long-idle rebuild threshold moves to one hour
+
+The maintainer set `longIdleRebuildAfter` to one hour after the ten-minute
+value landed. The only confirmed failing idle is the 91-minute stretch of
+2026-11-24, so an hour stays inside that evidence while keeping ordinary
+pauses on the live stream; the opposite risk is a receiver that gives up
+sooner than an hour — the 25-minute gap that evening is not confirmed either
+way — which still needs a manual reconnect. The 30-second working value used
+to exercise the rebuild path is replaced by the production value in the same
+change. A live long-idle run at one hour stays in `Currently pending`.

@@ -11,10 +11,12 @@ import (
 // stream. A HomePod 27.3 stereo pair stops rendering the realtime stream after
 // a long silent stretch even though RTP keeps flowing with the compact silence
 // frame: the display state, a volume change, and a fresh cover do not revive
-// it, and only a new session does (measured 2026-11-24). Ten minutes stays
-// below the 30-minute idle the pair was left in and keeps a five-minute pause
-// seamless; the rebuild costs one connect and the first moment of the resume.
-const longIdleRebuildAfter = 10 * time.Minute
+// it, and only a new session does (measured 2026-11-24). One hour follows the
+// maintainer's call: it keeps ordinary pauses on the live stream and stays
+// below the 91-minute idle that was measured failing. The rebuild costs one
+// connect and the first moment of the resume; a receiver that gives up sooner
+// than the threshold still needs a manual reconnect.
+const longIdleRebuildAfter = time.Hour
 
 // rebuildAfterLongIdle rebuilds the session when the source becomes audible
 // again after a long silent stretch. A HomePod 27.3 pair stops rendering the
