@@ -166,6 +166,7 @@ const (
 	pairVerifyDone
 	pairAP2Info
 	pairAP2Session
+	pairAP2Event
 	pairAP2Record
 	pairAP2SetPeers
 	pairAP2WaitPTP
@@ -842,6 +843,11 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 			if s.state != StateIdle {
 				s.info("event channel open (%s:%d)", ev.Peer.IP, ev.Peer.Port)
 			}
+			// RECORD waits for this result, so a refused event port fails
+			// the handshake instead of a stream that dies about 30 s later.
+			if s.pairStage == pairAP2Event && s.state != StateIdle {
+				s.sendAP2Record()
+			}
 			return
 		}
 		if s.state != StateConnecting {
@@ -862,8 +868,13 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		s.beginAuthChain()
 	case raopio.EventTCPConnectFailed:
 		if ev.TCP == raopio.TCPEvent {
-			if s.state == StateStreaming || s.state == StateHandshake {
-				s.warn("event channel error: %s", ev.Err)
+			s.eventChannelUp = false
+			if s.state != StateIdle {
+				why := ev.Err
+				if why == "" {
+					why = "connection failed"
+				}
+				s.fail(fmtError("The receiver's event channel did not connect: %s", why))
 			}
 			return
 		}
@@ -883,6 +894,11 @@ func (s *Sender) HandleEvent(ev raopio.Event) {
 		}
 	case raopio.EventTCPClosed:
 		if ev.TCP == raopio.TCPEvent {
+			// The receiver tears a session without a working event channel
+			// down after roughly 30 s. Clear the health flag so a later
+			// clean control close reads as that retryable failure, not as a
+			// takeover by another sender.
+			s.eventChannelUp = false
 			if s.state == StateStreaming || s.state == StateHandshake {
 				if ev.Err != "" {
 					s.warn("event channel closed: %s", ev.Err)

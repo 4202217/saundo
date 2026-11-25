@@ -62,6 +62,9 @@ type rig struct {
 	// can present the receiver at this host's own address.
 	localIP string
 	peerIP  string
+	// failEventConnect makes the event-channel dial report a failure, so a
+	// test can pin the handshake gate before RECORD.
+	failEventConnect bool
 }
 
 func newRig(t *testing.T, mode rxMode, auth device.Auth, airplay2 bool, stored *storedPairing) *rig {
@@ -156,6 +159,13 @@ func (r *rig) start() {
 type fakeIO struct{ r *rig }
 
 func (f *fakeIO) TCPConnect(ch raopio.TCPChannel, host string, port uint16) error {
+	if ch == raopio.TCPEvent && f.r.failEventConnect {
+		f.r.emit(raopio.Event{
+			Kind: raopio.EventTCPConnectFailed, TCP: ch,
+			Err: "connect: connection refused",
+		})
+		return nil
+	}
 	local, peer := f.r.localIP, f.r.peerIP
 	if local == "" {
 		local = "192.168.1.10"
