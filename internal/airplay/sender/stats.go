@@ -24,6 +24,9 @@ type Stats struct {
 	// EncryptErrors counts audio packets dropped because the AP2 cipher
 	// refused the payload. A packet that cannot be encrypted is never sent.
 	EncryptErrors uint64
+	// SyncSkips counts PTP sync packets dropped while the follower had no
+	// timeline. A nonzero count on a finished session explains a timing gap.
+	SyncSkips uint64
 	// LastSync is when the last timing packet was sent. Zero means the
 	// session has not sent one.
 	LastSync time.Time
@@ -40,6 +43,8 @@ func (s *Sender) resetSessionCounters() {
 	s.pendingUnderruns = 0
 	s.ringFed, s.lastFedFrames = false, 0
 	s.encryptErrors = 0
+	s.ptpSyncSkips = 0
+	s.encryptFailStreak, s.sendFailStreak = 0, 0
 	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
 	s.lastSync = time.Time{}
 	s.wifi = WiFiMetrics{}
@@ -54,6 +59,7 @@ func (s *Sender) Stats() Stats {
 		SentBlocks:    s.sentBlocks,
 		SendErrors:    s.sendErrors,
 		EncryptErrors: s.encryptErrors,
+		SyncSkips:     s.ptpSyncSkips,
 		LastSync:      s.lastSync,
 		WiFi:          s.wifi,
 	}

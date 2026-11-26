@@ -142,11 +142,24 @@ func (f *fakeTransport) launch(ok bool, err string) {
 	f.ev.Launched(ok, err)
 }
 
-type fakeCaptureSource struct{ stopped bool }
+type fakeCaptureSource struct {
+	stopped bool
+	openSeq uint64
+	rate    int
+	device  string
+}
 
 func (f *fakeCaptureSource) Stop() { f.stopped = true }
 func (f *fakeCaptureSource) Stats() capture.Stats {
-	return capture.Stats{Running: true, Rate: 48000, Device: "TestOut"}
+	rate := f.rate
+	if rate == 0 {
+		rate = 48000
+	}
+	device := f.device
+	if device == "" {
+		device = "TestOut"
+	}
+	return capture.Stats{Running: true, Rate: rate, Device: device, OpenSeq: f.openSeq}
 }
 
 type harness struct {

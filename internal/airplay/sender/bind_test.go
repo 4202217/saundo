@@ -11,9 +11,11 @@ type bindErrorIO struct {
 	errOn raopio.UDPChannel
 }
 
-func (b *bindErrorIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
-func (b *bindErrorIO) TCPSend(raopio.TCPChannel, []byte) error            { return nil }
-func (b *bindErrorIO) TCPClose(raopio.TCPChannel, bool)                   {}
+func (b *bindErrorIO) TCPConnect(raopio.TCPChannel, string, uint16) (uint64, error) {
+	return 0, nil
+}
+func (b *bindErrorIO) TCPSend(raopio.TCPChannel, []byte) error { return nil }
+func (b *bindErrorIO) TCPClose(raopio.TCPChannel, bool)        {}
 func (b *bindErrorIO) UDPSend(raopio.UDPChannel, raopio.Endpoint, []byte) error {
 	return nil
 }

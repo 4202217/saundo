@@ -16,10 +16,10 @@ import (
 // senders through Start and Stop.
 type fakeIO struct{}
 
-func (fakeIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
-func (fakeIO) TCPSend(raopio.TCPChannel, []byte) error            { return nil }
-func (fakeIO) TCPClose(raopio.TCPChannel, bool)                   {}
-func (fakeIO) UDPBind(raopio.UDPChannel) (uint16, error)          { return 53561, nil }
+func (fakeIO) TCPConnect(raopio.TCPChannel, string, uint16) (uint64, error) { return 0, nil }
+func (fakeIO) TCPSend(raopio.TCPChannel, []byte) error                      { return nil }
+func (fakeIO) TCPClose(raopio.TCPChannel, bool)                             {}
+func (fakeIO) UDPBind(raopio.UDPChannel) (uint16, error)                    { return 53561, nil }
 func (fakeIO) UDPSend(raopio.UDPChannel, raopio.Endpoint, []byte) error {
 	return nil
 }
@@ -29,12 +29,13 @@ func (fakeIO) UDPClose(raopio.UDPChannel) {}
 // with the same callbacks and shared gate the engine installs.
 func buildTestCohort(n int) *cohortTransport {
 	c := &cohortTransport{
-		events:   make(chan raopio.Event, 8),
-		stopCh:   make(chan struct{}),
-		dead:     make(chan struct{}),
-		byPeer:   map[string]int{},
-		logf:     func(string, ...any) {},
-		lampSkip: map[string]bool{},
+		events:    make(chan raopio.Event, 8),
+		stopCh:    make(chan struct{}),
+		dead:      make(chan struct{}),
+		byPeer:    map[string]int{},
+		streaming: map[int]bool{},
+		logf:      func(string, ...any) {},
+		lampSkip:  map[string]bool{},
 	}
 	c.gate = newCohortGate(n, nil)
 	nopLog := func(sender.Level, string, ...any) {}

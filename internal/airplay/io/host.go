@@ -116,9 +116,9 @@ func (h *Host) Dropped() uint64 { return h.dropped.Load() }
 
 // TCPConnect starts a non-blocking connect. Completion arrives as
 // EventTCPConnected or EventTCPConnectFailed.
-func (h *Host) TCPConnect(ch TCPChannel, host string, port uint16) error {
+func (h *Host) TCPConnect(ch TCPChannel, host string, port uint16) (uint64, error) {
 	if ch != TCPControl && ch != TCPEvent {
-		return fmt.Errorf("raopio: bad TCP channel %d", ch)
+		return 0, fmt.Errorf("raopio: bad TCP channel %d", ch)
 	}
 	hostPort := net.JoinHostPort(host, fmt.Sprint(port))
 	gen := h.nextGen.Add(1)
@@ -126,7 +126,7 @@ func (h *Host) TCPConnect(ch TCPChannel, host string, port uint16) error {
 	h.mu.Lock()
 	if h.closed {
 		h.mu.Unlock()
-		return ErrSlotClosed
+		return 0, ErrSlotClosed
 	}
 	old := h.tcp[ch]
 	h.tcp[ch] = slot
@@ -158,7 +158,7 @@ func (h *Host) TCPConnect(ch TCPChannel, host string, port uint16) error {
 		slot.startWriter()
 		go slot.readLoop()
 	}()
-	return nil
+	return gen, nil
 }
 
 // TCPSend queues bytes for the writer goroutine.

@@ -72,6 +72,10 @@ type Stats struct {
 	Frames  uint64
 	Dropped uint64
 	Errors  uint64
+	// OpenSeq increments on every successful stream open, including a
+	// same-rate reopen after a device switch. The engine uses it as the
+	// generation boundary for the sink.
+	OpenSeq uint64
 }
 
 // Source is one running capture. Stop ends it.
@@ -84,6 +88,7 @@ type Source struct {
 	stopped bool
 
 	running bool
+	openSeq uint64
 	rate    int
 	device  string
 	apps    []string
@@ -127,6 +132,7 @@ func (s *Source) Stats() Stats {
 		Frames:  s.frames.Load(),
 		Dropped: s.cfg.Ring.Dropped() + s.dropped.Load(),
 		Errors:  s.errors,
+		OpenSeq: s.openSeq,
 	}
 }
 
@@ -134,6 +140,7 @@ func (s *Source) Stats() Stats {
 func (s *Source) streamOpened(rate int, device string, apps []string) {
 	s.mu.Lock()
 	s.running = true
+	s.openSeq++
 	s.rate = rate
 	s.device = device
 	s.apps = append([]string(nil), apps...)

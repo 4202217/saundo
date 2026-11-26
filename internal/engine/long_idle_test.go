@@ -71,6 +71,17 @@ func TestLongIdleRebuildSkipsAnUnaddressablePlan(t *testing.T) {
 	if h.sessions != 1 {
 		t.Fatalf("sessions = %d, want the live session kept", h.sessions)
 	}
+
+	// The target returns while the same audible block is still current. The
+	// pending intent must fire; otherwise the consumed lastLoudSeen hides the
+	// long gap forever and the receiver stays silent.
+	h.e.setDevices([]device.Device{onlineDevice()})
+	if !h.e.rebuildAfterLongIdle() {
+		t.Fatal("the pending long-idle rebuild did not fire after the target returned")
+	}
+	if h.sessions != 2 {
+		t.Fatalf("sessions = %d, want the pending rebuild", h.sessions)
+	}
 }
 
 // TestLongIdleRebuildSkipsANonStreamingTransport pins the guard around a

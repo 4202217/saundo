@@ -132,10 +132,19 @@ func (s *Sender) handleAP2SetupSession(body []byte) {
 	eventPort := uint16(port)
 	s.ap2.eventPort = eventPort
 	s.info("session SETUP ok, eventPort=%d", eventPort)
+	// The event channel is the session's keep-alive: a receiver tears a
+	// session without one down after roughly 30 s. Wait for the connect
+	// result before RECORD, so a refused event port fails the handshake
+	// instead of reporting a stream that is already dead.
+	s.pairStage = pairAP2Event
 	s.io.TCPClose(raopio.TCPEvent, false)
-	_ = s.io.TCPConnect(raopio.TCPEvent, s.hostIP, eventPort)
+	gen, err := s.io.TCPConnect(raopio.TCPEvent, s.hostIP, eventPort)
+	if err != nil {
+		s.fail(fmtError("The receiver's event channel did not connect: %s", err))
+		return
+	}
+	s.eventDialGen = gen
 	s.info("opening event channel to %s:%d", s.host, eventPort)
-	s.sendAP2Record()
 }
 
 func (s *Sender) sendAP2Record() {
@@ -251,6 +260,9 @@ func (s *Sender) handleAP2SetupStream(body []byte) {
 		return
 	}
 	if s.controlPort == 0 {
+		// The response is expected to carry both ports. Keep the fallback
+		// for a receiver that omits it, but make the guess visible.
+		s.warn("stream SETUP returned no controlPort; using the data port")
 		s.controlPort = s.serverPort
 	}
 	s.timingPort = s.serverPort

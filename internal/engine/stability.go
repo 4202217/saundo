@@ -23,10 +23,11 @@ const (
 // Members follows the transport's sender order, so a target's count is the
 // sum over its own members.
 type stabilityCounts struct {
-	Underruns  uint64
-	Dropped    uint64
-	SendErrors uint64
-	Members    []uint64
+	Underruns     uint64
+	Dropped       uint64
+	SendErrors    uint64
+	EncryptErrors uint64
+	Members       []uint64
 }
 
 // counterWindow tracks how far a cumulative counter has grown since the
@@ -90,10 +91,11 @@ func (w *counterWindow) recent(now time.Time) uint64 {
 // the stability verdict reads. observe runs once per publish, before either
 // projection reads recent.
 type sessionStability struct {
-	members    []counterWindow
-	dropped    counterWindow
-	sendErrors counterWindow
-	recent     stabilityCounts
+	members       []counterWindow
+	dropped       counterWindow
+	sendErrors    counterWindow
+	encryptErrors counterWindow
+	recent        stabilityCounts
 }
 
 // observe folds the transport's current counters into the windows and
@@ -104,18 +106,21 @@ func (s *sessionStability) observe(now time.Time, members []sender.Stats, droppe
 		s.members = make([]counterWindow, len(members))
 		s.recent.Members = make([]uint64, len(members))
 	}
-	var send uint64
+	var send, encrypt uint64
 	s.recent.Underruns = 0
 	for i, m := range members {
 		s.members[i].add(now, m.Underruns)
 		s.recent.Members[i] = s.members[i].recent(now)
 		s.recent.Underruns += s.recent.Members[i]
 		send += m.SendErrors
+		encrypt += m.EncryptErrors
 	}
 	s.dropped.add(now, dropped)
 	s.recent.Dropped = s.dropped.recent(now)
 	s.sendErrors.add(now, send)
 	s.recent.SendErrors = s.sendErrors.recent(now)
+	s.encryptErrors.add(now, encrypt)
+	s.recent.EncryptErrors = s.encryptErrors.recent(now)
 }
 
 // reset forgets the view when the session's transport closes: its counters

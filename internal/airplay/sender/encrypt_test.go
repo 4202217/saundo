@@ -12,7 +12,9 @@ type audioRecordIO struct {
 	control [][]byte
 }
 
-func (a *audioRecordIO) TCPConnect(raopio.TCPChannel, string, uint16) error { return nil }
+func (a *audioRecordIO) TCPConnect(raopio.TCPChannel, string, uint16) (uint64, error) {
+	return 0, nil
+}
 func (a *audioRecordIO) TCPSend(ch raopio.TCPChannel, data []byte) error {
 	if ch == raopio.TCPEvent {
 		a.events = append(a.events, append([]byte(nil), data...))
@@ -66,5 +68,57 @@ func TestEncryptFailureDropsThePacket(t *testing.T) {
 	}
 	if s.encryptErrors != 1 || s.sentBlocks != 1 {
 		t.Fatalf("counters after recovery = encrypt %d, sent %d", s.encryptErrors, s.sentBlocks)
+	}
+}
+
+// TestPersistentEncryptFailureEndsTheSession pins the burst limit: a key that
+// stops working must fail the session instead of leaving an unrecoverable
+// sequence gap and a connected but silent receiver.
+func TestPersistentEncryptFailureEndsTheSession(t *testing.T) {
+	closed := 0
+	s := New(&audioRecordIO{}, Events{Closed: func() { closed++ }}, nil)
+	s.state = StateStreaming
+	s.ap2 = &ap2State{encryptAudio: true, audioKey: []byte{1, 2, 3}}
+
+	for i := 0; i < maxConsecutiveEncryptFailures; i++ {
+		s.sendAudioPacket()
+	}
+	if s.State() != StateIdle {
+		t.Fatalf("state = %s, want idle after %d encrypt failures", s.State(), maxConsecutiveEncryptFailures)
+	}
+	if closed != 1 {
+		t.Fatalf("closed events = %d, want 1", closed)
+	}
+}
+
+// TestAFailedSessionReportsTheTeardownOnce pins fail's idempotence: the pacer
+// burst keeps sending after the first failure, and every later packet hits the
+// same wiped key. Those later failures must not report the teardown again.
+func TestAFailedSessionReportsTheTeardownOnce(t *testing.T) {
+	closed, failed := 0, 0
+	s := New(&audioRecordIO{}, Events{
+		Closed: func() { closed++ },
+		Launched: func(ok bool, _ string) {
+			if !ok {
+				failed++
+			}
+		},
+	}, nil)
+	s.state = StateStreaming
+	s.ap2 = &ap2State{encryptAudio: true, audioKey: []byte{1, 2, 3}}
+
+	for i := 0; i < maxConsecutiveEncryptFailures; i++ {
+		s.sendAudioPacket()
+	}
+	// The rest of the same burst.
+	for i := 0; i < maxPacketsPerTick; i++ {
+		s.sendAudioPacket()
+	}
+
+	if closed != 1 {
+		t.Fatalf("closed events = %d, want 1", closed)
+	}
+	if failed != 0 {
+		t.Fatalf("launch-failed events = %d, want 0 for a streaming session", failed)
 	}
 }

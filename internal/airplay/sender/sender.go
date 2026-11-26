@@ -35,9 +35,13 @@ import (
 const (
 	framesPerPacket = 352
 	raopRate        = 44100
-	channels        = 2
-	payloadBytes    = framesPerPacket * channels * 2
-	backlogSize     = 1024
+	// underrunWindowFrames is 100 ms of output frames. The source-recovery
+	// window must use the output rate, not the capture rate: the two differ
+	// at 48 kHz and framesSent always counts 44.1 kHz frames.
+	underrunWindowFrames = raopRate / 10
+	channels             = 2
+	payloadBytes         = framesPerPacket * channels * 2
+	backlogSize          = 1024
 	// A receiver asks for a handful of packets after a loss. The burst cap and
 	// the per-second budget keep a forged 0x55 request from reflecting a large
 	// audio burst to an arbitrary address.
@@ -54,11 +58,17 @@ const (
 	volumePollInterval     = time.Second
 	// startWaitTimeout outlasts the 30 s PTP re-synchronization window.
 	startWaitTimeout = 40 * time.Second
-	inBufMaxFrames   = 8192
-	defaultLatency   = 22050 + 44100
-	noVolume         = -1000.0
-	serverUserAgent  = "AirTunes/550.10"
-	clientUserAgent  = "AirPlay/550.10"
+	// Consecutive audio failures are a broken key or a dead socket, not
+	// jitter. The send threshold is 400 ms at the 8 ms pacer; the encrypt
+	// threshold is short because an encryption failure cannot be recovered
+	// by a retransmit request.
+	maxConsecutiveEncryptFailures = 3
+	maxConsecutiveSendFailures    = 50
+	inBufMaxFrames                = 8192
+	defaultLatency                = 22050 + 44100
+	noVolume                      = -1000.0
+	serverUserAgent               = "AirTunes/550.10"
+	clientUserAgent               = "AirPlay/550.10"
 )
 
 // State is the sender's protocol phase.
@@ -166,6 +176,7 @@ const (
 	pairVerifyDone
 	pairAP2Info
 	pairAP2Session
+	pairAP2Event
 	pairAP2Record
 	pairAP2SetPeers
 	pairAP2WaitPTP
@@ -252,10 +263,17 @@ type Sender struct {
 	ringFed          bool
 	lastFedFrames    uint64
 	encryptErrors    uint64
-	duplicates       int
-	prefill          int
-	lastSync         time.Time
-	wifi             WiFiMetrics
+	// ptpSyncSkips counts sync packets dropped because the PTP follower lost
+	// its timeline. The count is diagnostic: the follower recovers on its own.
+	ptpSyncSkips uint64
+	// encryptFailStreak and sendFailStreak count consecutive packets that
+	// never reached the receiver. A success on either path resets its streak.
+	encryptFailStreak int
+	sendFailStreak    int
+	duplicates        int
+	prefill           int
+	lastSync          time.Time
+	wifi              WiFiMetrics
 
 	rtspConnected bool
 	udpBound      bool
@@ -374,6 +392,15 @@ type Sender struct {
 	// 2 paused); playbackStateSent is the last state delivered this session.
 	playbackState     int
 	playbackStateSent int
+
+	// controlDialGen and eventDialGen are the tokens of the current dial per
+	// channel. Completion events from a replaced dial are ignored.
+	controlDialGen uint64
+	eventDialGen   uint64
+	// tornDown is set once a failure or a takeover has ended the session and
+	// reported it. An audio send after that is a leftover of the same burst:
+	// the session is already gone, so it must not report the teardown again.
+	tornDown bool
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -611,6 +638,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	s.controlEncrypted = false
 	s.eventChannelUp = false
 	s.controlGen, s.eventGen = 0, 0
+	s.controlDialGen, s.eventDialGen = 0, 0
 	s.ctrlSendCtr, s.ctrlRecvCtr = 0, 0
 	s.rtspEncBuf = s.rtspEncBuf[:0]
 	s.eventSendCtr, s.eventRecvCtr = 0, 0
@@ -687,14 +715,18 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	}
 
 	s.setState(StateConnecting)
+	s.tornDown = false
 	s.rtspConnected = false
 	s.timeout.arm(s.now())
 	s.info("connecting to %s:%d (%q)", host, port, name)
-	if err := s.io.TCPConnect(raopio.TCPControl, host, port); err != nil {
+	gen, err := s.io.TCPConnect(raopio.TCPControl, host, port)
+	if err != nil {
 		// A host may report an immediate failure; the normal path reports it
 		// through an Event.
 		s.fail(err.Error())
+		return
 	}
+	s.controlDialGen = gen
 }
 
 // Stop tears the session down and closes the sockets.
@@ -758,50 +790,6 @@ func (s *Sender) finishStartFailure(why string) {
 	}
 }
 
-func (s *Sender) fail(why string) {
-	s.warn("RAOP error: %s", why)
-	wasStarting := s.state != StateStreaming
-	s.setState(StateIdle)
-	s.stopTimers()
-	s.resetStartState()
-	s.io.TCPClose(raopio.TCPControl, false)
-	s.rtspConnected = false
-	s.releaseSockets()
-	s.wipeSecrets()
-	if wasStarting && s.events.Launched != nil {
-		s.events.Launched(false, why)
-	}
-	if s.events.Closed != nil {
-		s.events.Closed()
-	}
-}
-
-// preempt ends a streaming session that the receiver handed to another
-// sender. The receiver closes the displaced control channel cleanly, so this
-// is a terminal outcome, not a retryable failure.
-func (s *Sender) preempt(why string) {
-	s.warn("session taken over: %s", why)
-	s.setState(StateIdle)
-	s.stopTimers()
-	s.resetStartState()
-	s.io.TCPClose(raopio.TCPControl, false)
-	s.rtspConnected = false
-	s.releaseSockets()
-	s.wipeSecrets()
-	for i := range s.backlog {
-		s.backlog[i] = nil
-	}
-	for i := range s.backlogSeq {
-		s.backlogSeq[i] = -1
-	}
-	if s.events.Preempted != nil {
-		s.events.Preempted(why)
-	}
-	if s.events.Closed != nil {
-		s.events.Closed()
-	}
-}
-
 func (s *Sender) stopTimers() {
 	s.pacer.disarm()
 	s.sync.disarm()
@@ -810,136 +798,6 @@ func (s *Sender) stopTimers() {
 	s.feedback.disarm()
 	s.volumePoll.disarm()
 	s.coverRetry.disarm()
-}
-
-// HandleEvent feeds one host notification into the sender.
-func (s *Sender) HandleEvent(ev raopio.Event) {
-	// Ignore late bytes or a close from a socket the sender already replaced.
-	switch ev.TCP {
-	case raopio.TCPControl:
-		switch ev.Kind {
-		case raopio.EventTCPConnected:
-			s.controlGen = ev.Gen
-		case raopio.EventTCPData, raopio.EventTCPClosed:
-			if ev.Gen != s.controlGen {
-				return
-			}
-		}
-	case raopio.TCPEvent:
-		switch ev.Kind {
-		case raopio.EventTCPConnected:
-			s.eventGen = ev.Gen
-		case raopio.EventTCPData, raopio.EventTCPClosed:
-			if ev.Gen != s.eventGen {
-				return
-			}
-		}
-	}
-	switch ev.Kind {
-	case raopio.EventTCPConnected:
-		if ev.TCP == raopio.TCPEvent {
-			s.eventChannelUp = true
-			if s.state != StateIdle {
-				s.info("event channel open (%s:%d)", ev.Peer.IP, ev.Peer.Port)
-			}
-			return
-		}
-		if s.state != StateConnecting {
-			return
-		}
-		s.rtspConnected = true
-		s.localIP = ev.Local.IP
-		s.hostIP = ev.Peer.IP
-		s.info("RTSP connected to %s:%d", s.host, ev.Peer.Port)
-		// The socket itself proves the target is this host, even when
-		// discovery could not classify it (a manual row or a failed
-		// interface read). Refuse before pairing; the receiver rejects the
-		// session SETUP anyway, and a stream to its own host would loop.
-		if s.localIP != "" && s.localIP == s.hostIP {
-			s.fail("the local receiver cannot be a target")
-			return
-		}
-		s.beginAuthChain()
-	case raopio.EventTCPConnectFailed:
-		if ev.TCP == raopio.TCPEvent {
-			if s.state == StateStreaming || s.state == StateHandshake {
-				s.warn("event channel error: %s", ev.Err)
-			}
-			return
-		}
-		if s.state != StateIdle {
-			why := ev.Err
-			if why == "" {
-				why = "Connection failed"
-			}
-			s.fail(why)
-		}
-	case raopio.EventTCPData:
-		switch ev.TCP {
-		case raopio.TCPControl:
-			s.onRTSPData(ev.Data)
-		default:
-			s.onEventData(ev.Data)
-		}
-	case raopio.EventTCPClosed:
-		if ev.TCP == raopio.TCPEvent {
-			if s.state == StateStreaming || s.state == StateHandshake {
-				if ev.Err != "" {
-					s.warn("event channel closed: %s", ev.Err)
-				} else {
-					s.warn("event channel closed")
-				}
-			}
-			return
-		}
-		s.rtspConnected = false
-		if s.state == StateIdle {
-			return
-		}
-		if ev.Err != "" {
-			s.fail(ev.Err)
-			return
-		}
-		if s.state == StateStreaming {
-			if s.eventChannelUp {
-				s.preempt("receiver closed the session")
-			} else {
-				// The event channel never came up this session: a receiver
-				// tears a session without one down after roughly 30 s. That
-				// is a connect failure, not a takeover, and stays retryable.
-				s.fail("The receiver closed the session without a working event channel")
-			}
-			return
-		}
-		wasStarting := s.state != StateStreaming
-		s.setState(StateIdle)
-		s.stopTimers()
-		s.resetStartState()
-		s.releaseSockets()
-		for i := range s.backlog {
-			s.backlog[i] = nil
-		}
-		for i := range s.backlogSeq {
-			s.backlogSeq[i] = -1
-		}
-		s.info("connection closed by the device")
-		if wasStarting && s.events.Launched != nil {
-			s.events.Launched(false, "Connection closed by the device")
-		}
-		if s.events.Closed != nil {
-			s.events.Closed()
-		}
-	case raopio.EventUDPDatagram:
-		if s.state == StateIdle {
-			return
-		}
-		switch ev.UDP {
-		case raopio.UDPControl:
-			s.onControlDatagram(ev.Data, ev.Peer)
-		case raopio.UDPTiming:
-			s.onTimingDatagram(ev.Data, ev.Peer)
-		}
-	}
 }
 
 // resetStartState drops per-session wait state so a stopped sender reports no
@@ -951,6 +809,11 @@ func (s *Sender) resetStartState() {
 	s.startWaitUntil = time.Time{}
 	s.paused = false
 	s.pauseWanted = false
+	// The session is over. Drop its request queue and receive buffers so a
+	// late reply cannot match a stale CSeq or a half-decrypted frame.
+	s.pending = s.pending[:0]
+	s.rxBuf = s.rxBuf[:0]
+	s.rtspEncBuf = s.rtspEncBuf[:0]
 }
 
 // ntpAt returns 64-bit NTP wall time for t: seconds since 1900 in the high word

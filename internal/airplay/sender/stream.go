@@ -139,6 +139,12 @@ func (s *Sender) sendFlush() {
 }
 
 func (s *Sender) sendAudioPacket() {
+	if s.tornDown {
+		// A failure inside a pacer burst or the prefill loop tears the session
+		// down, and the rest of that burst would hit the same dead key or
+		// socket. With nothing in flight there is nothing to send.
+		return
+	}
 	var frames [framesPerPacket * channels]int16
 	available := s.fillFrames(frames[:])
 	if available < framesPerPacket {
@@ -146,16 +152,15 @@ func (s *Sender) sendAudioPacket() {
 		// depends on what follows: a source that comes back within the window
 		// lost audio, while one that stays away is a pause and the padding is
 		// the correct output. Hold the count until a full packet commits it or
-		// the window closes. The window divides the capture rate while
-		// framesSent counts output frames, so at 48 kHz capture it runs about
-		// a tenth longer than 100 ms — close enough for a heuristic.
-		if s.ringFed && s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+		// the window closes. framesSent counts output frames, so the window is
+		// 100 ms at 44.1 kHz whatever the capture rate.
+		if s.ringFed && s.framesSent-s.lastFedFrames <= underrunWindowFrames {
 			s.pendingUnderruns++
 		} else {
 			s.pendingUnderruns = 0
 		}
 	} else {
-		if s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+		if s.framesSent-s.lastFedFrames <= underrunWindowFrames {
 			s.underruns += s.pendingUnderruns
 		}
 		s.pendingUnderruns = 0
@@ -196,6 +201,14 @@ func (s *Sender) sendAudioPacket() {
 	wire, err := s.encryptAudioPayload(header[:], payload)
 	if err != nil {
 		s.encryptErrors++
+		s.encryptFailStreak++
+		if s.encryptFailStreak >= maxConsecutiveEncryptFailures {
+			// The key or the cipher state is broken on this session. A
+			// retransmit cannot fill the gap because the packet never entered
+			// the backlog, so end the session and let the engine rebuild it.
+			s.fail("The audio stream could not be encrypted for the receiver.")
+			return
+		}
 		if s.encryptErrors == 1 {
 			s.warn("audio encrypt failed, dropping packet: %v", err)
 		}
@@ -204,6 +217,7 @@ func (s *Sender) sendAudioPacket() {
 		s.framesSent += framesPerPacket
 		return
 	}
+	s.encryptFailStreak = 0
 
 	pkt := make([]byte, 0, len(header)+len(wire))
 	pkt = append(pkt, header[:]...)
@@ -220,7 +234,17 @@ func (s *Sender) sendAudioPacket() {
 		delivered = true
 	}
 	if delivered {
+		s.sendFailStreak = 0
 		s.sentBlocks++
+	} else {
+		s.sendFailStreak++
+		if s.sendFailStreak >= maxConsecutiveSendFailures {
+			// Every copy of every packet for 400 ms failed. The session is
+			// connected but the receiver is not getting audio; fail it and
+			// let the engine retry instead of streaming into a dead socket.
+			s.fail("The audio stream could not be sent to the receiver.")
+			return
+		}
 	}
 
 	slot := int(s.seq) & (backlogSize - 1)
@@ -270,6 +294,10 @@ func (s *Sender) sendSyncPacket(first bool) {
 		now := s.mediaRTP(s.now())
 		id, network, ok := s.ptpClock.Timeline(uint64(s.now().UnixNano()))
 		if !ok {
+			s.ptpSyncSkips++
+			if s.ptpSyncSkips == 1 || s.ptpSyncSkips%1000 == 0 {
+				s.warn("PTP timeline unavailable, sync packet skipped (%d)", s.ptpSyncSkips)
+			}
 			return
 		}
 		pkt := make([]byte, 28)

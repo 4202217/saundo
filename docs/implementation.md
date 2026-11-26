@@ -204,9 +204,11 @@ retry — while the app's `selID` is the panel's view selection, seeded from the
 last session's first target, moved by clicks, and kept on a listed device.
 
 `Snapshot.Diagnostics` is the diagnostics model. The sender exposes
-`Stats` (retransmits served, late pacer ticks, underruns, sent blocks, last
-timing packet, ring buffer milliseconds, and the SETUP Wi-Fi snapshot); the
-engine calls it on the event loop and folds it once per publish. An underrun
+`Stats` (retransmits served, late pacer ticks, underruns, sent blocks, encrypt
+and send errors, PTP sync packets skipped while the timeline was not ready,
+last timing packet, ring buffer milliseconds, and the SETUP Wi-Fi snapshot);
+the engine calls it on the event loop and folds it once per publish. An
+underrun
 is a packet padded with silence while the ring was still being fed real
 audio and the source came back within the window — roughly two start
 cushions after the last fed packet. A source that stays away is a pause: its
@@ -222,9 +224,11 @@ more than one target `GroupCohort` with the sender count as its size.
 
 The stability verdict is a trailing-window reading, not a session total.
 `sessionStability` (`internal/engine/stability.go`) samples each sender's
-cumulative underruns and the session's dropped-sample count once per publish.
-`RecentUnderruns` and `RecentDropped` are the growth over the last 60 seconds,
-and `Degraded` reads only those; `TargetControl.Health.RecentUnderruns` uses
+cumulative underruns, the session's dropped-sample count, and the members'
+send and encrypt errors once per publish.
+`RecentUnderruns`, `RecentDropped`, `RecentSendErrors`, and
+`RecentEncryptErrors` are the growth over the last 60 seconds, and `Degraded`
+reads those four; `TargetControl.Health.RecentUnderruns` uses
 the same per-member samples. Joining a receiver or rebuilding the cohort can
 pad a packet or two with silence, and that blip stops reading as 有卡顿 once
 it ages out. A counter that moves backwards means its sender session
@@ -236,10 +240,10 @@ publish. The Wi-Fi object is the stream SETUP response's `wiFiMetrics` (capital 
 to 30 minutes old, and a missing object reads unknown.
 
 A clean control close during a streaming session is a takeover, not a
-retryable failure, but only when the event channel worked this session: a
-receiver whose event port never accepted the connection tears a session
-without one down after roughly 30 s, and that close stays a retryable
-failure. `Sender` reports the takeover through `Events.Preempted`;
+retryable failure, but only while the event channel is still up: a receiver
+whose event port never accepted the connection, or whose event channel closed
+first, tears a session without one down after roughly 30 s, and that close
+stays a retryable failure. `Sender` reports the takeover through `Events.Preempted`;
 `Engine.onPreempted` sets `Snapshot.TakenOver` and clears the pending
 reconnect, and the session's dead signal makes the engine goroutine run
 `closeSession`, which stops the transport outside the sender callback. A
@@ -327,7 +331,12 @@ the endpoint, whether the failure is synchronous or reported at launch. A
 member that closes while the cohort runs does not take the session with it:
 the transport records the lost target, a cohort with other targets rebuilds
 without it, and the lost target leaves the wanted set so no retry includes it.
-A single-target session keeps the close-and-retry path. A launch failure with a refused password is not retried: the sender marks it (`PasswordRejected`, from the RTSP digest replay and the HAP pairing rejection), the engine publishes `ErrPasswordRejected`, opens the password prompt for that target, and schedules no reconnect. The dead arm then drops the refused member and rebuilds the survivors, so the rest of the session keeps playing; a single-target session keeps the prompt without a ladder. The isolated loss publishes a `SessionNotice` naming the target and its survivor count; the flyout shows it with 重试 and clears it on the next user connect or after 8 s. A join in progress needs no engine state: the flyout derives it from a `TargetJoining` member beside an existing one.
+A single-target session keeps the close-and-retry path. A plain launch failure
+follows the same isolation rule once another independent target already
+streams: the failed target leaves the session and the survivors rebuild, while
+a failure with no survivor retries the whole set. A stereo pair is one target,
+so a streaming sibling is not a survivor and the pair retries whole. A launch
+failure with a refused password is not retried: the sender marks it (`PasswordRejected`, from the RTSP digest replay and the HAP pairing rejection), the engine publishes `ErrPasswordRejected`, opens the password prompt for that target, and schedules no reconnect. The dead arm then drops the refused member and rebuilds the survivors, so the rest of the session keeps playing; a single-target session keeps the prompt without a ladder. The isolated loss publishes a `SessionNotice` naming the target and its survivor count; the flyout shows it with 重试 and clears it on the next user connect or after 8 s. A join in progress needs no engine state: the flyout derives it from a `TargetJoining` member beside an existing one.
 
 ## A connect, end to end
 
