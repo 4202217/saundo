@@ -35,9 +35,13 @@ import (
 const (
 	framesPerPacket = 352
 	raopRate        = 44100
-	channels        = 2
-	payloadBytes    = framesPerPacket * channels * 2
-	backlogSize     = 1024
+	// underrunWindowFrames is 100 ms of output frames. The source-recovery
+	// window must use the output rate, not the capture rate: the two differ
+	// at 48 kHz and framesSent always counts 44.1 kHz frames.
+	underrunWindowFrames = raopRate / 10
+	channels             = 2
+	payloadBytes         = framesPerPacket * channels * 2
+	backlogSize          = 1024
 	// A receiver asks for a handful of packets after a loss. The burst cap and
 	// the per-second budget keep a forged 0x55 request from reflecting a large
 	// audio burst to an arbitrary address.

@@ -260,6 +260,9 @@ func (s *Sender) handleAP2SetupStream(body []byte) {
 		return
 	}
 	if s.controlPort == 0 {
+		// The response is expected to carry both ports. Keep the fallback
+		// for a receiver that omits it, but make the guess visible.
+		s.warn("stream SETUP returned no controlPort; using the data port")
 		s.controlPort = s.serverPort
 	}
 	s.timingPort = s.serverPort

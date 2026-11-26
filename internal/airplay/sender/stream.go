@@ -146,16 +146,15 @@ func (s *Sender) sendAudioPacket() {
 		// depends on what follows: a source that comes back within the window
 		// lost audio, while one that stays away is a pause and the padding is
 		// the correct output. Hold the count until a full packet commits it or
-		// the window closes. The window divides the capture rate while
-		// framesSent counts output frames, so at 48 kHz capture it runs about
-		// a tenth longer than 100 ms — close enough for a heuristic.
-		if s.ringFed && s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+		// the window closes. framesSent counts output frames, so the window is
+		// 100 ms at 44.1 kHz whatever the capture rate.
+		if s.ringFed && s.framesSent-s.lastFedFrames <= underrunWindowFrames {
 			s.pendingUnderruns++
 		} else {
 			s.pendingUnderruns = 0
 		}
 	} else {
-		if s.framesSent-s.lastFedFrames <= uint64(s.inputRate)/10 {
+		if s.framesSent-s.lastFedFrames <= underrunWindowFrames {
 			s.underruns += s.pendingUnderruns
 		}
 		s.pendingUnderruns = 0
