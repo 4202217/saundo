@@ -99,7 +99,7 @@ flyout cannot move the preview away from the top display.
 |---|---|
 | `cmd/saundo` | Entry point; `mygo.json` carries name, version, and the embedded icon (`resources/icon.png`) |
 | `internal/app` | mygo UI: tray flyout (`flyout.go`, adaptive height, with the ambient-light card in `lamp.go`), settings window (`settings_window.go`, nine pages behind a 190 sidebar, with the 正在播放 page in `settings_window.go` and the 关于 page in `about.go`; its creation in `settings_window_create.go`), the log dialog (`log_dialog.go`), the ambient-light page and its idle standby row (`lamp.go`), the receiver-management page and dialogs (`receivers_page.go`, `receivers_dialogs.go`, including the disabled 本机 row for this host's own receiver), the update service and notes dialog (`update.go`, `update_dialog.go`, `update_history.go`, state shared with the settings 更新 page and the flyout chip; the same path on both platforms, each updating from its own signed manifest), the tray flyout window creation (`flyout_window.go`), window sizing and the text-scale zoom (`window_scale.go`), the tray menu model and native menu (`tray_menu.go`), the settings preview's sample card (`now_playing_preview.go`), tray and menu icons, receiver glyphs (the filled set in `icons_sf_gen.go`), the phase/state-face derivation and shared widgets with their motion primitives (`ui_kit.go`), palette mapping (`theme.go`), and the airgoplay→saundo data migration (`migrate.go`). The design language these implement is in [ui.md](ui.md) |
-| `internal/engine` | UI-agnostic session controller: command handling (`commands.go` carries the command vocabulary), the session plan and its cohort transport (`plan.go`, `cohort.go`), per-target volume and channel commands and the target control projection (`target_controls.go`), receiver management (`receivers.go`, `receivers_cmd.go`), the stereo-combo lifecycle — link two receivers, unlink, swap sides in place (`combo.go`), silence meter (`silence.go`), the idle phase and its dark standby, capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy (the ratio lands on every close and a pair or combo is sized per member), the capture retry backoff, snapshots |
+| `internal/engine` | UI-agnostic session controller: command handling (`commands.go` carries the command vocabulary), the session plan and its cohort transport (`plan.go`, `cohort.go`), per-target volume and channel commands and the target control projection (`target_controls.go`), receiver management (`receivers.go`, `receivers_cmd.go`), the stereo-combo lifecycle — link two receivers, unlink, swap sides in place (`combo.go`), silence meter (`silence.go`), the idle phase with its suspension, resume, and dark standby (`idle.go`), the long-idle rebuild (`long_idle.go`), capture-source adoption (`capture_apply.go`), capture level tap and delayed frames (`LevelFrame`), the local-output mute and its crash guard (`mute.go`; endpoint and guard-file calls run on a dedicated worker, never the event loop; a per-app tap takes its own mute instead), the multi-app selection (`captureApps`, persisted as bundle IDs), the ambient-light image cache and application (`engine.go`), diagnostics aggregation (`diagnostics.go`), the launch cache and duplicate/prefill policy (the ratio lands on every close and a pair or combo is sized per member), the capture retry backoff, snapshots |
 | `internal/discovery` | mDNS browse through a logger that drops the client's repeated IPv6 bind failures, plus a directed unicast fallback (ARP neighbors and remembered hosts, every fifth cycle), TXT parsing, `_raop`/`_airplay` merge, stereo-group collapse (`tsid`/`igl`/`gpn`), offline marking (the window is at least one directed-pass period plus its timeout), and local marking when an advertised address belongs to this host (`device.Device.Local`) |
 | `internal/capture` | WASAPI shared-mode loopback (`capture_windows.go`), the Windows per-app process-loopback leaf (`app_windows.go`, not offered in the product; see platforms.md), the macOS Core Audio process tap aggregated with the output device, including the selected apps' stereo mixdown resolved from bundle IDs and its own local mute (`capture_darwin.go`, `SetProcessMuted`), and its device mute (`mute_darwin.go`), format conversion (`convert.go`), the 30-second device-retry backoff, and the render endpoint's mute state (`mute_windows.go`) used by the connection mute |
 | `internal/darwin` | The macOS FFI layer, pure Go through purego: the Objective-C bridge (`objc.go`), the login-Keychain SecItem calls (`keychain.go`), Core Audio bindings (`coreaudio.go`), and LaunchServices app identity (`appinfo.go`). Serves the darwin leaves only; the UI keeps to mygo |
@@ -109,7 +109,7 @@ flyout cannot move the preview away from the top display.
 | `internal/airplay/crypto` | Wire primitives: SHA-512/HMAC/HKDF, ChaCha20-Poly1305, X25519/Ed25519, SRP-6a, TLV8, bplist, Digest |
 | `internal/airplay/alac` | ALAC frame encoder: uncompressed frames for real audio and the compact compressed silence frame (`EncodeCompactSilence`) |
 | `internal/airplay/io` | Package `raopio`: the `IO` seam, event types, and the Go net `Host` |
-| `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), RTP/ALAC/pacing (`stream.go`), the stereo-to-mono channel mix (`channel.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
+| `internal/airplay/sender` | The AP2/AP1 state machine: pairing (`pairing.go`), RTSP control (`rtsp.go`), session and event channel (`ap2.go`), host event dispatch and the dial token (`host_events.go`), the teardown guard (`teardown.go`), RTP/ALAC/pacing (`stream.go`), the stereo-to-mono channel mix (`channel.go`), live-edge start (`start_gate.go`), diagnostic counters (`stats.go`), and the SETUP-response Wi-Fi snapshot (`wifi.go`) |
 | `internal/airplay/ptp` | `Follower` for one receiver that keeps its own grandmaster (`ptp.go`), `Followers` for several standalone receivers over one shared socket pair (`followers.go`), sender-side `Master` for stereo pairs (`master.go`) |
 | `internal/airplay/creds` | HAP long-term credentials; DPAPI-protected JSON on Windows (`dpapi_windows.go`), Keychain-master-key AES-256-GCM on macOS (`dpapi_darwin.go`) |
 | `internal/airplay/device` | Receiver description, auth method, receiver family, the Mac model-identifier table (`macmodel.go`, `MacFormFor`/`MacModelName`), the four HomePod identifiers (`homepodmodel.go`, `HomePodModelName`), the Apple TV identifiers (`appletvmodel.go`, `AppleTVModelName`), and the top-display capability gate (`TopDisplayCapable`) used by the engine's lamp and stereo-group paths |
@@ -226,10 +226,11 @@ The stability verdict is a trailing-window reading, not a session total.
 `sessionStability` (`internal/engine/stability.go`) samples each sender's
 cumulative underruns, the session's dropped-sample count, and the members'
 send and encrypt errors once per publish.
-`RecentUnderruns`, `RecentDropped`, `RecentSendErrors`, and
-`RecentEncryptErrors` are the growth over the last 60 seconds, and `Degraded`
-reads those four; `TargetControl.Health.RecentUnderruns` uses
-the same per-member samples. Joining a receiver or rebuilding the cohort can
+The window samples underruns, dropped samples, send errors, and encrypt
+errors; `Degraded` reads the growth of those four over the last 60 seconds.
+`Diagnostics` publishes only `RecentUnderruns` and `RecentDropped`, while
+its `SendErrors` and `EncryptErrors` are lifetime totals.
+`TargetControl.Health.RecentUnderruns` uses the same per-member samples. Joining a receiver or rebuilding the cohort can
 pad a packet or two with silence, and that blip stops reading as 有卡顿 once
 it ages out. A counter that moves backwards means its sender session
 restarted, so its window starts over. While a session streams the engine
@@ -242,13 +243,16 @@ to 30 minutes old, and a missing object reads unknown.
 A clean control close during a streaming session is a takeover, not a
 retryable failure, but only while the event channel is still up: a receiver
 whose event port never accepted the connection, or whose event channel closed
-first, tears a session without one down after roughly 30 s, and that close
-stays a retryable failure. `Sender` reports the takeover through `Events.Preempted`;
-`Engine.onPreempted` sets `Snapshot.TakenOver` and clears the pending
-reconnect, and the session's dead signal makes the engine goroutine run
-`closeSession`, which stops the transport outside the sender callback. A
-cohort forwards each member's preemption to the same callback, so one
-member's takeover stops the whole cohort. A user connect or disconnect clears
+first, leaves that close on the retryable failure path. A refused event-port
+connect fails the handshake at once, before `RECORD`, instead of producing a
+session the receiver tears down after roughly 25-30 s. `Sender` reports the
+takeover through `Events.Preempted`; `Engine.onPreempted` records a member
+loss when the plan holds more than one target, so the survivors rebuild and
+only a one-target session is marked taken over
+(`TestPreemptionOfOneMemberKeepsTheSession`). A one-target session sets
+`Snapshot.TakenOver` and clears the pending reconnect, and the session's dead
+signal makes the engine goroutine run `closeSession`, which stops the
+transport outside the sender callback. A user connect or disconnect clears
 the flag. A close carrying an error stays on the normal failure path and
 signals dead the same way.
 

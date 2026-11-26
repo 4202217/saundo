@@ -1,7 +1,7 @@
 {
   "name": "saundo",
   "identifier": "com.saundo.app",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "slug": "saundo",
   "out": "build",
   "icon": "../../resources/icon.png",

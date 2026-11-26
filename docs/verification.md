@@ -1093,18 +1093,77 @@ one took it from 1627.
   measured on `AudioAccessory5,1` 27.3 with a software combo of two
   standalone HomePods: a 275 ms pause resumed clean, pauses of 3.5 s
   through 2 h resumed with persistent static until a reconnect, with 丢样 0
-  and 0.0% retransmit. The sender now never suspends the stream: a fully
-  starved packet carries the compact ALAC silence frame (protocol.md §6),
-  the idle phase and the standby clock read `silence.LastLoud`, and the
-  欠载 counter commits a short fill only when the source returns inside the
-  window. Pins: `TestCompactSilenceDecodesToZeroFrames`,
-  `TestStarvedPacketsCarryTheCompactSilenceFrame`,
-  `TestSilentSourceKeepsTheStreamAndOnlyThePhaseIdles`,
-  `TestLaunchIntoSilenceKeepsTheStream`,
+  and 0.0% retransmit. The policy that followed was a stream that never
+  suspended: a fully starved packet carried the compact ALAC silence frame
+  (protocol.md §6), the idle phase and the standby clock read
+  `silence.LastLoud`, and the 欠载 counter committed a short fill only when
+  the source returns inside the window. The 2026-11-25 suspension entry
+  below supersedes that policy. Pins:
+  `TestCompactSilenceDecodesToZeroFrames` and
+  `TestStarvedPacketsCarryTheCompactSilenceFrame`; the suspension's own pins
+  are in the superseding entry. The receiver-side decode is covered by the
+  maintainer's 0.6.6 test; the zero run's `maxRun` caveat lives in
+  protocol.md §6, and the device behavior in devices.md.
+
+- 2026-11-25, the idle suspension and the resume flush (supersedes the
+  2026-11-23 keepalive policy above): the sender suspends the pacer and the
+  silence meter five seconds after the last audible block and resumes on the
+  first sound with a re-anchored RTP timeline from the newest capture
+  cushion; the compact ALAC silence frame remains only the fill for a packet
+  that starves while the pacer runs, and an AirPlay 1 receiver keeps the
+  continuous silence stream. Every resume sends FLUSH with the next seq and
+  rtptime before the first resumed packet; both members of the
+  AudioAccessory5,1 27.3 pair answered 200 OK, and suspensions of 48 s,
+  55 s, 3 m 25 s, 7 m 3 s, 6 m 35 s, and 18 m 10 s resumed clean with no
+  crackle. A 43-minute session with 14 resumes had crackled with 0.0%
+  retransmits before the flush. Pins: protocol.md §6, standby.md, devices.md,
+  `TestSilentSourceSuspendsTheStreamAndThePhaseIdles`,
+  `TestLaunchIntoSilenceSuspendsTheStream`,
+  `TestStandbyDarkensAtThresholdAndResumesOnSound`,
   `TestDarkAnchorTracksSoundNotTheStream`, and
-  `TestStatsCountUnderrunsAndBuffer`. The receiver-side decode is covered
-  by the maintainer's 0.6.6 test (below); the zero run's `maxRun` caveat
-  lives in protocol.md §6, and the device behavior in devices.md.
+  `TestPauseStopsAudioKeepsKeepAliveAndResumesAnchored`. The AP2 Mac under
+  the suspension and the flush stays in `Currently pending`.
+- 2026-11-24 to 2026-11-26, the long-idle rebuild: a HomePod pair at 27.3
+  stops rendering the realtime stream after a long silent stretch — capture,
+  session, PTP, and feedback stay healthy, and only a new session revives the
+  audio. The engine rebuilds the cohort on the first audible block after 30
+  minutes of source silence (the ten-minute and one-hour values were
+  superseded: 5 minutes resumed clean and about 59 minutes resumed with PLC
+  static). A live 42 m 9 s silence rebuilt the pair in about 2.1 s with the
+  event channel open before RECORD, and a 7 h 10 m single-member silence
+  rebuilt in 2.08 s; an unreachable target keeps the rebuild pending until it
+  returns. Pins: devices.md, protocol.md §6,
+  `TestLongIdleRebuildsTheSessionOnResume` and its guards, and
+  `TestIdleCaptureReopenIsAdoptedBeforeTheNextCohort`.
+- 2026-11-25, the combo duplicate policy: the maintainer measured about
+  360 KB/s with two HomePods standalone and about 720 KB/s with the same two
+  as a combo. The synthesized combo entry had no loss history because the
+  ratio was saved only on a receiver-initiated close, so every user
+  disconnect, quit, and rebuild skipped it and both members paid the
+  first-session extra copy. `closeSession` now records the live ratio on
+  every close, each member's counters land in its own entry, and each
+  member's copies are sized from its own history; a clean combo sends one
+  copy per member again. Pins: the protocol.md duplicate policy, devices.md,
+  `TestComboPlanSizesCopiesPerMember`,
+  `TestComboCloseRemembersTheSessionStats`,
+  `TestUserDisconnectRemembersTheSessionStats`,
+  `TestOnClosedRemembersRetransmitRatio`, and
+  `TestRememberSessionStatsPerTarget`. The live bandwidth re-measure stays in
+  `Currently pending`.
+- 2026-11-26, the Apple Music progress clock: MediaRemote reports elapsed and
+  timestamp frozen between notifications, and the old card extrapolated from
+  the poll's arrival time, so the card's two labels bounced between 0:00 and
+  -0:01 at the start of a track. The card advances from the payload's
+  timestamp (`PositionAt`), only when the adapter reports `Advancing`, capped
+  at 30 s; Windows leaves the stamp zero because SMTC has no sampling
+  instant. The maintainer confirmed the fixed build live on macOS 27.3 with
+  Apple Music. Pins: ui.md, implementation.md,
+  `TestProgressPositionAnchorsToPayloadTimestamp`,
+  `TestProgressPositionSurvivesStalePolls`,
+  `TestProgressPositionBoundsStaleStamp`,
+  `TestProgressPositionHoldsWhenRateIsZero`,
+  `TestProgressPositionAcceptsSeekAndNewerStamp`, and
+  `TestProgressRowDoesNotFlipRemaining`.
 
 ## 2026-11-21 — the launch deadline and the multi-homed cohort route
 
@@ -1475,253 +1534,112 @@ version 0.6.6 with signatures; the installer and dmg return 200. Not run:
 a live update from 0.6.5 to 0.6.6 — it needs the installed previous build
 and stays in `Currently pending`.
 
-## 2026-11-24 — a long silent stretch left a 27.3 stereo pair silent until a new session
+## 2026-11-26 — the 0.6.7 UI review and mockup refresh
 
-The maintainer reported that after a long pause the HomePod pair stayed
-silent while the app showed a live session. The failure was live at 22:45:
-the source had been audible until 22:43:45 and the phase was dark, but the
-report's state had followed a much longer idle earlier in the evening
-(19:47–21:18, 91 minutes of source silence, with the stream up).
+The range changes no catalog string (no `cmd/saundo/locales` diff), and the
+copy gates pass in this release's acceptance gate (`TestCatalogKeyParity`,
+`TestCatalogHasNoDeadKeys`, `TestCatalogBannedTerms`,
+`TestCatalogUniqueValues`, `TestLatencyText`; 411 messages in en and zh-CN).
+The preview matrix rendered 290 files into `.audit/release-0.6.7/ui-review/`
+in zh-CN and English, light and dark. The changed surface was inspected: the
+media card's progress row in the streaming flyout (zh-CN, English, light,
+dark) draws the elapsed and remaining labels and the bar with no clipping or
+overlap; the range touches no other copy or geometry. No P0, no terminology
+finding.
 
-Measurements during the failure, in order:
+The ui-mockup templates were compared with the shipped surface (`theme.go`,
+`ui_kit.go`, `flyout.go`, `settings_window.go`, `receivers_page.go`). The
+range changes no token, widget size, or shell geometry they describe:
+already current, no template change. The release matrix rendered 44 PNGs
+into `.audit/release-0.6.7/mockups/` — settings target, normal, and edge;
+flyout idle, streaming, empty, error, media-off, and the cover, template,
+and expanded lamp states; zh-CN and English, light and dark — and every
+render was inspected for clipping, overflow, and wrapped copy. The English
+idle row shows the long-name ellipsis on the template's sample
+`书房 AirPort Express` beside the authentication chip, which is the designed
+truncation, not clipping.
 
-- A loopback capture probe opened the same default render endpoint saundo
-  uses and read the source audio (peak 28704) while the receiver stayed
-  silent, so capture and encoding were not the fault.
-- Both members answered every `GET` and `FEEDBACK` with `200 OK`; the
-  session, PTP, and the event channel stayed up.
-- A volume nudge did nothing. A state 2→1 cycle did nothing. A manual
-  reconnect restored both members immediately, and stayed working.
-- A manual 关灯 (state 2) for one minute while music kept playing, then
-  开灯 (state 1), did not disturb the audio. `updateMRPlaybackState` is not
-  the trigger.
-- A two-minute pause did not reproduce it; the maintainer reported that two
-  minutes is not a long pause, and no shorter stable repro exists.
-- The compact silence frame is not the suspect: the 0.6.6 pause/resume run
-  decoded it as silence with no noise and no reconnect.
+## 2026-11-26 — the verification skill's 0.6.7 maintenance run
 
-Conclusion: a HomePod pair at software 27.3 stops rendering the realtime
-stream after a long silent stretch, regardless of the continuing RTP
-keepalive. State 1, volume, and artwork do not revive it; only a new session
-does. The display and the standby setting are unrelated to the audio.
+Outcome: **changed** — e1c7990. The source audit found three stale claims
+left by the suspension change: the cross-cutting states still described the
+pacer as never stopping, the session-controls journey still described the
+silent keepalive as the idle policy, and the ambient-light standby recipe
+waited for a log line the suspension replaced. All three now describe the
+`audio idle for 5s, stream suspended` and `audio resumed` lines, the FLUSH
+on resume, the 30-minute rebuild, and the AirPlay 1 continuous silence
+stream. `verify-map` passes.
 
-Fix: the engine rebuilds the cohort on the first audible block when the
-captured source was silent for at least `longIdleRebuildAfter` (ten
-minutes); a shorter pause keeps the live stream and its seamless resume. The
-rebuild reuses `rebuildSession`, holds the local mute, and re-applies the
-light through the new session's launch. Pins:
-`TestLongIdleRebuildsTheSessionOnResume`,
-`TestShortIdleKeepsTheLiveStream`,
-`TestLongIdleRebuildSkipsAnUnaddressablePlan`,
-`TestLongIdleRebuildSkipsANonStreamingTransport`.
+Live pass: read-only attach only. The doctor found the maintainer's running
+0.6.6 instance (pid 29968, started 15:55, streaming to HomePod L and HomePod
+R; FEEDBACK and GET replies flowing at 18:16). That build predates the
+range, so it cannot show the 0.6.7 behavior; a fresh instance would take the
+single-instance lock from the live session, and the receiver handshake
+probes would interrupt it. The range's user-facing behavior is covered by
+the maintainer's 2026-11-25/26 HomePod runs in Graduated and the candidate
+build below.
 
-Not run: a live long-idle resume with the rebuild (needs a pause longer than
-ten minutes and a listen) and the 30-minute default standby soak. Both stay
-in `Currently pending`.
+## 2026-11-26 — 0.6.7 commit range review
 
-## 2026-11-25 — a combo streamed twice the audio rate of two standalone HomePods
+The release range v0.6.6..HEAD holds 33 commits, oldest fd3f544 (docs:
+record the 0.6.6 draft and publish), tip 56cea24 (engine: a pending long-idle
+hold spares a reachable target). The two merge commits f2f5c0a (PR #64) and
+7fe39f4 (PR #63) carry commits listed below. Twenty-one are user-visible and
+map to the changelog lines of the 0.6.7 section; ten are internal.
 
-The maintainer measured about 360 KB/s with HomePod L and R connected
-standalone and about 720 KB/s with the same two speakers combined into a
-stereo combo. An uncompressed ALAC packet is 352 stereo frames, about
-1.4 KB, and the pacer sends one every 8 ms: one copy per member is about
-181 KB/s, so 360 KB/s is the two-member single-copy rate and 720 KB/s is the
-same with one extra copy per member.
+Internal, no changelog line: fd3f544 (the 0.6.6 release record), 554d1cc
+(the release-notes rule), df9ce33 (the progress-clock verification record),
+c5a6090 and 76a6435 (the long-idle live records), 1490f22 (the size-gate
+seam extraction; behavior unchanged), 0d391a1 (the merge resolution),
+7c88a64 (the PTP sync-skip counter, observational diagnostics only), 94a9e66
+(the implementation map), and e1c7990 (the verification-skill corrections).
 
-The combo target is a synthesized registry key. It had no
-`lastSentBlocks`/`lastRetransmits`, because `rememberSessionStats` ran only
-on a receiver-initiated close or a takeover; a user disconnect, an app quit,
-and every rebuild skipped it. `DuplicatesFor` therefore read a zero entry
-and returned the first-session extra copy for both members forever. The
-plan also took the count from the synthesized target entry rather than from
-the members' own entries, so the standalone histories never helped.
+User-visible, by 0.6.7 changelog line:
 
-Fix: `closeSession` records the session's ratio before the transport goes
-away (it covers user disconnect, quit, and every rebuild), reading the live
-transport instead of the last publish; each pair or combo member's own
-counters are written into its own entry as well as the folded target entry;
-and each member's copy count is sized from its own entry, falling back to
-the target entry when the member has none. A clean combo now sends one copy
-per member (~360 KB/s total); only a member that actually retransmitted pays
-the extra copy. Pins: `TestUserDisconnectRemembersTheSessionStats`,
-`TestComboCloseRemembersTheSessionStats`,
-`TestComboPlanSizesCopiesPerMember`,
-`TestOnClosedRemembersRetransmitRatio`,
-`TestRememberSessionStatsPerTarget`.
+- Fixed, the long pause rebuild: a22c58e, d0e8ee7 (the threshold settles
+  at 30 minutes), 645951a (a briefly unreachable target keeps the
+  rebuild pending), e179319 (the pending rebuild survives the engine's own
+  resume), and 56cea24 (the hold spares a reachable target).
+- Fixed, the silent source suspends the stream: da3c37f.
+- Fixed, the resume flush: 4e75cac.
+- Fixed, the pair sizes copies per member: a57e6df.
+- Fixed, the media card progress clock: 50751e5.
+- Fixed, a failed connection fails at once and a failed target leaves the
+  rest playing: 9a34cc2 (the event channel gates RECORD), e7cd49f (a
+  failed launch drops one target), 6446e60 (a pair sibling is not an
+  independent survivor), 2e56e07 (one attempt owns the retry), 354ff44
+  and 98e1da6 (a stale dial cannot touch the live session), 37f4d39
+  (a burst after a failure sends nothing), and 0637c2c (a member close
+  keeps the first lost target).
+- Fixed, persistent encrypt and send failures end the session: 43a341f.
+- Fixed, a capture reopen is a new sink generation: 103bc1b and a19ec31.
+- Fixed, the underrun window measures output frames: d1a4cfa.
 
-Not run: a live bandwidth re-measure after the fix (the running test build
-predates it; the 360 KB/s expectation is arithmetic from the packet layout
-and the pinned duplicate choice).
+Code review: subset ran (19 commits) -> fixed in e179319, 0637c2c, and
+56cea24. The P0 was the pending long-idle rebuild dying on the engine's own
+resume; the P1 was a launch failure overwriting the lost target a member
+close had recorded. The first shipped test called `rebuildAfterLongIdle`
+directly and never exercised the `onWake` -> `updateIdlePhase` order, which is
+why the defect survived the range. A fresh review of both fixes then found
+that the first hold silenced a reachable member in a multi-target plan;
+56cea24 narrows it to the all-unaddressable case. Every fix carries a test
+that fails on its pre-fix tree.
 
-## 2026-11-25 — the long-idle rebuild threshold moves to one hour
+## 2026-11-26 — the 0.6.7 candidate build and the maintainer's test
 
-The maintainer set `longIdleRebuildAfter` to one hour after the ten-minute
-value landed. The only confirmed failing idle is the 91-minute stretch of
-2026-11-24, so an hour stays inside that evidence while keeping ordinary
-pauses on the live stream; the opposite risk is a receiver that gives up
-sooner than an hour — the 25-minute gap that evening is not confirmed either
-way — which still needs a manual reconnect. The 30-second working value used
-to exercise the rebuild path is replaced by the production value in the same
-change. A live long-idle run at one hour stays in `Currently pending`.
+The candidate build (`go tool mygo build -platform windows/amd64
+-skip-installer`, `MYGO_LDFLAGS=-X saundo/internal/app.Version=0.6.7`,
+signed with `MYGO_UPDATER_PRIVATE_KEY`) produced
+`cmd/saundo/build/windows-amd64/update-windows-amd64.json`: version 0.6.7,
+the English 0.6.7 changelog section as its notes, one signature, download
+URLs under `releases/download/v0.6.7/`, and three deltas (0.6.4, 0.6.5, and
+0.6.6 to 0.6.7). The executable reports FileVersion and ProductVersion
+0.6.7. `-skip-installer` was used because mygo's NSIS download hangs on this
+machine's local proxy; the release workflow builds the installer on its
+runner. The update archive, the three deltas, and `SHA256SUMS` sit beside
+the manifest.
 
-## 2026-11-25 — the threshold settles at 30 minutes after a 59-minute crackle
-
-After the one-hour value landed, a pause of roughly 59 measured minutes
-(eight minutes short of the wall-clock impression) resumed with PLC static
-on the old stream. The rebuild did not run: the log had no `long idle` line
-and no `session stopped`, so the gap was just under the threshold and the
-engine took the silent short-gap branch. The receiver was already bad at
-that point, which puts its limit below an hour. `longIdleRebuildAfter` is
-now 30 minutes. A diagnostic line records every resume after at least five
-minutes of source silence with the measured gap and the threshold, so the
-next miss shows the number instead of the wall-clock estimate. Thirty
-minutes remains a middle ground: the 5-minute resume of 2026-11-10 was
-clean, the 59-minute one was not, and the exact limit is still unmeasured.
-
-## 2026-11-25 — the idle suspension replaces the compact keepalive
-
-A working-tree experiment suspended the RTP pacer after five seconds of
-source silence and resumed on the first audible block. On the
-`AudioAccessory5,1` 27.3 pair, pauses of 48 s, 55 s, and 3 m 25 s resumed
-clean with the source test tone and the display active. This contradicts the
-2026-11-23 entry, which measured persistent static after a suspension of
-3.5 s or more; the static did not reproduce with this build and receiver, so
-the compact keepalive is no longer the idle policy.
-
-The idle path now: suspends the pacer and pauses the silence meter after 5 s
-of source silence; resumes with a re-anchored RTP timeline on the first
-sound; keeps the continuous silence stream for a receiver that cannot
-suspend (AirPlay 1); suspends a session launched into silence immediately;
-and rebuilds the cohort on the first sound after 30 minutes of suspension
-(the 2026-11-24 long-idle wedge). The compact frame still fills a packet
-that starves while the pacer is running, such as a capture hiccup. Pins:
-`TestSilentSourceSuspendsTheStreamAndThePhaseIdles`,
-`TestLaunchIntoSilenceSuspendsTheStream`,
-`TestStandbyDarkensAtThresholdAndResumesOnSound`,
-`TestDarkAnchorTracksSoundNotTheStream`,
-`TestLongIdleRebuildsTheSessionOnResume` and its guards.
-
-Not run: a 15–20 minute suspended run, an AP2 receiver outside the HomePod
-family under the suspension (the MacBook Air is on the network), and the
-live 30-minute long-idle rebuild. All stay in `Currently pending`.
-
-## 2026-11-25 — the resume FLUSH clears the stop-send crackle
-
-The stop-send design suspends the pacer on silence and re-anchors the RTP
-time on resume. A 43-minute session with 14 pause/resume cycles developed
-persistent static, volume-correlated, with `0.0%` retransmits and no
-underrun; the static appeared after one resume and disappeared at another, so
-a receiver-side jitter buffer or PLC state was being disturbed by the
-timestamp jump with a continuous sequence. The sender now sends `FLUSH` with
-the next `seq` and `rtptime` before the first resumed packet.
-
-On the `AudioAccessory5,1` 27.3 pair both members answered `200 OK` on every
-flush. Suspensions of 7 m 3 s, 6 m 35 s, and 18 m 10 s resumed clean, with
-the display state 1 and cover on return; the maintainer heard no crackle in
-the run. The 30-minute rebuild remains for the long-idle wedge. Pins:
-`TestPauseStopsAudioKeepsKeepAliveAndResumesAnchored` (the request and its
-RTP-Info), the fake receiver's `FLUSH` reply, and the existing suspension
-tests. Not run: a resume after a 30-minute-plus suspension, and an AP2 Mac
-receiver under the flush; both stay in `Currently pending`.
-
-## 2026-11-26 — the Apple Music progress clock no longer bounces at the start
-
-On macOS 27.3 the Now Playing card's clocks flipped between `0:00` and
-`-0:01` in the first seconds of an Apple Music track. Live captures of the
-vendored adapter (`stream --no-diff --micros --debounce=200`) show why:
-`elapsedTimeMicros` is the position at `timestampEpochMicros` and stays frozen
-between MediaRemote notifications (one 12.36 s playback window left both values
-unchanged, then advanced both by 12.361 s together). The app polls every two
-seconds, and the old card extrapolated from the poll's arrival time, so each
-fresh poll rewound the displayed position to the stale elapsed value. A second
-capture at the start of playback caught `playing=true` arriving first with the
-previous paused session's stamp and `playbackRate=0`, then the real `rate=1`
-payload about 0.25 s later — the same stale stamp problem at the worst moment.
-
-The card now advances from the payload's playback timestamp (`PositionAt`,
-set from `timestampEpochMicros` on macOS; Windows leaves it zero because SMTC
-has no sampling instant) and only when the adapter reports a positive
-`playbackRate` (carried through as `Advancing`); extrapolation is capped at
-30 s, so a stale stamp cannot jump the clock forward.
-The artwork and transport controls are unchanged. Pins:
-`TestProgressPositionAnchorsToPayloadTimestamp`,
-`TestProgressPositionSurvivesStalePolls`,
-`TestProgressPositionBoundsStaleStamp`,
-`TestProgressPositionHoldsWhenRateIsZero`,
-`TestParseStreamLineMapsTheSession` (the rate=1 fixture marks `Advancing`),
-`TestProgressPositionAcceptsSeekAndNewerStamp`, and
-`TestProgressRowDoesNotFlipRemaining` (the old logic rendered `0:03` / `-0:00`
-where the fixed one holds `0:02` / `-0:01`).
-
-On 2026-11-26 the maintainer ran the fixed build on macOS 27.3 with Apple
-Music and confirmed the card no longer bounces at the start of a track. The
-live visual check is done; no receiver was involved.
-## 2026-11-26 — the first live long-idle rebuild
-
-The stop-send build (0.6.6-7-g4e75cac) ran a real rebuild on the first sound
-after a long suspension. The plan held one member, `HomePod L`
-(`AudioAccessory5,1`, 27.3); `HomePod R` had stopped at 00:00:59 and did not
-return, so this is the single-member path.
-
-- 00:31:06.326 `audio idle for 5s, stream suspended`, and the session stayed
-  up and silent overnight.
-- 07:41:29.362 `source audible after 7h10m28s of silence (rebuild threshold
-  30m0s)` and `long idle 7h10m28s: rebuilding the session on resume` on the
-  same millisecond.
-- 07:41:29.376 `state: idle` / `session stopped`; connect at 29.380, pairing
-  and handshake by 30.294, session SETUP `200` at 30.447, RECORD `200` at
-  30.454, `PTP clock synchronized` at 30.907, stream SETUP `200` at 31.444,
-  `state: streaming` at 31.445.
-- The first audible block therefore reached a live stream in 2.08 s. The new
-  session carried the cover and the now-playing update, the source was a
-  YouTube video, and the next line was the ordinary `audio idle for 5s` at
-  07:42:06.
-
-The maintainer's verdict: the rebuild fires before the wedge is noticed
-("还没遇到问题就直接重连了", 2026-11-26); the cost is the ~2 s reconnect at
-the first sound rather than a silent pair. Sub-threshold resumes in the same
-logs stayed on the live stream with the flush and were clean: 6 m 35 s
-(23:35:57), 7 m 1 s (00:08:22), 14 m 36 s (00:30:48). Not run: the rebuild on
-a pair, and an AP2 Mac under the suspension and flush; both stay in
-`Currently pending`.
-
-## 2026-11-26 — the pair long-idle rebuild on a reduced threshold
-
-The pair rebuild path was verified with a temporary 90 s
-`longIdleRebuildAfter`, because the machine could not be kept silent for the
-production 30 minutes. The committed 30-minute value was restored, the
-production binary rebuilt and relaunched, and the test build was not
-committed.
-
-- 10:42:33.202-10:42:38.949 first sound; 10:42:33.369 `audio resumed at
-  frame 1827364` on both members; 10:42:43.675 `audio idle for 5s, stream
-  suspended`.
-- 10:45:08.953 second sound, 2 m 30 s later; 10:45:09.050 `long idle 2m30s:
-  rebuilding the session on resume`.
-- 10:45:09.067 `state: idle`; 10:45:09.068/.069 `session stopped` on both.
-  The new session opened its event channel before RECORD (event channel open
-  at 10:45:09.907/.910, RECORD `200` at 10:45:09.916/.917), synchronized PTP
-  at 10:45:10.420, and reached `streaming` at 10:45:10.465, about 1.4 s.
-- This proves the device rebuild path on a pair, including the event-channel
-  admission gate on the rebuilt session. The production-threshold run follows
-  below.
-
-## 2026-11-26 — the pair long-idle rebuild at the production threshold
-
-The production build (`0.6.6-28-gf2f5c0a`, the current main) ran the same
-pair with the committed 30-minute `longIdleRebuildAfter`. The user played
-both sounds and the capture saw them.
-
-- 14:21:59.250 first sound: `audio resumed at frame 61343876` on both
-  members; 14:22:17.068 `audio idle for 5s, stream suspended`.
-- The 14:22:17 to 15:04:20 window contains no other `audio resumed`,
-  `source audible`, or `now playing` line.
-- 15:04:20.787 second sound: `source audible after 42m9s of silence (rebuild
-  threshold 30m0s)` and `long idle 42m9s: rebuilding the session on resume`.
-- 15:04:20.800 `session stopped` on both. The new session opened its event
-  channel at 15:04:21.825/.903 before RECORD, synchronized PTP at
-  15:04:22.383/.483, and reached `streaming` at 15:04:22.902/.904, about
-  2.1 s.
-- This closes the production 30-minute threshold on a pair. The same device
-  path had already passed with the 90 s test build; this run used the
-  committed value and a real 42 m 9 s silence.
+The maintainer's 2026-11-26 instruction defers the pre-release test: they
+will run a macOS round before the final release. The tag, the push, and the
+publish are held until that test passes, so this entry records the Windows
+candidate and does not claim a macOS run.

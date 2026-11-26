@@ -5,7 +5,7 @@ All notable changes to saundo are documented here. The format follows
 semantic versioning. `mygo build` reads the `## <version>` section as the
 release notes.
 
-## Unreleased
+## 0.6.7 - 2026-11-26
 
 ### Fixed
 
@@ -15,7 +15,9 @@ release notes.
   pauses suspend the stream and resume it on the first sound (see below). A
   HomePod pair on software 27.3 stops rendering the realtime stream after a
   long silent stretch, and a volume change, a lamp off/on cycle, and a new
-  cover do not revive it — only a new session does.
+  cover do not revive it; only a new session does. If the receiver happens to
+  be unreachable at that first sound, the rebuild now runs as soon as it
+  returns instead of being skipped for good.
 - A silent source no longer streams keepalive audio. The stream suspends five
   seconds after the last sound and resumes on the first new sound from a
   re-anchored timeline, so a pause costs no bandwidth. A receiver that cannot
@@ -31,6 +33,24 @@ release notes.
   member is sized from its own history, and a clean pair streams one copy per
   member again (about 360 KB/s total instead of 720); only a member that
   actually lost packets pays the extra copy.
+- The media card's progress no longer bounces between 0:00 and -0:01 at the
+  start of a track on macOS. The position advances from the moment the player
+  stamped its sample instead of the poll that read it, so both time labels
+  hold still while a track starts.
+- A connection that fails now fails at once instead of reporting a live
+  session that the receiver drops about half a minute later. A target that
+  cannot join while others are already playing leaves them playing, a stereo
+  pair still retries as one, and the retry meant for an earlier receiver can
+  no longer reconnect it behind your back.
+- A stream that keeps failing to encrypt or send now ends the session instead
+  of showing a healthy one that is silent, and the burst after that failure no
+  longer repeats the teardown.
+- After the output device changes or the capture stream reopens, the new
+  device's audio and sample rate are used from the first packet; the old
+  device's samples no longer bleed into the new stream.
+- Brief stutters are counted at a 48 kHz capture rate again. The stutter
+  window now measures output frames, so the session health no longer
+  under-reports them by about a tenth.
 
 ## 0.6.6 - 2026-11-23
 

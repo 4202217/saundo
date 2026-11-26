@@ -1,4 +1,4 @@
-<!-- status: implemented; live dark and resume verified 2026-11-10; idle suspension and resume FLUSH verified 2026-11-25 (up to 18m10s); long-silence rebuild live run pending -->
+<!-- status: implemented; live dark and resume verified 2026-11-10; idle suspension and resume FLUSH verified 2026-11-25 (up to 18m10s); long-silence rebuild verified 2026-11-26 (single member 7h10m, pair 42m9s at the committed 30-minute threshold) -->
 
 # Idle standby
 
@@ -103,7 +103,7 @@ Any user `SetLamp` call while the session is idle lifts the dark phase and suppr
 - The device row or footer shows 「已待机 · 播放声音即唤醒」 while dark.
 - `Snapshot` gains `Standby bool` for the live phase and `StandbyEnabled` and `StandbyMinutes` for the setting. `AudioIdle` keeps its current meaning for the tray face.
 - New copy goes through `cmd/saundo/locales` in both languages.
-- The settings row, the flyout label, and the power state get a mockup and approval before production UI code. The working mockup is `.audit/mockups/lamp-standby/mockup.html`.
+- The settings row, the flyout label, and the power state get a mockup and approval before production UI code. The flyout template renders the standby state with `?state=standby`.
 
 ## Engine and sender changes
 
@@ -137,7 +137,7 @@ At stream start, compute the phase before `applyLamp`. An automatic reconnect th
 
 ## Live verification
 
-The 2026-11-07 measurement ran with RTP flowing. On 2026-11-10 a stereo pair went dark at both 1 minute and 5 minutes after the last push while the session stayed up, and the first sound sent state 1, restored both displays, and resumed the audio (see `docs/verification.md`, 2026-11-10). On 2026-11-25 the idle suspension was tested on the same pair: 48 s, 55 s, and 3 m 25 s pauses resumed clean, and the 10-second experimental dark threshold fired on both displays. After the resume `FLUSH` was added, 7 m 3 s, 6 m 35 s, and 18 m 10 s suspensions resumed clean, with every `FLUSH` answered `200 OK` on both members; the same day's pre-FLUSH session had developed persistent static after 14 resumes. On 2026-11-24 a long silent stretch left the same family silent until a new session; the rebuild-on-resume fix is in place, and its live long-idle run is still owed. A two hour idle soak and the 30 minute default on a live pair remain.
+The 2026-11-07 measurement ran with RTP flowing. On 2026-11-10 a stereo pair went dark at both 1 minute and 5 minutes after the last push while the session stayed up, and the first sound sent state 1, restored both displays, and resumed the audio (see `docs/verification.md`, 2026-11-10). On 2026-11-25 the idle suspension was tested on the same pair: 48 s, 55 s, and 3 m 25 s pauses resumed clean, and the 10-second experimental dark threshold fired on both displays. After the resume `FLUSH` was added, 7 m 3 s, 6 m 35 s, and 18 m 10 s suspensions resumed clean, with every `FLUSH` answered `200 OK` on both members; the same day's pre-FLUSH session had developed persistent static after 14 resumes. On 2026-11-24 a long silent stretch left the same family silent until a new session; the rebuild-on-resume fix then ran live on 2026-11-26: a single member rebuilt after 7 h 10 m of silence in 2.08 s, and the pair rebuilt after a real 42 m 9 s silence in about 2.1 s at the committed 30-minute threshold. A two hour idle soak and the 30-minute dark threshold on a live pair remain owed.
 
 ## Out of scope
 

@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-25 -->
+<!-- reviewed-through: 2026-11-26 -->
 
 # AirPlay 2 wire protocol
 
@@ -135,7 +135,7 @@ A macOS receiver adds a 66150-sample scheduling latency (see [devices.md](device
 
 ## 5. Event channel and keep-alive
 
-The event channel is an encrypted TCP connection that the sender opens to the receiver's `eventPort`; the receiver pushes events such as `POST /command` and `updateInfo` over it. Decrypt each event and reply; an unanswered channel tears the session down after about 25–30 seconds.
+The event channel is an encrypted TCP connection that the sender opens to the receiver's `eventPort`; the receiver pushes events such as `POST /command` and `updateInfo` over it. `RECORD` waits for that connect to succeed: a refused event port fails the handshake immediately with the channel named, instead of producing a session the receiver tears down after about 25-30 seconds. Once the channel is up, decrypt each event and reply; a connected channel that stops answering tears the session down after about 25-30 seconds.
 
 The reply must be exactly:
 
@@ -310,6 +310,6 @@ Measured on a HomePod mini `AudioAccessory5,1` 27.2. On 2026-11-06, with the rec
 
 A receiver serves one active sender per session. When a second sender opens a session to the same receiver, the receiver gives it the device and closes the displaced sender's control connection. The displaced sender does not receive a takeover command, a `hijackID`, or a specific error. On a HomePod `AudioAccessory5,1` 27.2 stereo pair member, the loser received a normal `POST /command` with `type: updateInfo`, then a clean control-channel close with an empty error, while the winner reached streaming.
 
-The sender treats a clean control close during streaming as terminal. It stops RTP, timers, and sockets, reports `Preempted`, and does not reconnect. A close carrying an error stays a retryable connection failure, and a clean close during pairing or handshake stays a start failure. The engine records the takeover separately from a generic error so the interface can show the state and offer a manual reconnect instead of fighting the new sender.
+The sender treats a clean control close during streaming as a takeover only while the event channel is up; a clean close after the event channel closed first stays a retryable failure. On a takeover the sender stops RTP, timers, and sockets, reports `Preempted`, and does not reconnect. A multi-target session records the preempted member as a lost target and rebuilds the survivors; only a one-target session is marked taken over. A close carrying an error stays a retryable connection failure, and a clean close during pairing or handshake stays a start failure. The engine records the takeover separately from a generic error so the interface can show the state and offer a manual reconnect instead of fighting the new sender.
 
 Observed on 2026-11-09 with two sender sessions against the same HomePod R, `192.168.31.164:7000`, model `AudioAccessory5,1`, group `HomePods`. The probe is `TestLiveTakeoverProbe`, gated by `SAUNDO_TAKEOVER_TEST=1`. The automated classification is pinned by `TestCleanControlCloseDuringStreamingPreempts` and `TestControlCloseWithErrorIsNotPreemption`; the engine's no-reconnect path by `TestTakeoverStopsReconnect`.

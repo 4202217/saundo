@@ -65,7 +65,7 @@ mingw32-make build  # builds bin/saundo.exe and an NSIS installer (bin/saundo-se
 - **Ambient light** — a HomePod's top display follows the media cover or one of six three-color templates, and turns off after a chosen idle period.
 - **Mute the local output** — silences this computer while streaming and restores it on disconnect. With per-app capture on macOS, only the selected apps go quiet.
 - **Latency modes** — 200 ms, 1.5 s, 2 s, or a custom 20–2000 ms; switch while playing.
-- **Sessions that recover** — auto-reconnect with backoff, a silent keepalive that never stops the stream (a pause resumes with no crackle and no reconnect), takeover handling, receiver volume following, and a rejected password that opens the prompt instead of tearing the session down.
+- **Sessions that recover** — auto-reconnect with backoff, a stream that suspends while the source is silent and resumes with no crackle (a pause costs no bandwidth, and a long silence rebuilds the session), takeover handling, receiver volume following, and a rejected password that opens the prompt instead of tearing the session down.
 - **Updates, languages, pairing** — the settings update page installs signed updates on both platforms; English and Simplified Chinese; the interface follows the desktop text scale; HomePod, Apple TV PIN, and receiver-password pairing with OS-secured credentials.
 
 ## Receiver support
