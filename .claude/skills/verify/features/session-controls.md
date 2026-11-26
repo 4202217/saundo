@@ -110,13 +110,21 @@ on the settings 关于 page.
   the engine sends playback state 2, the top display goes dark, and the
   flyout lamp card shows the 待机 chip (`internal/engine/engine.go` idle
   phase and dark base; the dark gate; see [ambient-light.md](ambient-light.md)).
-- Silent keepalive: a silent source keeps one packet per 8 ms flowing and a
-  fully starved packet carries the 16-byte compressed ALAC silence frame, so
-  the receiver's renderer never starves and a pause resumes with no
-  reconnect (`internal/airplay/sender/stream.go` `sendAudioPacket`,
-  `internal/airplay/alac/encoder.go` `EncodeCompactSilence`). The pacer never
-  stops while the session is up; only the phase, the tray, and the standby
-  clock report the silence.
+- Idle suspension: five seconds after the last audible block the engine
+  suspends the pacer and pauses the silence meter
+  (`audio idle for 5s, stream suspended`); the first sound resumes it
+  (`audio resumed`) with a re-anchored RTP timeline and a `FLUSH` before the
+  first resumed packet, so a pause costs no bandwidth and resumes with no
+  crackle (`internal/engine/idle.go`, `internal/airplay/sender/stream.go`
+  `sendAudioPacket`). A fully starved packet that occurs while the pacer is
+  running, such as a capture hiccup, still carries the 16-byte compressed
+  ALAC silence frame (`internal/airplay/alac/encoder.go`
+  `EncodeCompactSilence`). An AirPlay 1 receiver cannot suspend and keeps the
+  continuous silence stream (`audio idle: the receiver keeps the continuous
+  silence stream`). After 30 minutes of source silence the first sound
+  rebuilds the whole session instead (`source audible after ...` and
+  `long idle ...: rebuilding the session on resume`); a rebuild whose target
+  is unreachable stays pending until it returns.
 - Diagnostics card: the 诊断日志 row on the settings 关于 page opens a log
   dialog whose 复制 button puts the visible log on the clipboard
   (`log_dialog.go:11-42`).

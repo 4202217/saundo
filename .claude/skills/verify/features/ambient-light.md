@@ -163,14 +163,14 @@ Idle standby on a stereo pair (verified 2026-11-10):
 
 1. Set 设置 → 氛围灯 → 自动关闭氛围灯 to 1 分钟.
 2. Connect, play, and confirm both displays are lit.
-3. Stop playback and stay quiet. The RTP stream keeps flowing as the silence
-   keepalive ([session-controls.md](session-controls.md)), so no idle log
-   line appears at 5 s; one minute after the last audible block the log reads
-   `standby: lamp off after 1m0s idle on HomePods`, and both displays go
-   dark. The session stays up; the flyout chip reads 待机 and the footer
-   `已待机 · 播放声音即唤醒`.
-4. Play a sound. The log reads `standby: lamp on` (there is no resume line:
-   the stream never stopped); both displays light and the audio resumes.
+3. Stop playback and stay quiet. Five seconds later the log reads
+   `audio idle for 5s, stream suspended` and the pacer stops
+   ([session-controls.md](session-controls.md)); one minute after the last
+   audible block the log reads `standby: lamp off after 1m0s idle on
+   HomePods`, and both displays go dark. The session stays up; the flyout
+   chip reads 待机 and the footer `已待机 · 播放声音即唤醒`.
+4. Play a sound. The log reads `audio resumed`, then `standby: lamp on`;
+   both displays light and the audio resumes.
 5. Set the select back to 30 分钟. The flyout is hidden while the settings
    window is open; capture it separately if the chip is the evidence.
 

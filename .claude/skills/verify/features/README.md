@@ -18,9 +18,11 @@ page's Gotchas; never weaken the journey to make it pass.
 | [Ambient light](ambient-light.md) | Settings 氛围灯 page, flyout ambient card | Headless UI + live app |
 | [Updates](updates.md) | Settings 更新 page, notes dialog | Headless UI + live app |
 
-Cross-cutting states that touch several features: the silent keepalive (the
-pacer never stops while the session is up; the source idle phase flips 5 s
-after the last audible block), the idle standby that darkens the top
-display after the configured silence threshold, the 3 s streaming-snapshot
-hold during a latency restart, and Reduce Motion (Windows animation effects
-off) — check the relevant page's Gotchas before concluding a bug.
+Cross-cutting states that touch several features: the idle suspension (the
+pacer stops 5 s after the last audible block and resumes on the first sound
+with a re-anchored timeline and a FLUSH), the 30-minute long-idle rebuild on
+the first sound after that much source silence, the idle standby that darkens
+the top display after the configured silence threshold, the 3 s
+streaming-snapshot hold during a latency restart, and Reduce Motion (Windows
+animation effects off) — check the relevant page's Gotchas before concluding
+a bug.
