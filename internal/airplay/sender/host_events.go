@@ -3,10 +3,10 @@ package sender
 import raopio "saundo/internal/airplay/io"
 
 // staleDial reports whether a completion belongs to a dial the sender already
-// replaced. A zero on either side is an unknown token, so test doubles that
-// do not number their dials keep the older behavior.
+// replaced. The host numbers every dial from one, so a completion that does not
+// carry the current token is stale: unknown never means current.
 func staleDial(gen, dial uint64) bool {
-	return gen != 0 && dial != 0 && gen != dial
+	return gen != dial
 }
 
 // HandleEvent feeds one host notification into the sender.
