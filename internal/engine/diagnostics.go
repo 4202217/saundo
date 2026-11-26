@@ -42,6 +42,7 @@ type Diagnostics struct {
 	SentBlocks    uint64
 	SendErrors    uint64
 	EncryptErrors uint64
+	SyncSkips     uint64
 	// DroppedEvents is how many host notifications the session's event queue
 	// discarded, summed across stereo members.
 	DroppedEvents uint64
@@ -165,6 +166,7 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 		d.SentBlocks += m.SentBlocks
 		d.SendErrors += m.SendErrors
 		d.EncryptErrors += m.EncryptErrors
+		d.SyncSkips += m.SyncSkips
 		if m.LateTicks > d.LateTicks {
 			d.LateTicks = m.LateTicks
 		}

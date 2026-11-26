@@ -289,6 +289,10 @@ func (s *Sender) sendSyncPacket(first bool) {
 		now := s.mediaRTP(s.now())
 		id, network, ok := s.ptpClock.Timeline(uint64(s.now().UnixNano()))
 		if !ok {
+			s.ptpSyncSkips++
+			if s.ptpSyncSkips == 1 || s.ptpSyncSkips%1000 == 0 {
+				s.warn("PTP timeline unavailable, sync packet skipped (%d)", s.ptpSyncSkips)
+			}
 			return
 		}
 		pkt := make([]byte, 28)

@@ -259,6 +259,9 @@ type Sender struct {
 	ringFed          bool
 	lastFedFrames    uint64
 	encryptErrors    uint64
+	// ptpSyncSkips counts sync packets dropped because the PTP follower lost
+	// its timeline. The count is diagnostic: the follower recovers on its own.
+	ptpSyncSkips uint64
 	// encryptFailStreak and sendFailStreak count consecutive packets that
 	// never reached the receiver. A success on either path resets its streak.
 	encryptFailStreak int
