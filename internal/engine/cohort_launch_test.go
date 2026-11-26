@@ -119,3 +119,33 @@ func mixedPairCohort(t *testing.T) *cohortTransport {
 	c.members[2].targetKey = "s"
 	return c
 }
+
+// TestAMemberCloseKeepsTheFirstLostTarget pins the delivery order: when one
+// member closes and another member's launch fails before the engine reads the
+// dead signal, the close is the first loss and must not be overwritten. The
+// engine would otherwise drop the target that failed and rebuild around the
+// receiver that just closed.
+func TestAMemberCloseKeepsTheFirstLostTarget(t *testing.T) {
+	c := twoTargetCohort(t)
+	c.memberStateChanged(1, sender.StateStreaming)
+	c.memberClosed(1)
+	c.memberLaunched(0, false, "receiver refused")
+
+	if got := c.LostTarget(); got != "b" {
+		t.Fatalf("lost target = %q, want the member that closed first", got)
+	}
+}
+
+// TestALaunchFailureKeepsTheFirstLossInEitherOrder pins the mirror order: a
+// launch failure recorded first owns the loss, and a later close does not
+// replace it.
+func TestALaunchFailureKeepsTheFirstLossInEitherOrder(t *testing.T) {
+	c := twoTargetCohort(t)
+	c.memberStateChanged(1, sender.StateStreaming)
+	c.memberLaunched(0, false, "receiver refused")
+	c.memberClosed(1)
+
+	if got := c.LostTarget(); got != "a" {
+		t.Fatalf("lost target = %q, want the target whose launch failed", got)
+	}
+}

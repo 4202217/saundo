@@ -559,11 +559,13 @@ func (c *cohortTransport) memberLaunched(idx int, ok bool, err string) {
 			// the session and let the engine prompt for a new password.
 			failure.Auth = true
 			c.lostKey = m.targetKey
-		} else if len(c.plan.targets) > 1 && c.anotherTargetStreaming(idx) {
+		} else if !c.closedReported && len(c.plan.targets) > 1 && c.anotherTargetStreaming(idx) {
 			// One independent target failed after another already streamed.
 			// Dropping the failed target keeps the session; a stereo pair is
 			// one target, so a streaming sibling does not count as a survivor
-			// and the pair still retries whole.
+			// and the pair still retries whole. A member close already
+			// recorded the first loss, so this failure must not overwrite it
+			// and leave the engine rebuilding around the closed receiver.
 			c.lostKey = m.targetKey
 		}
 		c.failure = failure
