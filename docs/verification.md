@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-25 -->
+<!-- reviewed-through: 2026-11-26 -->
 
 # Verification
 
@@ -30,15 +30,16 @@ live state:
   device and no other app takeover. The 100 ms soak is withdrawn: the
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
   mini pair breaks up below roughly 200 ms whatever the sender.
-- A live long-idle resume on a HomePod pair: leave the session silent for
-  more than 30 minutes, then play; the first audible block must rebuild the
-  cohort and the pair must play. The 2026-11-24 rebuild has only headless
-  coverage so far.
-- A resume after a 30-minute-plus suspension on a HomePod pair (the rebuild
-  path): the 2026-11-25 18 m 10 s suspension was clean with the resume flush,
-  but the threshold itself and the rebuild behind it are still untested live.
-  An AP2 receiver outside the HomePod family (the MacBook Air) is also
-  unverified under the suspension and the flush.
+- A live long-idle resume on a HomePod pair at the production 30-minute
+  threshold: leave the session silent for more than 30 minutes, then play;
+  the first audible block must rebuild the cohort and the pair must play. The
+  2026-11-26 7 h 10 m rebuild ran on a single member (2.08 s to a live
+  stream, and it played). The pair rebuild path was verified on 2026-11-26
+  with a temporary 90 s threshold; the production threshold on a pair is
+  still unverified.
+- An AP2 receiver outside the HomePod family (the MacBook Air) under the
+  suspension and the resume flush: unverified. The in-family path is covered
+  live by the 2026-11-25 resumes and the 2026-11-26 rebuild.
 - A live bandwidth re-measure of the duplicate policy: two HomePods
   standalone and the same two as a combo should settle near 360 KB/s total
   on a clean link after one closed session. The 2026-11-25 change has
@@ -1629,3 +1630,54 @@ the run. The 30-minute rebuild remains for the long-idle wedge. Pins:
 RTP-Info), the fake receiver's `FLUSH` reply, and the existing suspension
 tests. Not run: a resume after a 30-minute-plus suspension, and an AP2 Mac
 receiver under the flush; both stay in `Currently pending`.
+
+## 2026-11-26 — the first live long-idle rebuild
+
+The stop-send build (0.6.6-7-g4e75cac) ran a real rebuild on the first sound
+after a long suspension. The plan held one member, `HomePod L`
+(`AudioAccessory5,1`, 27.3); `HomePod R` had stopped at 00:00:59 and did not
+return, so this is the single-member path.
+
+- 00:31:06.326 `audio idle for 5s, stream suspended`, and the session stayed
+  up and silent overnight.
+- 07:41:29.362 `source audible after 7h10m28s of silence (rebuild threshold
+  30m0s)` and `long idle 7h10m28s: rebuilding the session on resume` on the
+  same millisecond.
+- 07:41:29.376 `state: idle` / `session stopped`; connect at 29.380, pairing
+  and handshake by 30.294, session SETUP `200` at 30.447, RECORD `200` at
+  30.454, `PTP clock synchronized` at 30.907, stream SETUP `200` at 31.444,
+  `state: streaming` at 31.445.
+- The first audible block therefore reached a live stream in 2.08 s. The new
+  session carried the cover and the now-playing update, the source was a
+  YouTube video, and the next line was the ordinary `audio idle for 5s` at
+  07:42:06.
+
+The maintainer's verdict: the rebuild fires before the wedge is noticed
+("还没遇到问题就直接重连了", 2026-11-26); the cost is the ~2 s reconnect at
+the first sound rather than a silent pair. Sub-threshold resumes in the same
+logs stayed on the live stream with the flush and were clean: 6 m 35 s
+(23:35:57), 7 m 1 s (00:08:22), 14 m 36 s (00:30:48). Not run: the rebuild on
+a pair, and an AP2 Mac under the suspension and flush; both stay in
+`Currently pending`.
+
+## 2026-11-26 — the pair long-idle rebuild on a reduced threshold
+
+The pair rebuild path was verified with a temporary 90 s
+`longIdleRebuildAfter`, because the machine could not be kept silent for the
+production 30 minutes. The committed 30-minute value was restored, the
+production binary rebuilt and relaunched, and the test build was not
+committed.
+
+- 10:42:33.202-10:42:38.949 first sound; 10:42:33.369 `audio resumed at
+  frame 1827364` on both members; 10:42:43.675 `audio idle for 5s, stream
+  suspended`.
+- 10:45:08.953 second sound, 2 m 30 s later; 10:45:09.050 `long idle 2m30s:
+  rebuilding the session on resume`.
+- 10:45:09.067 `state: idle`; 10:45:09.068/.069 `session stopped` on both.
+  The new session opened its event channel before RECORD (event channel open
+  at 10:45:09.907/.910, RECORD `200` at 10:45:09.916/.917), synchronized PTP
+  at 10:45:10.420, and reached `streaming` at 10:45:10.465, about 1.4 s.
+- This proves the device rebuild path on a pair, including the event-channel
+  admission gate on the rebuilt session. The production 30-minute threshold
+  itself remains unit-tested (`TestLongIdleRebuildsTheSessionOnResume`); a
+  live production-threshold pair run stays in `Currently pending`.
