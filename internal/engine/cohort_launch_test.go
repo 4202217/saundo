@@ -70,3 +70,52 @@ func TestLaunchFailureWithoutASurvivorRetriesTheSet(t *testing.T) {
 		t.Fatalf("failure target = %q, want the failed target for attribution", got)
 	}
 }
+
+// TestPairSiblingStreamingDoesNotCountAsASurvivor pins the pair rule inside a
+// mixed cohort: a streaming sibling belongs to the same target, so it is not
+// an independent survivor. With no other target streaming, the failure is the
+// set's and the whole cohort retries instead of the pair being dropped while
+// the single is still in its handshake.
+func TestPairSiblingStreamingDoesNotCountAsASurvivor(t *testing.T) {
+	c := mixedPairCohort(t)
+	c.memberStateChanged(1, sender.StateStreaming)
+
+	c.memberLaunched(0, false, "receiver refused")
+
+	if got := c.LostTarget(); got != "" {
+		t.Fatalf("lost target = %q, want a whole-set retry", got)
+	}
+	if got := c.Failure().TargetKey; got != "pair" {
+		t.Fatalf("failure target = %q, want the pair for attribution", got)
+	}
+}
+
+// TestPairFailureDropsThePairAsOneTarget pins the other half of the same rule:
+// when an independent target does stream, the failed pair is dropped as one
+// target. It must be the pair key, never a single member.
+func TestPairFailureDropsThePairAsOneTarget(t *testing.T) {
+	c := mixedPairCohort(t)
+	c.memberStateChanged(1, sender.StateStreaming)
+	c.memberStateChanged(2, sender.StateStreaming)
+
+	c.memberLaunched(0, false, "receiver refused")
+
+	if got := c.LostTarget(); got != "pair" {
+		t.Fatalf("lost target = %q, want the whole pair dropped as one target", got)
+	}
+}
+
+// mixedPairCohort builds a pair plus an independent single: members 0 and 1
+// are the pair, member 2 is the single.
+func mixedPairCohort(t *testing.T) *cohortTransport {
+	t.Helper()
+	c := buildTestCohort(3)
+	c.plan.targets = []plannedTarget{
+		{key: "pair", first: 0, count: 2},
+		{key: "s", first: 2, count: 1},
+	}
+	c.members[0].targetKey = "pair"
+	c.members[1].targetKey = "pair"
+	c.members[2].targetKey = "s"
+	return c
+}

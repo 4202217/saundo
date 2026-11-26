@@ -559,10 +559,11 @@ func (c *cohortTransport) memberLaunched(idx int, ok bool, err string) {
 			// the session and let the engine prompt for a new password.
 			failure.Auth = true
 			c.lostKey = m.targetKey
-		} else if len(c.plan.targets) > 1 && c.anotherMemberStreaming(idx) {
+		} else if len(c.plan.targets) > 1 && c.anotherTargetStreaming(idx) {
 			// One independent target failed after another already streamed.
 			// Dropping the failed target keeps the session; a stereo pair is
-			// one target and still retries whole.
+			// one target, so a streaming sibling does not count as a survivor
+			// and the pair still retries whole.
 			c.lostKey = m.targetKey
 		}
 		c.failure = failure
@@ -611,9 +612,13 @@ func (c *cohortTransport) memberStateChanged(idx int, state sender.State) {
 	c.stateChanged()
 }
 
-func (c *cohortTransport) anotherMemberStreaming(idx int) bool {
+// anotherTargetStreaming reports whether a target other than the failed
+// member's own has already reached streaming. Members of one target share a
+// targetKey, so a pair's sibling does not make the pair droppable.
+func (c *cohortTransport) anotherTargetStreaming(idx int) bool {
+	key := c.members[idx].targetKey
 	for i, ok := range c.streaming {
-		if ok && i != idx {
+		if ok && i != idx && c.members[i].targetKey != key {
 			return true
 		}
 	}
