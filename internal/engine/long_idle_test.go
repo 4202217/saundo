@@ -102,3 +102,50 @@ func TestLongIdleRebuildSkipsANonStreamingTransport(t *testing.T) {
 		t.Fatalf("sessions = %d, want no rebuild", h.sessions)
 	}
 }
+
+// TestLongIdlePendingSurvivesTheEngineResume pins the delivery order that the
+// direct rebuildAfterLongIdle tests miss: the engine has already suspended the
+// stream, the first audible block arms a pending rebuild while the target is
+// offline, and the same wake then sees the sound. Resuming the pacer there
+// makes the next wake's Pushing guard drop the intent, and the receiver stays
+// silent for the rest of the session until a manual reconnect.
+func TestLongIdlePendingSurvivesTheEngineResume(t *testing.T) {
+	h := newHarness(t)
+	h.e.setDevices([]device.Device{onlineDevice()})
+	h.connect()
+	h.launch()
+
+	// The source goes silent; the engine suspends the pacer.
+	h.advance(audioPauseAfter + time.Second)
+	h.e.onWake()
+	if h.fake.pushing {
+		t.Fatal("the stream did not suspend")
+	}
+
+	// Most of the long gap passes, then the target drops off the network.
+	h.advance(longIdleRebuildAfter)
+	offline := onlineDevice()
+	offline.Online = false
+	h.e.setDevices([]device.Device{offline})
+
+	// The first sound arrives while the target is unreachable.
+	h.advance(time.Second)
+	h.e.silence.lastLoud.Store(h.now.UnixNano())
+	h.e.onWake()
+	if !h.e.longIdlePending {
+		t.Fatal("the long-idle rebuild was not left pending")
+	}
+	if h.sessions != 1 {
+		t.Fatalf("sessions = %d, want the live session kept", h.sessions)
+	}
+	if h.fake.pushing {
+		t.Fatal("the engine resumed the pacer while the rebuild was pending")
+	}
+
+	// The target returns; the pending rebuild fires on the next wake.
+	h.e.setDevices([]device.Device{onlineDevice()})
+	h.e.onWake()
+	if h.sessions != 2 {
+		t.Fatalf("sessions = %d, want the pending rebuild to fire", h.sessions)
+	}
+}

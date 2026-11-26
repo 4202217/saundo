@@ -118,6 +118,13 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 	if phase == e.idle {
 		return
 	}
+	if phase == idleActive && e.longIdlePending {
+		// A long-idle rebuild is waiting for its target. Hold the suspended
+		// stream: resuming the pacer here would make the pending rebuild's
+		// Pushing guard drop the intent on the next wake, and the receiver
+		// would stay silent until a manual reconnect.
+		return
+	}
 	prev := e.idle
 	switch phase {
 	case idleActive:
