@@ -40,6 +40,7 @@ func (s *Sender) resetSessionCounters() {
 	s.pendingUnderruns = 0
 	s.ringFed, s.lastFedFrames = false, 0
 	s.encryptErrors = 0
+	s.encryptFailStreak, s.sendFailStreak = 0, 0
 	s.retransmitWindowStart, s.retransmitBudget = time.Time{}, 0
 	s.lastSync = time.Time{}
 	s.wifi = WiFiMetrics{}

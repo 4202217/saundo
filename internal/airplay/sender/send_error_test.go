@@ -63,3 +63,25 @@ func TestAudioSendErrorsAreCounted(t *testing.T) {
 		t.Fatalf("every send failure logged: %q", logs)
 	}
 }
+
+// TestPersistentSendFailureEndsTheSession pins the dead-socket policy: a
+// connected session whose every audio datagram fails must not keep streaming
+// into nothing.
+func TestPersistentSendFailureEndsTheSession(t *testing.T) {
+	io := &sendFailIO{failNext: maxConsecutiveSendFailures}
+	closed := 0
+	s := New(io, Events{Closed: func() { closed++ }}, nil)
+	s.state = StateStreaming
+	s.hostIP = "192.0.2.10"
+	s.serverPort = 7000
+
+	for i := 0; i < maxConsecutiveSendFailures; i++ {
+		s.sendAudioPacket()
+	}
+	if s.State() != StateIdle {
+		t.Fatalf("state = %s, want idle after %d failed sends", s.State(), maxConsecutiveSendFailures)
+	}
+	if closed != 1 {
+		t.Fatalf("closed events = %d, want 1", closed)
+	}
+}

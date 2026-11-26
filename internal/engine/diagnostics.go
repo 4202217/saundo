@@ -36,11 +36,12 @@ type Diagnostics struct {
 	SyncValid bool
 	// HasStats is false when no sender session exists, so the page can show
 	// no source instead of a healthy zero.
-	HasStats    bool
-	Retransmits uint64
-	LateTicks   uint64
-	SentBlocks  uint64
-	SendErrors  uint64
+	HasStats      bool
+	Retransmits   uint64
+	LateTicks     uint64
+	SentBlocks    uint64
+	SendErrors    uint64
+	EncryptErrors uint64
 	// DroppedEvents is how many host notifications the session's event queue
 	// discarded, summed across stereo members.
 	DroppedEvents uint64
@@ -140,7 +141,7 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 		SessionUptime:   sessionUptime,
 		RecentUnderruns: recent.Underruns,
 		RecentDropped:   recent.Dropped,
-		Degraded:        recent.Underruns > 0 || recent.Dropped > 0 || recent.SendErrors > 0,
+		Degraded:        recent.Underruns > 0 || recent.Dropped > 0 || recent.SendErrors > 0 || recent.EncryptErrors > 0,
 		HasStats:        len(members) > 0,
 	}
 	if len(members) == 0 {
@@ -163,6 +164,7 @@ func aggregateDiagnostics(members []sender.Stats, group GroupKind, groupSize int
 		d.Retransmits += m.Retransmits
 		d.SentBlocks += m.SentBlocks
 		d.SendErrors += m.SendErrors
+		d.EncryptErrors += m.EncryptErrors
 		if m.LateTicks > d.LateTicks {
 			d.LateTicks = m.LateTicks
 		}

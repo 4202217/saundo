@@ -196,6 +196,14 @@ func (s *Sender) sendAudioPacket() {
 	wire, err := s.encryptAudioPayload(header[:], payload)
 	if err != nil {
 		s.encryptErrors++
+		s.encryptFailStreak++
+		if s.encryptFailStreak >= maxConsecutiveEncryptFailures {
+			// The key or the cipher state is broken on this session. A
+			// retransmit cannot fill the gap because the packet never entered
+			// the backlog, so end the session and let the engine rebuild it.
+			s.fail("The audio stream could not be encrypted for the receiver.")
+			return
+		}
 		if s.encryptErrors == 1 {
 			s.warn("audio encrypt failed, dropping packet: %v", err)
 		}
@@ -204,6 +212,7 @@ func (s *Sender) sendAudioPacket() {
 		s.framesSent += framesPerPacket
 		return
 	}
+	s.encryptFailStreak = 0
 
 	pkt := make([]byte, 0, len(header)+len(wire))
 	pkt = append(pkt, header[:]...)
@@ -220,7 +229,17 @@ func (s *Sender) sendAudioPacket() {
 		delivered = true
 	}
 	if delivered {
+		s.sendFailStreak = 0
 		s.sentBlocks++
+	} else {
+		s.sendFailStreak++
+		if s.sendFailStreak >= maxConsecutiveSendFailures {
+			// Every copy of every packet for 400 ms failed. The session is
+			// connected but the receiver is not getting audio; fail it and
+			// let the engine retry instead of streaming into a dead socket.
+			s.fail("The audio stream could not be sent to the receiver.")
+			return
+		}
 	}
 
 	slot := int(s.seq) & (backlogSize - 1)

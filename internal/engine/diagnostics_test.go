@@ -76,6 +76,19 @@ func TestDiagnosticsSendErrorsDegrade(t *testing.T) {
 	}
 }
 
+// TestDiagnosticsEncryptErrorsDegrade pins the cipher-failure signal: packets
+// that never reached the wire because the key failed are not a healthy
+// session even when no send error was reported.
+func TestDiagnosticsEncryptErrorsDegrade(t *testing.T) {
+	d := aggregateDiagnostics([]sender.Stats{{EncryptErrors: 2}}, GroupSingle, 1, "", 0, 0, stabilityCounts{EncryptErrors: 2}, time.Unix(101, 0))
+	if d.EncryptErrors != 2 {
+		t.Fatalf("encrypt errors = %d, want 2", d.EncryptErrors)
+	}
+	if !d.Degraded {
+		t.Fatal("encrypt errors did not mark the session degraded")
+	}
+}
+
 // TestDiagnosticsDroppedEventsAreSurfaced pins the host counter's reader: a
 // session whose event queue lost datagrams reports it instead of the counter
 // existing with no caller.

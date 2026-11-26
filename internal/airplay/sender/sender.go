@@ -54,11 +54,17 @@ const (
 	volumePollInterval     = time.Second
 	// startWaitTimeout outlasts the 30 s PTP re-synchronization window.
 	startWaitTimeout = 40 * time.Second
-	inBufMaxFrames   = 8192
-	defaultLatency   = 22050 + 44100
-	noVolume         = -1000.0
-	serverUserAgent  = "AirTunes/550.10"
-	clientUserAgent  = "AirPlay/550.10"
+	// Consecutive audio failures are a broken key or a dead socket, not
+	// jitter. The send threshold is 400 ms at the 8 ms pacer; the encrypt
+	// threshold is short because an encryption failure cannot be recovered
+	// by a retransmit request.
+	maxConsecutiveEncryptFailures = 3
+	maxConsecutiveSendFailures    = 50
+	inBufMaxFrames                = 8192
+	defaultLatency                = 22050 + 44100
+	noVolume                      = -1000.0
+	serverUserAgent               = "AirTunes/550.10"
+	clientUserAgent               = "AirPlay/550.10"
 )
 
 // State is the sender's protocol phase.
@@ -253,10 +259,14 @@ type Sender struct {
 	ringFed          bool
 	lastFedFrames    uint64
 	encryptErrors    uint64
-	duplicates       int
-	prefill          int
-	lastSync         time.Time
-	wifi             WiFiMetrics
+	// encryptFailStreak and sendFailStreak count consecutive packets that
+	// never reached the receiver. A success on either path resets its streak.
+	encryptFailStreak int
+	sendFailStreak    int
+	duplicates        int
+	prefill           int
+	lastSync          time.Time
+	wifi              WiFiMetrics
 
 	rtspConnected bool
 	udpBound      bool

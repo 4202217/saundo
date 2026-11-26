@@ -70,3 +70,23 @@ func TestEncryptFailureDropsThePacket(t *testing.T) {
 		t.Fatalf("counters after recovery = encrypt %d, sent %d", s.encryptErrors, s.sentBlocks)
 	}
 }
+
+// TestPersistentEncryptFailureEndsTheSession pins the burst limit: a key that
+// stops working must fail the session instead of leaving an unrecoverable
+// sequence gap and a connected but silent receiver.
+func TestPersistentEncryptFailureEndsTheSession(t *testing.T) {
+	closed := 0
+	s := New(&audioRecordIO{}, Events{Closed: func() { closed++ }}, nil)
+	s.state = StateStreaming
+	s.ap2 = &ap2State{encryptAudio: true, audioKey: []byte{1, 2, 3}}
+
+	for i := 0; i < maxConsecutiveEncryptFailures; i++ {
+		s.sendAudioPacket()
+	}
+	if s.State() != StateIdle {
+		t.Fatalf("state = %s, want idle after %d encrypt failures", s.State(), maxConsecutiveEncryptFailures)
+	}
+	if closed != 1 {
+		t.Fatalf("closed events = %d, want 1", closed)
+	}
+}
