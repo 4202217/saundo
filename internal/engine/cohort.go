@@ -823,3 +823,15 @@ func (e *Engine) sessionAddressable() (missing, offline string, ok bool) {
 	}
 	return "", "", true
 }
+
+// anyTargetAddressable reports whether at least one planned target resolves to
+// an online device, so holding the shared pacer would not silence a member
+// that can still play.
+func (e *Engine) anyTargetAddressable() bool {
+	for _, key := range e.plan.keys() {
+		if d, found := e.find(key); found && d.Online {
+			return true
+		}
+	}
+	return false
+}

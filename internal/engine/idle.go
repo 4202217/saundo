@@ -118,11 +118,12 @@ func (e *Engine) updateIdlePhase(now time.Time) {
 	if phase == e.idle {
 		return
 	}
-	if phase == idleActive && e.longIdlePending {
-		// A long-idle rebuild is waiting for its target. Hold the suspended
-		// stream: resuming the pacer here would make the pending rebuild's
-		// Pushing guard drop the intent on the next wake, and the receiver
-		// would stay silent until a manual reconnect.
+	if phase == idleActive && e.longIdlePending && !e.anyTargetAddressable() {
+		// A long-idle rebuild is waiting and no target can play. Hold the
+		// suspended stream: resuming the pacer here would make the pending
+		// rebuild's Pushing guard drop the intent, and a one-target session
+		// would stay silent until a manual reconnect. A multi-target session
+		// with a reachable member resumes and keeps playing it.
 		return
 	}
 	prev := e.idle

@@ -149,3 +149,44 @@ func TestLongIdlePendingSurvivesTheEngineResume(t *testing.T) {
 		t.Fatalf("sessions = %d, want the pending rebuild to fire", h.sessions)
 	}
 }
+
+// TestLongIdlePendingKeepsAReachableTargetPlaying pins the boundary of the
+// hold: with two targets and one still online, a pending rebuild for the
+// offline member must not stop the sound to the reachable one.
+func TestLongIdlePendingKeepsAReachableTargetPlaying(t *testing.T) {
+	h := newHarness(t)
+	b := advertiseBoth(h)
+	h.connect()
+	h.launch()
+	h.e.handleCommand(command{kind: cmdConnect, deviceID: b.ID})
+	h.launch()
+	sessions := h.sessions
+
+	// The source goes silent; the engine suspends the pacer.
+	h.advance(audioPauseAfter + time.Second)
+	h.e.onWake()
+	if h.fake.pushing {
+		t.Fatal("the stream did not suspend")
+	}
+
+	// The long gap passes and one of the two targets drops off the network.
+	h.advance(longIdleRebuildAfter)
+	offline := b
+	offline.Online = false
+	h.e.setDevices([]device.Device{onlineDevice(), offline})
+
+	// The first sound arms the pending rebuild; the reachable target keeps
+	// playing instead of being held for the offline one.
+	h.advance(time.Second)
+	h.e.silence.lastLoud.Store(h.now.UnixNano())
+	h.e.onWake()
+	if !h.e.longIdlePending {
+		t.Fatal("the long-idle rebuild was not left pending")
+	}
+	if !h.fake.pushing {
+		t.Fatal("the reachable target was left without audio")
+	}
+	if h.sessions != sessions {
+		t.Fatalf("sessions = %d, want no rebuild while a target is offline", h.sessions)
+	}
+}
