@@ -1642,3 +1642,20 @@ the manifest.
 The maintainer's macOS test of this build passed on 2026-11-26, and their
 message confirms it; the tested tree was main at 412ca5a. The tag and the
 publish follow this commit.
+
+## 2026-11-26 — the 0.6.7 draft, publish, and public feed
+
+The release workflow 45827516888 ran on 31866c9 with all five jobs green
+(`check`, `check-macos`, `draft`, `build`, `build-macos`). The draft carried
+fifteen assets: the Windows installer, both update archives, both signed
+manifests, `install.ps1`, `install.sh`, the dmg, `SHA256SUMS`, and the
+0.6.4/0.6.5/0.6.6 deltas for both platforms. `sha256sum -c SHA256SUMS`
+passed every listed asset. Both manifests carry version 0.6.7, the English
+0.6.7 notes, and a signature with signed deltas. The bilingual notes were
+set from `scripts/release-notes.sh`, and the release was published
+2026-11-26 at https://github.com/4202217/saundo/releases/tag/v0.6.7. The
+public feed serves `update-windows-amd64.json` and
+`update-darwin-arm64.json` at 0.6.7 with signatures; the installer, the dmg,
+`install.ps1`, and `install.sh` return 200. Not run: a live update from
+0.6.6 to 0.6.7, which needs the installed previous build and stays in
+`Currently pending`.
