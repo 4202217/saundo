@@ -139,6 +139,12 @@ func (s *Sender) sendFlush() {
 }
 
 func (s *Sender) sendAudioPacket() {
+	if s.tornDown {
+		// A failure inside a pacer burst or the prefill loop tears the session
+		// down, and the rest of that burst would hit the same dead key or
+		// socket. With nothing in flight there is nothing to send.
+		return
+	}
 	var frames [framesPerPacket * channels]int16
 	available := s.fillFrames(frames[:])
 	if available < framesPerPacket {

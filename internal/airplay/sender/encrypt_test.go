@@ -90,3 +90,35 @@ func TestPersistentEncryptFailureEndsTheSession(t *testing.T) {
 		t.Fatalf("closed events = %d, want 1", closed)
 	}
 }
+
+// TestAFailedSessionReportsTheTeardownOnce pins fail's idempotence: the pacer
+// burst keeps sending after the first failure, and every later packet hits the
+// same wiped key. Those later failures must not report the teardown again.
+func TestAFailedSessionReportsTheTeardownOnce(t *testing.T) {
+	closed, failed := 0, 0
+	s := New(&audioRecordIO{}, Events{
+		Closed: func() { closed++ },
+		Launched: func(ok bool, _ string) {
+			if !ok {
+				failed++
+			}
+		},
+	}, nil)
+	s.state = StateStreaming
+	s.ap2 = &ap2State{encryptAudio: true, audioKey: []byte{1, 2, 3}}
+
+	for i := 0; i < maxConsecutiveEncryptFailures; i++ {
+		s.sendAudioPacket()
+	}
+	// The rest of the same burst.
+	for i := 0; i < maxPacketsPerTick; i++ {
+		s.sendAudioPacket()
+	}
+
+	if closed != 1 {
+		t.Fatalf("closed events = %d, want 1", closed)
+	}
+	if failed != 0 {
+		t.Fatalf("launch-failed events = %d, want 0 for a streaming session", failed)
+	}
+}

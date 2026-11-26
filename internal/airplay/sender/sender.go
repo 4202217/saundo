@@ -397,6 +397,10 @@ type Sender struct {
 	// channel. Completion events from a replaced dial are ignored.
 	controlDialGen uint64
 	eventDialGen   uint64
+	// tornDown is set once a failure or a takeover has ended the session and
+	// reported it. An audio send after that is a leftover of the same burst:
+	// the session is already gone, so it must not report the teardown again.
+	tornDown bool
 
 	ptpClock PTPClock
 	// groupUUID tags a session as one member of a stereo pair. timingPeers
@@ -711,6 +715,7 @@ func (s *Sender) Start(host string, port uint16, name string) {
 	}
 
 	s.setState(StateConnecting)
+	s.tornDown = false
 	s.rtspConnected = false
 	s.timeout.arm(s.now())
 	s.info("connecting to %s:%d (%q)", host, port, name)
@@ -779,50 +784,6 @@ func (s *Sender) finishStartFailure(why string) {
 	s.resetStartState()
 	if s.events.Launched != nil {
 		s.events.Launched(false, why)
-	}
-	if s.events.Closed != nil {
-		s.events.Closed()
-	}
-}
-
-func (s *Sender) fail(why string) {
-	s.warn("RAOP error: %s", why)
-	wasStarting := s.state != StateStreaming
-	s.setState(StateIdle)
-	s.stopTimers()
-	s.resetStartState()
-	s.io.TCPClose(raopio.TCPControl, false)
-	s.rtspConnected = false
-	s.releaseSockets()
-	s.wipeSecrets()
-	if wasStarting && s.events.Launched != nil {
-		s.events.Launched(false, why)
-	}
-	if s.events.Closed != nil {
-		s.events.Closed()
-	}
-}
-
-// preempt ends a streaming session that the receiver handed to another
-// sender. The receiver closes the displaced control channel cleanly, so this
-// is a terminal outcome, not a retryable failure.
-func (s *Sender) preempt(why string) {
-	s.warn("session taken over: %s", why)
-	s.setState(StateIdle)
-	s.stopTimers()
-	s.resetStartState()
-	s.io.TCPClose(raopio.TCPControl, false)
-	s.rtspConnected = false
-	s.releaseSockets()
-	s.wipeSecrets()
-	for i := range s.backlog {
-		s.backlog[i] = nil
-	}
-	for i := range s.backlogSeq {
-		s.backlogSeq[i] = -1
-	}
-	if s.events.Preempted != nil {
-		s.events.Preempted(why)
 	}
 	if s.events.Closed != nil {
 		s.events.Closed()
