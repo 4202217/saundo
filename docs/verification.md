@@ -30,13 +30,6 @@ live state:
   device and no other app takeover. The 100 ms soak is withdrawn: the
   2026-11-10 presentation-latency-floor entry in Graduated shows the HomePod
   mini pair breaks up below roughly 200 ms whatever the sender.
-- A live long-idle resume on a HomePod pair at the production 30-minute
-  threshold: leave the session silent for more than 30 minutes, then play;
-  the first audible block must rebuild the cohort and the pair must play. The
-  2026-11-26 7 h 10 m rebuild ran on a single member (2.08 s to a live
-  stream, and it played). The pair rebuild path was verified on 2026-11-26
-  with a temporary 90 s threshold; the production threshold on a pair is
-  still unverified.
 - An AP2 receiver outside the HomePod family (the MacBook Air) under the
   suspension and the resume flush: unverified. The in-family path is covered
   live by the 2026-11-25 resumes and the 2026-11-26 rebuild.
@@ -1710,6 +1703,25 @@ committed.
   at 10:45:09.907/.910, RECORD `200` at 10:45:09.916/.917), synchronized PTP
   at 10:45:10.420, and reached `streaming` at 10:45:10.465, about 1.4 s.
 - This proves the device rebuild path on a pair, including the event-channel
-  admission gate on the rebuilt session. The production 30-minute threshold
-  itself remains unit-tested (`TestLongIdleRebuildsTheSessionOnResume`); a
-  live production-threshold pair run stays in `Currently pending`.
+  admission gate on the rebuilt session. The production-threshold run follows
+  below.
+
+## 2026-11-26 — the pair long-idle rebuild at the production threshold
+
+The production build (`0.6.6-28-gf2f5c0a`, the current main) ran the same
+pair with the committed 30-minute `longIdleRebuildAfter`. The user played
+both sounds and the capture saw them.
+
+- 14:21:59.250 first sound: `audio resumed at frame 61343876` on both
+  members; 14:22:17.068 `audio idle for 5s, stream suspended`.
+- The 14:22:17 to 15:04:20 window contains no other `audio resumed`,
+  `source audible`, or `now playing` line.
+- 15:04:20.787 second sound: `source audible after 42m9s of silence (rebuild
+  threshold 30m0s)` and `long idle 42m9s: rebuilding the session on resume`.
+- 15:04:20.800 `session stopped` on both. The new session opened its event
+  channel at 15:04:21.825/.903 before RECORD, synchronized PTP at
+  15:04:22.383/.483, and reached `streaming` at 15:04:22.902/.904, about
+  2.1 s.
+- This closes the production 30-minute threshold on a pair. The same device
+  path had already passed with the 90 s test build; this run used the
+  committed value and a real 42 m 9 s silence.
