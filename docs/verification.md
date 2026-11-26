@@ -1639,7 +1639,6 @@ machine's local proxy; the release workflow builds the installer on its
 runner. The update archive, the three deltas, and `SHA256SUMS` sit beside
 the manifest.
 
-The maintainer's 2026-11-26 instruction defers the pre-release test: they
-will run a macOS round before the final release. The tag, the push, and the
-publish are held until that test passes, so this entry records the Windows
-candidate and does not claim a macOS run.
+The maintainer's macOS test of this build passed on 2026-11-26, and their
+message confirms it; the tested tree was main at 412ca5a. The tag and the
+publish follow this commit.
