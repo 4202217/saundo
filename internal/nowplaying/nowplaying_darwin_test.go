@@ -190,11 +190,17 @@ func TestParseStreamLineMapsTheSession(t *testing.T) {
 	if s.Status != StatusPlaying || !s.Playing || !s.CanNext || !s.CanSeek {
 		t.Fatalf("session state = %v playing=%v", s.Status, s.Playing)
 	}
+	if !s.Advancing {
+		t.Fatal("a playing payload with playbackRate 1 was not marked advancing")
+	}
 	if s.Duration != 237388*time.Millisecond || s.Position != 12*time.Second {
 		t.Fatalf("times = %v %v", s.Duration, s.Position)
 	}
 	if s.Updated.IsZero() || s.AUMID != "com.apple.Music" {
 		t.Fatalf("updated=%v aumid=%q", s.Updated, s.AUMID)
+	}
+	if s.PositionAt != s.Updated {
+		t.Fatalf("position anchor = %v, want the payload stamp %v", s.PositionAt, s.Updated)
 	}
 
 	// A paused payload keeps the session and flips the status.

@@ -189,6 +189,7 @@ func readSession(session uintptr) Session {
 		if status, ok := callInt32(pi, playbackStatus); ok {
 			out.Status = PlaybackStatus(status)
 			out.Playing = out.Status == StatusPlaying
+			out.Advancing = out.Playing
 		}
 		if controls := callObjectProperty(pi, playbackControls); controls != 0 {
 			out.CanPlay = callBool(controls, controlsPlay)
