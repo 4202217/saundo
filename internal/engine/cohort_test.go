@@ -29,12 +29,13 @@ func (fakeIO) UDPClose(raopio.UDPChannel) {}
 // with the same callbacks and shared gate the engine installs.
 func buildTestCohort(n int) *cohortTransport {
 	c := &cohortTransport{
-		events:   make(chan raopio.Event, 8),
-		stopCh:   make(chan struct{}),
-		dead:     make(chan struct{}),
-		byPeer:   map[string]int{},
-		logf:     func(string, ...any) {},
-		lampSkip: map[string]bool{},
+		events:    make(chan raopio.Event, 8),
+		stopCh:    make(chan struct{}),
+		dead:      make(chan struct{}),
+		byPeer:    map[string]int{},
+		streaming: map[int]bool{},
+		logf:      func(string, ...any) {},
+		lampSkip:  map[string]bool{},
 	}
 	c.gate = newCohortGate(n, nil)
 	nopLog := func(sender.Level, string, ...any) {}

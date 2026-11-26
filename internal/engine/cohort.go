@@ -40,7 +40,11 @@ type cohortTransport struct {
 	// lostKey is the target whose member closed first, read on the dead arm so
 	// the rest of the session can continue without it.
 	lostKey string
-	failure LaunchFailure
+	// streaming marks members that reached StateStreaming this session. A
+	// member launch failure can keep the other targets only when one of them
+	// already streamed; a cohort still mid-handshake retries as a set.
+	streaming map[int]bool
+	failure   LaunchFailure
 
 	onLaunched        func(ok bool, err string)
 	onClosed          func()
@@ -86,6 +90,7 @@ func (e *Engine) openCohort(p sessionPlan) (transport, error) {
 		events:            make(chan raopio.Event, cohortEventQueue),
 		stopCh:            make(chan struct{}),
 		dead:              make(chan struct{}),
+		streaming:         map[int]bool{},
 		onLaunched:        e.onLaunched,
 		onClosed:          e.onClosed,
 		onPreempted:       e.onPreempted,
@@ -548,12 +553,19 @@ func (c *cohortTransport) memberLaunched(idx int, ok bool, err string) {
 		c.launchReported = true
 		c.failed = true
 		m := c.members[idx]
+		failure := LaunchFailure{TargetKey: m.targetKey, DeviceID: m.device.ID, Name: m.device.Name}
 		if m.sender.PasswordRejected() {
 			// A bad password is not a transient failure: drop this member from
 			// the session and let the engine prompt for a new password.
-			c.failure = LaunchFailure{TargetKey: m.targetKey, DeviceID: m.device.ID, Name: m.device.Name, Auth: true}
+			failure.Auth = true
+			c.lostKey = m.targetKey
+		} else if len(c.plan.targets) > 1 && c.anotherMemberStreaming(idx) {
+			// One independent target failed after another already streamed.
+			// Dropping the failed target keeps the session; a stereo pair is
+			// one target and still retries whole.
 			c.lostKey = m.targetKey
 		}
+		c.failure = failure
 		if c.onLaunched != nil {
 			c.onLaunched(false, fmt.Sprintf("%s：%s", c.members[idx].device.Name, err))
 		}
@@ -589,7 +601,24 @@ func (c *cohortTransport) memberClosed(idx int) {
 	c.signalDead()
 }
 
-func (c *cohortTransport) memberStateChanged(int, sender.State) { c.stateChanged() }
+func (c *cohortTransport) memberStateChanged(idx int, state sender.State) {
+	if state == sender.StateStreaming {
+		if c.streaming == nil {
+			c.streaming = map[int]bool{}
+		}
+		c.streaming[idx] = true
+	}
+	c.stateChanged()
+}
+
+func (c *cohortTransport) anotherMemberStreaming(idx int) bool {
+	for i, ok := range c.streaming {
+		if ok && i != idx {
+			return true
+		}
+	}
+	return false
+}
 
 func (c *cohortTransport) stateChanged() {
 	state := c.State()
