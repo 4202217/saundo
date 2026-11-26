@@ -655,6 +655,10 @@ func (e *Engine) startPlan(plan sessionPlan, hold bool) {
 	e.noteCredentialQuarantine()
 	e.closeSession(hold)
 	e.receiverLatency = 0
+	// The open sequence is polled on a wake, and an idle engine has no wake on
+	// its schedule, so a capture reopen that happened while it slept is only
+	// adopted here. Do it before the new cohort takes the input format.
+	e.syncCaptureOpen()
 	e.plan = plan
 	e.life.wantedKeys = plan.keys()
 	e.selectedID = plan.targets[0].key // the primary target; stable across adds
