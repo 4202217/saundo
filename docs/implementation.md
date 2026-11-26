@@ -1,4 +1,4 @@
-<!-- reviewed-through: 2026-11-25 -->
+<!-- reviewed-through: 2026-11-26 -->
 
 # Implementation overview
 
@@ -51,7 +51,18 @@ level-analysis worker, both behind bounded queues:
 
 The app also polls the platform Now Playing source every two seconds
 (`internal/nowplaying`): SMTC on Windows, the MediaRemote adapter on macOS.
-It feeds the Now Playing card and its transport buttons. Capture blocks are measured
+It feeds the Now Playing card and its transport buttons. The card's progress
+clock (`internal/app/now_progress.go`) advances the position from the session's
+playback timestamp, not from the poll's arrival time. `Session.PositionAt` is
+that anchor: the macOS leaf sets it from MediaRemote's `timestampEpochMicros`,
+where the elapsed value is stamped, while Windows leaves it zero because SMTC
+exposes no sampling instant. Apple Music refreshes both values only every few
+seconds and the elapsed value stays frozen between notifications, so polling
+against the arrival time rewound the display and made the clocks bounce. Only a
+session whose `Advancing` flag is set extrapolates:
+MediaRemote can briefly publish `playing=true` with `playbackRate=0` and a cached
+stamp, so the playing flag alone does not mean the timeline is moving. The
+extrapolation is also capped at 30 seconds. Capture blocks are measured
 into level and five-band frames (`internal/audio/analyze`) on the engine's
 level pump goroutine, fed by a 100 ms ring from capture; `Engine.LevelFrame` reads them back with the presentation delay so
 the card's meter follows the audio being heard. The bands gate energy below

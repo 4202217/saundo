@@ -44,16 +44,17 @@ type streamEvent struct {
 // streamPayload is the metadata of one now playing session. Time keys are
 // microseconds (the adapter's --micros option).
 type streamPayload struct {
-	Title       string  `json:"title"`
-	Artist      string  `json:"artist"`
-	Album       string  `json:"album"`
-	AlbumArtist string  `json:"albumArtist"`
-	Playing     bool    `json:"playing"`
-	Duration    float64 `json:"durationMicros"`
-	Elapsed     float64 `json:"elapsedTimeMicros"`
-	Timestamp   int64   `json:"timestampEpochMicros"`
-	ArtworkData string  `json:"artworkData"`
-	BundleID    string  `json:"bundleIdentifier"`
+	Title        string  `json:"title"`
+	Artist       string  `json:"artist"`
+	Album        string  `json:"album"`
+	AlbumArtist  string  `json:"albumArtist"`
+	Playing      bool    `json:"playing"`
+	PlaybackRate float64 `json:"playbackRate"`
+	Duration     float64 `json:"durationMicros"`
+	Elapsed      float64 `json:"elapsedTimeMicros"`
+	Timestamp    int64   `json:"timestampEpochMicros"`
+	ArtworkData  string  `json:"artworkData"`
+	BundleID     string  `json:"bundleIdentifier"`
 }
 
 // Track is one media session's track metadata.
@@ -361,6 +362,7 @@ func sessionFromPayload(p *streamPayload) Session {
 		AppName:     darwin.AppNameForBundleID(p.BundleID),
 		AppIcon:     darwin.AppIconForBundleID(p.BundleID),
 		Playing:     p.Playing,
+		Advancing:   p.Playing && p.PlaybackRate > 0,
 		Status:      StatusPaused,
 		CanPlay:     true,
 		CanPause:    true,
@@ -375,6 +377,7 @@ func sessionFromPayload(p *streamPayload) Session {
 	}
 	if p.Timestamp != 0 {
 		s.Updated = time.UnixMicro(p.Timestamp)
+		s.PositionAt = s.Updated
 	}
 	if p.ArtworkData != "" {
 		if raw, err := base64.StdEncoding.DecodeString(p.ArtworkData); err == nil && usableArtwork(raw) {

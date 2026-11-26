@@ -296,16 +296,11 @@ func (a *App) nowPlayingProgress(c *ui.Context, p palette, s nowplaying.Session,
 			ui.Box(c).Grow(1).Height(3).Radius(1.5).Background(p.line)
 			return
 		}
-		pos := s.Position
-		if s.Playing && !preview && !a.nowSnap.ReadAt.IsZero() {
-			pos += time.Since(a.nowSnap.ReadAt)
+		now := time.Now()
+		if a.nowTime != nil {
+			now = a.nowTime()
 		}
-		if pos < 0 {
-			pos = 0
-		}
-		if pos > s.Duration {
-			pos = s.Duration
-		}
+		pos := progressPosition(s, now)
 		frac := float32(pos) / float32(s.Duration)
 		ui.Text(c, formatClock(pos)).FontSize(10.5).TextColor(p.muted).FontFeatures("tnum").SingleLine()
 		ui.Box(c).Grow(1).Height(3).Draw(func(pt *ui.Painter, r ui.Rect) {
